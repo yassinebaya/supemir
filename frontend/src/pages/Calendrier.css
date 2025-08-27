@@ -1,0 +1,74 @@
+
+.calendrier-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  height: auto;
+  gap: 20px;
+  padding: 20px;
+  
+  box-sizing: border-box;
+}
+
+.sidebar-section {
+  width: 400px;
+  flex-shrink: 0;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.calendar-section {
+  flex: 1;
+  min-width: 300px;
+  padding: 10px;
+}
+
+/* 🌐 Tablette et petit laptop */
+@media (max-width: 1024px) {
+  .calendrier-container {
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  .sidebar-section,
+  .calendar-section {
+    width: 100%;
+  }
+}
+
+/* 📱 Mobile */
+@media (max-width: 480px) {
+  .sidebar-section {
+    padding: 10px;
+    width: 100%;
+  }
+
+  .calendar-section {
+    padding: 5px;
+    width: 100%;
+  }
+
+  .sidebar-section .event-card {
+    padding: 10px;
+    font-size: 14px;
+    box-sizing: border-box;
+    word-wrap: break-word;
+  }
+
+  .sidebar-section h4 {
+    font-size: 16px;
+  }
+
+  .sidebar-section button {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  /* Ajout utile : améliorer l'espace des titres */
+  .sidebar-section h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+}

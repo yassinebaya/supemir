@@ -1,0 +1,379 @@
+/* Variables CSS pour la cohérence des couleurs */
+:root {
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --background-color: #f8fafc;
+  --card-background: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --border-focus: #3b82f6;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --radius: 8px;
+  --transition: all 0.2s ease-in-out;
+}
+
+/* Classe spécifique pour la page de paiement */
+.payment-page {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%);
+}
+
+/* Container principal - ÉLARGI pour desktop */
+.payment-page .container {
+  max-width: 900px; /* ✅ Augmenté de 600px à 900px */
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--card-background);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+}
+
+/* Titre principal */
+.payment-page .container h2 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2rem;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Formulaire */
+.payment-page form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Labels */
+.payment-page label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.payment-page label svg {
+  color: var(--primary-color);
+}
+
+/* Inputs de base */
+.payment-page input[type="date"],
+.payment-page input[type="number"],
+.payment-page textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  color: var(--text-primary);
+  background-color: var(--card-background);
+  transition: var(--transition);
+  outline: none;
+}
+
+.payment-page input[type="date"]:focus,
+.payment-page input[type="number"]:focus,
+.payment-page textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+.payment-page input[type="date"]:hover,
+.payment-page input[type="number"]:hover,
+.payment-page textarea:hover {
+  border-color: var(--primary-color);
+}
+
+/* Textarea spécifique */
+.payment-page textarea {
+  min-height: 100px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Styles pour React Select */
+.payment-page .css-control {
+  border: 2px solid var(--border-color) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
+  transition: var(--transition) !important;
+  min-height: 48px !important;
+}
+
+.payment-page .css-control:hover {
+  border-color: var(--primary-color) !important;
+}
+
+.payment-page .css-control--is-focused {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.payment-page .css-value-container {
+  padding: 0.5rem 1rem !important;
+}
+
+.payment-page .css-placeholder {
+  color: var(--text-secondary) !important;
+  font-size: 1rem !important;
+}
+
+.payment-page .css-single-value {
+  color: var(--text-primary) !important;
+  font-size: 1rem !important;
+}
+
+.payment-page .css-menu {
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--border-color) !important;
+  z-index: 999 !important;
+}
+
+.payment-page .css-option {
+  padding: 0.75rem 1rem !important;
+  transition: var(--transition) !important;
+}
+
+.payment-page .css-option--is-focused {
+  background-color: rgba(37, 99, 235, 0.1) !important;
+  color: var(--primary-color) !important;
+}
+
+.payment-page .css-option--is-selected {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+/* Bouton principal */
+.payment-page button[type="submit"] {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  box-shadow: var(--shadow-md);
+  margin-top: 1rem;
+}
+
+.payment-page button[type="submit"]:hover {
+  background: linear-gradient(135deg, var(--primary-hover), #1e40af);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+}
+
+.payment-page button[type="submit"]:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.payment-page button[type="submit"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+}
+
+/* Messages de feedback */
+.payment-page .message {
+  padding: 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  text-align: center;
+  margin-top: 1.5rem;
+  border: 1px solid;
+  animation: slideIn 0.3s ease-out;
+}
+
+.payment-page .message:contains("✅") {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: var(--success-color);
+  color: var(--success-color);
+}
+
+.payment-page .message:contains("❌") {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: var(--error-color);
+  color: var(--error-color);
+}
+
+/* Animation pour les messages */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .payment-page .container {
+    margin: 1rem;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    max-width: none; /* ✅ Retour à la taille normale sur mobile */
+  }
+  
+  .payment-page .container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .payment-page form {
+    gap: 1.25rem;
+  }
+  
+  .payment-page label {
+    font-size: 0.8rem;
+  }
+  
+  .payment-page input[type="date"],
+  .payment-page input[type="number"],
+  .payment-page textarea {
+    padding: 0.625rem;
+    font-size: 0.95rem;
+  }
+  
+  .payment-page button[type="submit"] {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .payment-page .container {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .payment-page .container h2 {
+    font-size: 1.25rem;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .payment-page form {
+    gap: 1rem;
+  }
+  
+  .payment-page input[type="date"],
+  .payment-page input[type="number"],
+  .payment-page textarea {
+    padding: 0.5rem;
+  }
+  
+  .payment-page button[type="submit"] {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* États de focus pour l'accessibilité */
+.payment-page *:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Amélioration pour les écrans haute résolution */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .payment-page .container {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* Mode sombre (optionnel) */
+@media (prefers-color-scheme: dark) {
+  .payment-page {
+    --background-color: #0f172a;
+    --card-background: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+  }
+}
+
+/* Indicateur de chargement pour les selects */
+.payment-page .css-loading-indicator {
+  color: var(--primary-color) !important;
+}
+
+/* Amélioration des transitions globales */
+.payment-page * {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Styles pour les nombres avec flèches */
+.payment-page input[type="number"]::-webkit-outer-spin-button,
+.payment-page input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.payment-page input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Amélioration visuelle pour les champs requis */
+.payment-page input:required:valid {
+  border-left: 4px solid var(--success-color);
+}
+
+.payment-page input:required:invalid {
+  border-left: 4px solid var(--error-color);
+}
+
+/* Effet de survol sur les labels */
+.payment-page label:hover {
+  color: var(--primary-color);
+  cursor: default;
+}
+
+/* Espacement amélioré pour les groupes de champs */
+.payment-page form > div {
+  position: relative;
+}
+
+/* Animation au chargement du formulaire */
+.payment-page .container {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

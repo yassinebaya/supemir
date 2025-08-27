@@ -1,0 +1,547 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { 
+  Briefcase,
+  Users,
+  BarChart3,
+  Home,
+  LogOut,
+  Menu,
+  X
+} from 'lucide-react';
+
+const CommercialSidebar = ({ onLogout }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      
+      // Sur desktop, ouvrir par défaut
+      if (!mobile) {
+        setIsOpen(true);
+      } else {
+        setIsOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const closeSidebar = () => {
+    if (isMobile) {
+      setIsOpen(false);
+    }
+  };
+
+  const handleNavigation = (path) => {
+    navigate(path);
+    if (isMobile) {
+      closeSidebar();
+    }
+  };
+
+  const navigationItems = [
+    {
+      path: '/commercial',
+      label: 'Dashboard Commercial',
+      icon: Home
+    },
+    {
+      path: '/commercial/etudiant',
+      label: 'Étudiants',
+      icon: Users
+    },
+  ];
+
+  // Utiliser location.pathname
+  const isActive = (path) => location.pathname === path;
+
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    }
+    closeSidebar();
+  };
+
+  return (
+    <div>
+      {/* Styles CSS intégrés */}
+      <style jsx>{`
+        /* Variables CSS */
+        :root {
+          --sidebar-width: 280px;
+          --sidebar-bg: #ffffff;
+          --sidebar-border: #e5e7eb;
+          --sidebar-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          --primary-color: #4f46e5;
+          --primary-hover: #4338ca;
+          --primary-light: #eef2ff;
+          --text-primary: #1f2937;
+          --text-secondary: #6b7280;
+          --text-muted: #9ca3af;
+          --hover-bg: #f9fafb;
+          --active-bg: #eef2ff;
+          --border-radius: 12px;
+          --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          --header-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          --logout-color: #dc2626;
+          --logout-hover: #b91c1c;
+          --logout-bg: #fef2f2;
+        }
+
+        /* Reset and base styles */
+        * {
+          box-sizing: border-box;
+        }
+
+        /* Toggle Button - Positionné en dehors de la sidebar */
+        .commercial-sidebar-toggle {
+          position: fixed;
+          top: 20px;
+          left: ${isOpen ? 'calc(var(--sidebar-width) + 20px)' : '20px'};
+          z-index: 1001;
+          background: var(--primary-color);
+          color: white;
+          border: none;
+          padding: 12px;
+          border-radius: var(--border-radius);
+          box-shadow: var(--sidebar-shadow);
+          cursor: pointer;
+          transition: var(--transition);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 48px;
+          height: 48px;
+        }
+
+        /* Sur mobile, le bouton reste à gauche */
+        @media (max-width: 768px) {
+          .commercial-sidebar-toggle {
+            left: 20px !important;
+          }
+        }
+
+        .commercial-sidebar-toggle:hover {
+          background: var(--primary-hover);
+          transform: translateY(-2px);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Overlay pour mobile */
+        .commercial-sidebar-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 998;
+          opacity: 0;
+          visibility: hidden;
+          transition: var(--transition);
+        }
+
+        .commercial-sidebar-overlay.show {
+          opacity: 1;
+          visibility: visible;
+        }
+
+        /* Sidebar principal */
+        .commercial-sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: var(--sidebar-width);
+          height: 100vh;
+          background: var(--sidebar-bg);
+          border-right: 1px solid var(--sidebar-border);
+          box-shadow: var(--sidebar-shadow);
+          z-index: 999;
+          display: flex;
+          flex-direction: column;
+          transition: var(--transition);
+          overflow: hidden;
+          transform: translateX(-100%);
+        }
+
+        .commercial-sidebar.show {
+          transform: translateX(0);
+        }
+
+        /* Header de la sidebar */
+        .commercial-sidebar-header {
+          padding: 24px 20px;
+          background: var(--header-gradient);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .commercial-sidebar-header::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          right: -50%;
+          width: 100px;
+          height: 100px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          transform: translate(50%, 50%);
+        }
+
+        .commercial-sidebar-header::after {
+          content: '';
+          position: absolute;
+          bottom: -25%;
+          left: -25%;
+          width: 60px;
+          height: 60px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+        }
+
+        .commercial-sidebar-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 20px;
+          font-weight: 700;
+          color: white;
+          margin: 0;
+          position: relative;
+          z-index: 1;
+        }
+
+        .commercial-header-icon {
+          width: 32px;
+          height: 32px;
+          padding: 6px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
+          backdrop-filter: blur(10px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        /* Navigation */
+        .commercial-sidebar-nav {
+          flex: 1;
+          padding: 20px 16px;
+          overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color: var(--sidebar-border) transparent;
+        }
+
+        .commercial-sidebar-nav::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .commercial-sidebar-nav::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .commercial-sidebar-nav::-webkit-scrollbar-thumb {
+          background: var(--sidebar-border);
+          border-radius: 2px;
+        }
+
+        .commercial-nav-section {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        /* Items de navigation */
+        .commercial-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          width: 100%;
+          text-align: left;
+          border: none;
+          background: transparent;
+          color: var(--text-secondary);
+          font-size: 14px;
+          font-weight: 500;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: var(--transition);
+          position: relative;
+          overflow: hidden;
+          font-family: inherit;
+        }
+
+        .commercial-nav-item::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 4px;
+          height: 100%;
+          background: var(--primary-color);
+          transform: scaleY(0);
+          transition: var(--transition);
+          border-radius: 0 4px 4px 0;
+        }
+
+        .commercial-nav-item:hover {
+          background: var(--hover-bg);
+          color: var(--text-primary);
+          transform: translateX(4px);
+        }
+
+        .commercial-nav-item:hover::before {
+          transform: scaleY(0.6);
+        }
+
+        .commercial-nav-item:hover .commercial-nav-icon-wrapper {
+          background: #e5e7eb;
+          transform: scale(1.05);
+        }
+
+        .commercial-nav-item:hover .commercial-nav-icon {
+          transform: scale(1.1);
+        }
+
+        .commercial-nav-item.active {
+          background: var(--active-bg);
+          color: var(--primary-color);
+          font-weight: 600;
+          border-right: 4px solid var(--primary-color);
+        }
+
+        .commercial-nav-item.active::before {
+          transform: scaleY(1);
+        }
+
+        .commercial-nav-item.active .commercial-nav-icon-wrapper {
+          background: #c7d2fe;
+        }
+
+        .commercial-nav-item.active .commercial-nav-icon {
+          color: var(--primary-color);
+        }
+
+        .commercial-nav-item.active::after {
+          content: '';
+          position: absolute;
+          right: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 8px;
+          height: 8px;
+          background: var(--primary-color);
+          border-radius: 50%;
+        }
+
+        .commercial-nav-icon-wrapper {
+          width: 32px;
+          height: 32px;
+          background: #f3f4f6;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: var(--transition);
+          flex-shrink: 0;
+        }
+
+        .commercial-nav-icon {
+          width: 18px;
+          height: 18px;
+          transition: var(--transition);
+        }
+
+        /* Section déconnexion */
+        .commercial-logout-section {
+          padding: 16px;
+          border-top: 1px solid var(--sidebar-border);
+          background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.02));
+        }
+
+        .commercial-logout-btn {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          width: 100%;
+          text-align: left;
+          border: none;
+          background: transparent;
+          color: var(--logout-color);
+          font-size: 14px;
+          font-weight: 500;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: var(--transition);
+          position: relative;
+          font-family: inherit;
+        }
+
+        .commercial-logout-btn:hover {
+          background: var(--logout-bg);
+          transform: translateY(-1px);
+        }
+
+        .commercial-logout-btn:hover .commercial-logout-icon-wrapper {
+          background: #fecaca;
+          transform: scale(1.05);
+        }
+
+        .commercial-logout-btn:hover .commercial-logout-icon {
+          transform: scale(1.1) rotate(-5deg);
+        }
+
+        .commercial-logout-icon-wrapper {
+          width: 32px;
+          height: 32px;
+          background: #fee2e2;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: var(--transition);
+          flex-shrink: 0;
+        }
+
+        .commercial-logout-icon {
+          width: 18px;
+          height: 18px;
+          transition: var(--transition);
+        }
+
+        /* Responsive Design */
+        @media (min-width: 769px) {
+          .commercial-sidebar.show {
+            transform: translateX(0);
+          }
+          
+          .commercial-sidebar-overlay {
+            display: none;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .commercial-sidebar-overlay.show {
+            display: block;
+          }
+        }
+
+        /* États de focus pour l'accessibilité */
+        .commercial-nav-item:focus,
+        .commercial-logout-btn:focus,
+        .commercial-sidebar-toggle:focus {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
+        }
+
+        /* Animations d'entrée */
+        @keyframes slideInLeft {
+          from {
+            transform: translateX(-100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .commercial-sidebar.show {
+          animation: slideInLeft 0.3s ease-out;
+        }
+
+        .commercial-sidebar-overlay.show {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
+
+      <div className="commercial-sidebar-container">
+        {/* Toggle Button */}
+        <button
+          className="commercial-sidebar-toggle"
+          onClick={toggleSidebar}
+          title={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
+        >
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
+        {/* Overlay for mobile */}
+        {isMobile && (
+          <div
+            className={`commercial-sidebar-overlay ${isOpen ? 'show' : ''}`}
+            onClick={closeSidebar}
+          />
+        )}
+
+        {/* Sidebar */}
+        <div className={`commercial-sidebar ${isOpen ? 'show' : ''}`}>
+          <div className="commercial-sidebar-header">
+            <h3 className="commercial-sidebar-title">
+              <div className="commercial-header-icon">
+                <Briefcase size={20} />
+              </div>
+              Commercial
+            </h3>
+          </div>
+
+          <nav className="commercial-sidebar-nav">
+            <div className="commercial-nav-section">
+              {navigationItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNavigation(item.path)}
+                    className={`commercial-nav-item ${isActive(item.path) ? 'active' : ''}`}
+                  >
+                    <div className="commercial-nav-icon-wrapper">
+                      <IconComponent className="commercial-nav-icon" />
+                    </div>
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+
+          <div className="commercial-logout-section">
+            <button onClick={handleLogout} className="commercial-logout-btn">
+              <div className="commercial-logout-icon-wrapper">
+                <LogOut className="commercial-logout-icon" />
+              </div>
+              Déconnexion
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CommercialSidebar;
