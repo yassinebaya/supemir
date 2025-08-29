@@ -26,7 +26,112 @@ import {
   FileText
 } from "lucide-react";
 
-// STRUCTURE CORRIGÉE POUR CORRESPONDRE AU BACKEND
+// ====== Utils auto-cours ======
+const normalize = (s = "") =>
+  s
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")  // accents ➜ simple
+    .replace(/&/g, "et")
+    .replace(/[^a-z0-9\s]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const buildCoursCandidates = (f) => {
+  const out = [];
+  const n = Number(f.niveau || 0);
+  const y = f.niveau ? `${f.niveau} Année` : "";
+
+  if (!f.filiere) return out;
+
+  if (f.filiere === "MASI") {
+    if (n >= 1 && n <= 2) out.push(`MASI ${y}`);
+    if ((n === 3 || n === 4) && f.specialite) out.push(`MASI ${f.specialite} ${y}`);
+    if (n === 5) {
+      if (f.specialite && f.option) out.push(`MASI ${f.specialite} ${f.option} ${y}`); // ✅ le plus précis
+      if (f.option) out.push(`MASI ${f.option} ${y}`);
+      if (f.specialite) out.push(`MASI ${f.specialite} ${y}`);
+    }
+  } else if (f.filiere === "IRM") {
+    if (n >= 1 && n <= 2) out.push(`IRM ${y}`);
+    if ((n === 3 || n === 4) && f.specialite) out.push(`IRM ${f.specialite} ${y}`);
+    if (n === 5) {
+      if (f.specialite && f.option) out.push(`IRM ${f.specialite} ${f.option} ${y}`); // ✅ le plus précis
+      if (f.option) out.push(`IRM ${f.option} ${y}`);
+      if (f.specialite) out.push(`IRM ${f.specialite} ${y}`);
+    }
+  } else if (f.filiere === "CYCLE_INGENIEUR") {
+    if (n >= 1 && n <= 2) out.push(`Classes Préparatoires ${y}`);
+    if (n >= 3) {
+      if (n === 5 && f.optionIngenieur) out.push(`${f.optionIngenieur} 5 Année`);
+      if (f.specialiteIngenieur) out.push(`${f.specialiteIngenieur} ${y}`);
+    }
+  } else if (f.filiere === "LICENCE_PRO") {
+    if (f.specialiteLicencePro) {
+      let s = `Licence Pro ${f.specialiteLicencePro}`;
+      if (f.optionLicencePro) s += ` - ${f.optionLicencePro}`;
+      out.push(s);
+    }
+  } else if (f.filiere === "MASTER_PRO") {
+    if (f.specialiteMasterPro) {
+      let s = `Master Pro ${f.specialiteMasterPro}`;
+      if (f.optionMasterPro) s += ` - ${f.optionMasterPro}`;
+      out.push(s);
+    }
+  }
+
+  return out.filter(Boolean);
+};
+
+const pickBestCours = (listeCours, candidates) => {
+  if (!Array.isArray(listeCours) || listeCours.length === 0) return null;
+  const noms = listeCours.map(c => c.nom || c);
+  const normNoms = noms.map(normalize);
+
+  // 1) match exact normalisé
+  for (const cand of candidates) {
+    const nc = normalize(cand);
+    const idx = normNoms.findIndex(n => n === nc);
+    if (idx !== -1) return noms[idx];
+  }
+  // 2) "contains" (cand ⊆ cours)
+  for (const cand of candidates) {
+    const nc = normalize(cand);
+    let bestIdx = -1, bestScore = 0;
+    normNoms.forEach((n, i) => {
+      const score = n.includes(nc) ? nc.length / n.length : 0;
+      if (score > bestScore) { bestScore = score; bestIdx = i; }
+    });
+    if (bestIdx !== -1) return noms[bestIdx];
+  }
+  // 3) recouvrement de tokens (secours)
+  if (candidates.length) {
+    const tokens = Array.from(new Set(normalize(candidates[0]).split(" ").filter(Boolean)));
+    let bestIdx = -1, hitsMax = 0;
+    normNoms.forEach((n, i) => {
+      let hits = tokens.reduce((acc, t) => acc + (n.includes(t) ? 1 : 0), 0);
+      const yearMatch = n.match(/(\d)\s+annee/);
+      const askedYear = candidates[0].match(/(\d)\s+Année/);
+      if (yearMatch && askedYear && yearMatch[1] === askedYear[1]) hits += 0.5;
+      if (hits > hitsMax) { hitsMax = hits; bestIdx = i; }
+    });
+    if (bestIdx !== -1 && hitsMax > 0) return noms[bestIdx];
+  }
+  return null;
+};
+
+const autoAssignCours = (form, setForm, listeCours, isLockedByUser) => {
+  const cands = buildCoursCandidates(form);
+  if (!cands.length || isLockedByUser) return;
+  const best = pickBestCours(listeCours, cands);
+  if (!best) return;
+  setForm(prev => {
+    const current = prev.cours || [];
+    if (current.includes(best)) return prev;
+    // on remplace par la meilleure suggestion (l'utilisateur peut toujours re-cliquer les chips)
+    return { ...prev, cours: [best] };
+  });
+};
+
 const STRUCTURE_FORMATION = {
   MASI: {
     nom: 'MASI',
@@ -208,6 +313,14 @@ const STRUCTURE_FORMATION = {
 };
 
 
+const FILIERE_BY_MODE = {
+  FI: ['MASI', 'IRM', 'CYCLE_INGENIEUR'],
+  TA: ['MASI', 'IRM', 'CYCLE_INGENIEUR'],
+  Executive: ['LICENCE_PRO', 'MASTER_PRO'] // زِد MBA_EXEC إذا كاين
+};
+
+const getFilieresParMode = (mode) => FILIERE_BY_MODE[mode] || [];
+
 // Fonctions utilitaires pour la formation adaptées au nouveau modèle
 // Fonctions utilitaires pour la formation adaptées au nouveau modèle
 const getSpecialitesDisponibles = (filiere, niveau) => {
@@ -326,10 +439,26 @@ const isChampDisponibleIngenieur = (champ, filiere, niveau, cycle) => {
 // Fonction de gestion des changements de formation adaptée au nouveau modèle backend
 const handleFormationChange = (formSetter, currentForm) => (field, value) => {
   const newForm = { ...currentForm };
-  
+  if (field === 'niveauFormation') {
+    newForm.niveauFormation = value;
+
+    // منين يتبدّل المود كنفضّيو أي قيم قديمة باش ما يبقاش تعارض
+    newForm.filiere = '';
+    newForm.niveau = '';
+    newForm.cycle = '';
+    newForm.specialite = '';
+    newForm.option = '';
+    newForm.specialiteIngenieur = '';
+    newForm.optionIngenieur = '';
+    newForm.specialiteLicencePro = '';
+    newForm.optionLicencePro = '';
+    newForm.specialiteMasterPro = '';
+    newForm.optionMasterPro = '';
+    newForm.cours = []; // reset classe quand on change de mode
+  }
   if (field === 'filiere') {
     newForm.filiere = value;
-    
+    newForm.cours = []; // reset classe quand on change de filière
     
     // Réinitialiser tous les champs spécifiques
     newForm.cycle = '';
@@ -359,6 +488,7 @@ const handleFormationChange = (formSetter, currentForm) => (field, value) => {
     
   } else if (field === 'niveau') {
     newForm.niveau = value;
+    newForm.cours = []; // reset classe quand on change de niveau
     
     // Mise à jour du cycle pour École d'Ingénieur
     if (newForm.filiere === 'CYCLE_INGENIEUR') {
@@ -578,7 +708,17 @@ const validerAnneeScolaire = (anneeScolaire) => {
 // Fonction de validation complète adaptée au nouveau modèle backend
 const validerFormationComplete = (form) => {
   const erreurs = [];
-  
+  // المود ضروري
+if (!form.niveauFormation) {
+  erreurs.push('Le type de formation (FI/TA/Executive) est obligatoire');
+} else {
+  // الفِيليير مختارة خصها تكون مسموحة لهاد المود
+  const allowed = new Set(getFilieresParMode(form.niveauFormation));
+  if (form.filiere && !allowed.has(form.filiere)) {
+    erreurs.push(`La filière "${form.filiere}" n'est pas autorisée pour ${form.niveauFormation}`);
+  }
+}
+
   if (!form.filiere) {
     erreurs.push('La filière est obligatoire');
     return erreurs;
@@ -689,7 +829,19 @@ const validerFormationComplete = (form) => {
   
   return erreurs;
 };
-
+const getCoursFiltre = (listeCours, form) => {
+  if (!form.filiere || !listeCours.length) return [];
+  const candidats = buildCoursCandidates(form);
+  if (!candidats.length) return [];
+  
+  return listeCours.filter(cours => {
+    const nomCours = normalize(cours.nom || cours);
+    return candidats.some(candidat => {
+      const nc = normalize(candidat);
+      return nomCours.includes(nc) || nc.includes(nomCours);
+    });
+  });
+};
 // Génération du code étudiant compatible ingénieur
 const genererCodeEtudiantMisAJour = (form) => {
   if (!form.filiere || !form.prenom || !form.nomDeFamille) {
@@ -729,29 +881,41 @@ const FormationSelector = ({ form, onChange, prefix = '' }) => {
   const formationData = form.filiere ? STRUCTURE_FORMATION[form.filiere] : null;
   const isIngenieur = form.filiere === 'CYCLE_INGENIEUR';
   const hasNiveauFixe = formationData && !formationData.niveauxManuels;
-  
+  const allowedFilieres = getFilieresParMode(form.niveauFormation || '');
+
   // Pour les formations avec niveau auto-assigné, afficher le niveau fixe
   const niveauAffiche = hasNiveauFixe ? formationData.niveauFixe : form.niveau;
   
   return (
     <div className="formation-selector">
       <div className="form-row">
-        <div className="form-group">
-          <label>Type de Formation *</label>
-          <select
-            name="filiere"
-            value={form.filiere}
-            onChange={(e) => onChange('filiere', e.target.value)}
-            required
-          >
-            <option value="">Sélectionner le type de formation...</option>
-            <option value="MASI">MASI</option>
-            <option value="IRM">IRM</option>
-            <option value="CYCLE_INGENIEUR">École d'Ingénieur</option>
-            <option value="LICENCE_PRO">Licence Professionnelle</option>
-            <option value="MASTER_PRO">Master Professionnel</option>
-          </select>
-        </div>
+       <div className="form-group">
+  <label>Type de Formation *</label>
+  <select
+    name="filiere"
+    value={form.filiere}
+    onChange={(e) => onChange('filiere', e.target.value)}
+    required
+    disabled={!form.niveauFormation} // ما نسمحش بالاختيار قبل ما يختار المود
+  >
+    {!form.niveauFormation ? (
+      <option value="">Choisissez d'abord FI / TA / Executive</option>
+    ) : (
+      <>
+        <option value="">Sélectionner le type de formation...</option>
+        {allowedFilieres.map((key) => (
+          <option key={key} value={key}>
+            {STRUCTURE_FORMATION[key]?.nom || key}
+          </option>
+        ))}
+      </>
+    )}
+  </select>
+  {!form.niveauFormation && (
+    <small style={{color:'#666'}}>Veuillez choisir le mode (FI / TA / Executive) d'abord</small>
+  )}
+</div>
+
         
         {/* Niveau - manuel pour certaines formations, auto-assigné pour d'autres */}
         <div className="form-group">
@@ -1004,6 +1168,10 @@ const ListeEtudiants = () => {
   const [etudiantsParPage] = useState(10);
   const [loading, setLoading] = useState(true);
   
+  // États pour le verrouillage de l'auto-sélection des cours
+  const [lockCoursAjout, setLockCoursAjout] = useState(false);
+  const [lockCoursModifier, setLockCoursModifier] = useState(false);
+  
   // États pour le modal d'ajout
   const [showModal, setShowModal] = useState(false);
   const [formAjout, setFormAjout] = useState({
@@ -1072,6 +1240,7 @@ const ListeEtudiants = () => {
   
   // États pour le modal de modification
   const [showEditModal, setShowEditModal] = useState(false);
+  
   const [formModifier, setFormModifier] = useState({
     prenom: '',
     nomDeFamille: '',
@@ -1148,7 +1317,7 @@ const ListeEtudiants = () => {
     dtsBac2: null,
     licence: null
   });
-  
+  const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
   const navigate = useNavigate();
 
   // Handlers pour la formation intelligente
@@ -1164,6 +1333,30 @@ const ListeEtudiants = () => {
   useEffect(() => {
     filtrerEtudiants();
   }, [etudiants, recherche, filtreGenre, filtreCours, filtreActif]);
+
+  // Auto-assign pour AJOUT
+  useEffect(() => {
+    autoAssignCours(formAjout, setFormAjout, listeCours, lockCoursAjout);
+  }, [
+    formAjout.filiere, formAjout.niveau,
+    formAjout.specialite, formAjout.option,
+    formAjout.cycle, formAjout.specialiteIngenieur, formAjout.optionIngenieur,
+    formAjout.specialiteLicencePro, formAjout.optionLicencePro,
+    formAjout.specialiteMasterPro, formAjout.optionMasterPro,
+    listeCours, lockCoursAjout
+  ]);
+
+  // Auto-assign pour MODIFICATION
+  useEffect(() => {
+    autoAssignCours(formModifier, setFormModifier, listeCours, lockCoursModifier);
+  }, [
+    formModifier.filiere, formModifier.niveau,
+    formModifier.specialite, formModifier.option,
+    formModifier.cycle, formModifier.specialiteIngenieur, formModifier.optionIngenieur,
+    formModifier.specialiteLicencePro, formModifier.optionLicencePro,
+    formModifier.specialiteMasterPro, formModifier.optionMasterPro,
+    listeCours, lockCoursModifier
+  ]);
 
   // Génération automatique du code étudiant pour l'ajout
   useEffect(() => {
@@ -1264,6 +1457,7 @@ const ListeEtudiants = () => {
   const openModal = () => {
     setShowModal(true);
     setMessageAjout('');
+    setLockCoursAjout(false);
   };
 
   const closeModal = () => {
@@ -1274,11 +1468,11 @@ const ListeEtudiants = () => {
       genre: 'Homme',
       dateNaissance: '',
       telephone: '',
-      anneeScolaire: genererAnneeScolaireActuelle(),
       email: '',
       motDePasse: '',
       cin: '',
       passeport: '',
+      anneeScolaire: genererAnneeScolaireActuelle(),
       lieuNaissance: '',
       pays: '',
       cours: [],
@@ -1326,7 +1520,9 @@ const ListeEtudiants = () => {
     });
     setImageFile(null);
     setMessageAjout('');
+    setLockCoursAjout(false);
   };
+const coursFiltres = getCoursFiltre(listeCours, formAjout);
 
   // Fonctions pour le modal de modification
   const openEditModal = (etudiant) => {
@@ -1399,6 +1595,7 @@ const ListeEtudiants = () => {
     setImageFileModifier(null);
     setMessageModifier('');
     setShowEditModal(true);
+    setLockCoursModifier(false);
   };
 
   const closeEditModal = () => {
@@ -1467,13 +1664,20 @@ const ListeEtudiants = () => {
     });
     setImageFileModifier(null);
     setMessageModifier('');
+    setLockCoursModifier(false);
   };
 
   // Handler de changement pour inclure les champs ingénieur
   const handleChangeAjout = (e) => {
     const { name, value, type, checked } = e.target;
-    if (['niveau', 'filiere', 'specialite', 'option', 'cycle', 'specialiteIngenieur', 'optionIngenieur',
-         'specialiteLicencePro', 'optionLicencePro', 'specialiteMasterPro', 'optionMasterPro'].includes(name)) {
+    if ([
+      'niveau', 'filiere', 'specialite', 'option', 'cycle',
+      'specialiteIngenieur', 'optionIngenieur',
+      'specialiteLicencePro', 'optionLicencePro',
+      'specialiteMasterPro', 'optionMasterPro',
+      'niveauFormation'
+    ].includes(name)) {
+      setLockCoursAjout(false);
       handleFormationChangeAjout(name, type === 'checkbox' ? checked : value);
     } else {
       setFormAjout({ ...formAjout, [name]: type === 'checkbox' ? checked : value });
@@ -1484,8 +1688,14 @@ const ListeEtudiants = () => {
   const handleChangeModifier = (e) => {
     const { name, value, type, checked } = e.target;
     // 🔥 AJOUT DES NOUVEAUX CHAMPS
-    if (['niveau', 'filiere', 'specialite', 'option', 'cycle', 'specialiteIngenieur', 'optionIngenieur',
-         'specialiteLicencePro', 'optionLicencePro', 'specialiteMasterPro', 'optionMasterPro'].includes(name)) {
+    if ([
+      'niveau', 'filiere', 'specialite', 'option', 'cycle',
+      'specialiteIngenieur', 'optionIngenieur',
+      'specialiteLicencePro', 'optionLicencePro',
+      'specialiteMasterPro', 'optionMasterPro',
+      'niveauFormation'
+    ].includes(name)) {
+      setLockCoursModifier(false);
       handleFormationChangeModifier(name, type === 'checkbox' ? checked : value);
     } else {
       setFormModifier({ ...formModifier, [name]: type === 'checkbox' ? checked : value });
@@ -1497,6 +1707,7 @@ const ListeEtudiants = () => {
       ? formAjout.cours.filter(c => c !== coursNom)
       : [...formAjout.cours, coursNom];
     setFormAjout({ ...formAjout, cours: nouveauxCours });
+    setLockCoursAjout(true);
   };
 
   const handleImageChangeAjout = (e) => {
@@ -1570,6 +1781,7 @@ const ListeEtudiants = () => {
       ? formModifier.cours.filter(c => c !== coursNom)
       : [...formModifier.cours, coursNom];
     setFormModifier({ ...formModifier, cours: nouveauxCours });
+    setLockCoursModifier(true);
   };
 
   const handleImageChangeModifier = (e) => {
@@ -2272,14 +2484,7 @@ const ListeEtudiants = () => {
                     </small>
                   </div>
                 </div>
-                
-                <FormationSelector 
-                  form={formAjout} 
-                  onChange={handleFormationChangeAjout} 
-                />
-                
-                <div className="form-row">
-                  <div className="form-group">
+                <div className="form-group">
                     <label>Niveau de Formation</label>
                     <select
                       name="niveauFormation"
@@ -2292,6 +2497,13 @@ const ListeEtudiants = () => {
                       <option value="Executive">Executive</option>
                     </select>
                   </div>
+                <FormationSelector 
+                  form={formAjout} 
+                  onChange={handleFormationChangeAjout} 
+                />
+                
+                <div className="form-row">
+                  
                   <div className="form-group">
                     <label>Type de Diplôme</label>
                     <input
@@ -2305,27 +2517,28 @@ const ListeEtudiants = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Classes </label>
-                  <div className="cours-selection-container">
-                    {listeCours.map((cours) => (
-                      <div
-                        key={cours._id}
-                        className={`cours-chip ${formAjout.cours.includes(cours.nom) ? 'selected' : ''}`}
-                        onClick={() => handleSelectCoursAjout(cours.nom)}
-                      >
-                        <span className="cours-nom">{cours.nom}</span>
-                        {formAjout.cours.includes(cours.nom) && (
-                          <span className="cours-check">✓</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {formAjout.cours.length > 0 && (
-                    <div className="cours-selectionnes">
-                      <small>Classe sélectionnés: {formAjout.cours.join(', ')}</small>
-                    </div>
-                  )}
-                </div>
+  <label>Classes</label>
+  {coursFiltres.length > 0 ? (
+    <div className="cours-selection-container">
+      {coursFiltres.map((cours) => (
+        <div
+          key={cours._id}
+          className={`cours-chip ${formAjout.cours.includes(cours.nom) ? 'selected' : ''}`}
+          onClick={() => handleSelectCoursAjout(cours.nom)}
+        >
+          <span className="cours-nom">{cours.nom}</span>
+          {formAjout.cours.includes(cours.nom) && (
+            <span className="cours-check">✓</span>
+          )}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p style={{color: '#666', textAlign: 'center'}}>
+      Sélectionnez votre formation d'abord
+    </p>
+  )}
+</div>
               </div>
 
               {/* Section Diplôme d'accès */}
@@ -2899,14 +3112,7 @@ const ListeEtudiants = () => {
                     </small>
                   </div>
                 </div>
-                
-                <FormationSelector 
-                  form={formModifier} 
-                  onChange={handleFormationChangeModifier} 
-                />
-                
-                <div className="form-row">
-                  <div className="form-group">
+                <div className="form-group">
                     <label>Niveau de Formation</label>
                     <select
                       name="niveauFormation"
@@ -2919,6 +3125,13 @@ const ListeEtudiants = () => {
                       <option value="Executive">Executive</option>
                     </select>
                   </div>
+                <FormationSelector 
+                  form={formModifier} 
+                  onChange={handleFormationChangeModifier} 
+                />
+                
+                <div className="form-row">
+                  
                   <div className="form-group">
                     <label>Type de Diplôme</label>
                     <input
@@ -2932,27 +3145,33 @@ const ListeEtudiants = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Classes</label>
-                  <div className="cours-selection-container">
-                    {listeCours.map((cours) => (
-                      <div
-                        key={cours._id}
-                        className={`cours-chip ${formModifier.cours.includes(cours.nom) ? 'selected' : ''}`}
-                        onClick={() => handleSelectCoursModifier(cours.nom)}
-                      >
-                        <span className="cours-nom">{cours.nom}</span>
-                        {formModifier.cours.includes(cours.nom) && (
-                          <span className="cours-check">✓</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {formModifier.cours.length > 0 && (
-                    <div className="cours-selectionnes">
-                      <small>Classe sélectionnés: {formModifier.cours.join(', ')}</small>
-                    </div>
-                  )}
-                </div>
+  <label>Classes</label>
+  {coursFiltresModif.length > 0 ? (
+    <div className="cours-selection-container">
+      {coursFiltresModif.map((cours) => (
+        <div
+          key={cours._id}
+          className={`cours-chip ${formModifier.cours.includes(cours.nom) ? 'selected' : ''}`}
+          onClick={() => handleSelectCoursModifier(cours.nom)}
+        >
+          <span className="cours-nom">{cours.nom}</span>
+          {formModifier.cours.includes(cours.nom) && (
+            <span className="cours-check">✓</span>
+          )}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p style={{color: '#666', textAlign: 'center', padding: '10px'}}>
+      Sélectionnez d'abord votre formation complète
+    </p>
+  )}
+  {formModifier.cours.length > 0 && (
+    <div className="cours-selectionnes">
+      <small>Classes sélectionnées: {formModifier.cours.join(', ')}</small>
+    </div>
+  )}
+</div>
               </div>
 
               {/* Section Diplôme d'accès */}
@@ -3789,6 +4008,7 @@ const ListeEtudiants = () => {
                       <div className="info-row">
                         <span className="info-label">Dernière connexion:</span>
                         <span className="info-value">
+                         
                           <Clock size={16} className="info-icon" />
                           {formatDate(etudiantSelectionne.lastSeen)}
                         </span>

@@ -5273,7 +5273,7 @@ app.put('/api/commerciaux/:id', authAdmin, async (req, res) => {
   }
 });
 
-// ✅ Delete commercial
+// ✅ Delete commercial but keep students (set commercial to null)
 app.delete('/api/commerciaux/:id', authAdmin, async (req, res) => {
   try {
     const commercial = await Commercial.findById(req.params.id);
@@ -5281,18 +5281,219 @@ app.delete('/api/commerciaux/:id', authAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Commercial non trouvé' });
     }
 
-    // Optional: Check if commercial has associated students
+    // Instead of preventing deletion, update students to remove commercial reference
     const studentsCount = await Etudiant.countDocuments({ commercial: req.params.id });
+    
     if (studentsCount > 0) {
-      return res.status(400).json({ 
-        message: `Impossible de supprimer le commercial. Il a ${studentsCount} étudiant(s) associé(s).` 
-      });
+      // Set commercial to null for all associated students
+      await Etudiant.updateMany(
+        { commercial: req.params.id },
+        { $unset: { commercial: "" } } // This removes the field entirely
+        // OR use: { $set: { commercial: null } } // This sets it to null
+      );
+      
+      console.log(`✅ ${studentsCount} étudiant(s) mis à jour - commercial retiré`);
+    }
+
+    // Now delete the commercial
+    await Commercial.findByIdAndDelete(req.params.id);
+    
+    res.json({ 
+      message: `✅ Commercial supprimé avec succès. ${studentsCount} étudiant(s) n'ont plus de commercial assigné.`,
+      studentsAffected: studentsCount
+    });
+  } catch (err) {
+    console.error('Erreur suppression commercial:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Alternative version: Delete commercial and assign students to a default/admin commercial
+app.delete('/api/commerciaux/:id', authAdmin, async (req, res) => {
+  try {
+    const commercial = await Commercial.findById(req.params.id);
+    if (!commercial) {
+      return res.status(404).json({ message: 'Commercial non trouvé' });
+    }
+
+    const studentsCount = await Etudiant.countDocuments({ commercial: req.params.id });
+    
+    if (studentsCount > 0) {
+      // Option 1: Remove commercial reference entirely
+      await Etudiant.updateMany(
+        { commercial: req.params.id },
+        { $unset: { commercial: "" } }
+      );
+      
+      /* Option 2: Assign to a default admin commercial
+      const adminCommercial = await Commercial.findOne({ estAdminInscription: true, actif: true });
+      if (adminCommercial) {
+        await Etudiant.updateMany(
+          { commercial: req.params.id },
+          { $set: { commercial: adminCommercial._id } }
+        );
+      } else {
+        // If no admin found, just remove the reference
+        await Etudiant.updateMany(
+          { commercial: req.params.id },
+          { $unset: { commercial: "" } }
+        );
+      }
+      */
     }
 
     await Commercial.findByIdAndDelete(req.params.id);
-    res.json({ message: '✅ Commercial supprimé avec succès' });
+    
+    res.json({ 
+      message: `✅ Commercial supprimé avec succès. ${studentsCount} étudiant(s) n'ont plus de commercial assigné.`,
+      studentsAffected: studentsCount
+    });
   } catch (err) {
+    console.error('Erreur suppression commercial:', err);
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Also update the statistics endpoint to handle students without commercials
+app.get('/api/commerciaux/statistiques', authAdmin, async (req, res) => {
+  try {
+    const commerciauxStats = await Etudiant.aggregate([
+      { $match: { commercial: { $ne: null, $exists: true } } }, // Only students with commercials
+      {
+        $lookup: {
+          from: 'paiements',
+          localField: '_id',
+          foreignField: 'etudiant',
+          as: 'paiements'
+        }
+      },
+      {
+        $group: {
+          _id: '$commercial',
+          chiffreAffaire: { $sum: '$prixTotal' },
+          totalRecu: { 
+            $sum: { 
+              $reduce: {
+                input: '$paiements',
+                initialValue: 0,
+                in: { $add: ['$$value', '$$this.montant'] }
+              }
+            }
+          },
+          countEtudiants: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          commercial: '$_id',
+          chiffreAffaire: 1,
+          totalRecu: 1,
+          reste: { $subtract: ['$chiffreAffaire', '$totalRecu'] },
+          countEtudiants: 1
+        }
+      }
+    ]);
+
+    // Get commercial info for each result
+    const results = await Promise.all(
+      commerciauxStats.map(async (item) => {
+        const commercial = await Commercial.findById(item.commercial)
+          .select('nom email telephone actif estAdminInscription');
+        return { 
+          ...item, 
+          commercialInfo: commercial || { nom: 'Commercial supprimé' }
+        };
+      })
+    );
+
+    // Include commercials with no students
+    const allCommerciaux = await Commercial.find().select('nom email telephone actif estAdminInscription');
+    const commerciauxWithStats = allCommerciaux.map(commercial => {
+      const existingStat = results.find(r => r.commercial.toString() === commercial._id.toString());
+      if (existingStat) {
+        return existingStat;
+      } else {
+        return {
+          commercial: commercial._id,
+          chiffreAffaire: 0,
+          totalRecu: 0,
+          reste: 0,
+          countEtudiants: 0,
+          commercialInfo: commercial
+        };
+      }
+    });
+
+    // Optional: Add statistics for students without commercials
+    const studentsWithoutCommercial = await Etudiant.countDocuments({ 
+      $or: [
+        { commercial: null }, 
+        { commercial: { $exists: false } }
+      ] 
+    });
+
+    if (studentsWithoutCommercial > 0) {
+      const orphanedStudentsStats = await Etudiant.aggregate([
+        { 
+          $match: { 
+            $or: [
+              { commercial: null }, 
+              { commercial: { $exists: false } }
+            ] 
+          } 
+        },
+        {
+          $lookup: {
+            from: 'paiements',
+            localField: '_id',
+            foreignField: 'etudiant',
+            as: 'paiements'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            chiffreAffaire: { $sum: '$prixTotal' },
+            totalRecu: { 
+              $sum: { 
+                $reduce: {
+                  input: '$paiements',
+                  initialValue: 0,
+                  in: { $add: ['$$value', '$$this.montant'] }
+                }
+              }
+            },
+            countEtudiants: { $sum: 1 }
+          }
+        }
+      ]);
+
+      if (orphanedStudentsStats.length > 0) {
+        const orphanStat = orphanedStudentsStats[0];
+        commerciauxWithStats.push({
+          commercial: null,
+          chiffreAffaire: orphanStat.chiffreAffaire,
+          totalRecu: orphanStat.totalRecu,
+          reste: orphanStat.chiffreAffaire - orphanStat.totalRecu,
+          countEtudiants: orphanStat.countEtudiants,
+          commercialInfo: { 
+            nom: '🔸 Étudiants sans commercial',
+            email: '',
+            telephone: '',
+            actif: true
+          }
+        });
+      }
+    }
+
+    res.json(commerciauxWithStats);
+  } catch (err) {
+    console.error('Erreur statistiques commerciaux:', err);
+    res.status(500).json({
+      message: 'Erreur lors du calcul des statistiques',
+      error: err.message
+    });
   }
 });
 
@@ -8861,6 +9062,112 @@ app.get('/api/paiement-manager/paiements', authPaiementManager, async (req, res)
       message: 'Erreur serveur',
       error: err.message 
     });
+  }
+});
+app.get('/api/admin/profile', authAdmin, async (req, res) => {
+  try {
+    console.log('📝 Route profile GET appelée - Admin ID:', req.adminId);
+    
+    const admin = await Admin.findById(req.adminId).select('-motDePasse');
+    if (!admin) {
+      console.log('❌ Admin non trouvé');
+      return res.status(404).json({ error: 'Admin non trouvé' });
+    }
+    
+    console.log('✅ Admin trouvé:', admin.nom);
+    res.json(admin);
+  } catch (err) {
+    console.error('❌ Erreur route profile GET:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/profile', authAdmin, async (req, res) => {
+  try {
+    console.log('📝 Route profile PUT appelée - Admin ID:', req.adminId);
+    console.log('📝 Body reçu:', req.body);
+    
+    const { nom, email, ancienMotDePasse, nouveauMotDePasse } = req.body;
+    const admin = await Admin.findById(req.adminId);
+    
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin non trouvé' });
+    }
+    
+    const updates = {};
+    
+    if (nom && nom.trim() !== admin.nom) {
+      updates.nom = nom.trim();
+    }
+    
+    if (email && email.trim() !== admin.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return res.status(400).json({ error: 'Format d\'email invalide' });
+      }
+      
+      const existingAdmin = await Admin.findOne({ 
+        email: email.trim(),
+        _id: { $ne: req.adminId } 
+      });
+      if (existingAdmin) {
+        return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      }
+      
+      updates.email = email.trim();
+    }
+    
+    if (ancienMotDePasse && nouveauMotDePasse) {
+      const isValidPassword = await admin.comparePassword(ancienMotDePasse);
+      if (!isValidPassword) {
+        return res.status(400).json({ error: 'Ancien mot de passe incorrect' });
+      }
+      
+      if (nouveauMotDePasse.length < 6) {
+        return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+      }
+      
+      const salt = await bcrypt.genSalt(10);
+      updates.motDePasse = await bcrypt.hash(nouveauMotDePasse, salt);
+    } else if (ancienMotDePasse && !nouveauMotDePasse) {
+      return res.status(400).json({ error: 'Le nouveau mot de passe est requis' });
+    } else if (!ancienMotDePasse && nouveauMotDePasse) {
+      return res.status(400).json({ error: 'L\'ancien mot de passe est requis' });
+    }
+    
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Aucune modification détectée' });
+    }
+    
+    console.log('📝 Mises à jour à appliquer:', Object.keys(updates));
+    
+    const updatedAdmin = await Admin.findByIdAndUpdate(
+      req.adminId,
+      updates,
+      { new: true, runValidators: true }
+    ).select('-motDePasse');
+    
+    console.log('✅ Admin mis à jour avec succès');
+    
+    res.json({
+      message: 'Profil mis à jour avec succès',
+      admin: updatedAdmin,
+      modifiedFields: Object.keys(updates)
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur route profile PUT:', err);
+    
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ error: errors.join(', ') });
+    }
+    
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+    }
+    
+    res.status(500).json({ error: 'Erreur serveur lors de la mise à jour' });
   }
 });
 

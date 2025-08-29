@@ -295,7 +295,7 @@ body {
   min-width: 150px;
 }
 
-.cours-colonne {
+.classe-colonne {
   max-width: 200px;
   font-size: 0.8125rem;
 }
@@ -557,7 +557,7 @@ body {
   font-size: 0.875rem;
 }
 
-.carte-detail.cours-detail {
+.carte-detail.classe-detail {
   flex-direction: column;
   align-items: flex-start;
 }
@@ -568,7 +568,7 @@ body {
   min-width: 70px;
 }
 
-.carte-cours {
+.carte-classe {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -576,7 +576,7 @@ body {
   width: 100%;
 }
 
-.cours-tag {
+.classe-tag {
   background-color: #dbeafe;
   color: #1e40af;
   padding: 0.125rem 0.5rem;
@@ -585,7 +585,7 @@ body {
   font-weight: 500;
 }
 
-.no-cours {
+.no-classe {
   color: var(--secondary-color);
   font-style: italic;
   font-size: 0.75rem;
@@ -824,7 +824,7 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-.cours-selection-container {
+.classe-selection-container {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -837,7 +837,7 @@ body {
   overflow-y: auto;
 }
 
-.cours-chip {
+.classe-chip {
   display: flex;
   align-items: center;
   padding: 0.5rem 0.75rem;
@@ -851,22 +851,22 @@ body {
   font-weight: 500;
 }
 
-.cours-chip:hover {
+.classe-chip:hover {
   border-color: var(--primary-color);
   background-color: #eff6ff;
 }
 
-.cours-chip.selected {
+.classe-chip.selected {
   background-color: var(--primary-color);
   border-color: var(--primary-color);
   color: var(--white);
 }
 
-.cours-nom {
+.classe-nom {
   margin-right: 0.5rem;
 }
 
-.cours-check {
+.classe-check {
   font-size: 0.75rem;
   font-weight: bold;
 }
@@ -1029,7 +1029,7 @@ body {
   font-weight: 600;
 }
 
-.cours-section {
+.classe-section {
   background-color: var(--light-gray);
   padding: 1.5rem;
   border-radius: var(--border-radius);
@@ -1037,20 +1037,20 @@ body {
   border: 1px solid var(--medium-gray);
 }
 
-.cours-section h4 {
+.classe-section h4 {
   color: var(--dark-gray);
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 1rem 0;
 }
 
-.cours-badges {
+.classe-badges {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.cours-badge {
+.classe-badge {
   background-color: #dbeafe;
   color: #1e40af;
   padding: 0.5rem 1rem;
@@ -1059,7 +1059,7 @@ body {
   font-weight: 500;
 }
 
-.no-cours {
+.no-classe {
   color: var(--secondary-color);
   font-style: italic;
   padding: 1rem;
@@ -1385,8 +1385,8 @@ body {
   font-size: 0.95rem;
 }
 
-/* Cours Tags */
-.cours-tags {
+/* classe Tags */
+.classe-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -1394,7 +1394,7 @@ body {
   width: 100%;
 }
 
-.cours-tag {
+.classe-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1408,7 +1408,7 @@ body {
   transition: all 0.2s ease;
 }
 
-.cours-tag:hover {
+.classe-tag:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
@@ -1538,10 +1538,10 @@ body {
   max-width: 150px !important;
 }
 
-.cours-colonne {
+.classe-colonne {
   min-width: 200px !important;
   max-width: 300px !important;
-  white-space: normal; /* Permet le wrap pour les cours multiples */
+  white-space: normal; /* Permet le wrap pour les classe multiples */
 }
 
 .statut-colonne {

@@ -13,7 +13,7 @@ import {
   IdCard, FileText, Shield, CheckCircle, XCircle, Building, 
   CalendarIcon, Star, X, AlertCircle, Search, Mail, Percent,
   Edit, Trash2, Download, Upload, Settings, Home, Info, Layers,
-  TrendingDown, Users2, School, Briefcase, Code, Database
+  TrendingDown, Users2, School, Briefcase, Code, Database, UserPlus
 } from 'lucide-react';
 
 // Couleurs professionnelles etendues
@@ -302,7 +302,7 @@ const EnhancedDashboard = () => {
     })).sort((a, b) => b.total - a.total).filter(item => item.total > 0);
   };
 
-  // ðŸŒ ANALYSE GA‰OGRAPHIQUE
+  // 🌍 ANALYSE GÉOGRAPHIQUE
   const analyseGeographique = () => {
     const paysStats = {};
     
@@ -328,6 +328,68 @@ const EnhancedDashboard = () => {
     })).sort((a, b) => b.total - a.total);
   };
 
+  // 🧮 Analyse par Filière + Niveau — génère des cartes: "IRM N1", "MASI N2"...
+  const analyseFiliereNiveau = () => {
+    // D'abord, obtenir TOUTES les combinaisons possibles depuis TOUS les étudiants (pas filtrés)
+    const toutesLesCombinaisonsPossibles = new Set();
+    
+    etudiants.forEach((e) => {
+      const filiere = (e.filiere || 'Autre').toUpperCase().trim();
+      const rawNiv = (e.niveau ?? e.niveauFormation ?? e.cycle ?? '').toString();
+      let niveauNum = null;
+      if (typeof e.niveau === 'number') {
+        niveauNum = e.niveau;
+      } else {
+        const m = rawNiv.match(/\d+/);
+        niveauNum = m ? parseInt(m[0], 10) : null;
+      }
+      const key = `${filiere} ${niveauNum !== null ? `N${niveauNum}` : 'N—'}`;
+      toutesLesCombinaisonsPossibles.add(JSON.stringify({filiere, niveau: niveauNum, key}));
+    });
+
+    // Créer le map avec TOUTES les combinaisons possibles initialisées à 0
+    const map = {};
+    toutesLesCombinaisonsPossibles.forEach(combinaisonStr => {
+      const combinaison = JSON.parse(combinaisonStr);
+      map[combinaison.key] = {
+        key: combinaison.key,
+        filiere: combinaison.filiere,
+        niveau: combinaison.niveau,
+        total: 0,
+        payes: 0,
+        ca: 0,
+        etudiants: [],
+      };
+    });
+
+    // Maintenant remplir avec les étudiants FILTRÉS
+    etudiantsFiltres.forEach((e) => {
+      const filiere = (e.filiere || 'Autre').toUpperCase().trim();
+      const rawNiv = (e.niveau ?? e.niveauFormation ?? e.cycle ?? '').toString();
+      let niveauNum = null;
+      if (typeof e.niveau === 'number') {
+        niveauNum = e.niveau;
+      } else {
+        const m = rawNiv.match(/\d+/);
+        niveauNum = m ? parseInt(m[0], 10) : null;
+      }
+      const key = `${filiere} ${niveauNum !== null ? `N${niveauNum}` : 'N—'}`;
+
+      if (map[key]) {
+        map[key].total += 1;
+        if (e.paye) map[key].payes += 1;
+        map[key].ca += parseFloat(e.prixTotal) || 0;
+        map[key].etudiants.push(e);
+      }
+    });
+
+    // Tri: d'abord par filière puis niveau croissant (non défini vient en dernier)
+    return Object.values(map).sort(
+      (a, b) =>
+        a.filiere.localeCompare(b.filiere) || (a.niveau ?? 99) - (b.niveau ?? 99)
+    );
+  };
+
   // Recuperation des donnees d'analyse
   const formationsData = analyseFormations();
   const niveauxData = analyseNiveauxFormation();
@@ -335,6 +397,13 @@ const EnhancedDashboard = () => {
   const anneesData = analyseAnneesScolaires();
   const cyclesData = analyseCycles();
   const paysData = analyseGeographique();
+  const classesData = analyseFiliereNiveau();
+
+  // Inscriptions: nouvelles vs anciennes
+  const inscriptions = {
+    nouvelles: etudiantsFiltres.filter(e => e.nouvelleInscription === true).length,
+    anciennes: etudiantsFiltres.filter(e => e.nouvelleInscription === false || !e.nouvelleInscription).length,
+  };
 
   // Fonction pour ouvrir la modal avec details
   const ouvrirModal = (type, data) => {
@@ -422,6 +491,10 @@ const EnhancedDashboard = () => {
                   <span className="header-stat">
                     <Percent size={16} />
                     {statsGenerales.tauxPaiement.toFixed(1)}% paye
+                  </span>
+                  <span className="header-stat">
+                    <UserPlus size={16} />
+                    {inscriptions.nouvelles} new / {inscriptions.anciennes} old
                   </span>
                 </div>
               </div>
@@ -548,6 +621,13 @@ const EnhancedDashboard = () => {
             <Globe size={16} />
             Geographie
           </button>
+          <button 
+            className={`tab-btn ${activeTab === 'inscriptions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('inscriptions')}
+          >
+            <UserPlus size={16} />
+            Inscriptions
+          </button>
         </div>
 
         <div className="dashboard-content">
@@ -563,8 +643,8 @@ const EnhancedDashboard = () => {
                     </div>
                     <div className="stat-content">
                       <h3>{statsGenerales.totalEtudiants}</h3>
-                      <p>Total A‰tudiants</p>
-                      <span className="stat-detail">{statsGenerales.etudiantsActifs} actifs "· {statsGenerales.nouveauxEtudiants} nouveaux</span>
+                      <p>Total Étudiants</p>
+                      <span className="stat-detail">{statsGenerales.etudiantsActifs} actifs • {statsGenerales.nouveauxEtudiants} nouveaux</span>
                     </div>
                   </div>
 
@@ -643,6 +723,55 @@ const EnhancedDashboard = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* 📌 Cartes par Filière + Niveau
+              (IRM 1, IRM 2, MASI 1, ...) */}
+              <div className="section">
+                <h2 className="section-title">
+                  <Layers size={24} />
+                  Cartes par Filière + Niveau
+                </h2>
+
+                <div className="classes-grid">
+                  {classesData.map((item) => {
+                    const taux = item.total > 0 ? ((item.payes / item.total) * 100).toFixed(0) : 0;
+                    return (
+                      <div
+                        key={item.key}
+                        className="class-card"
+                        onClick={() => ouvrirModal(`${item.filiere} N${item.niveau ?? '—'}`, item)}
+                      >
+                        <div className="class-header">
+                          <h3>{item.filiere} — N{item.niveau ?? '—'}</h3>
+                          <span className="badge blue">{item.total} étudiants</span>
+                        </div>
+
+                        <div className="class-stats">
+                          <div className="stat">
+                            <span className="label">Payés</span>
+                            <span className="value">{item.payes}/{item.total}</span>
+                          </div>
+                          <div className="stat">
+                            <span className="label">Revenus</span>
+                            <span className="value">{formatMoney(item.ca)}</span>
+                          </div>
+                          <div className="stat">
+                            <span className="label">Taux paiement</span>
+                            <span className={`value ${taux >= 70 ? 'good' : 'warn'}`}>{taux}%</span>
+                          </div>
+                        </div>
+
+                        <div className="class-progress">
+                          <div
+                            className="fill"
+                            style={{ width: `${taux}%`, backgroundColor: taux >= 70 ? '#059669' : '#ea580c' }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -1053,507 +1182,57 @@ const EnhancedDashboard = () => {
             </>
           )}
 
+          {activeTab === 'inscriptions' && (
+            <>
+              <div className="section">
+                <h2 className="section-title">
+                  <UserPlus size={24} />
+                  Inscriptions (Nouvelles vs Anciennes)
+                </h2>
+
+                {/* Cartes récap */}
+                <div className="stats-grid">
+                  <div className="stat-card green" onClick={() => ouvrirModal('Nouvelles inscriptions', {
+                    total: inscriptions.nouvelles,
+                    payes: etudiantsFiltres.filter(e => e.nouvelleInscription === true && e.paye).length,
+                    ca: etudiantsFiltres.filter(e => e.nouvelleInscription === true).reduce((s, e) => s + (parseFloat(e.prixTotal)||0), 0),
+                    tauxReussite: inscriptions.nouvelles > 0 ? (
+                      (etudiantsFiltres.filter(e => e.nouvelleInscription === true && e.paye).length / inscriptions.nouvelles) * 100
+                    ).toFixed(1) : 0,
+                    etudiants: etudiantsFiltres.filter(e => e.nouvelleInscription === true)
+                  })}>
+                    <div className="stat-icon"><UserPlus size={24} /></div>
+                    <div className="stat-content">
+                      <h3>{inscriptions.nouvelles}</h3>
+                      <p>Nouvelles inscriptions (true)</p>
+                      <span className="stat-detail">Clique pour détails</span>
+                    </div>
+                  </div>
+
+                  <div className="stat-card blue" onClick={() => ouvrirModal('Anciennes inscriptions', {
+                    total: inscriptions.anciennes,
+                    payes: etudiantsFiltres.filter(e => (e.nouvelleInscription === false || !e.nouvelleInscription) && e.paye).length,
+                    ca: etudiantsFiltres.filter(e => (e.nouvelleInscription === false || !e.nouvelleInscription)).reduce((s, e) => s + (parseFloat(e.prixTotal)||0), 0),
+                    tauxReussite: inscriptions.anciennes > 0 ? (
+                      (etudiantsFiltres.filter(e => (e.nouvelleInscription === false || !e.nouvelleInscription) && e.paye).length / inscriptions.anciennes) * 100
+                    ).toFixed(1) : 0,
+                    etudiants: etudiantsFiltres.filter(e => (e.nouvelleInscription === false || !e.nouvelleInscription))
+                  })}>
+                    <div className="stat-icon"><Users size={24} /></div>
+                    <div className="stat-content">
+                      <h3>{inscriptions.anciennes}</h3>
+                      <p>Anciennes inscriptions (false)</p>
+                      <span className="stat-detail">Clique pour détails</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
         </div>
       </div>
 
-      {/* Modal d'accueil */}
-   {showWelcomeModal && (
-  <div className="dfp-modal-overlay" onClick={() => setShowWelcomeModal(false)}>
-    <div className="dfp-modal-content dfp-welcome-modal" onClick={(e) => e.stopPropagation()}>
-      <div className="dfp-modal-header">
-        <h2>
-          <Database size={24} />
-          Dashboard Formations Avancé
-        </h2>
-        <button 
-          className="dfp-modal-close"
-          onClick={() => setShowWelcomeModal(false)}
-        >
-          <X size={24} />
-        </button>
-      </div>
-      
-      <div className="dfp-modal-body">
-        <div className="dfp-welcome-content">
-          <div className="dfp-welcome-info">
-            {/* Section des cours avec design professionnel */}
-            <div className="dfp-cours-section-premium">
-              <div className="dfp-section-header-premium">
-                <h3 className="dfp-section-title-premium">
-                  <span className="dfp-title-icon-premium">📊</span>
-                  Répartition par Classe - {(() => {
-                    // Déterminer l'année scolaire la plus récente
-                    const anneesAvecEtudiants = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))];
-                    const anneeActuelle = anneesAvecEtudiants.sort((a, b) => b.localeCompare(a))[0] || 'Année actuelle';
-                    return anneeActuelle;
-                  })()}
-                </h3>
-              </div>
-
-              <div className="dfp-cours-table-premium">
-                <div className="dfp-table-header-premium">
-                  <div className="dfp-header-cell-premium dfp-cours-header-premium">Classe</div>
-                  <div className="dfp-header-cell-premium dfp-center-header-premium">Étudiants</div>
-                  <div className="dfp-header-cell-premium dfp-center-header-premium">Payés</div>
-                  <div className="dfp-header-cell-premium dfp-center-header-premium">CA</div>
-                  <div className="dfp-header-cell-premium dfp-center-header-premium">Taux</div>
-                  <div className="dfp-header-cell-premium dfp-progress-header-premium">Progression</div>
-                </div>
-
-                <div className="dfp-table-body-premium">
-                  {cours.map((coursItem, index) => {
-                    // Déterminer l'année scolaire la plus récente
-                    const anneesAvecEtudiants = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))];
-                    const anneeActuelle = anneesAvecEtudiants.sort((a, b) => b.localeCompare(a))[0];
-                    
-                    // Filtrer les étudiants pour l'année actuelle seulement
-                    const etudiantsAnneeActuelle = etudiants.filter(e => 
-                      e.anneeScolaire === anneeActuelle
-                    );
-                    
-                    const etudiantsCours = etudiantsAnneeActuelle.filter(e => 
-                      e.cours === coursItem.nom || 
-                      e.nomCours === coursItem.nom ||
-                      e.cours === coursItem.code ||
-                      e.nomCours === coursItem.code
-                    );
-                    
-                    // Déterminer si c'est un faible effectif (moins de 5 pour la démo)
-                    const isLowEnrollment = etudiantsCours.length < 5;
-                    const paymentRate = etudiantsCours.length > 0 
-                      ? ((etudiantsCours.filter(e => e.paye).length / etudiantsCours.length) * 100)
-                      : 0;
-
-                    return (
-                      <div key={index} className={`dfp-row-premium ${isLowEnrollment ? 'dfp-danger-row-premium' : 'dfp-normal-row-premium'}`}>
-                        <div className="dfp-cell-premium dfp-cours-name-premium">
-                          <div className="dfp-course-info-premium">
-                            <div className="dfp-course-title-premium">{coursItem.nom}</div>
-                            {isLowEnrollment && (
-                              <div className="dfp-alert-badge-premium">
-                                ⚠️ <span>Effectif faible</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                      
-                       
-
-                        <div className="dfp-cell-premium dfp-number-cell-premium">
-                          <div className={`dfp-badge-number-premium ${isLowEnrollment ? 'dfp-badge-danger-premium' : 'dfp-badge-primary-premium'}`}>
-                            {etudiantsCours.length}
-                          </div>
-                        </div>
-
-                        <div className="dfp-cell-premium dfp-number-cell-premium">
-                          <div className="dfp-badge-number-premium dfp-badge-success-premium">
-                            {etudiantsCours.filter(e => e.paye).length}
-                          </div>
-                        </div>
-
-                        <div className="dfp-cell-premium dfp-number-cell-premium">
-                          <div className="dfp-amount-display-premium">
-                            {formatMoney(etudiantsCours.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0))}
-                          </div>
-                        </div>
-
-                        <div className="dfp-cell-premium dfp-number-cell-premium">
-                          <div className={`dfp-percentage-badge-premium ${
-                            paymentRate >= 80 ? 'dfp-perc-excellent-premium' : 
-                            paymentRate >= 60 ? 'dfp-perc-good-premium' : 
-                            paymentRate >= 40 ? 'dfp-perc-average-premium' : 'dfp-perc-poor-premium'
-                          }`}>
-                            {paymentRate.toFixed(0)}%
-                          </div>
-                        </div>
-
-                        <div className="dfp-cell-premium dfp-progress-cell-premium">
-                          <div className="dfp-progress-premium">
-                            <div 
-                              className={`dfp-progress-fill-premium ${isLowEnrollment ? 'dfp-fill-danger-premium' : 'dfp-fill-success-premium'}`}
-                              style={{ width: `${paymentRate}%` }}
-                            ></div>
-                          </div>
-                          <span className="dfp-progress-label-premium">{paymentRate.toFixed(0)}%</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="dfp-modal-footer">
-        <button 
-          className="dfp-btn-primary"
-          onClick={() => setShowWelcomeModal(false)}
-        >
-          Explorer le Dashboard
-        </button>
-      </div>
-    </div>
-
-    <style jsx>{`
-      /* CSS Premium avec préfixe unique "dfp-" */
-      
-      .dfp-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(8px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        animation: dfp-fadeIn 0.3s ease-out;
-      }
-
-      @keyframes dfp-fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-
-      .dfp-modal-content {
-        background: white;
-        border-radius: 20px;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-        max-width: 90vw;
-        max-height: 90vh;
-        overflow-y: auto;
-        animation: dfp-slideIn 0.4s ease-out;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-      }
-
-      @keyframes dfp-slideIn {
-        from { transform: translateY(-50px) scale(0.95); opacity: 0; }
-        to { transform: translateY(0) scale(1); opacity: 1; }
-      }
-
-      .dfp-modal-header {
-        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        color: white;
-        padding: 24px 32px;
-        border-radius: 20px 20px 0 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
-      }
-
-      .dfp-modal-header h2 {
-        margin: 0;
-        font-size: 24px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      }
-
-      .dfp-modal-close {
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        border-radius: 12px;
-        width: 44px;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-      }
-
-      .dfp-modal-close:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: rotate(90deg) scale(1.1);
-      }
-
-      .dfp-modal-body {
-        padding: 32px;
-        background: linear-gradient(135deg, #f5f7ff 0%, #f8faff 100%);
-      }
-
-      .dfp-cours-section-premium {
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        border: 1px solid rgba(102, 126, 234, 0.1);
-      }
-
-      .dfp-section-header-premium {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        padding: 20px 24px;
-        color: white;
-      }
-
-      .dfp-section-title-premium {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      }
-
-      .dfp-title-icon-premium {
-        font-size: 24px;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-      }
-
-      .dfp-cours-table-premium {
-        background: white;
-      }
-
-      .dfp-table-header-premium {
-        display: grid;
-        grid-template-columns: 2fr 1.5fr 100px 100px 120px 100px 150px;
-        background: linear-gradient(135deg, #f8faff 0%, #eef2ff 100%);
-        border-bottom: 2px solid #e2e8f0;
-      }
-
-      .dfp-header-cell-premium {
-        padding: 16px 12px;
-        font-weight: 700;
-        color: #475569;
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .dfp-center-header-premium {
-        text-align: center;
-      }
-
-      .dfp-table-body-premium {
-        background: white;
-      }
-
-      .dfp-row-premium {
-        display: grid;
-        grid-template-columns: 2fr 1.5fr 100px 100px 120px 100px 150px;
-        transition: all 0.3s ease;
-        border-bottom: 1px solid #f1f5f9;
-        position: relative;
-      }
-
-      .dfp-row-premium:hover {
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-        transform: translateX(4px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-      }
-
-      .dfp-danger-row-premium {
-        border-left: 4px solid #ef4444;
-        background: linear-gradient(135deg, #fef2f2 0%, #fef7f7 100%);
-      }
-
-      .dfp-danger-row-premium:hover {
-        background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
-      }
-
-      .dfp-normal-row-premium {
-        border-left: 4px solid transparent;
-      }
-
-      .dfp-cell-premium {
-        padding: 16px 12px;
-        display: flex;
-        align-items: center;
-      }
-
-      .dfp-course-info-premium {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .dfp-course-title-premium {
-        font-weight: 600;
-        color: #1e293b;
-        font-size: 16px;
-      }
-
-      .dfp-alert-badge-premium {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 600;
-        width: fit-content;
-        box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
-      }
-
-      .dfp-prof-list-premium {
-        color: #64748b;
-        font-size: 14px;
-      }
-
-      .dfp-unassigned-premium {
-        color: #94a3b8;
-        font-style: italic;
-        font-size: 14px;
-      }
-
-      .dfp-number-cell-premium {
-        justify-content: center;
-      }
-
-      .dfp-badge-number-premium {
-        padding: 8px 12px;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 14px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        min-width: 40px;
-        text-align: center;
-      }
-
-      .dfp-badge-primary-premium {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-      }
-
-      .dfp-badge-success-premium {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-      }
-
-      .dfp-badge-danger-premium {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-      }
-
-      .dfp-amount-display-premium {
-        font-weight: 700;
-        color: #059669;
-        font-size: 16px;
-        text-shadow: 0 1px 2px rgba(5, 150, 105, 0.2);
-      }
-
-      .dfp-percentage-badge-premium {
-        padding: 6px 10px;
-        border-radius: 10px;
-        font-weight: 700;
-        font-size: 14px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .dfp-perc-excellent-premium {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-      }
-
-      .dfp-perc-good-premium {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-      }
-
-      .dfp-perc-average-premium {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        color: white;
-      }
-
-      .dfp-perc-poor-premium {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-      }
-
-      .dfp-progress-cell-premium {
-        gap: 8px;
-      }
-
-      .dfp-progress-premium {
-        flex: 1;
-        height: 8px;
-        background: #e2e8f0;
-        border-radius: 6px;
-        overflow: hidden;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-
-      .dfp-progress-fill-premium {
-        height: 100%;
-        transition: all 0.5s ease;
-        border-radius: 6px;
-      }
-
-      .dfp-fill-success-premium {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      }
-
-      .dfp-fill-danger-premium {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      }
-
-      .dfp-progress-label-premium {
-        font-size: 12px;
-        font-weight: 600;
-        color: #64748b;
-        min-width: 32px;
-      }
-
-      .dfp-modal-footer {
-        padding: 24px 32px;
-        background: #f8fafc;
-        border-top: 1px solid #e2e8f0;
-        border-radius: 0 0 20px 20px;
-        display: flex;
-        justify-content: center;
-      }
-
-      .dfp-btn-primary {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        color: white;
-        border: none;
-        padding: 14px 28px;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 16px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
-      }
-
-      .dfp-btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.5);
-      }
-
-      /* Responsive Design */
-      @media (max-width: 768px) {
-        .dfp-table-header-premium,
-        .dfp-row-premium {
-          grid-template-columns: 1fr;
-        }
-        
-        .dfp-header-cell-premium,
-        .dfp-cell-premium {
-          padding: 8px 12px;
-        }
-        
-        .dfp-modal-content {
-          margin: 20px;
-          max-width: calc(100vw - 40px);
-        }
-      }
-    `}</style>
-  </div>
-)}
 
       {/* Modal detaillee pour analyses */}
       {showDetailModal && selectedAnalysis && (
@@ -1679,7 +1358,7 @@ const EnhancedDashboard = () => {
         </div>
       )}
 
-      {/* Styles CSS etendus */}
+      {/* Styles CSS étendus */}
       <style jsx>{`
         .enhanced-dashboard {
           min-height: 100vh;
@@ -1687,77 +1366,436 @@ const EnhancedDashboard = () => {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: #1e293b;
         }
-  /* Section moderne pour les cours */
-.cours-section-modern {
-  margin: 1.5rem 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-}
 
-.section-header {
-  margin-bottom: 1.25rem;
-}
+        /* Classes grid pour les cartes par filière + niveau */
+        .classes-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 1.5rem;
+          margin-top: 1rem;
+        }
 
-.section-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  letter-spacing: -0.01em;
-}
+        .class-card {
+          background: white;
+          border-radius: 0.75rem;
+          padding: 1.5rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          transition: all 0.3s;
+          cursor: pointer;
+          border: 1px solid #f1f5f9;
+          position: relative;
+          overflow: hidden;
+        }
 
-.title-icon {
-  font-size: 1.25rem;
-}
+        .class-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, #2563eb, #7c3aed);
+        }
 
-/* Table moderne */
-.cours-modern-table {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-}
+        .class-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+          border-color: #e2e8f0;
+        }
 
-/* Header moderne */
-.table-header-modern {
-  display: grid;
-  grid-template-columns: 2.5fr 1.5fr 90px 80px 100px 70px 120px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 1px solid #e2e8f0;
-}
+        .class-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
 
-.header-modern {
-  padding: 1rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-right: 1px solid #f1f5f9;
-  display: flex;
-  align-items: center;
-}
+        .class-header h3 {
+          font-size: 1.125rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
 
-.header-modern:last-child {
-  border-right: none;
-}
+        .class-stats {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+        }
 
-.cours-header {
-  color: #1e293b;
-}
+        .stat {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          text-align: center;
+        }
 
-.center-header {
-  justify-content: center;
-}
+        .stat .label {
+          font-size: 0.75rem;
+          color: #64748b;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
 
-.progress-header-modern {
-  justify-content: center;
-}
+        .stat .value {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
 
-/* Body moderne */
+        .stat .value.good {
+          color: #059669;
+        }
+
+        .stat .value.warn {
+          color: #ea580c;
+        }
+
+        .class-progress {
+          width: 100%;
+          height: 6px;
+          background: #f1f5f9;
+          border-radius: 3px;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .class-progress .fill {
+          height: 100%;
+          border-radius: 3px;
+          transition: width 0.3s ease;
+        }
+
+        /* Styles pour le modal premium */
+        .dfp-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+          backdrop-filter: blur(12px);
+        }
+
+        .dfp-modal-content {
+          background: white;
+          border-radius: 20px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+          width: 100%;
+          max-height: 90vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dfp-welcome-modal {
+          max-width: 1200px;
+        }
+
+        .dfp-modal-header {
+          padding: 24px 32px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .dfp-modal-header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+          pointer-events: none;
+        }
+
+        .dfp-modal-header h2 {
+          margin: 0;
+          font-size: 24px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          z-index: 1;
+          position: relative;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .dfp-modal-close {
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          border-radius: 12px;
+          width: 44px;
+          height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+        }
+
+        .dfp-modal-close:hover {
+          background: rgba(255, 255, 255, 0.3);
+          transform: rotate(90deg) scale(1.1);
+        }
+
+        .dfp-modal-body {
+          padding: 32px;
+          background: linear-gradient(135deg, #f5f7ff 0%, #f8faff 100%);
+        }
+
+        .dfp-cours-section-premium {
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+          border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .dfp-section-header-premium {
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          padding: 20px 24px;
+          color: white;
+        }
+
+        .dfp-section-title-premium {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .dfp-title-icon-premium {
+          font-size: 24px;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .dfp-cours-table-premium {
+          background: white;
+        }
+
+        .dfp-table-header-premium {
+          display: grid;
+          grid-template-columns: 2fr 100px 100px 120px 100px 150px;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          border-bottom: 2px solid #e2e8f0;
+        }
+
+        .dfp-header-cell-premium {
+          padding: 16px 12px;
+          font-weight: 700;
+          color: #475569;
+          font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .dfp-center-header-premium {
+          text-align: center;
+        }
+
+        .dfp-table-body-premium {
+          background: white;
+        }
+
+        .dfp-row-premium {
+          display: grid;
+          grid-template-columns: 2fr 100px 100px 120px 100px 150px;
+          transition: all 0.3s ease;
+          border-bottom: 1px solid #f8fafc;
+          position: relative;
+        }
+
+        .dfp-row-premium:hover {
+          background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+          transform: translateX(4px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .dfp-danger-row-premium {
+          border-left: 4px solid #ef4444;
+          background: linear-gradient(135deg, #fef2f2 0%, #fef7f7 100%);
+        }
+
+        .dfp-danger-row-premium:hover {
+          background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+        }
+
+        .dfp-normal-row-premium {
+          border-left: 4px solid transparent;
+        }
+
+        .dfp-cell-premium {
+          padding: 16px 12px;
+          display: flex;
+          align-items: center;
+        }
+
+        .dfp-course-info-premium {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .dfp-course-title-premium {
+          font-weight: 600;
+          color: #1e293b;
+          font-size: 16px;
+        }
+
+        .dfp-alert-badge-premium {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 600;
+          width: fit-content;
+          box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+        }
+
+        .dfp-number-cell-premium {
+          justify-content: center;
+        }
+
+        .dfp-badge-number-premium {
+          padding: 8px 12px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 14px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          min-width: 40px;
+          text-align: center;
+        }
+
+        .dfp-badge-primary-premium {
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
+          color: white;
+        }
+
+        .dfp-badge-success-premium {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+        }
+
+        .dfp-badge-danger-premium {
+          background: linear-gradient(135deg, #ef4444, #dc2626);
+          color: white;
+        }
+
+        .dfp-amount-display-premium {
+          font-weight: 700;
+          color: #059669;
+          font-size: 16px;
+          text-shadow: 0 1px 2px rgba(5, 150, 105, 0.2);
+        }
+
+        .dfp-percentage-badge-premium {
+          padding: 6px 10px;
+          border-radius: 10px;
+          font-weight: 700;
+          font-size: 14px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .dfp-perc-excellent-premium {
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .dfp-perc-good-premium {
+          background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        .dfp-perc-average-premium {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .dfp-perc-poor-premium {
+          background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .dfp-progress-cell-premium {
+          gap: 8px;
+        }
+
+        .dfp-progress-premium {
+          flex: 1;
+          height: 8px;
+          background: #e2e8f0;
+          border-radius: 6px;
+          overflow: hidden;
+          box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .dfp-progress-fill-premium {
+          height: 100%;
+          transition: all 0.5s ease;
+          border-radius: 6px;
+        }
+
+        .dfp-fill-success-premium {
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .dfp-fill-danger-premium {
+          background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .dfp-progress-label-premium {
+          font-size: 12px;
+          font-weight: 600;
+          color: #64748b;
+          min-width: 32px;
+        }
+
+        .dfp-modal-footer {
+          padding: 24px 32px;
+          background: #f8fafc;
+          border-top: 1px solid #e2e8f0;
+          border-radius: 0 0 20px 20px;
+          display: flex;
+          justify-content: center;
+        }
+
+        .dfp-btn-primary {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+          border: none;
+          padding: 14px 28px;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 16px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+        }
+
+        .dfp-btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Body moderne */
 .table-body-modern {
   max-height: 420px;
   overflow-y: auto;
@@ -2579,7 +2617,6 @@ const EnhancedDashboard = () => {
         .btn-action:hover {
           background: linear-gradient(135deg, #3730a3, #312e81);
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
         }
 
         /* Cycles Grid */
@@ -2652,672 +2689,520 @@ const EnhancedDashboard = () => {
           color: #1e293b;
         }
 
-        /* Charts Section etendus */
-        .charts-section {
-          margin-top: 2rem;
-        }
-
-        .charts-grid-extended {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 2rem;
-          margin-bottom: 2rem;
-        }
-
-        .charts-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 2rem;
-        }
-
-        @media (max-width: 1024px) {
-          .charts-grid-extended,
-          .charts-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .chart-card {
-          background: white;
-          padding: 1.5rem;
-          border-radius: 1rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid #f1f5f9;
-        }
-
-        .chart-card.large {
-          grid-column: span 1;
-        }
-
-        .chart-card h3 {
-          font-size: 1.125rem;
-          font-weight: 600;
-          color: #1e293b;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 1.5rem;
-        }
-
-        /* Modals ameliorees */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 1rem;
-          backdrop-filter: blur(8px);
-        }
-
-        .modal-content {
-          background: white;
-          border-radius: 1rem;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-          width: 100%;
-          max-height: 90vh;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .welcome-modal {
-          max-width: 800px;
-        }
-
-        .detail-modal {
-          max-width: 1400px;
-        }
-
-        .modal-header {
-          padding: 1.5rem 2rem;
-          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-          border-bottom: 1px solid #e2e8f0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .modal-header h2 {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #1e293b;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .modal-close {
-          background: none;
-          border: none;
-          color: #64748b;
-          cursor: pointer;
-          padding: 0.5rem;
-          border-radius: 0.5rem;
-          transition: all 0.2s;
-        }
-
-        .modal-close:hover {
-          background: #f1f5f9;
-          color: #1e293b;
-        }
-
-        .modal-body {
-          padding: 2rem;
-          flex: 1;
-          overflow-y: auto;
-        }
-
-        .modal-footer {
-          padding: 1.5rem 2rem;
-          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-          border-top: 1px solid #e2e8f0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        /* Welcome Modal Content */
-        .welcome-content {
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-        }
-
-        .welcome-stats {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 1.5rem;
-        }
-
-        @media (max-width: 640px) {
-          .welcome-stats {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .welcome-stat {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1.5rem;
-          background: #f8fafc;
-          border-radius: 1rem;
-          border: 1px solid #e2e8f0;
-        }
-
-        .welcome-stat-icon {
-          width: 4rem;
-          height: 4rem;
-          border-radius: 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
-        .welcome-stat-icon.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-        .welcome-stat-icon.green { background: linear-gradient(135deg, #059669, #047857); }
-        .welcome-stat-icon.purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
-
-        .welcome-stat-info h3 {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 0.25rem;
-        }
-
-        .welcome-stat-info p {
-          color: #64748b;
-          font-weight: 500;
-        }
-
-        .welcome-info h3 {
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin-bottom: 1rem;
-        }
-
-        .formations-summary {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-          margin-bottom: 2rem;
-        }
-
-        .formation-summary-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem;
-          background: #f1f5f9;
-          border-radius: 0.75rem;
-          border: 1px solid #e2e8f0;
-        }
-
-        .formation-summary-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .formation-summary-name {
-          font-weight: 700;
-          color: #1e293b;
-          font-size: 1rem;
-        }
-
-        .formation-summary-details {
-          font-size: 0.875rem;
-          color: #64748b;
-        }
-
-        .formation-summary-ca {
-          background: linear-gradient(135deg, #2563eb, #1d4ed8);
-          color: white;
-          padding: 0.5rem 1rem;
-          border-radius: 9999px;
-          font-size: 0.875rem;
-          font-weight: 700;
-          font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-        }
-
-        .welcome-features {
-          background: #f8fafc;
-          padding: 1.5rem;
-          border-radius: 0.75rem;
-          border: 1px solid #e2e8f0;
-        }
-
-        .welcome-features h4 {
-          font-size: 1.125rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin-bottom: 1rem;
-        }
-
-        .welcome-features ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .welcome-features li {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 0;
-          color: #64748b;
-          font-size: 0.875rem;
-        }
-
-        .welcome-features li::before {
-          content: '"¨';
-          font-size: 1rem;
-        }
-
-        /* Detail Modal Content */
-        .search-container {
-          margin-bottom: 1.5rem;
-        }
-
-        .search-input-container {
-          position: relative;
-          max-width: 400px;
-        }
-
-        .search-input-container svg {
-          position: absolute;
-          left: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #9ca3af;
-        }
-
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 1rem 0.75rem 2.75rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.5rem;
-          font-size: 1rem;
-          transition: all 0.2s;
-        }
-
-        .search-input:focus {
-          outline: none;
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .students-count {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin-bottom: 1rem;
-        }
-
-        .students-table-container {
-          max-height: 400px;
-          overflow-y: auto;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.75rem;
-        }
-
-        .students-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        .students-table th {
-          background: #f9fafb;
-          padding: 1rem;
-          text-align: left;
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.875rem;
-          border-bottom: 1px solid #e5e7eb;
-          position: sticky;
-          top: 0;
-          z-index: 1;
-        }
-
-        .students-table td {
-          padding: 1rem;
-          border-bottom: 1px solid #f3f4f6;
-          vertical-align: middle;
-        }
-
-        .students-table tbody tr:hover {
-          background: #f9fafb;
-        }
-
-        .inactive-student {
-          opacity: 0.6;
-          background: #fafafa;
-        }
-
-        .student-name {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .student-name strong {
-          color: #1e293b;
-          font-weight: 600;
-        }
-
-        .student-name small {
-          color: #64748b;
-          font-size: 0.75rem;
-        }
-
-        .formation-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .formation-info .niveau {
-          font-weight: 600;
-          color: #1e293b;
-          font-size: 0.875rem;
-        }
-
-        .formation-info .cycle {
-          font-size: 0.75rem;
-          color: #64748b;
-        }
-
-        .filiere-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .filiere-info .filiere {
-          font-weight: 600;
-          color: #1e293b;
-          font-size: 0.875rem;
-        }
-
-        .filiere-info .specialite {
-          font-size: 0.75rem;
-          color: #64748b;
-        }
-
-        .status-badge {
-          padding: 0.25rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.75rem;
-          font-weight: 600;
-        }
-
-        .status-badge.active {
-          background: #dcfce7;
-          color: #166534;
-        }
-
-        .status-badge.inactive {
-          background: #fee2e2;
-          color: #991b1b;
-        }
-
-        .payment-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .payment-status {
-          padding: 0.25rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.75rem;
-          font-weight: 600;
-        }
-
-        .payment-status.paid {
-          background: #dcfce7;
-          color: #166534;
-        }
-
-        .payment-status.unpaid {
-          background: #fee2e2;
-          color: #991b1b;
-        }
-
-        .amount {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #1e293b;
-          font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-        }
-
-        .country-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .country-flags {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .flag {
-          padding: 0.125rem 0.5rem;
-          border-radius: 0.375rem;
-          font-size: 0.6rem;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-
-        .flag.resident {
-          background: #ddd6fe;
-          color: #5b21b6;
-        }
-
-        .flag.fonctionnaire {
-          background: #fed7d7;
-          color: #c53030;
-        }
-
-        .modal-stats {
-          display: flex;
-          gap: 2rem;
-          font-size: 0.875rem;
-          color: #64748b;
-        }
-
-        .modal-stats span {
-          font-weight: 600;
-        }
-
-        /* Buttons */
-        .btn-primary {
-          background: linear-gradient(135deg, #2563eb, #1d4ed8);
-          color: white;
-          border: none;
-          padding: 0.75rem 2rem;
-          border-radius: 0.5rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .btn-primary:hover {
-          background: linear-gradient(135deg, #1d4ed8, #1e40af);
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
-        }
-
-        .btn-secondary {
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.5rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .btn-secondary:hover {
-          background: linear-gradient(135deg, #4b5563, #374151);
-          transform: translateY(-1px);
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-          .header-content {
-            flex-direction: column;
-            gap: 1rem;
-          }
-
-          .header-controls {
-            width: 100%;
-            justify-content: space-between;
-          }
-
-          .filters-container {
-            flex: 1;
-          }
-
-          .filter-select {
-            min-width: auto;
-            flex: 1;
-          }
-
-          .dashboard-container {
-            padding: 1rem;
-          }
-
-          .tabs-navigation {
-            padding: 0 1rem;
-            overflow-x: auto;
-          }
-
-          .tab-btn {
-            padding: 0.75rem 1rem;
-            white-space: nowrap;
-          }
-
-          .formation-overview {
-            grid-template-columns: 1fr;
-          }
-
-          .cycles-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .modal-content {
-            margin: 0.5rem;
-            max-width: calc(100vw - 1rem);
-            max-height: calc(100vh - 1rem);
-          }
-
-          .modal-header,
-          .modal-body,
-          .modal-footer {
-            padding: 1rem;
-          }
-
-          .modal-footer {
-            flex-direction: column;
-            gap: 1rem;
-          }
-
-          .modal-stats {
-            justify-content: center;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .header-info h1 {
-            font-size: 1.5rem;
-          }
-
-          .section-title {
-            font-size: 1.25rem;
-          }
-
-          .analysis-table th,
-          .analysis-table td {
-            padding: 0.75rem 0.5rem;
-            font-size: 0.875rem;
-          }
-
-          .students-table th,
-          .students-table td {
-            padding: 0.75rem 0.5rem;
-            font-size: 0.8rem;
-          }
-
-          .formation-stats {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        /* Scrollbars */
-        .students-table-container::-webkit-scrollbar,
-        .modal-body::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-
-        .students-table-container::-webkit-scrollbar-track,
-        .modal-body::-webkit-scrollbar-track {
-          background: #f1f5f9;
-          border-radius: 3px;
-        }
-
-        .students-table-container::-webkit-scrollbar-thumb,
-        .modal-body::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 3px;
-        }
-
-        .students-table-container::-webkit-scrollbar-thumb:hover,
-        .modal-body::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-
-        /* Animations */
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .stats-grid > *,
-        .formation-overview > *,
-        .cycles-grid > * {
-          animation: slideIn 0.5s ease-out;
-        }
-
-        .stats-grid > *:nth-child(1) { animation-delay: 0.1s; }
-        .stats-grid > *:nth-child(2) { animation-delay: 0.2s; }
-        .stats-grid > *:nth-child(3) { animation-delay: 0.3s; }
-        .stats-grid > *:nth-child(4) { animation-delay: 0.4s; }
+        /* Graphiques d'analyse */
+.charts-section {
+  margin-top: 2rem;
+}
+
+.charts-grid-extended {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .charts-grid-extended,
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f1f5f9;
+}
+
+.chart-card.large {
+  grid-column: span 1;
+}
+
+.chart-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Modals ameliorees */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome-modal {
+  max-width: 800px;
+}
+
+.detail-modal {
+  max-width: 1400px;
+}
+
+.modal-header {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.modal-body {
+  padding: 2rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Welcome Modal Content */
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.welcome-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .welcome-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.welcome-stat {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.welcome-stat-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.welcome-stat-icon.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.welcome-stat-icon.green { background: linear-gradient(135deg, #059669, #047857); }
+.welcome-stat-icon.purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+
+.welcome-stat-info h3 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.welcome-stat-info p {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.welcome-info h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.formations-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.formation-summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f1f5f9;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.formation-summary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formation-summary-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.formation-summary-details {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.formation-summary-ca {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.welcome-features {
+  background: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.welcome-features h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.welcome-features ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.welcome-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.welcome-features li::before {
+  content: '"¨';
+  font-size: 1rem;
+}
+
+/* Detail Modal Content */
+.search-container {
+  margin-bottom: 1.5rem;
+}
+
+.search-input-container {
+  position: relative;
+  max-width: 400px;
+}
+
+.search-input-container svg {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.students-count {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.students-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+}
+
+.students-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.students-table th {
+  background: #f9fafb;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.students-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.students-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.inactive-student {
+  opacity: 0.6;
+  background: #fafafa;
+}
+
+.student-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.student-name strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.student-name small {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.formation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.formation-info .niveau {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.875rem;
+}
+
+.formation-info .cycle {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.filiere-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filiere-info .filiere {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.875rem;
+}
+
+.filiere-info .specialite {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.payment-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.payment-status.paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.payment-status.unpaid {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.amount {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.country-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.country-flags {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.flag {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.flag.resident {
+  background: #ddd6fe;
+  color: #5b21b6;
+}
+
+.flag.fonctionnaire {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.modal-stats {
+  display: flex;
+  gap: 2rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.modal-stats span {
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stats-grid > *,
+.formation-overview > *,
+.cycles-grid > * {
+  animation: slideIn 0.5s ease-out;
+}
+
+.stats-grid > *:nth-child(1) { animation-delay: 0.1s; }
+.stats-grid > *:nth-child(2) { animation-delay: 0.2s; }
+.stats-grid > *:nth-child(3) { animation-delay: 0.3s; }
+.stats-grid > *:nth-child(4) { animation-delay: 0.4s; }
       `}</style>
     </div>
   );
 };
 
 export default EnhancedDashboard;
-
-
-
-
-

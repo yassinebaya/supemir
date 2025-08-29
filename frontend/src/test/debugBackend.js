@@ -15,7 +15,7 @@ const formAjoutTest = {
   anneeScolaire: '2025/2026',
   lieuNaissance: 'Casablanca',
   pays: 'Maroc',
-  cours: [],
+  classe: [],
   niveau: 3, // Doit être auto-assigné par le backend
   niveauFormation: '',
   filiere: 'LICENCE_PRO', // Frontend envoie ceci

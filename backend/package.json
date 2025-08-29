@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cloudinary": "^2.7.0",
@@ -27,7 +28,7 @@
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "method-override": "^3.0.0",
-    "mongoose": "^8.17.2",
+    "mongoose": "^8.18.0",
     "multer": "^2.0.1",
     "path": "^0.12.7",
     "streamifier": "^0.1.1",

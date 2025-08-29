@@ -434,10 +434,10 @@ const FormationSelector = ({ form, onChange, prefix = '' }) => {
         </div>
       )}
       
-      {/* Indicateur de parcours amélioré */}
+      {/* Indicateur de parclasse amélioré */}
       {form.filiere && (
         <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-          <h5 style={{ margin: '0 0 10px 0', color: '#495057' }}>📚 Parcours sélectionné :</h5>
+          <h5 style={{ margin: '0 0 10px 0', color: '#495057' }}>📚 Parclasse sélectionné :</h5>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <span style={{ 
               backgroundColor: '#007bff', 

@@ -1,569 +1,517 @@
-﻿/**
- * Import CSV Étudiants - Adapté pour Dashboard Formations
- * ======================================================
- * Script d'import spécialement conçu pour votre fichier CSV
- * avec adaptation directe pour les filtres FT/TA/Executive
- * 
- * PRÉREQUIS:
- *   npm i mongoose csv-parse
- *
- * UTILISATION:
- *   node import-csv-adapte.js "mongodb://localhost:27017/supemir_db" "Etudient2024.2025.csv"
- */
-
-const fs = require('fs');
-const os = require('os');
+﻿const mongoose = require('mongoose');
+const XLSX = require('xlsx');
 const path = require('path');
-const mongoose = require('mongoose');
-const { parse } = require('csv-parse');
+const bcrypt = require('bcrypt');
 
-// ====== Utiliser votre modèle existant ======
-let Etudiant;
-try {
-  Etudiant = require('./models/Etudiant');
-} catch (e) {
-  console.log('⚠️  Modèle Etudiant non trouvé, utilisation du schéma intégré');
+// Importer votre modèle Etudiant
+const Etudiant = require('./models/etudiantModel'); // Ajustez le chemin selon votre structure
+
+/**
+ * Script d'importation des étudiants depuis le fichier Excel
+ * Usage: node importEtudiants.js
+ */
+
+// Configuration de la base de données
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/votre_db';
+
+// Mapping des filières Excel vers les types de formation du modèle
+const MAPPING_TYPE_FORMATION = {
+  'IRM': 'IRM',
+  'MASI': 'MASI',
+  'CYCLE_INGENIEUR': 'CYCLE_INGENIEUR',
+  'LICENCE_PRO': 'LICENCE_PRO',
+  'MASTER_PRO': 'MASTER_PRO'
+};
+
+// Mapping des spécialités selon le contexte
+const MAPPING_SPECIALITES = {
+  // Pour IRM
+  'Développement informatique': 'Développement informatique',
+  'Réseaux et cybersécurité': 'Réseaux et cybersécurité',
+  'Génie informatique et innovation technologique': 'Génie informatique et innovation technologique',
+  'Cybersécurité et transformation digitale': 'Cybersécurité et transformation digitale',
   
-  const etudiantSchema = new mongoose.Schema({
-    prenom: { type: String, required: true },
-    nomDeFamille: { type: String, required: true },
-    genre: { type: String, enum: ['Homme', 'Femme'], required: true },
-    email: { type: String, required: true, unique: true },
-    motDePasse: { type: String, required: true },
-    telephone: String,
-    cin: String,
-    passeport: String,
-    dateNaissance: Date,
-    lieuNaissance: String,
-    pays: String,
-    cours: { type: [String], default: [] },
-    niveau: Number,
-    niveauFormation: String,
-    filiere: String,
-    anneeScolaire: {
-      type: String,
-      required: true,
-      validate: {
-        validator: v => /^\d{4}\/\d{4}$/.test(v),
-        message: "L'année scolaire doit être au format YYYY/YYYY"
-      }
-    },
-    cycle: {
-      type: String,
-      enum: ['Classes Préparatoires Intégrées', 'Cycle Ingénieur'],
-      default: undefined
-    },
-    specialiteIngenieur: {
-      type: String,
-      enum: ['Génie Informatique', 'Génie Mécatronique', 'Génie Civil']
-    },
-    optionIngenieur: {
-      type: String,
-      enum: [
-        'Sécurité & Mobilité Informatique', 'IA & Science des Données',
-        'Réseaux & Cloud Computing', 'Génie Mécanique', 'Génie Industriel',
-        'Automatisation', 'Structures & Ouvrages d\'art',
-        'Bâtiment & Efficacité Énergétique', 'Géotechnique & Infrastructures'
-      ]
-    },
-    typeFormation: {
-      type: String,
-      enum: ['CYCLE_INGENIEUR', 'LICENCE_PRO', 'MASTER_PRO', 'MASI', 'IRM']
-    },
-    specialiteLicencePro: {
-      type: String,
-      enum: [
-        'Marketing digital e-business Casablanca', 'Tests Logiciels avec Tests Automatisés',
-        'Gestion de la Qualité', 'Développement Informatique Full Stack',
-        'Administration des Systèmes, Bases de Données, Cybersécurité et Cloud Computing',
-        'Réseaux et Cybersécurité', 'Finance, Audit & Entrepreneuriat',
-        'Développement Commercial et Marketing Digital',
-        'Management et Conduite de Travaux – Cnam', 'Electrotechnique et systèmes – Cnam',
-        'Informatique – Cnam'
-      ]
-    },
-    optionLicencePro: {
-      type: String,
-      enum: [
-        'Développement Mobile', 'Intelligence Artificielle et Data Analytics',
-        'Développement JAVA JEE', 'Développement Gaming et VR',
-        'Administration des Systèmes et Cloud Computing'
-      ]
-    },
-    specialiteMasterPro: {
-      type: String,
-      enum: [
-        'Informatique, Data Sciences, Cloud, Cybersécurité & Intelligence Artificielle (DU IDCIA)',
-        'QHSSE & Performance Durable', 'Achat, Logistique et Supply Chain Management',
-        'Management des Systèmes d\'Information', 'Big Data et Intelligence Artificielle',
-        'Cybersécurité et Transformation Digitale', 'Génie Informatique et Innovation Technologique',
-        'Finance, Audit & Entrepreneuriat', 'Développement Commercial et Marketing Digital'
-      ]
-    },
-    optionMasterPro: {
-      type: String,
-      enum: [
-        'Systèmes de communication et Data center', 'Management des Systèmes d\'Information',
-        'Génie Logiciel', 'Intelligence Artificielle et Data Science'
-      ]
-    },
-    option: String,
-    specialite: String,
-    typeDiplome: String,
-    diplomeAcces: String,
-    specialiteDiplomeAcces: String,
-    mention: String,
-    lieuObtentionDiplome: String,
-    serieBaccalaureat: String,
-    anneeBaccalaureat: Number,
-    premiereAnneeInscription: Number,
-    sourceInscription: String,
-    typePaiement: String,
-    prixTotal: Number,
-    pourcentageBourse: Number,
-    situation: String,
-    nouvelleInscription: { type: Boolean, default: true },
-    paye: { type: Boolean, default: false },
-    handicape: { type: Boolean, default: false },
-    resident: { type: Boolean, default: false },
-    fonctionnaire: { type: Boolean, default: false },
-    mobilite: { type: Boolean, default: false },
-    codeEtudiant: String,
-    dateEtReglement: String,
-    image: { type: String, default: '' },
-    commercial: { type: mongoose.Schema.Types.ObjectId, ref: 'Commercial', default: null },
-    actif: { type: Boolean, default: true },
-    lastSeen: { type: Date, default: null },
-    dateInscription: { type: Date, default: Date.now },
-    creeParAdmin: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null }
-  }, { timestamps: true });
+  // Pour MASI
+  'Entreprenariat, audit et finance': 'Entreprenariat, audit et finance',
+  'Développement commercial et marketing digital': 'Développement commercial et marketing digital',
+  'Management des affaires et systèmes d\'information': 'Management des affaires et systèmes d\'information'
+};
 
-  Etudiant = mongoose.model('Etudiant', etudiantSchema);
+/**
+ * Fonction pour mapper les données Excel vers le modèle Mongoose
+ */
+function mapperDonneesEtudiant(donneesExcel) {
+  const etudiantData = {
+    // Champs de base (directement mappés)
+    prenom: donneesExcel.prenom?.trim(),
+    nomDeFamille: donneesExcel.nomDeFamille?.trim(),
+    email: donneesExcel.email?.toLowerCase().trim(),
+    motDePasse: donneesExcel.motDePasse, // Sera hashé plus tard
+    telephone: donneesExcel.telephone?.trim(),
+    
+    // Année scolaire (directement depuis Excel ou calculée)
+    anneeScolaire: donneesExcel.anneeScolaire || Etudiant.getAnneeScolaireActuelle(),
+    
+    // Type de formation basé sur la filière Excel
+    typeFormation: MAPPING_TYPE_FORMATION[donneesExcel.filiere] || donneesExcel.filiere,
+    
+    // Niveau (sera auto-assigné par le middleware du modèle pour LICENCE_PRO et MASTER_PRO)
+    niveau: donneesExcel.niveau,
+    
+    // Inscription
+    nouvelleInscription: donneesExcel.nouvelleInscription !== false,
+    
+    // Champs par défaut
+    genre: 'Homme', // À ajuster selon vos besoins
+    pays: donneesExcel.nationalite || 'Maroc',
+    actif: true,
+    paye: false,
+    handicape: false,
+    resident: false,
+    fonctionnaire: false,
+    mobilite: false
+  };
+
+  // Mapper les spécialités selon le type de formation
+  if (donneesExcel.specialite) {
+    const typeFormation = etudiantData.typeFormation;
+    
+    if (typeFormation === 'LICENCE_PRO') {
+      // Pour les licences pro, mapper vers specialiteLicencePro
+      etudiantData.specialiteLicencePro = donneesExcel.specialite;
+    } else if (typeFormation === 'MASTER_PRO') {
+      // Pour les masters pro, mapper vers specialiteMasterPro
+      etudiantData.specialiteMasterPro = donneesExcel.specialite;
+    } else if (typeFormation === 'CYCLE_INGENIEUR') {
+      // Pour le cycle ingénieur, mapper vers specialiteIngenieur
+      etudiantData.specialiteIngenieur = donneesExcel.specialite;
+    } else {
+      // Pour IRM et MASI, utiliser le champ specialite classique
+      etudiantData.specialite = MAPPING_SPECIALITES[donneesExcel.specialite] || donneesExcel.specialite;
+    }
+  }
+
+  // Mapper les options si présentes
+  if (donneesExcel.option) {
+    const typeFormation = etudiantData.typeFormation;
+    
+    if (typeFormation === 'LICENCE_PRO') {
+      etudiantData.optionLicencePro = donneesExcel.option;
+    } else if (typeFormation === 'MASTER_PRO') {
+      etudiantData.optionMasterPro = donneesExcel.option;
+    } else if (typeFormation === 'CYCLE_INGENIEUR') {
+      etudiantData.optionIngenieur = donneesExcel.option;
+    } else {
+      etudiantData.option = donneesExcel.option;
+    }
+  }
+
+  // CORRECTION: Gestion améliorée du prix total
+  if (donneesExcel.prixTotal !== null && donneesExcel.prixTotal !== undefined && donneesExcel.prixTotal !== '' && donneesExcel.prixTotal !== 0) {
+    etudiantData.prixTotal = Number(donneesExcel.prixTotal);
+  }
+  // Si pas de prix dans Excel, on ne définit pas le champ (le modèle peut avoir une valeur par défaut)
+
+  // AJOUT: Autres champs du fichier Excel si disponibles
+  if (donneesExcel.niveauFormation) {
+    etudiantData.niveauFormation = donneesExcel.niveauFormation;
+  }
+
+  if (donneesExcel.filiere) {
+    etudiantData.filiere = donneesExcel.filiere;
+  }
+
+  return etudiantData;
 }
 
-// ========= MAPPING EXACT DE VOTRE CSV =========
-const CSV_COLUMNS = {
-  Id: 0,
-  FirstName: 1,
-  LastName: 2,
-  Gender: 3,
-  CINorPassPort: 4,
-  Birthday: 5,
-  PlaceOfBirth: 6,
-  Country: 7,
-  Formation: 8,
-  Niveau: 9,
-  SalsemanId: 10,
-  AnneeDuBaccalaureat: 11,
-  CNE: 12,
-  DiplomeDacces: 13,
-  DocumentFournis: 14,
-  Email: 15,
-  EtudiantEnmobilite: 16,
-  Filier: 17,
-  Fonctionnaire: 18,
-  Gsm: 19,
-  Handicape: 20,
-  LieuDoptentionduDiplome: 21,
-  NiveauFormation: 22,
-  Option: 23,
-  PassPort: 24,
-  PourcentageDeLaBourseAccode: 25,
-  PremierAnneeDInscription: 26,
-  Resident: 27,
-  SerieDuBaccalaureat: 28,
-  SituationDeEtudiant: 29,
-  SpecialiteDuDiplomeDaccese: 30,
-  Diplôme: 31,
-  Sourcedinscription: 32,
-  PriceTotal: 33,
-  TypePayment: 34,
-  IsNew: 35,
-  Ecole: 36,
-  Specialiter: 37,
-  DateOfInscription: 38,
-  MontionDuBaccalaureat: 39,
-  CopyCNI: 40,
-  CopyNote: 41,
-  FileRegistered: 42,
-  OriginalBac: 43,
-  Photo: 44,
-  EngagmentPayment: 45,
-  Ispayed: 46,
-  DTSBac: 47,
-  DiplomeLicence: 48,
-  PassPortPaypar: 49,
-  DeletionDate: 50,
-  IsMarkedForDeletion: 51,
-  PersoneSourceDinscription: 52,
-  Address: 53,
-  City: 54
-};
-
-// ========= FONCTIONS UTILITAIRES =========
-const NULLIFY = v => {
-  if (v === undefined || v === null) return null;
-  const s = String(v).trim();
-  if (!s || /^(NULL|null|N[ée]ant|Néant|-)$/i.test(s) || s === '0001-01-01 00:00:00.0000000') return null;
-  return s;
-};
-
-const toGenre = g => {
-  const genre = (g || '').toString().trim().toUpperCase();
-  if (genre === 'M' || genre === 'MALE' || genre === 'HOMME') return 'Homme';
-  if (genre === 'F' || genre === 'FEMALE' || genre === 'FEMME') return 'Femme';
-  return null;
-};
-
-const cleanPhone = p => {
-  if (!p) return null;
-  const cleaned = p.toString().replace(/[^\d+]/g, '');
-  return cleaned || null;
-};
-
-const toNumber = v => {
-  if (!v) return null;
-  const s = v.toString().trim();
-  if (!s || s === '0') return null;
-  const n = Number(s);
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
-
-const toBoolean = v => {
-  if (v === null || v === undefined) return false;
-  const s = v.toString().trim();
-  return s === '1' || /^(true|vrai|oui|yes)$/i.test(s);
-};
-
-const toDate = v => {
-  if (!v) return null;
-  const s = NULLIFY(v);
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-const genFakeEmail = (prenom, nom, index) => {
-  const cleanName = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-  const cleanPrenom = cleanName(prenom || 'etudiant');
-  const cleanNom = cleanName(nom || 'inconnu');
-  return `${cleanPrenom}.${cleanNom}.${Date.now()}${index}@supemir.ma`;
-};
-
-// ========= DÉTECTION INTELLIGENTE DES FORMATIONS =========
-
-
-  
-  return null;
-};
-
 /**
- * Détermine FT/TA/Executive basé sur les données CSV
+ * Fonction pour hasher le mot de passe
  */
-const determinerModeFormation = (niveauFormation, filiere, sourceInscription, typePayment) => {
-  const texte = `${niveauFormation || ''} ${filiere || ''} ${sourceInscription || ''} ${typePayment || ''}`.toLowerCase();
-  
-  // Détection TA (Temps Alterné)
-  if (/\bta\b|alternan|alterné|apprenti|entreprise|stage/i.test(texte)) {
-    return 'TA';
+async function hashMotDePasse(motDePasse) {
+  if (!motDePasse) {
+    // Génération d'un mot de passe par défaut plus sécurisé
+    const motDePasseDefaut = 'Super2025!';
+    const saltRounds = 10;
+    return await bcrypt.hash(motDePasseDefaut, saltRounds);
   }
   
-  // Détection Executive
-  if (/executive|exec|soir|weekend|professionnel|exp[eé]riment[eé]|cadre/i.test(texte)) {
-    return 'Executive';
-  }
-  
-  // Par défaut: FT
-  return 'FT';
-};
-
-/**
- * Mappe les spécialités vers les champs appropriés
- */
-const mapperSpecialites = (specialite, filiere, typeFormation) => {
-  if (!specialite && !filiere) return {};
-  
-  const texte = `${specialite || ''} ${filiere || ''}`.toLowerCase();
-  const updates = {};
-  
-  // Mapping Licence Pro
-  if (typeFormation === 'LICENCE_PRO') {
-    const mappingLicence = {
-      'Développement Informatique Full Stack': /d[eé]v.*info|full.*stack|informatique.*d[eé]v/i,
-      'Réseaux et Cybersécurité': /r[eé]seau|cyber|s[eé]curit[eé]/i,
-      'Marketing digital e-business Casablanca': /marketing.*digital|e-business/i,
-      'Gestion de la Qualité': /qualit[eé]|gestion.*qualit[eé]/i,
-      'Finance, Audit & Entrepreneuriat': /finance|audit|entrepreneur/i,
-      'Tests Logiciels avec Tests Automatisés': /test.*logiciel/i,
-      'Administration des Systèmes, Bases de Données, Cybersécurité et Cloud Computing': /admin.*syst|base.*donn|cloud/i
-    };
-    
-    for (const [spec, pattern] of Object.entries(mappingLicence)) {
-      if (pattern.test(texte)) {
-        updates.specialiteLicencePro = spec;
-        break;
-      }
-    }
-  }
-  
-  // Mapping Master Pro
-  else if (typeFormation === 'MASTER_PRO') {
-    const mappingMaster = {
-      'Big Data et Intelligence Artificielle': /big.*data|intelligence.*artificielle|ia\b/i,
-      'Cybersécurité et Transformation Digitale': /cyber.*digital|transformation.*digitale/i,
-      'Génie Informatique et Innovation Technologique': /g[eé]nie.*info|innovation/i,
-      'Management des Systèmes d\'Information': /management.*info|msi/i,
-      'Finance, Audit & Entrepreneuriat': /finance|audit|entrepreneur/i
-    };
-    
-    for (const [spec, pattern] of Object.entries(mappingMaster)) {
-      if (pattern.test(texte)) {
-        updates.specialiteMasterPro = spec;
-        break;
-      }
-    }
-  }
-  
-  // Mapping Ingénieur
-  else if (typeFormation === 'CYCLE_INGENIEUR') {
-    const mappingIngenieur = {
-      'Génie Informatique': /informatique|info/i,
-      'Génie Mécatronique': /m[eé]catronique|m[eé]canique/i,
-      'Génie Civil': /civil/i
-    };
-    
-    for (const [spec, pattern] of Object.entries(mappingIngenieur)) {
-      if (pattern.test(texte)) {
-        updates.specialiteIngenieur = spec;
-        break;
-      }
-    }
-  }
-  
-  return updates;
-};
-
-// ========= FONCTION PRINCIPALE D'IMPORT =========
-async function main() {
-  const mongoUri = process.argv[2] || 'mongodb://localhost:27017/supemir_db';
-  const csvPath = process.argv[3] || path.join(process.cwd(), 'Etudient2024.2025.csv');
-
-  console.log('🚀 Import CSV Étudiants avec adaptation Dashboard');
-  console.log(`📁 Fichier CSV: ${csvPath}`);
-  console.log(`🗄️  Base de données: ${mongoUri}`);
-
   try {
-    // Connexion DB
-    await mongoose.connect(mongoUri);
-    console.log('✅ Connexion réussie');
-
-    // Lecture CSV
-    const rows = await readCSV(csvPath);
-    console.log(`📊 ${rows.length} lignes lues`);
-
-    // Traitement des données
-    const docs = [];
-    const erreurs = [];
-    const statistiques = {
-      total: 0,
-      FT: 0,
-      TA: 0,
-      Executive: 0,
-      LICENCE_PRO: 0,
-      MASTER_PRO: 0,
-      CYCLE_INGENIEUR: 0,
-      MASI: 0,
-      IRM: 0,
-      Autres: 0
-    };
-
-    for (let i = 0; i < rows.length; i++) {
-      try {
-        const row = rows[i];
-        if (!Array.isArray(row) || row.length < 20) continue;
-
-        const get = (colName) => row[CSV_COLUMNS[colName]];
-
-        // Extraction des données de base
-        const prenom = NULLIFY(get('FirstName')) || 'Inconnu';
-        const nomDeFamille = NULLIFY(get('LastName')) || 'Inconnu';
-        const genre = toGenre(get('Gender'));
-        const rawEmail = NULLIFY(get('Email'));
-        const telephone = cleanPhone(get('Gsm'));
-        const cin = NULLIFY(get('CINorPassPort'));
-        const passeport = NULLIFY(get('PassPort'));
-        const pays = NULLIFY(get('Country'));
-        const niveau = toNumber(get('Niveau'));
-        const filiere = NULLIFY(get('Filier'));
-        const niveauFormationRaw = NULLIFY(get('NiveauFormation'));
-        const specialite = NULLIFY(get('Specialiter'));
-        const diplome = NULLIFY(get('Diplôme'));
-        const sourceInscription = NULLIFY(get('Sourcedinscription'));
-        const typePaiement = NULLIFY(get('TypePayment'));
-        const prixTotal = toNumber(get('PriceTotal'));
-        const dateNaissance = toDate(get('Birthday'));
-        const lieuNaissance = NULLIFY(get('PlaceOfBirth'));
-
-        // Booléens
-        const nouvelleInscription = toBoolean(get('IsNew'));
-        const paye = toBoolean(get('Ispayed'));
-        const handicape = toBoolean(get('Handicape'));
-        const resident = toBoolean(get('Resident'));
-        const fonctionnaire = toBoolean(get('Fonctionnaire'));
-        const mobilite = toBoolean(get('EtudiantEnmobilite'));
-
-        // Détermination du type de formation (CYCLE_INGENIEUR, LICENCE_PRO, etc.)
-        const typeFormation = determinerTypeFormation(filiere, niveauFormationRaw, diplome, specialite);
-        
-        // Détermination du niveau de formation (FT, TA, Executive)
-        const niveauFormation = determinerNiveauFormation(niveauFormationRaw, filiere, sourceInscription, typePaiement);
-
-        // Email
-        const email = rawEmail || genFakeEmail(prenom, nomDeFamille, i);
-
-        // Mapping des spécialités
-        const specialitesMapping = mapperSpecialites(specialite, filiere, typeFormation);
-
-        // Construction du document
-        const etudiantDoc = {
-          prenom,
-          nomDeFamille,
-          genre,
-          email,
-          motDePasse: 'super123',
-          telephone,
-          cin,
-          passeport,
-          dateNaissance,
-          lieuNaissance,
-          pays,
-          cours: [],
-          niveau,
-          niveauFormation,
-          filiere,
-          anneeScolaire: '2024/2025',
-          cycle: null,
-          typeFormation,
-          
-          // Spécialités mappées
-          ...specialitesMapping,
-          
-          // Champs génériques
-          option: NULLIFY(get('Option')),
-          specialite,
-          typeDiplome: null,
-          diplomeAcces: NULLIFY(get('DiplomeDacces')),
-          specialiteDiplomeAcces: NULLIFY(get('SpecialiteDuDiplomeDaccese')),
-          mention: NULLIFY(get('MontionDuBaccalaureat')),
-          lieuObtentionDiplome: NULLIFY(get('LieuDoptentionduDiplome')),
-          serieBaccalaureat: NULLIFY(get('SerieDuBaccalaureat')),
-          anneeBaccalaureat: toNumber(get('AnneeDuBaccalaureat')),
-          premiereAnneeInscription: toNumber(get('PremierAnneeDInscription')),
-          sourceInscription,
-          typePaiement,
-          prixTotal,
-          pourcentageBourse: toNumber(get('PourcentageDeLaBourseAccode')),
-          situation: NULLIFY(get('SituationDeEtudiant')),
-          
-          // Statuts
-          nouvelleInscription,
-          paye,
-          handicape,
-          resident,
-          fonctionnaire,
-          mobilite,
-          
-          // Autres
-          codeEtudiant: NULLIFY(get('Id')),
-          dateEtReglement: null,
-          image: '',
-          commercial: null,
-          actif: !toBoolean(get('IsMarkedForDeletion')),
-          lastSeen: null,
-          dateInscription: toDate(get('DateOfInscription')) || new Date(),
-          creeParAdmin: null
-        };
-
-        docs.push(etudiantDoc);
-        
-        // Statistiques
-        statistiques.total++;
-        statistiques[niveauFormation]++; // FT, TA, Executive
-        if (typeFormation) {
-          statistiques[typeFormation]++;
-        } else {
-          statistiques.Autres++;
-        }
-
-      } catch (error) {
-        erreurs.push({ ligne: i + 1, erreur: error.message });
-      }
-    }
-
-    // Filtrage et validation
-    const ready = docs.filter(d => d.prenom && d.nomDeFamille && d.genre);
-    console.log(`✅ ${ready.length} documents valides préparés`);
-
-    // Affichage des statistiques avant insertion
-    console.log('\n📊 Répartition par mode de formation:');
-    console.log(`   • FT (Full Time): ${statistiques.FT}`);
-    console.log(`   • TA (Temps Alterné): ${statistiques.TA}`);
-    console.log(`   • Executive: ${statistiques.Executive}`);
-
-    console.log('\n📊 Répartition par type de formation:');
-    console.log(`   • LICENCE_PRO: ${statistiques.LICENCE_PRO}`);
-    console.log(`   • MASTER_PRO: ${statistiques.MASTER_PRO}`);
-    console.log(`   • CYCLE_INGENIEUR: ${statistiques.CYCLE_INGENIEUR}`);
-    console.log(`   • MASI: ${statistiques.MASI}`);
-    console.log(`   • IRM: ${statistiques.IRM}`);
-    console.log(`   • Autres: ${statistiques.Autres}`);
-
-    // Insertion en base
-    try {
-      const result = await Etudiant.insertMany(ready, { ordered: false });
-      console.log(`\n🎉 ${result.length} étudiants importés avec succès !`);
-    } catch (err) {
-      if (err.writeErrors) {
-        const inserted = ready.length - err.writeErrors.length;
-        const duplicates = err.writeErrors.filter(e => 
-          (e.errmsg || '').includes('duplicate key')
-        ).length;
-        
-        console.log(`\n📝 ${inserted} étudiants importés`);
-        console.log(`🔄 ${duplicates} doublons ignorés`);
-        console.log(`❌ ${err.writeErrors.length - duplicates} autres erreurs`);
-      } else {
-        throw err;
-      }
-    }
-
-    if (erreurs.length > 0) {
-      console.log(`\n⚠️  ${erreurs.length} erreurs de parsing détectées`);
-    }
-
+    const saltRounds = 10;
+    return await bcrypt.hash(motDePasse, saltRounds);
   } catch (error) {
-    console.error('❌ Erreur:', error);
-  } finally {
-    await mongoose.disconnect();
-    console.log('\n🔚 Import terminé');
+    console.error('Erreur lors du hashage du mot de passe:', error);
+    // Fallback avec un mot de passe sécurisé
+    return await bcrypt.hash('Super2025!', 10);
   }
 }
 
-// ========= LECTEUR CSV =========
-function readCSV(csvPath) {
-  return new Promise((resolve, reject) => {
-    const rows = [];
-    fs.createReadStream(csvPath)
-      .pipe(parse({
-        skip_empty_lines: true,
-        relax_column_count: true,
-        trim: true,
-        bom: true
-      }))
-      .on('data', rec => rows.push(rec))
-      .on('end', () => resolve(rows.slice(1))) // Skip header
-      .on('error', reject);
+/**
+ * Fonction pour lire et parser le fichier Excel
+ */
+function lireFichierExcel(cheminFichier) {
+  try {
+    console.log('📖 Lecture du fichier Excel:', cheminFichier);
+    
+    const workbook = XLSX.readFile(cheminFichier);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    
+    // Convertir en JSON avec options pour bien gérer les types
+    const donnees = XLSX.utils.sheet_to_json(worksheet, {
+      defval: null, // Valeur par défaut pour les cellules vides
+      blankrows: false // Ignorer les lignes vides
+    });
+    
+    console.log(`✅ ${donnees.length} étudiants trouvés dans le fichier Excel`);
+    return donnees;
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la lecture du fichier Excel:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fonction pour valider les données avant insertion
+ */
+function validerDonnees(etudiantData) {
+  const erreurs = [];
+  
+  if (!etudiantData.prenom) erreurs.push('Prénom manquant');
+  if (!etudiantData.nomDeFamille) erreurs.push('Nom de famille manquant');
+  if (!etudiantData.email) erreurs.push('Email manquant');
+  if (!etudiantData.typeFormation) erreurs.push('Type de formation manquant');
+  
+  // Validation de l'email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (etudiantData.email && !emailRegex.test(etudiantData.email)) {
+    erreurs.push('Format d\'email invalide');
+  }
+  
+  // Validation du niveau
+  if (etudiantData.niveau && (etudiantData.niveau < 1 || etudiantData.niveau > 5)) {
+    erreurs.push('Niveau doit être entre 1 et 5');
+  }
+  
+  // Validation du prix si présent
+  if (etudiantData.prixTotal && (isNaN(etudiantData.prixTotal) || etudiantData.prixTotal < 0)) {
+    erreurs.push('Prix total doit être un nombre positif');
+  }
+  
+  return erreurs;
+}
+
+/**
+ * Fonction d'analyse préalable du fichier
+ */
+function analyserFichierExcel(donneesExcel) {
+  console.log('\n📊 ANALYSE DÉTAILLÉE DU FICHIER:');
+  
+  // Statistiques générales
+  const filieres = [...new Set(donneesExcel.map(e => e.filiere).filter(f => f))];
+  const niveaux = [...new Set(donneesExcel.map(e => e.niveau).filter(f => f))].sort();
+  const specialites = [...new Set(donneesExcel.map(e => e.specialite).filter(f => f))];
+  
+  console.log(`Total étudiants: ${donneesExcel.length}`);
+  console.log('Filières trouvées:', filieres);
+  console.log('Niveaux trouvés:', niveaux);
+  console.log(`Spécialités uniques: ${specialites.length}`);
+  
+  // Analyse des prix
+  const avecPrix = donneesExcel.filter(e => e.prixTotal && e.prixTotal > 0);
+  const sansPrix = donneesExcel.filter(e => !e.prixTotal || e.prixTotal === 0);
+  
+  console.log(`\n💰 ANALYSE DES PRIX:`);
+  console.log(`Étudiants avec prix: ${avecPrix.length}`);
+  console.log(`Étudiants sans prix: ${sansPrix.length}`);
+  
+  if (avecPrix.length > 0) {
+    const prix = avecPrix.map(e => e.prixTotal);
+    const prixMin = Math.min(...prix);
+    const prixMax = Math.max(...prix);
+    const prixMoyen = Math.round(prix.reduce((a, b) => a + b, 0) / prix.length);
+    
+    console.log(`Prix min: ${prixMin.toLocaleString()} DH`);
+    console.log(`Prix max: ${prixMax.toLocaleString()} DH`);
+    console.log(`Prix moyen: ${prixMoyen.toLocaleString()} DH`);
+  }
+  
+  // Répartition par filière et niveau
+  console.log(`\n📈 RÉPARTITION PAR FILIÈRE:`);
+  filieres.forEach(filiere => {
+    const count = donneesExcel.filter(e => e.filiere === filiere).length;
+    console.log(`${filiere}: ${count} étudiants`);
   });
 }
 
-main().catch(console.error);
+/**
+ * Fonction principale d'importation
+ */
+async function importerEtudiants() {
+  try {
+    console.log('🚀 Début de l\'importation des étudiants...');
+    
+    // 1. Connexion à MongoDB
+    await mongoose.connect(MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log('✅ Connexion à MongoDB établie');
+    
+    // 2. Lecture du fichier Excel
+    const cheminFichier = path.join(__dirname, 'etudiants_corrige_structure.xlsx');
+    const donneesExcel = lireFichierExcel(cheminFichier);
+    
+    // 3. Analyse préalable du fichier
+    analyserFichierExcel(donneesExcel);
+    
+    // 4. Demander confirmation avant l'import
+    console.log(`\n⚠️  Vous allez importer ${donneesExcel.length} étudiants dans la base de données.`);
+    console.log('Appuyez sur Ctrl+C pour annuler, ou attendez 3 secondes pour continuer...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // 5. Traitement et insertion
+    let successCount = 0;
+    let errorCount = 0;
+    let skipCount = 0;
+    const erreurs = [];
+    
+    console.log('\n🔄 Début du traitement des données...');
+    
+    for (let i = 0; i < donneesExcel.length; i++) {
+      const donneeBrute = donneesExcel[i];
+      
+      try {
+        console.log(`\n[${i + 1}/${donneesExcel.length}] Traitement: ${donneeBrute.prenom} ${donneeBrute.nomDeFamille}`);
+        
+        // Mapper les données
+        const etudiantData = mapperDonneesEtudiant(donneeBrute);
+        
+        // Valider les données
+        const erreursValidation = validerDonnees(etudiantData);
+        if (erreursValidation.length > 0) {
+          throw new Error(`Validation échouée: ${erreursValidation.join(', ')}`);
+        }
+        
+        // Vérifier si l'étudiant existe déjà
+        const etudiantExistant = await Etudiant.findOne({ email: etudiantData.email });
+        if (etudiantExistant) {
+          console.log(`⚠️  Étudiant déjà existant: ${etudiantData.email}`);
+          skipCount++;
+          continue;
+        }
+        
+        // Hasher le mot de passe
+        etudiantData.motDePasse = await hashMotDePasse(etudiantData.motDePasse);
+        
+        // Créer l'étudiant (le middleware pre-save s'occupera de la validation et auto-assignation)
+        const nouvelEtudiant = new Etudiant(etudiantData);
+        await nouvelEtudiant.save();
+        
+        console.log(`✅ Étudiant créé avec succès: ${nouvelEtudiant.email}`);
+        console.log(`   → Type: ${nouvelEtudiant.typeFormation}, Niveau: ${nouvelEtudiant.niveau}`);
+        if (nouvelEtudiant.cycle) console.log(`   → Cycle: ${nouvelEtudiant.cycle}`);
+        if (nouvelEtudiant.specialite) console.log(`   → Spécialité: ${nouvelEtudiant.specialite}`);
+        if (nouvelEtudiant.prixTotal) console.log(`   → Prix: ${nouvelEtudiant.prixTotal.toLocaleString()} DH`);
+        
+        successCount++;
+        
+      } catch (error) {
+        errorCount++;
+        const messageErreur = `Ligne ${i + 1} (${donneeBrute.email || 'email manquant'}): ${error.message}`;
+        erreurs.push(messageErreur);
+        console.error(`❌ ${messageErreur}`);
+        
+        // Continuer même en cas d'erreur sur un étudiant
+        continue;
+      }
+    }
+    
+    // 6. Rapport final détaillé
+    console.log('\n🎯 RAPPORT FINAL DÉTAILLÉ:');
+    console.log(`✅ Étudiants créés avec succès: ${successCount}`);
+    console.log(`⚠️  Étudiants ignorés (déjà existants): ${skipCount}`);
+    console.log(`❌ Erreurs rencontrées: ${errorCount}`);
+    console.log(`📊 Taux de succès: ${Math.round((successCount / donneesExcel.length) * 100)}%`);
+    
+    if (erreurs.length > 0) {
+      console.log('\n📋 DÉTAIL DES ERREURS:');
+      erreurs.forEach((erreur, index) => {
+        console.log(`${index + 1}. ${erreur}`);
+      });
+    }
+    
+    // 7. Vérification finale avec statistiques détaillées
+    const totalEtudiants = await Etudiant.countDocuments();
+    const etudiantsAvecPrix = await Etudiant.countDocuments({ 
+      prixTotal: { $exists: true, $ne: null, $ne: 0 } 
+    });
+    const etudiantsSansPrix = totalEtudiants - etudiantsAvecPrix;
+    
+    console.log(`\n📈 STATISTIQUES FINALES DE LA BASE:`);
+    console.log(`Total d'étudiants dans la base: ${totalEtudiants}`);
+    console.log(`Étudiants avec prix: ${etudiantsAvecPrix}`);
+    console.log(`Étudiants sans prix: ${etudiantsSansPrix}`);
+    
+    // 8. Suggérer des actions de suivi
+    console.log(`\n💡 ACTIONS SUGGÉRÉES:`);
+    if (etudiantsSansPrix > 0) {
+      console.log(`- Exécuter le script de diagnostic: node diagnosticPrix.js`);
+      console.log(`- Considérer mettre à jour les prix manquants`);
+    }
+    if (errorCount > 0) {
+      console.log(`- Vérifier et corriger les ${errorCount} erreurs listées ci-dessus`);
+    }
+    console.log(`- Vérifier quelques étudiants créés dans votre interface d'administration`);
+    
+  } catch (error) {
+    console.error('💥 Erreur critique:', error);
+    console.error('Stack trace:', error.stack);
+  } finally {
+    await mongoose.disconnect();
+    console.log('\n👋 Déconnexion de MongoDB');
+  }
+}
+
+/**
+ * Fonction utilitaire pour nettoyer la collection (ATTENTION: supprime tout!)
+ */
+async function nettoyerCollection() {
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    
+    const count = await Etudiant.countDocuments();
+    console.log(`⚠️  ${count} étudiants trouvés dans la collection`);
+    
+    if (count === 0) {
+      console.log('✅ La collection est déjà vide');
+      await mongoose.disconnect();
+      return;
+    }
+    
+    const readline = require('readline');
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    rl.question('Êtes-vous sûr de vouloir supprimer TOUS les étudiants? (tapez "SUPPRIMER" pour confirmer): ', async (answer) => {
+      if (answer === 'SUPPRIMER') {
+        const result = await Etudiant.deleteMany({});
+        console.log(`🗑️  ${result.deletedCount} étudiants supprimés`);
+      } else {
+        console.log('❌ Opération annulée');
+      }
+      rl.close();
+      await mongoose.disconnect();
+    });
+    
+  } catch (error) {
+    console.error('Erreur lors du nettoyage:', error);
+    await mongoose.disconnect();
+  }
+}
+
+/**
+ * Fonction pour afficher les statistiques sans importer
+ */
+async function afficherStatistiques() {
+  try {
+    const cheminFichier = path.join(__dirname, 'etudiants_corrige_structure.xlsx');
+    const donneesExcel = lireFichierExcel(cheminFichier);
+    
+    analyserFichierExcel(donneesExcel);
+    
+    // Analyse des doublons potentiels
+    console.log('\n🔍 VÉRIFICATION DES DOUBLONS:');
+    const emails = donneesExcel.map(e => e.email?.toLowerCase().trim()).filter(e => e);
+    const emailsUniques = [...new Set(emails)];
+    const doublons = emails.length - emailsUniques.length;
+    
+    if (doublons > 0) {
+      console.log(`⚠️  ${doublons} doublons d'email détectés dans le fichier Excel`);
+      
+      // Trouver les emails en doublon
+      const compteurEmails = {};
+      emails.forEach(email => {
+        compteurEmails[email] = (compteurEmails[email] || 0) + 1;
+      });
+      
+      const emailsEnDoublon = Object.entries(compteurEmails)
+        .filter(([email, count]) => count > 1)
+        .slice(0, 5); // Limiter l'affichage
+      
+      console.log('Exemples d\'emails en doublon:');
+      emailsEnDoublon.forEach(([email, count]) => {
+        console.log(`  ${email}: ${count} occurrences`);
+      });
+    } else {
+      console.log('✅ Aucun doublon d\'email détecté');
+    }
+    
+  } catch (error) {
+    console.error('Erreur lors de l\'analyse:', error);
+  }
+}
+
+// Gestion des arguments de ligne de commande
+const args = process.argv.slice(2);
+
+if (args.includes('--clean')) {
+  nettoyerCollection();
+} else if (args.includes('--stats')) {
+  afficherStatistiques();
+} else if (args.includes('--help')) {
+  console.log(`
+📚 SCRIPT D'IMPORTATION DES ÉTUDIANTS - VERSION AMÉLIORÉE
+
+Usage:
+  node importEtudiants.js              # Importer les étudiants
+  node importEtudiants.js --stats      # Afficher les statistiques du fichier Excel
+  node importEtudiants.js --clean      # Nettoyer la collection (DANGER!)
+  node importEtudiants.js --help       # Afficher cette aide
+
+Prérequis:
+  ✅ Node.js installé
+  ✅ MongoDB en cours d'exécution
+  ✅ Dépendances installées: npm install mongoose xlsx bcrypt
+  ✅ Fichier 'etudiants_corrige_structure.xlsx' dans le dossier du script
+  ✅ Modèle etudiantModel.js configuré
+
+Configuration:
+  - MONGODB_URI: Variable d'environnement pour la connexion MongoDB
+  - Chemin du modèle: ./models/etudiantModel (ajustez si nécessaire)
+
+Fonctionnalités:
+  🔍 Analyse préalable du fichier Excel
+  💰 Gestion améliorée des prix (null/undefined/0)
+  🔒 Hashage sécurisé des mots de passe
+  ✅ Validation complète des données
+  📊 Rapport détaillé avec statistiques
+  🚫 Évite les doublons par email
+  ⚡ Gestion robuste des erreurs
+
+Exemples:
+  # Analyser d'abord le fichier
+  node importEtudiants.js --stats
+  
+  # Puis importer
+  node importEtudiants.js
+  
+  # Diagnostiquer les prix après import
+  node diagnosticPrix.js
+  `);
+} else {
+  // Import par défaut
+  importerEtudiants();
+}
+
+module.exports = {
+  importerEtudiants,
+  nettoyerCollection,
+  mapperDonneesEtudiant,
+  afficherStatistiques
+};

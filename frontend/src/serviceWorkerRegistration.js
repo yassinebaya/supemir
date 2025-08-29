@@ -1,5 +1,5 @@
 // ملف جاهز من CRA
-const islocalhost = Boolean(
+const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
   window.location.hostname === '[::1]' ||
   window.location.hostname.match(
@@ -11,7 +11,7 @@ export function register(config) {
   if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
     const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
 
-    if (islocalhost) {
+    if (isLocalhost) {
       checkValidServiceWorker(swUrl, config);
     } else {
       registerValidSW(swUrl, config);

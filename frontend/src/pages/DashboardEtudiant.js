@@ -428,7 +428,7 @@ const DashboardEtudiant = () => {
               subtitle="Séances manquées"
             />
             <StatCard
-              title="Cours Inscrits"
+              title="classe Inscrits"
               value={dashboardData.coursInscrits}
               icon={GraduationCap}
               colorClass="blue"

@@ -108,7 +108,7 @@ background: 'linear-gradient(135deg, #e60039 0%, #8a2be2 100%)',
                 </div>
               </div>
               <p style={{ color: 'white', marginTop: '1rem' }}>
-                Groupe scolaire d'excellence situé à Casablanca, offrant un parcours éducatif complet de la crèche au lycée.
+                Groupe scolaire d'excellence situé à Casablanca, offrant un parclasse éducatif complet de la crèche au lycée.
               </p>
             </div>
             

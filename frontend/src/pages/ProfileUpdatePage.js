@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Lock, Save, AlertCircle, CheckCircle } from 'lucide-react';
-import Sidebar from '../components/Sidebar'; // ✅ استيراد صحيح
- 
+import Sidebar from '../components/Sidebar';
+
 const handleLogout = () => {
   localStorage.removeItem('token');
   window.location.href = '/';
 };
-const SimpleProfilePage = () => {
+
+const ProfileUpdatePage = () => {
   const [profileData, setProfileData] = useState({
     nom: '',
     email: '',
@@ -16,9 +17,67 @@ const SimpleProfilePage = () => {
   
   const [originalData, setOriginalData] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // Charger les données du profil
+  // Charger les données du profil au montage du composant
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('❌ Aucun token trouvé');
+        window.location.href = '/';
+        return;
+      }
+
+      console.log('🔍 Chargement du profil avec token:', token.substring(0, 20) + '...');
+
+      const response = await fetch('http://195.179.229.230:5000/api/admin/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📡 Response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Données profil reçues:', data);
+        
+        const profileInfo = {
+          nom: data.nom || '',
+          email: data.email || '',
+          ancienMotDePasse: '',
+          nouveauMotDePasse: ''
+        };
+        
+        setProfileData(profileInfo);
+        setOriginalData({
+          nom: data.nom || '',
+          email: data.email || ''
+        });
+      } else if (response.status === 401) {
+        console.log('❌ Token invalide - redirection login');
+        localStorage.removeItem('token');
+        window.location.href = '/';
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Erreur serveur' }));
+        console.log('❌ Erreur response:', errorData);
+        setMessage({ type: 'error', text: errorData.error || 'Erreur lors du chargement du profil' });
+      }
+    } catch (error) {
+      console.error('❌ Erreur loadProfile:', error);
+      setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -70,7 +129,7 @@ const SimpleProfilePage = () => {
       }
     }
     
-    // Validation du mot de passe - les deux champs doivent être remplis ensemble
+    // Validation du mot de passe
     if (changes.ancienMotDePasse && !changes.nouveauMotDePasse) {
       setMessage({ type: 'error', text: 'Le nouveau mot de passe est requis' });
       return false;
@@ -78,6 +137,12 @@ const SimpleProfilePage = () => {
     
     if (changes.nouveauMotDePasse && !changes.ancienMotDePasse) {
       setMessage({ type: 'error', text: 'L\'ancien mot de passe est requis' });
+      return false;
+    }
+
+    // Validation longueur nouveau mot de passe
+    if (changes.nouveauMotDePasse && changes.nouveauMotDePasse.length < 6) {
+      setMessage({ type: 'error', text: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
       return false;
     }
     
@@ -88,30 +153,68 @@ const SimpleProfilePage = () => {
     e.preventDefault();
     
     const changes = getChangedFields();
+    console.log('🔄 Changements détectés:', changes);
     
     if (!validateChanges(changes)) return;
     
     setLoading(true);
     
     try {
-      // Simulation de l'API - remplacez par votre logique
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mettre à jour les données originales avec les nouvelles valeurs
-      setOriginalData(prev => ({ ...prev, ...changes }));
-      
-      // Réinitialiser les champs mot de passe
-      setProfileData(prev => ({ 
-        ...prev, 
-        ancienMotDePasse: '', 
-        nouveauMotDePasse: '' 
-      }));
-      
-      setMessage({ 
-        type: 'success', 
-        text: `Profil mis à jour avec succès (${Object.keys(changes).join(', ')})` 
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('❌ Aucun token pour la mise à jour');
+        window.location.href = '/';
+        return;
+      }
+
+      console.log('📤 Envoi mise à jour avec:', changes);
+
+      const response = await fetch('http://195.179.229.230:5000/api/admin/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(changes)
       });
-    } catch (err) {
+
+      console.log('📡 Response status:', response.status);
+      const result = await response.json();
+      console.log('📥 Response data:', result);
+
+      if (response.ok) {
+        // Mettre à jour les données originales avec les nouvelles valeurs
+        setOriginalData(prev => ({ 
+          ...prev, 
+          nom: result.admin.nom,
+          email: result.admin.email
+        }));
+        
+        // Mettre à jour profileData avec les nouvelles données
+        setProfileData(prev => ({
+          ...prev,
+          nom: result.admin.nom,
+          email: result.admin.email,
+          ancienMotDePasse: '', 
+          nouveauMotDePasse: '' 
+        }));
+        
+        setMessage({ 
+          type: 'success', 
+          text: `Profil mis à jour avec succès (${result.modifiedFields.join(', ')})` 
+        });
+
+        console.log('✅ Mise à jour réussie');
+      } else if (response.status === 401) {
+        console.log('❌ Token invalide lors de la mise à jour');
+        localStorage.removeItem('token');
+        window.location.href = '/';
+      } else {
+        console.log('❌ Erreur mise à jour:', result);
+        setMessage({ type: 'error', text: result.error || 'Erreur lors de la mise à jour' });
+      }
+    } catch (error) {
+      console.error('❌ Erreur handleSubmit:', error);
       setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
     } finally {
       setLoading(false);
@@ -125,7 +228,7 @@ const SimpleProfilePage = () => {
       padding: '5px 16px'
     },
     wrapper: {
-      maxWidth: '800px', // Augmenté pour desktop
+      maxWidth: '800px',
       margin: '0 auto'
     },
     card: {
@@ -140,6 +243,12 @@ const SimpleProfilePage = () => {
       color: '#1f2937',
       marginBottom: '32px',
       textAlign: 'center'
+    },
+    loading: {
+      textAlign: 'center',
+      padding: '40px',
+      fontSize: '16px',
+      color: '#6b7280'
     },
     alertError: {
       padding: '16px',
@@ -216,10 +325,6 @@ const SimpleProfilePage = () => {
       outline: 'none',
       transition: 'border-color 0.2s, box-shadow 0.2s'
     },
-    inputFocus: {
-      borderColor: '#3b82f6',
-      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
-    },
     updateNotice: {
       fontSize: '13px',
       color: '#059669',
@@ -274,10 +379,6 @@ const SimpleProfilePage = () => {
       color: 'white',
       boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
     },
-    buttonEnabledHover: {
-      backgroundColor: '#1d4ed8',
-      boxShadow: '0 4px 8px rgba(37, 99, 235, 0.3)'
-    },
     buttonDisabled: {
       backgroundColor: '#d1d5db',
       color: '#6b7280',
@@ -288,9 +389,24 @@ const SimpleProfilePage = () => {
   // Détection mobile
   const isMobile = window.innerWidth < 768;
 
+  if (loadingProfile) {
+    return (
+      <div style={styles.container}>
+        <Sidebar onLogout={handleLogout} />
+        <div style={styles.wrapper}>
+          <div style={styles.card}>
+            <div style={styles.loading}>
+              Chargement du profil...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
-            <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} />
 
       <div style={styles.wrapper}>
         <div style={styles.card}>
@@ -306,13 +422,12 @@ const SimpleProfilePage = () => {
             </div>
           )}
 
-          {/* Formulaire avec layout responsive */}
+          {/* Formulaire */}
           <div style={isMobile ? styles.formGridMobile : styles.formGrid}>
             {/* Colonne gauche - Informations personnelles */}
             <div style={styles.columnLeft}>
               <h2 style={styles.columnTitle}>Informations personnelles</h2>
               
-              {/* Nom */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>
                   <User size={18} style={styles.labelIcon} />
@@ -339,7 +454,6 @@ const SimpleProfilePage = () => {
                 )}
               </div>
 
-              {/* Email */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>
                   <Mail size={18} style={styles.labelIcon} />
@@ -371,7 +485,6 @@ const SimpleProfilePage = () => {
             <div style={styles.columnRight}>
               <h2 style={styles.columnTitle}>Changement de mot de passe</h2>
               
-              {/* Ancien mot de passe */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>
                   <Lock size={18} style={styles.labelIcon} />
@@ -393,12 +506,8 @@ const SimpleProfilePage = () => {
                     e.target.style.boxShadow = 'none';
                   }}
                 />
-                {profileData.ancienMotDePasse && (
-                  <p style={styles.updateNotice}>✓ Requis pour changer le mot de passe</p>
-                )}
               </div>
 
-              {/* Nouveau mot de passe */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>
                   <Lock size={18} style={styles.labelIcon} />
@@ -409,7 +518,7 @@ const SimpleProfilePage = () => {
                   name="nouveauMotDePasse"
                   value={profileData.nouveauMotDePasse}
                   onChange={handleChange}
-                  placeholder="Nouveau mot de passe"
+                  placeholder="Nouveau mot de passe (min. 6 caractères)"
                   style={styles.input}
                   onFocus={(e) => {
                     e.target.style.borderColor = '#3b82f6';
@@ -420,8 +529,8 @@ const SimpleProfilePage = () => {
                     e.target.style.boxShadow = 'none';
                   }}
                 />
-                {profileData.nouveauMotDePasse && (
-                  <p style={styles.updateNotice}>✓ Nouveau mot de passe sera appliqué</p>
+                {profileData.ancienMotDePasse && profileData.nouveauMotDePasse && (
+                  <p style={styles.updateNotice}>✓ Mot de passe sera changé</p>
                 )}
               </div>
             </div>
@@ -434,12 +543,14 @@ const SimpleProfilePage = () => {
                 Modifications à apporter :
               </p>
               <ul style={styles.changesList}>
-                {Object.keys(getChangedFields()).map(field => (
-                  <li key={field} style={styles.changesListItem}>
-                    • {field === 'ancienMotDePasse' ? 'Changement de mot de passe' : 
-                       field === 'nouveauMotDePasse' ? '' : field}
-                  </li>
-                )).filter(item => item.props.children !== '• ')}
+                {Object.keys(getChangedFields()).map(field => {
+                  if (field === 'nouveauMotDePasse') return null;
+                  return (
+                    <li key={field} style={styles.changesListItem}>
+                      • {field === 'ancienMotDePasse' ? 'Changement de mot de passe' : field}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -456,18 +567,6 @@ const SimpleProfilePage = () => {
                   ? styles.buttonDisabled 
                   : styles.buttonEnabled)
               }}
-              onMouseEnter={(e) => {
-                if (!loading && Object.keys(getChangedFields()).length > 0) {
-                  e.target.style.backgroundColor = '#1d4ed8';
-                  e.target.style.boxShadow = '0 4px 8px rgba(37, 99, 235, 0.3)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading && Object.keys(getChangedFields()).length > 0) {
-                  e.target.style.backgroundColor = '#2563eb';
-                  e.target.style.boxShadow = '0 2px 4px rgba(37, 99, 235, 0.2)';
-                }
-              }}
             >
               <Save size={18} />
               {loading ? 'Mise à jour...' : 'Mettre à jour'}
@@ -479,4 +578,4 @@ const SimpleProfilePage = () => {
   );
 };
 
-export default SimpleProfilePage;
+export default ProfileUpdatePage;

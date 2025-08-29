@@ -112,7 +112,7 @@ const SidebarProf = ({ onLogout }) => {
     },
     {
       path: '/professeur/exercices',
-      label: 'Exercices de cours',
+      label: 'Exercices de classe',
       icon: BookOpen
     },
 
