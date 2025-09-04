@@ -214,7 +214,7 @@ const STRUCTURE_FORMATION = {
   },
 
   CYCLE_INGENIEUR: {
-    nom: "École d'Ingénieur",
+    nom: "CYCLE_INGENIEUR",
     niveauxManuels: true,
     cycles: {
       'Classes Préparatoires Intégrées': {
@@ -776,7 +776,7 @@ const FormationSelector = ({ form, onChange, prefix = '' }) => {
     <div className="formation-selector">
       <div className="form-row">
       <div className="form-group">
-  <label>Type de Formation *</label>
+  <label>Filière *</label>
   <select
     name="filiere"
     value={form.filiere}
@@ -1119,7 +1119,6 @@ const Commercialetudiants = () => {
   // États pour le modal de visualisation
   const [showViewModal, setShowViewModal] = useState(false);
   const [etudiantSelectionne, setEtudiantSelectionne] = useState(null);
-  const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
   // États pour le modal de modification
   const [showEditModal, setShowEditModal] = useState(false);
   const [formModifier, setFormModifier] = useState({
@@ -1321,6 +1320,7 @@ const Commercialetudiants = () => {
       setListeCommerciaux([]);
     }
   };
+
 const getCoursFiltre = (listeCours, form) => {
   if (!form.filiere || !listeCours.length) return [];
   const candidats = buildCoursCandidates(form);
@@ -1334,6 +1334,7 @@ const getCoursFiltre = (listeCours, form) => {
     });
   });
 };
+
   const filtrerEtudiants = () => {
     let resultats = etudiants;
 
@@ -1369,6 +1370,7 @@ const getCoursFiltre = (listeCours, form) => {
     setPageActuelle(1);
   };
 const coursFiltres = getCoursFiltre(listeCours, formAjout);
+const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
 
   // Fonctions pour le modal d'ajout
   const openModal = () => {
@@ -1977,7 +1979,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                 <th>Email</th>
                 <th>CIN</th>
                 <th>Code Étudiant</th>
-                <th>Commercial</th>
+                <th>Prix Total</th>
                 <th>Classe</th>
                 <th>Statut</th>
                 <th>Image</th>
@@ -2001,8 +2003,8 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <td>{e.email}</td>
                     <td>{e.cin || 'N/A'}</td>
                     <td>{e.codeEtudiant || 'N/A'}</td>
-                    <td className="commercial-colonne">
-                      {getNomCommercial(e.commercial)}
+                    <td className="prix-colonne">
+                      {e.prixTotal ? `${e.prixTotal} DH` : 'N/A'}
                     </td>
                     <td className="cours-colonne">
                       {e.cours ? e.cours.join(', ') : 'Aucun'}
@@ -2625,8 +2627,10 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       placeholder="Prix total"
                       value={formAjout.prixTotal}
                       onChange={handleChangeAjout}
-                      min="0"
-                      step="0.01"
+                      required
+                      min="10000"
+                      max="99999"
+                      step="1"
                     />
                   </div>
                   <div className="form-group">
@@ -3276,8 +3280,10 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       placeholder="Prix total"
                       value={formModifier.prixTotal}
                       onChange={handleChangeModifier}
-                      min="0"
-                      step="0.01"
+                      required
+                      min="10000"
+                      max="99999"
+                      step="1"
                     />
                   </div>
                   <div className="form-group">

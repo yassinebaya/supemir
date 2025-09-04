@@ -9,7 +9,9 @@ import {
   DollarSign,
   AlertCircle,
   Award,
-  BarChart2
+  BarChart2,
+  User,
+  Globe
 } from "lucide-react";
 import Sidebar from '../components/SidebarCommercial';
 
@@ -19,6 +21,7 @@ const handleLogout = () => {
   }
   window.location.href = '/';
 };
+
 const DashboardCommercial = () => {
   const [stats, setStats] = useState({
     totalEtudiants: 0,
@@ -28,9 +31,10 @@ const DashboardCommercial = () => {
     etudiantsPayes: 0,
     etudiantsNonPayes: 0,
     repartitionGenre: { hommes: 0, femmes: 0 },
-    repartitionFiliere: {},
+    repartitionTypeFormation: {},
     repartitionNiveau: {},
-    evolutionMensuelle: [],
+    repartitionAnneeScolaire: {},
+    evolutionAnneeScolaire: [],
     chiffreAffaire: 0,
     topCommerciaux: [],
     etudiantsRecents: [],
@@ -39,12 +43,55 @@ const DashboardCommercial = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [periode, setPeriode] = useState('mois');
-  const [filtreCommercial, setFiltreCommercial] = useState('');
+  const [anneeScolaire, setAnneeScolaire] = useState('');
+  const [anneesScolairesDisponibles, setAnneesScolairesDisponibles] = useState([]);
+  const [vuePersonnelle, setVuePersonnelle] = useState(false); // true = personnel, false = général
+
+  // Fonction pour générer l'année scolaire actuelle
+  const getAnneeScolaireActuelle = () => {
+    const now = new Date();
+    const anneeActuelle = now.getFullYear();
+    const mois = now.getMonth() + 1;
+    
+    if (mois >= 9) {
+      return `${anneeActuelle}/${anneeActuelle + 1}`;
+    } else {
+      return `${anneeActuelle - 1}/${anneeActuelle}`;
+    }
+  };
+
+  // Générer les années scolaires disponibles
+  useEffect(() => {
+    const generateAnneesScolaires = () => {
+      const annees = [];
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+      
+      // Déterminer l'année scolaire actuelle
+      let startYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+      
+      // Générer les 10 dernières années scolaires
+      for (let i = 0; i < 10; i++) {
+        const year = startYear - i;
+        annees.push(`${year}/${year + 1}`);
+      }
+      
+      return annees;
+    };
+    
+    const annees = generateAnneesScolaires();
+    setAnneesScolairesDisponibles(annees);
+    
+    // Définir l'année scolaire actuelle par défaut
+    const anneeScolaireActuelle = getAnneeScolaireActuelle();
+    setAnneeScolaire(anneeScolaireActuelle);
+  }, []);
 
   useEffect(() => {
-    fetchStats();
-  }, [periode, filtreCommercial]);
+    if (anneeScolaire) {
+      fetchStats();
+    }
+  }, [anneeScolaire, vuePersonnelle]);
 
   const fetchStats = async () => {
     try {
@@ -57,9 +104,11 @@ const DashboardCommercial = () => {
       }
 
       const params = {};
-      if (periode) params.periode = periode;
-      if (filtreCommercial && filtreCommercial.trim() !== '') {
-        params.commercial = filtreCommercial;
+      if (anneeScolaire) params.anneeScolaire = anneeScolaire;
+      
+      // Ajouter le paramètre pour vue personnelle
+      if (vuePersonnelle) {
+        params.personnel = 'true';
       }
       
       const res = await fetch('http://195.179.229.230:5000/api/comercial/stats?' + new URLSearchParams(params), {
@@ -84,9 +133,10 @@ const DashboardCommercial = () => {
         etudiantsPayes: data.etudiantsPayes || 0,
         etudiantsNonPayes: data.etudiantsNonPayes || 0,
         repartitionGenre: data.repartitionGenre || { hommes: 0, femmes: 0 },
-        repartitionFiliere: data.repartitionFiliere || {},
+        repartitionTypeFormation: data.repartitionTypeFormation || {},
         repartitionNiveau: data.repartitionNiveau || {},
-        evolutionMensuelle: Array.isArray(data.evolutionMensuelle) ? data.evolutionMensuelle : [],
+        repartitionAnneeScolaire: data.repartitionAnneeScolaire || {},
+        evolutionAnneeScolaire: Array.isArray(data.evolutionAnneeScolaire) ? data.evolutionAnneeScolaire : [],
         chiffreAffaire: data.chiffreAffaire || 0,
         topCommerciaux: Array.isArray(data.topCommerciaux) ? data.topCommerciaux : [],
         etudiantsRecents: Array.isArray(data.etudiantsRecents) ? data.etudiantsRecents : [],
@@ -142,13 +192,15 @@ const DashboardCommercial = () => {
     }
   };
 
-  const getColorForIndex = (index) => {
-    const colors = [
-      'var(--primary-blue)', 'var(--primary-green)', 'var(--primary-purple)', 
-      'var(--primary-red)', 'var(--primary-yellow)', 'var(--primary-indigo)', 
-      'var(--primary-teal)', 'var(--primary-pink)'
-    ];
-    return colors[index % colors.length];
+  const getTypeFormationLabel = (type) => {
+    const labels = {
+      'CYCLE_INGENIEUR': 'Cycle Ingénieur',
+      'LICENCE_PRO': 'Licence Professionnelle',
+      'MASTER_PRO': 'Master Professionnel',
+      'MASI': 'MASI',
+      'IRM': 'IRM'
+    };
+    return labels[type] || type;
   };
 
   if (loading) {
@@ -183,58 +235,133 @@ const DashboardCommercial = () => {
     <div className="admin-dashboard" style={{
       background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
     }}> 
-                      <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} />
 
       <div className="dashboard-header">
         <div className="container">
           <div className="header-content" style={{
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '20px',
-  textAlign: 'center'
-}}>
-  <div className="header-info">
-    <h1 style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      margin: 0
-    }}>
-      Tableau de bord commercial
-    </h1>
-  </div>
-  
-  <div style={{
-    display: 'flex',
-    gap: '16px',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    justifyContent: 'center'
-  }}>
-    <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-      <label style={{fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)'}}>
-        Période:
-      </label>
-      <select 
-        value={periode} 
-        onChange={(e) => setPeriode(e.target.value)}
-        style={{
-          padding: '8px 12px',
-          borderRadius: '8px',
-          border: '1px solid #E5E7EB',
-          backgroundColor: 'white'
-        }}
-      >
-        <option value="jour">Aujourd'hui</option>
-        <option value="semaine">Cette semaine</option>
-        <option value="mois">Ce mois</option>
-        <option value="annee">Cette année</option>
-        <option value="tout">Toutes périodes</option>
-      </select>
-    </div>
-  </div>
-</div>
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px',
+            textAlign: 'center'
+          }}>
+            <div className="header-info">
+              <h1 style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: 0
+              }}>
+                Tableau de bord commercial
+              </h1>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '16px',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              {/* Boutons Personnel/Général */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                backgroundColor: 'white',
+                padding: '4px',
+                borderRadius: '12px',
+                border: '1px solid #E5E7EB'
+              }}>
+                <button
+                  onClick={() => setVuePersonnelle(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    backgroundColor: !vuePersonnelle ? 'var(--primary-blue)' : 'transparent',
+                    color: !vuePersonnelle ? 'white' : 'var(--text-secondary)'
+                  }}
+                >
+                  <Globe size={16} />
+                  Général
+                </button>
+                <button
+                  onClick={() => setVuePersonnelle(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    backgroundColor: vuePersonnelle ? 'var(--primary-green)' : 'transparent',
+                    color: vuePersonnelle ? 'white' : 'var(--text-secondary)'
+                  }}
+                >
+                  <User size={16} />
+                  Personnel
+                </button>
+              </div>
+              
+              {/* Sélecteur d'année scolaire */}
+              <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                <label style={{fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)'}}>
+                  Année scolaire:
+                </label>
+                <select 
+                  value={anneeScolaire} 
+                  onChange={(e) => setAnneeScolaire(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #E5E7EB',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  {anneesScolairesDisponibles.map(annee => (
+                    <option key={annee} value={annee}>{annee}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            {/* Indicateur de vue actuelle */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: vuePersonnelle ? '#f0f9ff' : '#f9fafb',
+              borderRadius: '8px',
+              border: `1px solid ${vuePersonnelle ? '#3b82f6' : '#e5e7eb'}`,
+              fontSize: '0.875rem',
+              color: 'var(--text-secondary)'
+            }}>
+              {vuePersonnelle ? (
+                <>
+                  <User size={16} style={{color: 'var(--primary-green)'}} />
+                  Vos statistiques personnelles
+                </>
+              ) : (
+                <>
+                  <Globe size={16} style={{color: 'var(--primary-blue)'}} />
+                  Statistiques générales de l'école
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -245,8 +372,11 @@ const DashboardCommercial = () => {
             <div className="stat-card blue">
               <div className="stat-card-content">
                 <div className="stat-card-info">
-                  <div className="stat-card-title">Étudiants total</div>
+                  <div className="stat-card-title">
+                    {vuePersonnelle ? 'Mes étudiants' : 'Étudiants total'}
+                  </div>
                   <div className="stat-card-value">{formatNombre(stats.totalEtudiants)}</div>
+                  <div className="stat-card-subtitle">Année {anneeScolaire}</div>
                 </div>
                 <div className="stat-card-icon">
                   <Users />
@@ -257,15 +387,11 @@ const DashboardCommercial = () => {
             <div className="stat-card green">
               <div className="stat-card-content">
                 <div className="stat-card-info">
-                  <div className="stat-card-title">Nouveaux étudiants</div>
-                  <div className="stat-card-value">{formatNombre(stats.nouveauxEtudiants)}</div>
-                  <div className="stat-card-subtitle">
-                    {periode === 'mois' ? 'ce mois' : 
-                     periode === 'annee' ? 'cette année' : 
-                     periode === 'jour' ? 'aujourd\'hui' :
-                     periode === 'semaine' ? 'cette semaine' : 
-                     'total'}
+                  <div className="stat-card-title">
+                    {vuePersonnelle ? 'Mes étudiants actifs' : 'Étudiants actifs'}
                   </div>
+                  <div className="stat-card-value">{formatNombre(stats.etudiantsActifs)}</div>
+                  <div className="stat-card-subtitle">Année {anneeScolaire}</div>
                 </div>
                 <div className="stat-card-icon">
                   <UserCheck />
@@ -276,8 +402,11 @@ const DashboardCommercial = () => {
             <div className="stat-card purple">
               <div className="stat-card-content">
                 <div className="stat-card-info">
-                  <div className="stat-card-title">Chiffre d'affaires</div>
+                  <div className="stat-card-title">
+                    {vuePersonnelle ? 'Mon chiffre d\'affaires' : 'Chiffre d\'affaires'}
+                  </div>
                   <div className="stat-card-value">{formatCurrency(stats.chiffreAffaire)}</div>
+                  <div className="stat-card-subtitle">Année {anneeScolaire}</div>
                 </div>
                 <div className="stat-card-icon">
                   <DollarSign />
@@ -288,9 +417,13 @@ const DashboardCommercial = () => {
             <div className="stat-card yellow">
               <div className="stat-card-content">
                 <div className="stat-card-info">
-                  <div className="stat-card-title">Taux de conversion</div>
+                  <div className="stat-card-title">
+                    {vuePersonnelle ? 'Mon taux de paiement' : 'Taux de paiement'}
+                  </div>
                   <div className="stat-card-value">{stats.tauxConversion}%</div>
-                  <div className="stat-card-subtitle">Étudiants payés</div>
+                  <div className="stat-card-subtitle">
+                    {formatNombre(stats.etudiantsPayes)}/{formatNombre(stats.totalEtudiants)} payés
+                  </div>
                 </div>
                 <div className="stat-card-icon">
                   <TrendingUp />
@@ -301,28 +434,32 @@ const DashboardCommercial = () => {
           
           {/* Graphiques */}
           <div className="charts-grid">
-            {/* Répartition par filière */}
+            {/* Répartition par type de formation */}
             <div className="chart-card">
               <div className="chart-header">
                 <GraduationCap size={20} />
-                <h3>Répartition par filière</h3>
+                <h3>
+                  {vuePersonnelle ? 'Mes étudiants par formation' : 'Répartition par type de formation'}
+                </h3>
               </div>
               
-              {Object.keys(stats.repartitionFiliere).length > 0 ? (
+              {Object.keys(stats.repartitionTypeFormation).length > 0 ? (
                 <div style={{marginTop: '24px'}}>
-                  {Object.entries(stats.repartitionFiliere).map(([filiere, count]) => {
+                  {Object.entries(stats.repartitionTypeFormation).map(([type, count]) => {
                     const percentage = stats.totalEtudiants > 0 
                       ? Math.round((count / stats.totalEtudiants) * 100) 
                       : 0;
                     return (
-                      <div key={filiere} style={{marginBottom: '16px'}}>
+                      <div key={type} style={{marginBottom: '16px'}}>
                         <div style={{
                           display: 'flex', 
                           justifyContent: 'space-between', 
                           marginBottom: '8px',
                           fontSize: '0.875rem'
                         }}>
-                          <span style={{fontWeight: '600', color: 'var(--text-primary)'}}>{filiere}</span>
+                          <span style={{fontWeight: '600', color: 'var(--text-primary)'}}>
+                            {getTypeFormationLabel(type)}
+                          </span>
                           <span style={{color: 'var(--text-secondary)'}}>{count} ({percentage}%)</span>
                         </div>
                         <div style={{
@@ -336,7 +473,7 @@ const DashboardCommercial = () => {
                             style={{
                               width: `${percentage}%`,
                               height: '100%',
-                              backgroundColor: 'var(--primary-blue)',
+                              backgroundColor: vuePersonnelle ? 'var(--primary-green)' : 'var(--primary-blue)',
                               borderRadius: '4px',
                               transition: 'width 0.5s ease'
                             }}
@@ -350,19 +487,21 @@ const DashboardCommercial = () => {
                 <div className="chart-empty">
                   <GraduationCap size={48} />
                   <h4>Aucune donnée disponible</h4>
-                  <p>Les données de filières apparaîtront ici</p>
+                  <p>Les données de formations apparaîtront ici</p>
                 </div>
               )}
             </div>
             
-            {/* Évolution mensuelle */}
+            {/* Évolution par année scolaire */}
             <div className="chart-card">
               <div className="chart-header">
                 <BarChart2 size={20} />
-                <h3>Évolution des inscriptions</h3>
+                <h3>
+                  {vuePersonnelle ? 'Mon évolution par année' : 'Évolution par année scolaire'}
+                </h3>
               </div>
               
-              {stats.evolutionMensuelle.length > 0 ? (
+              {stats.evolutionAnneeScolaire.length > 0 ? (
                 <div style={{height: '300px', marginTop: '24px'}}>
                   <div style={{
                     height: '100%',
@@ -371,12 +510,20 @@ const DashboardCommercial = () => {
                     gap: '8px',
                     padding: '20px 0'
                   }}>
-                    {stats.evolutionMensuelle.map((item, index) => {
-                      const maxValue = Math.max(...stats.evolutionMensuelle.map(i => i.count || 0));
+                    {stats.evolutionAnneeScolaire.map((item, index) => {
+                      const maxValue = Math.max(...stats.evolutionAnneeScolaire.map(i => i.count || 0));
                       const height = maxValue > 0 ? ((item.count || 0) / maxValue) * 100 : 0;
                       
                       return (
                         <div key={index} style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-secondary)',
+                            marginBottom: '8px',
+                            fontWeight: '600'
+                          }}>
+                            {item.count}
+                          </div>
                           <div style={{
                             width: '100%',
                             height: '200px',
@@ -388,12 +535,12 @@ const DashboardCommercial = () => {
                               style={{
                                 width: '100%',
                                 height: `${Math.max(height, 2)}%`,
-                                backgroundColor: 'var(--primary-blue)',
+                                backgroundColor: vuePersonnelle ? 'var(--primary-green)' : 'var(--primary-blue)',
                                 borderRadius: '4px 4px 0 0',
                                 transition: 'height 0.5s ease',
                                 position: 'relative'
                               }}
-                              title={`${item.count} inscriptions`}
+                              title={`${item.count} étudiants`}
                             />
                           </div>
                           <div style={{
@@ -403,7 +550,7 @@ const DashboardCommercial = () => {
                             transform: 'rotate(-45deg)',
                             whiteSpace: 'nowrap'
                           }}>
-                            {item.mois}
+                            {item.anneeScolaire}
                           </div>
                         </div>
                       );
@@ -414,154 +561,127 @@ const DashboardCommercial = () => {
                 <div className="chart-empty">
                   <BarChart2 size={48} />
                   <h4>Aucune donnée disponible</h4>
-                  <p>L'évolution des inscriptions apparaîtra ici</p>
+                  <p>L'évolution par année scolaire apparaîtra ici</p>
                 </div>
               )}
             </div>
           </div>
           
           <div className="pie-charts-grid">
-            {/* Top commerciaux */}
-            <div className="chart-card">
-              <div className="chart-header">
-                <UserCheck size={20} />
-                <h3>Top commerciaux</h3>
-              </div>
-              
-              {stats.topCommerciaux.length > 0 ? (
-                <div style={{marginTop: '24px'}}>
-                  {stats.topCommerciaux.map((com, index) => (
-                    <div key={com._id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '12px',
-                      backgroundColor: '#F9FAFB',
-                      borderRadius: '8px',
-                      marginBottom: '12px',
-                      gap: '12px'
-                    }}>
-                      <div style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--primary-blue)',
+            {/* Top commerciaux - Seulement en vue générale */}
+            {!vuePersonnelle && (
+              <div className="chart-card">
+                <div className="chart-header">
+                  <UserCheck size={20} />
+                  <h3>Top commerciaux</h3>
+                  <span style={{fontSize: '0.875rem', color: 'var(--text-secondary)'}}>
+                    Année {anneeScolaire}
+                  </span>
+                </div>
+                
+                {stats.topCommerciaux.length > 0 ? (
+                  <div style={{marginTop: '24px'}}>
+                    {stats.topCommerciaux.map((com, index) => (
+                      <div key={com._id} style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '0.875rem'
+                        padding: '12px',
+                        backgroundColor: '#F9FAFB',
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        gap: '12px'
                       }}>
-                        {index + 1}
-                      </div>
-                      <div style={{flex: 1}}>
-                        <div style={{fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px'}}>
-                          {com.nomComplet || `${com.prenom || ''} ${com.nom || ''}`.trim() || 'N/A'}
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--primary-blue)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '0.875rem'
+                        }}>
+                          {index + 1}
                         </div>
-                        <div style={{fontSize: '0.875rem', color: 'var(--text-secondary)'}}>
-                          {com.count || 0} étudiants • {formatCurrency(com.chiffreAffaire || 0)}
+                        <div style={{flex: 1}}>
+                          <div style={{fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px'}}>
+                            {com.nomComplet || `${com.prenom || ''} ${com.nom || ''}`.trim() || 'N/A'}
+                          </div>
+                          <div style={{fontSize: '0.875rem', color: 'var(--text-secondary)'}}>
+                            {com.count || 0} étudiants • {formatCurrency(com.chiffreAffaire || 0)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="chart-empty">
-                  <UserCheck size={48} />
-                  <h4>Aucune donnée disponible</h4>
-                  <p>Le classement des commerciaux apparaîtra ici</p>
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="chart-empty">
+                    <UserCheck size={48} />
+                    <h4>Aucune donnée disponible</h4>
+                    <p>Le classement des commerciaux apparaîtra ici</p>
+                  </div>
+                )}
+              </div>
+            )}
             
-            {/* Dernières inscriptions */}
+            {/* Répartition par niveau */}
             <div className="chart-card">
               <div className="chart-header">
-                <Clock size={20} />
-                <h3>Dernières inscriptions</h3>
+                <Award size={20} />
+                <h3>
+                  {vuePersonnelle ? 'Mes étudiants par niveau' : 'Répartition par niveau'}
+                </h3>
               </div>
               
-              {stats.etudiantsRecents.length > 0 ? (
+              {Object.keys(stats.repartitionNiveau).length > 0 ? (
                 <div style={{marginTop: '24px'}}>
-                  {stats.etudiantsRecents.map(etudiant => (
-                    <div key={etudiant._id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '12px',
-                      backgroundColor: '#F9FAFB',
-                      borderRadius: '8px',
-                      marginBottom: '12px',
-                      gap: '12px'
-                    }}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        backgroundColor: '#E5E7EB',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden'
-                      }}>
-                        {etudiant.image ? (
-                          <img 
-                            src={`http://195.179.229.230:5000${etudiant.image}`} 
-                            alt={etudiant.prenom || 'Étudiant'}
-                            style={{width: '100%', height: '100%', objectFit: 'cover'}}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <Users size={20} style={{color: 'var(--text-secondary)', display: etudiant.image ? 'none' : 'block'}} />
-                      </div>
-                      
-                      <div style={{flex: 1}}>
-                        <div style={{fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px'}}>
-                          {`${etudiant.prenom || ''} ${etudiant.nomDeFamille || ''}`.trim() || 'N/A'}
-                        </div>
-                        <div style={{fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '4px'}}>
-                          {etudiant.filiere || 'N/A'}
-                        </div>
-                        <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
-                          {formatDate(etudiant.dateInscription || etudiant.createdAt)}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        {etudiant.paye ? (
-                          <span style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#D1FAE5',
-                            color: '#065F46',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600'
+                  {Object.entries(stats.repartitionNiveau)
+                    .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                    .map(([niveau, count]) => {
+                      const percentage = stats.totalEtudiants > 0 
+                        ? Math.round((count / stats.totalEtudiants) * 100) 
+                        : 0;
+                      return (
+                        <div key={niveau} style={{marginBottom: '16px'}}>
+                          <div style={{
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '8px',
+                            fontSize: '0.875rem'
                           }}>
-                            Payé
-                          </span>
-                        ) : (
-                          <span style={{
-                            padding: '4px 8px',
-                            backgroundColor: '#FEF3C7',
-                            color: '#92400E',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600'
+                            <span style={{fontWeight: '600', color: 'var(--text-primary)'}}>
+                              Niveau {niveau}
+                            </span>
+                            <span style={{color: 'var(--text-secondary)'}}>{count} ({percentage}%)</span>
+                          </div>
+                          <div style={{
+                            width: '100%', 
+                            height: '8px', 
+                            backgroundColor: '#F3F4F6', 
+                            borderRadius: '4px',
+                            overflow: 'hidden'
                           }}>
-                            En attente
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                            <div 
+                              style={{
+                                width: `${percentage}%`,
+                                height: '100%',
+                                backgroundColor: vuePersonnelle ? 'var(--primary-green)' : 'var(--primary-green)',
+                                borderRadius: '4px',
+                                transition: 'width 0.5s ease'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="chart-empty">
-                  <Clock size={48} />
-                  <h4>Aucune inscription récente</h4>
-                  <p>Les dernières inscriptions apparaîtront ici</p>
+                  <Award size={48} />
+                  <h4>Aucune donnée disponible</h4>
+                  <p>La répartition par niveau apparaîtra ici</p>
                 </div>
               )}
             </div>

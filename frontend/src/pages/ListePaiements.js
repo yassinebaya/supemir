@@ -19,7 +19,7 @@ const [filters, setFilters] = useState({
   dateFin: '',
   montantMin: '',
   montantMax: '',
-  Cours: '',
+  cours: '',
   dureeMin: '',
   dureeMax: '',
   statut: '', // 'actif', 'expire', 'tous'
@@ -122,8 +122,12 @@ const [filters, setFilters] = useState({
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      setPaiements(data);
-      setFilteredPaiements(data);
+      
+      // Trier les paiements par date de création décroissante (plus récent en premier)
+      const sortedData = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      setPaiements(sortedData);
+      setFilteredPaiements(sortedData);
     } catch (err) {
       console.error('Erreur chargement paiements:', err);
     }
@@ -255,7 +259,7 @@ const AdvancedFilters = () => (
             value={filters.cours}
             onChange={(e) => setFilters({...filters, cours: e.target.value})}
             style={styles.filterInput}
-            placeholder="Nom du classe..."
+            placeholder="Nom de la classe..."
           />
         </div>
         
@@ -706,6 +710,7 @@ function convertirCentaines(nombre) {
   
   return result;
 }
+
   const openDetailModal = (paiement) => {
     setSelectedPaiement(paiement);
     setShowDetailModal(true);
@@ -731,10 +736,11 @@ function convertirCentaines(nombre) {
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => generatePDF(paiement)}
             style={styles.cardPdfButton}
+            title="Télécharger PDF"
           >
             <Download size={20} />
           </button>
@@ -795,7 +801,7 @@ function convertirCentaines(nombre) {
   const styles = {
     container: {
       minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+    backgroundImage: 'linear-gradient(135deg, #f0f9ff 0%, #a6dbff 25%, #f3e8ff 100%)',
       padding: '24px',
     },
     maxWidth: {
@@ -1586,7 +1592,10 @@ subtitle: {
                 </tr>
               </thead>
               <tbody style={styles.tbody}>
-                {filteredPaiements.map((p, index) => (
+                {filteredPaiements
+                  .slice() // نسخ المصفوفة حتى لا نعدل الأصلية
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((p, index) => (
                   <tr 
                     key={p._id} 
                     style={styles.tr}
@@ -1651,8 +1660,11 @@ subtitle: {
           </div>
         ) : (
           <div style={styles.cardsGrid}>
-            {filteredPaiements.map(p => (
-              <CardView key={p._id} paiement={p} />
+            {filteredPaiements
+              .slice()
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map(p => (
+                <CardView key={p._id} paiement={p} />
             ))}
           </div>
         )}
@@ -1786,7 +1798,8 @@ subtitle: {
                   <div style={styles.detailItem}>
                     <div style={styles.detailLabel}>
                       <BookOpen size={16} />
-Classe                    </div>
+                      Classe
+                    </div>
                     <div style={styles.detailValue}>
                       {Array.isArray(selectedPaiement.cours) 
                         ? selectedPaiement.cours.join(', ') 

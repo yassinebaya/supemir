@@ -255,36 +255,54 @@ const AjouterPresence = () => {
     }
   }, [heureDebut]);
 
+  // 🆕 Fonction pour vérifier si tous les champs requis sont remplis
+  const areAllFieldsFilled = () => {
+    return selectedCours && dateSession && heureDebut && heureFin;
+  };
+
+  // 🆕 useEffect pour charger les étudiants uniquement quand tous les champs sont remplis
+  useEffect(() => {
+    const loadStudents = async () => {
+      if (!areAllFieldsFilled()) {
+        setPresences([]);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        
+        const res = await axios.get('http://195.179.229.230:5000/api/professeur/etudiants', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Filtrer par le cours sélectionné
+        const filtered = res.data.filter(et => et.cours.includes(selectedCours));
+
+        const initialPresences = filtered.map(et => ({
+          etudiant: et._id,
+          nom: et.nomComplet,
+          present: true,
+          remarque: '',
+        }));
+        setPresences(initialPresences);
+      } catch (error) {
+        console.error('Erreur lors du chargement des étudiants:', error);
+        setMessage('error');
+      }
+    };
+
+    loadStudents();
+  }, [selectedCours, dateSession, heureDebut, heureFin]); // 🆕 Déclencher quand un de ces champs change
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/';
   };
 
-  const handleCoursChange = async (e) => {
+  // 🔄 Fonction simplifiée pour la sélection du cours
+  const handleCoursChange = (e) => {
     setSelectedCours(e.target.value);
-    setPresences([]);
-    setMessage('');
-
-    if (!e.target.value) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('http://195.179.229.230:5000/api/etudiants', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const filtered = res.data.filter(et => et.actif && et.cours.includes(e.target.value));
-
-      const initialPresences = filtered.map(et => ({
-        etudiant: et._id,
-        nom: et.nomComplet,
-        present: true,
-        remarque: '',
-      }));
-      setPresences(initialPresences);
-    } catch (error) {
-      console.error('Erreur lors du chargement des étudiants:', error);
-    }
+    setMessage(''); // Reset message
   };
 
   const handlePresenceChange = (index, field, value) => {
@@ -327,6 +345,11 @@ const AjouterPresence = () => {
         });
       }
       setMessage('success');
+      
+      // 🆕 Rafraîchir la page après 2 secondes pour éviter les doublons
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (err) {
       console.error('Erreur:', err);
       setMessage('error');
@@ -391,14 +414,14 @@ const AjouterPresence = () => {
                 {/* En-tête colonne gauche */}
                 <div style={styles.columnHeader}>
                   <BookOpen style={styles.columnIcon} />
-                  <h3 style={styles.columnTitle}>Informations du cours</h3>
+                  <h3 style={styles.columnTitle}>Informations du classe</h3>
                 </div>
                 
                 {/* Sélection du cours */}
                 <div style={styles.formGroup}>
                   <label style={styles.label}>
                     <BookOpen style={styles.labelIcon} />
-                    Sélectionner un cours
+                    Sélectionner un classe
                   </label>
                   <select 
                     style={styles.select} 
@@ -407,7 +430,7 @@ const AjouterPresence = () => {
                     required
                     className="form-select"
                   >
-                    <option value="">Choisir un cours...</option>
+                    <option value="">Choisir un classe...</option>
                     {cours.map(c => (
                       <option key={c._id} value={c.nom}>{c.nom}</option>
                     ))}
@@ -518,8 +541,23 @@ const AjouterPresence = () => {
               </div>
             </div>
 
-            {/* Liste des présences */}
-            {presences.length > 0 && (
+            {/* 🆕 Message d'instruction si tous les champs ne sont pas remplis */}
+            {!areAllFieldsFilled() && (
+              <div style={styles.instructionMessage}>
+                <div style={styles.instructionContent}>
+                  <Clock style={styles.instructionIcon} />
+                  <div>
+                    <h4 style={styles.instructionTitle}>Complétez la configuration</h4>
+                    <p style={styles.instructionText}>
+                      Veuillez remplir tous les champs ci-dessus pour voir la liste des étudiants et enregistrer la présence.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Liste des présences - 🆕 Affichée seulement si tous les champs sont remplis */}
+            {areAllFieldsFilled() && presences.length > 0 && (
               <div style={styles.presenceSection}>
                 <div style={styles.presenceHeader}>
                   <h3 style={styles.presenceTitle}>
@@ -624,7 +662,7 @@ const AjouterPresence = () => {
                 {message === 'success' ? (
                   <>
                     <CheckCircle style={styles.messageIcon} />
-                    Présence enregistrée avec succès !
+                    Présence enregistrée avec succès ! Redirection en cours...
                   </>
                 ) : (
                   <>
@@ -644,7 +682,7 @@ const AjouterPresence = () => {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+    background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
   },
   header: {
@@ -736,7 +774,8 @@ const styles = {
     flexDirection: 'column',
     gap: '24px',
     padding: '24px',
- background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',    borderRadius: '16px',
+    background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+    borderRadius: '16px',
     border: '1px solid rgba(217, 119, 6, 0.2)',
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
     position: 'relative'
@@ -834,6 +873,38 @@ const styles = {
   periodeIcon: {
     width: '18px',
     height: '18px'
+  },
+  // 🆕 Styles pour le message d'instruction
+  instructionMessage: {
+    background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+    border: '2px solid #93c5fd',
+    borderRadius: '12px',
+    padding: '20px',
+    marginBottom: '24px'
+  },
+  instructionContent: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px'
+  },
+  instructionIcon: {
+    width: '24px',
+    height: '24px',
+    color: '#3b82f6',
+    marginTop: '2px',
+    flexShrink: 0
+  },
+  instructionTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#1e40af',
+    margin: '0 0 8px 0'
+  },
+  instructionText: {
+    fontSize: '14px',
+    color: '#1e3a8a',
+    margin: '0',
+    lineHeight: '1.5'
   },
   presenceSection: {
     marginTop: '32px',
@@ -988,4 +1059,5 @@ const styles = {
     height: '20px'
   }
 };
+
 export default AjouterPresence;

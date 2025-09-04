@@ -604,7 +604,7 @@ const stopRecording = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex',           background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
+    <div style={{ minHeight: '100vh', display: 'flex',           background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)'
  }}> <Sidebar onLogout={handleLogout} />
       <div style={{ flexGrow: 1, padding: '20px' }}>
     <div style={{

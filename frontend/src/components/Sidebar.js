@@ -4,26 +4,25 @@ import {
   GraduationCap,
   Wallet,
   Clock,
-   Briefcase,
+  Briefcase,
   Users,
+  AlertTriangle,
   BookOpen,
   CreditCard,
   Plus,
-   BarChart3,
+  BarChart3,
   Calendar,
   ClipboardList,
   LogOut,
   Menu,
   X,
-   MessageCircle,
+  MessageCircle,
   Home,
   FileText,
   User,
   Shield,
   QrCode,
-      Newspaper
-
-  
+  Newspaper
 } from 'lucide-react';
 
 const Sidebar = ({ onLogout }) => {
@@ -31,6 +30,27 @@ const Sidebar = ({ onLogout }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [userInfo, setUserInfo] = useState(null);
+
+  // Récupérer les informations utilisateur du token
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role);
+        setUserInfo({
+          nom: payload.nom,
+          filiere: payload.filiere,
+          role: payload.role
+        });
+      }
+    } catch (error) {
+      console.error('Erreur extraction token:', error);
+      setUserRole('admin'); // Fallback
+    }
+  }, []);
 
   // Detect mobile screen size
   useEffect(() => {
@@ -38,7 +58,6 @@ const Sidebar = ({ onLogout }) => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
       
-      // Sur desktop, ouvrir par défaut
       if (!mobile) {
         setIsOpen(true);
       } else {
@@ -50,6 +69,130 @@ const Sidebar = ({ onLogout }) => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Navigation items pour admin (configuration actuelle)
+  const adminNavigationItems = [
+    {
+      path: '/admin/dashboard',
+      label: 'Dashboard',
+      icon: Home
+    },
+    {
+      path: '/update-profil',
+      label: 'Profil',
+      icon: Shield,
+    },
+    {
+      path: '/liste-classes',
+      label: 'Classes',
+      icon: BookOpen
+    },
+    {
+      path: '/liste-etudiants',
+      label: 'Étudiants',
+      icon: Users
+    },
+    {
+      path: '/liste-professeurs',
+      label: 'Professeurs',
+      icon: User
+    },
+    {
+      path: '/ajouter-paiement',
+      label: 'Nouveau Paiement',
+      icon: Plus
+    },
+    {
+      path: '/liste-paiements',
+      label: 'Paiements',
+      icon: CreditCard
+    },
+       {
+          path: '/admin/paiements-exp',
+          label: 'Paiements Expirés',
+          icon: AlertTriangle
+        },
+    {
+      path: '/admin/seances',
+      label: 'Séances',
+      icon: Clock
+    },
+    {
+      path: '/calendrier',
+      label: 'Calendrier',
+      icon: Calendar
+    },
+    {
+      path: '/liste-presences',
+      label: 'Liste présences',
+      icon: ClipboardList
+    },
+    {
+      path: '/admin/commercial',
+      label: 'Commercial',
+      icon: Briefcase
+    },
+    {
+      path: '/admin/StatistiquesEtudiants',
+      label: 'Statistiques',
+      icon: BarChart3
+    },
+    {
+      path: '/admin/Bulletin',
+      label: 'Bulletin',
+      icon: FileText
+    },
+    {
+      path: '/admin/PaiementManager',
+      label: 'Manager',
+      icon: Wallet
+    },
+    {
+      path: '/admin/pedagogiques',
+      label: 'Pédagogiques',
+      icon: GraduationCap
+    },
+
+    {
+      path: '/admin/administratifs',
+      label: 'Administratifs',
+      icon: Users
+    }
+
+  ];
+
+  // Navigation items pour pédagogique (limitée)
+  const pedagogiqueNavigationItems = [
+    {
+      path: '/pedagogique',
+      label: 'Dashboard',
+      icon: Home
+    },
+    {
+      path: '/pedagogique/professeurs',
+      label: 'Professeurs',
+      icon: User
+    }
+  ];
+
+  // Sélectionner les items de navigation selon le rôle
+  const getNavigationItems = () => {
+    if (userRole === 'pedagogique') {
+      return pedagogiqueNavigationItems;
+    }
+    return adminNavigationItems; // Par défaut pour admin et autres rôles
+  };
+
+  // Titre de la sidebar selon le rôle
+  const getSidebarTitle = () => {
+    if (userRole === 'pedagogique') {
+      const filiere = userInfo?.filiere === 'GENERAL' ? 'GÉNÉRAL' : userInfo?.filiere;
+      return `Pédagogique ${filiere || ''}`;
+    }
+    return 'Supemir Admin';
+  };
+
+  const navigationItems = getNavigationItems();
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -68,94 +211,6 @@ const Sidebar = ({ onLogout }) => {
     }
   };
 
-  const navigationItems = [
-    {
-      path: '/admin',
-      label: 'Dashboard',
-      icon: Home
-    },
-    {
-      path: '/update-profil',
-      label: 'profil',
-      icon:  Shield,
-
-    }, {
-      path: '/liste-classes',
-      label: 'Classes',
-      icon: BookOpen
-    },
-    {
-      path: '/liste-etudiants',
-      label: 'Étudiants',
-      icon: Users
-    },
-    {
-      path: '/liste-professeurs',
-      label: 'Professeurs',
-      icon: User
-    },
- 
-    {
-      path: '/ajouter-paiement',
-      label: 'Nouveau Paiement',
-      icon: Plus
-    },
-
-    {
-      path: '/liste-paiements',
-      label: 'Paiements',
-      icon: CreditCard
-    },
-   
-        {
-      path: '/admin/seances',
-      label: 'Séances',
-      icon:  Clock
-    },
-   
-  
-    {
-      path: '/calendrier',
-      label: 'Calendrier',
-      icon: Calendar
-    },
-    {
-      path: '/liste-presences',
-      label: 'Liste présences',
-      icon: ClipboardList
-    } ,
-  
-
-    
-    {
-      path: '/admin/commercial',
-      label: 'commercial',
-      icon: Briefcase
-    },
-     {
-      path: '/admin/StatistiquesEtudiants',
-      label: 'Statistiques',
-      icon: BarChart3
-    }
-,
-     {
-      path: '/admin/Bulletin',
-      label: 'Bulletin',
-      icon: FileText
-    }
-,
-     {
-      path: '/admin/PaiementManager',
-      label: 'Manager',
-      icon: Wallet
-    }
-
-
-
-
-  ];
-
-  // Utiliser location.pathname au lieu d'un state local
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
@@ -174,17 +229,19 @@ const Sidebar = ({ onLogout }) => {
           --sidebar-bg: #ffffff;
           --sidebar-border: #e5e7eb;
           --sidebar-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-          --primary-color: #4f46e5;
-          --primary-hover: #4338ca;
-          --primary-light: #eef2ff;
+          --primary-color: ${userRole === 'pedagogique' ? '#7c3aed' : '#4f46e5'};
+          --primary-hover: ${userRole === 'pedagogique' ? '#6d28d9' : '#4338ca'};
+          --primary-light: ${userRole === 'pedagogique' ? '#f3e8ff' : '#eef2ff'};
           --text-primary: #1f2937;
           --text-secondary: #6b7280;
           --text-muted: #9ca3af;
           --hover-bg: #f9fafb;
-          --active-bg: #eef2ff;
+          --active-bg: ${userRole === 'pedagogique' ? '#f3e8ff' : '#eef2ff'};
           --border-radius: 12px;
           --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          --header-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          --header-gradient: ${userRole === 'pedagogique' 
+            ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)' 
+            : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)'};
           --logout-color: #dc2626;
           --logout-hover: #b91c1c;
           --logout-bg: #fef2f2;
@@ -195,7 +252,7 @@ const Sidebar = ({ onLogout }) => {
           box-sizing: border-box;
         }
 
-        /* Toggle Button - Positionné en dehors de la sidebar */
+        /* Toggle Button */
         .sidebar-toggle {
           position: fixed;
           top: 20px;
@@ -216,7 +273,6 @@ const Sidebar = ({ onLogout }) => {
           height: 48px;
         }
 
-        /* Sur mobile, le bouton reste à gauche */
         @media (max-width: 768px) {
           .sidebar-toggle {
             left: 20px !important;
@@ -307,12 +363,13 @@ const Sidebar = ({ onLogout }) => {
           display: flex;
           align-items: center;
           gap: 12px;
-          font-size: 20px;
+          font-size: ${userRole === 'pedagogique' ? '16px' : '20px'};
           font-weight: 700;
           color: white;
           margin: 0;
           position: relative;
           z-index: 1;
+          line-height: 1.2;
         }
 
         .sidebar-title .header-icon {
@@ -325,6 +382,19 @@ const Sidebar = ({ onLogout }) => {
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
+        }
+
+        /* Badge pour pédagogique général */
+        .general-badge {
+          display: inline-block;
+          background: rgba(255, 255, 255, 0.2);
+          color: #fbbf24;
+          font-size: 10px;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 4px;
+          margin-top: 4px;
         }
 
         /* Navigation */
@@ -420,7 +490,7 @@ const Sidebar = ({ onLogout }) => {
         }
 
         .nav-item.active .nav-icon-wrapper {
-          background: #c7d2fe;
+          background: ${userRole === 'pedagogique' ? '#ddd6fe' : '#c7d2fe'};
         }
 
         .nav-item.active .nav-icon {
@@ -570,7 +640,7 @@ const Sidebar = ({ onLogout }) => {
         }
       `}</style>
 
-      {/* Toggle Button - Maintenant positionné en dehors de la sidebar */}
+      {/* Toggle Button */}
       <button
         className="sidebar-toggle"
         onClick={toggleSidebar}
@@ -594,7 +664,12 @@ const Sidebar = ({ onLogout }) => {
             <div className="header-icon">
               <GraduationCap size={20} />
             </div>
-   Supemir
+            <div>
+              {getSidebarTitle()}
+              {userRole === 'pedagogique' && userInfo?.filiere === 'GENERAL' && (
+                <div className="general-badge">ACCÈS GLOBAL</div>
+              )}
+            </div>
           </h3>
         </div>
 

@@ -43,8 +43,9 @@ const ListeProfesseurs = () => {
     email: '',
     motDePasse: '',
     cours: [],
-    matiere: '', // NOUVEAU CHAMP
-    actif: true
+    matiere: '',
+    actif: true,
+    estPermanent: true
   });
   const [vueMode, setVueMode] = useState('tableau'); // 'tableau' ou 'carte'
 
@@ -67,8 +68,9 @@ const ListeProfesseurs = () => {
     email: '',
     motDePasse: '',
     cours: [],
-    matiere: '', // NOUVEAU CHAMP
-    actif: true
+    matiere: '',
+    actif: true,
+    estPermanent: true
   });
   const [imageFileModifier, setImageFileModifier] = useState(null);
   const [messageModifier, setMessageModifier] = useState('');
@@ -172,8 +174,9 @@ const ListeProfesseurs = () => {
       email: '',
       motDePasse: '',
       cours: [],
-      matiere: '', // AJOUTER ICI
-      actif: true
+      matiere: '',
+      actif: true,
+      estPermanent: true
     });
     setImageFile(null);
     setMessageAjout('');
@@ -208,12 +211,13 @@ const ListeProfesseurs = () => {
       formData.append('email', formAjout.email);
       formData.append('motDePasse', formAjout.motDePasse);
       formData.append('actif', formAjout.actif);
-      formData.append('matiere', formAjout.matiere); // AJOUTER ICI
+      formData.append('matiere', formAjout.matiere);
+      formData.append('estPermanent', formAjout.estPermanent);
 
       formAjout.cours.forEach(c => formData.append('cours[]', c));
       if (imageFile) formData.append('image', imageFile);
 
-      const response = await axios.post('http://195.179.229.230:5000/api/professeurs', formData, {
+      await axios.post('http://195.179.229.230:5000/api/professeurs', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -222,7 +226,8 @@ const ListeProfesseurs = () => {
 
       setMessageAjout('✅ Professeur ajouté avec succès');
       
-      setProfesseurs([...professeurs, response.data]);
+      // Rafraîchir la liste des professeurs
+      await fetchProfesseurs();
       
       setFormAjout({
         nom: '',
@@ -232,14 +237,15 @@ const ListeProfesseurs = () => {
         email: '',
         motDePasse: '',
         cours: [],
-        matiere: '', // AJOUTER ICI
-        actif: true
+        matiere: '',
+        actif: true,
+        estPermanent: true
       });
       setImageFile(null);
       
       setTimeout(() => {
         closeModal();
-      }, 2000);
+      }, 1500);
       
     } catch (err) {
       setMessageAjout('❌ Erreur: ' + (err.response?.data?.message || 'Erreur inconnue'));
@@ -259,8 +265,9 @@ const ListeProfesseurs = () => {
       email: professeur.email || '',
       motDePasse: '',
       cours: professeur.cours || [],
-      matiere: professeur.matiere || '', // AJOUTER ICI
-      actif: professeur.actif ?? true
+      matiere: professeur.matiere || '',
+      actif: professeur.actif ?? true,
+      estPermanent: professeur.estPermanent ?? true
     });
     setImageFileModifier(null);
     setMessageModifier('');
@@ -278,8 +285,9 @@ const ListeProfesseurs = () => {
       email: '',
       motDePasse: '',
       cours: [],
-      matiere: '', // AJOUTER ICI
-      actif: true
+      matiere: '',
+      actif: true,
+      estPermanent: true
     });
     setImageFileModifier(null);
     setMessageModifier('');
@@ -318,12 +326,13 @@ const ListeProfesseurs = () => {
       }
       
       formData.append('actif', formModifier.actif);
-      formData.append('matiere', formModifier.matiere); // AJOUTER ICI
+      formData.append('matiere', formModifier.matiere);
+      formData.append('estPermanent', formModifier.estPermanent);
 
       formModifier.cours.forEach(c => formData.append('cours[]', c));
       if (imageFileModifier) formData.append('image', imageFileModifier);
 
-      const response = await axios.put(`http://195.179.229.230:5000/api/professeurs/${professeurAModifier._id}`, formData, {
+      await axios.put(`http://195.179.229.230:5000/api/professeurs/${professeurAModifier._id}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -332,11 +341,12 @@ const ListeProfesseurs = () => {
 
       setMessageModifier('✅ Professeur modifié avec succès');
       
-setProfesseurs(professeurs.map(p => p._id === professeurAModifier._id ? response.data.professeur : p));
+      // Rafraîchir la liste des professeurs
+      await fetchProfesseurs();
       
       setTimeout(() => {
         closeEditModal();
-      }, 2000);
+      }, 1500);
       
     } catch (err) {
       setMessageModifier('❌ Erreur: ' + (err.response?.data?.message || 'Erreur inconnue'));
@@ -348,10 +358,11 @@ setProfesseurs(professeurs.map(p => p._id === professeurAModifier._id ? response
   const handleToggleActif = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.patch(`http://195.179.229.230:5000/api/professeurs/${id}/actif`, {}, {
+      await axios.patch(`http://195.179.229.230:5000/api/professeurs/${id}/actif`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setProfesseurs(professeurs.map(p => p._id === id ? res.data : p));
+      // Rafraîchir la liste après le toggle
+      await fetchProfesseurs();
     } catch (err) {
       console.error('Erreur toggle actif:', err);
     }
@@ -365,7 +376,8 @@ setProfesseurs(professeurs.map(p => p._id === professeurAModifier._id ? response
       await axios.delete(`http://195.179.229.230:5000/api/professeurs/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setProfesseurs(professeurs.filter(p => p._id !== id));
+      // Rafraîchir la liste après suppression
+      await fetchProfesseurs();
     } catch (err) {
       console.error('Erreur suppression:', err);
     }
@@ -440,6 +452,119 @@ setProfesseurs(professeurs.map(p => p._id === professeurAModifier._id ? response
           background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
         }}>
       <Sidebar onLogout={handleLogout} />
+
+      {/* Ajouter les styles CSS */}
+      <style jsx>{`
+        .cours-section {
+          margin: 20px 0;
+          padding: 15px;
+          background-color: #f8fafc;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .cours-section h4 {
+          margin: 0 0 15px 0;
+          color: #374151;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .cours-badges {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          align-items: flex-start;
+        }
+
+        .cours-badge {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-size: 13px;
+          font-weight: 500;
+          display: inline-block;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+          transition: all 0.2s ease;
+        }
+
+        .cours-badge:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .no-cours {
+          color: #64748b;
+          font-style: italic;
+          padding: 8px 12px;
+          background-color: #f1f5f9;
+          border-radius: 6px;
+          border: 1px dashed #cbd5e1;
+        }
+
+        .inline {
+          display: inline;
+          margin-right: 4px;
+        }
+
+        .mr-1 {
+          margin-right: 4px;
+        }
+
+        .mr-2 {
+          margin-right: 8px;
+        }
+
+        .etudiant-info-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 15px;
+          margin: 20px 0;
+        }
+
+        .info-card {
+          background: white;
+          padding: 12px;
+          border-radius: 8px;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .info-value {
+          font-size: 14px;
+          color: #374151;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        @media (max-width: 768px) {
+          .cours-badges {
+            flex-direction: column;
+          }
+          
+          .cours-badge {
+            text-align: center;
+          }
+          
+          .etudiant-info-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
 
       <div className="header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         <h2 style={{ width: '100%', textAlign: 'center' }}>Liste des Professeurs</h2>
@@ -952,6 +1077,19 @@ setProfesseurs(professeurs.map(p => p._id === professeurAModifier._id ? response
                 </label>
               </div>
 
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="estPermanent"
+                    checked={formAjout.estPermanent}
+                    onChange={handleChangeAjout}
+                  />
+                  <span className="checkmark"></span>
+                  Professeur permanent
+                </label>
+              </div>
+
               {messageAjout && (
                 <div className={`message ${messageAjout.includes('✅') ? 'succes' : 'erreur'}`}>
                   {messageAjout}
@@ -1065,6 +1203,13 @@ setProfesseurs(professeurs.map(p => p._id === professeurAModifier._id ? response
             <div className="info-label">Matière</div>
             <div className="info-value">
               <BookOpen size={16} className="inline mr-1" /> {professeurSelectionne.matiere || 'Non définie'}
+            </div>
+          </div>
+
+          <div className="info-card">
+            <div className="info-label">Type de contrat</div>
+            <div className="info-value">
+              {professeurSelectionne.estPermanent ? '📋 Permanent' : '📄 Temporaire'}
             </div>
           </div>
         </div>
@@ -1272,6 +1417,18 @@ setProfesseurs(professeurs.map(p => p._id === professeurAModifier._id ? response
               onChange={handleChangeModifier}
             />
             Professeur actif
+          </label>
+        </div>
+
+        <div className="form-group checkbox-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="estPermanent"
+              checked={formModifier.estPermanent}
+              onChange={handleChangeModifier}
+            />
+            Professeur permanent
           </label>
         </div>
 

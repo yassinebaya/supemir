@@ -211,7 +211,7 @@ const STRUCTURE_FORMATION = {
   },
 
   CYCLE_INGENIEUR: {
-    nom: "École d'Ingénieur",
+    nom: "CYCLE_INGENIEUR",
     niveauxManuels: true,
     cycles: {
       'Classes Préparatoires Intégrées': {
@@ -890,7 +890,7 @@ const FormationSelector = ({ form, onChange, prefix = '' }) => {
     <div className="formation-selector">
       <div className="form-row">
        <div className="form-group">
-  <label>Type de Formation *</label>
+  <label>Filière *</label>
   <select
     name="filiere"
     value={form.filiere}
@@ -2695,8 +2695,10 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       placeholder="Prix total"
                       value={formAjout.prixTotal}
                       onChange={handleChangeAjout}
-                      min="0"
-                      step="0.01"
+                      required
+                      min="10000"
+                      max="99999"
+                      step="1"
                     />
                   </div>
                   <div className="form-group">
@@ -3323,8 +3325,10 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       placeholder="Prix total"
                       value={formModifier.prixTotal}
                       onChange={handleChangeModifier}
-                      min="0"
-                      step="0.01"
+                      required
+                      min="10000"
+                      max="99999"
+                      step="1"
                     />
                   </div>
                   <div className="form-group">

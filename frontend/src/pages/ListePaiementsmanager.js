@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import Sidebar from '../components/Sidebarpaiment'; // ✅ استيراد صحيح
 
-const ListePaiementsmanager = () => {
+const ListePaiements = () => {
   const [paiements, setPaiements] = useState([]);
   const [expirés, setExpirés] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -114,57 +114,37 @@ const [filters, setFilters] = useState({
     localStorage.removeItem('token');
     window.location.href = '/';
   };
-const fetchPaiements = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch('http://195.179.229.230:5000/api/paiement-manager/paiements', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    
-    // Adapter selon la structure de réponse
-    const paiements = data.paiements || data; // selon ce que retourne votre API
-    setPaiements(paiements);
-    setFilteredPaiements(paiements);
-  } catch (err) {
-    console.error('Erreur chargement paiements:', err);
-    setPaiements([]);
-    setFilteredPaiements([]);
-  }
-};
 
-const fetchExpirés = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Token non trouvé');
+  const fetchPaiements = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://195.179.229.230:5000/api/paiements', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      // Trier les paiements par date de création décroissante (plus récent en premier)
+      const sortedData = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      setPaiements(sortedData);
+      setFilteredPaiements(sortedData);
+    } catch (err) {
+      console.error('Erreur chargement paiements:', err);
     }
+  };
 
-    const response = await fetch('http://195.179.229.230:5000/api/paiement-manager/paiements/exp', {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
+  const fetchExpirés = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://195.179.229.230:5000/api/paiements/exp', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setExpirés(data);
+    } catch (err) {
+      console.error('Erreur fetch paiements expirés:', err);
     }
-
-    const data = await response.json();
-    console.log('Données reçues:', data);
-
-    setExpirés(data);
-  } catch (error) {
-    console.error('Erreur fetchExpirés:', error);
-    setExpirés([]);
-    // Affichez un message d'erreur à l'utilisateur si nécessaire
-  }
-};
-
-
-
+  };
 
   const toggleModal = () => {
     if (!showModal) fetchExpirés();
@@ -730,6 +710,7 @@ function convertirCentaines(nombre) {
   
   return result;
 }
+
   const openDetailModal = (paiement) => {
     setSelectedPaiement(paiement);
     setShowDetailModal(true);
@@ -755,10 +736,11 @@ function convertirCentaines(nombre) {
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => generatePDF(paiement)}
             style={styles.cardPdfButton}
+            title="Télécharger PDF"
           >
             <Download size={20} />
           </button>
@@ -819,7 +801,7 @@ function convertirCentaines(nombre) {
   const styles = {
     container: {
       minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+    backgroundImage: 'linear-gradient(135deg, #f0f9ff 0%, #a6dbff 25%, #f3e8ff 100%)',
       padding: '24px',
     },
     maxWidth: {
@@ -1610,7 +1592,10 @@ subtitle: {
                 </tr>
               </thead>
               <tbody style={styles.tbody}>
-                {filteredPaiements.map((p, index) => (
+                {filteredPaiements
+                  .slice() // نسخ المصفوفة حتى لا نعدل الأصلية
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((p, index) => (
                   <tr 
                     key={p._id} 
                     style={styles.tr}
@@ -1675,8 +1660,11 @@ subtitle: {
           </div>
         ) : (
           <div style={styles.cardsGrid}>
-            {filteredPaiements.map(p => (
-              <CardView key={p._id} paiement={p} />
+            {filteredPaiements
+              .slice()
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map(p => (
+                <CardView key={p._id} paiement={p} />
             ))}
           </div>
         )}
@@ -1917,4 +1905,4 @@ subtitle: {
   );
 };
 
-export default ListePaiementsmanager;
+export default ListePaiements;

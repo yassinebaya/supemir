@@ -56,21 +56,25 @@ const handleLogin = async () => {
 
       setMessage('success|Connexion réussie ! Redirection en cours...');
 
-      setTimeout(() => {
-        if (data.role === 'admin') {
-          window.location.href = '/admin';
-        } else if (data.role === 'prof') {
-          window.location.href = '/professeur';
-        } else if (data.role === 'etudiant') {
-          window.location.href = '/etudiant';
-        } else if (data.role === 'commercial') {
-          window.location.href = '/commercial';
-        } else if (data.role === 'paiement_manager') { // Nouveau cas
-          window.location.href = '/paiement-manager';
-        } else {
-          setMessage('error|Rôle utilisateur inconnu: ' + data.role);
-        }
-      }, 1500);
+setTimeout(() => {
+  if (data.role === 'admin') {
+    window.location.href = '/admin/dashboard';
+  } else if (data.role === 'administratif') { // 🆕 NOUVEAU - Administratif
+    window.location.href = '/administratif';
+  } else if (data.role === 'prof') {
+    window.location.href = '/professeur';
+  } else if (data.role === 'etudiant') {
+    window.location.href = '/etudiant';
+  } else if (data.role === 'commercial') {
+    window.location.href = '/commercial';
+  } else if (data.role === 'paiement_manager') {
+    window.location.href = '/paiement-manager';
+  } else if (data.role === 'pedagogique') {
+    window.location.href = '/pedagogique';
+  } else {
+    setMessage('error|Rôle utilisateur inconnu: ' + data.role);
+  }
+}, 1500);
     } else {
       setMessage('error|' + (data.message || 'Email ou mot de passe incorrect'));
     }

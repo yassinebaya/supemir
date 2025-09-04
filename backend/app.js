@@ -7,11 +7,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const Commercial = require('./models/commercialModel');
+const Administratif = require('./models/Administratif');
+
 const Bulletin = require('./models/Bulletin'); // en haut
 const PaiementManager = require('./models/paiementManagerModel');
-
+const Pedagogique = require('./models/Pedagogique');
 const { NotificationSupprimee, Configuration } = require('./models/notificationModel');
-
+const { authPedagogique, authAdminOuPedagogique, filtrerParFiliere } = require('./middlewares/pedagogique');
 
 
 const Etudiant = require('./models/etudiantModel');
@@ -65,6 +67,67 @@ const storage = multer.diskStorage({
     cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
 });
+// Middleware combiné pour admin et pédagogique
+const authAdminOrPedagogique = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'Token manquant' });
+    }
+
+    const decoded = jwt.verify(token, 'jwt_secret_key');
+    
+    // Vérifier si c'est un admin
+    if (decoded.role === 'admin') {
+      const admin = await Admin.findById(decoded.id);
+      if (!admin) {
+        return res.status(401).json({ message: 'Admin non trouvé' });
+      }
+      req.user = {
+        id: decoded.id,
+        role: 'admin',
+        nom: decoded.nom
+      };
+      req.adminId = decoded.id;
+      req.admin = admin;
+      return next();
+    }
+    
+    // Vérifier si c'est un pédagogique
+    if (decoded.role === 'pedagogique') {
+      if (Pedagogique) {
+        const pedagogique = await Pedagogique.findById(decoded.id);
+        if (!pedagogique || !pedagogique.actif) {
+          return res.status(401).json({ message: 'Compte pédagogique invalide' });
+        }
+        req.user = {
+          id: decoded.id,
+          role: 'pedagogique',
+          filiere: pedagogique.filiere,
+          nom: decoded.nom,
+          estGeneral: pedagogique.filiere === 'GENERAL'
+        };
+      } else {
+        req.user = {
+          id: decoded.id,
+          role: 'pedagogique',
+          filiere: decoded.filiere,
+          nom: decoded.nom,
+          estGeneral: decoded.filiere === 'GENERAL'
+        };
+      }
+      return next();
+    }
+    
+    return res.status(403).json({ message: 'Accès refusé - Rôle admin ou pédagogique requis' });
+    
+  } catch (error) {
+    console.error('Erreur auth:', error);
+    res.status(401).json({ message: 'Token invalide' });
+  }
+};
+
 const authCommercial = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -240,63 +303,7 @@ app.post('/api/documents', (req, res, next) => {
     res.status(500).json({ message: '❌ Erreur upload document', error: err.message });
   }
 });
-app.post('/api/login', async (req, res) => {
-  const { email, motDePasse } = req.body;
-  const admin = await Admin.findOne({ email });
-  if (admin && await bcrypt.compare(motDePasse, admin.motDePasse)) {
-    const token = jwt.sign({ id: admin._id, role: 'admin' }, 'jwt_secret_key', { expiresIn: '7d' });
-    return res.json({ user: admin, token, role: 'admin' });
-  }
-  // ✅ Essayer comme gestionnaire de paiement
-const paiementManager = await PaiementManager.findOne({ email });
-if (paiementManager && await paiementManager.comparePassword(motDePasse)) {
-  if (!paiementManager.actif) {
-    return res.status(403).json({ message: '⛔ Votre compte gestionnaire est inactif' });
-  }
-  const token = jwt.sign({ id: paiementManager._id, role: 'paiement_manager' }, 'jwt_secret_key', { expiresIn: '7d' });
-  return res.json({ user: paiementManager, token, role: 'paiement_manager' });
-}
 
-  // ✅ Essayer comme professeur
-const professeur = await Professeur.findOne({ email });
-if (professeur && await professeur.comparePassword(motDePasse)) {
-  if (!professeur.actif) {
-    return res.status(403).json({ message: '⛔️ Votre compte est inactif. Veuillez contacter l’administration.' });
-  }
-
-  // ✅ Mise à jour de lastSeen
-  professeur.lastSeen = new Date();
-  await professeur.save();
-
-  const token = jwt.sign({ id: professeur._id, role: 'prof' }, 'jwt_secret_key', { expiresIn: '7d' });
-  return res.json({ user: professeur, token, role: 'prof' });
-}
-
-// ✅ Essayer comme commercial
-const commercial = await Commercial.findOne({ email });
-if (commercial && await commercial.comparePassword(motDePasse)) {
-  if (!commercial.actif) {
-    return res.status(403).json({ message: '⛔️ Votre compte commercial est inactif.' });
-  }
-  const token = jwt.sign({ id: commercial._id, role: 'commercial' }, 'jwt_secret_key', { expiresIn: '7d' });
-  return res.json({ user: commercial, token, role: 'commercial' });
-}
-
-  // ✅ Essayer comme étudiant
-const etudiant = await Etudiant.findOne({ email });
-if (etudiant && await bcrypt.compare(motDePasse, etudiant.motDePasse)) {
-  if (!etudiant.actif) {
-    return res.status(403).json({ message: '⛔️ Votre compte est désactivé. Contactez l’administration.' });
-  }
-etudiant.lastSeen = new Date();
-  await etudiant.save();
-
-  const token = jwt.sign({ id: etudiant._id, role: 'etudiant' }, 'jwt_secret_key', { expiresIn: '7d' });
-  return res.json({ user: etudiant, token, role: 'etudiant' });
-}
-  // ❌ Si aucun ne correspond
-  return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
-});
 
 app.get('/api/etudiant/notifications', authEtudiant, async (req, res) => {
   try {
@@ -3614,7 +3621,7 @@ app.get('/api/notifications/deleted', authAdminOrPaiementManager, (req, res) => 
 });
 // route: POST /api/professeurs
 // accessible uniquement par Admin
-app.post('/api/professeurs', authAdmin, upload.single('image'), async (req, res) => {
+app.post('/api/professeurs', authAdminOrPedagogique, upload.single('image'), async (req, res) => {
   try {
     const {
       nom,
@@ -3625,7 +3632,8 @@ app.post('/api/professeurs', authAdmin, upload.single('image'), async (req, res)
       dateNaissance,
       actif,
       genre,
-      matiere
+      matiere,
+      estPermanent // ✅ Ajout du champ checkbox
     } = req.body;
 
     // 🔐 Vérification email unique
@@ -3654,6 +3662,9 @@ app.post('/api/professeurs', authAdmin, upload.single('image'), async (req, res)
     // ✅ Convertir actif en booléen
     const actifBool = actif === 'true' || actif === true;
 
+    // ✅ Convertir estPermanent en booléen
+    const estPermanentBool = estPermanent === 'true' || estPermanent === true;
+
     // 📦 Créer le professeur
     const professeur = new Professeur({
       nom,
@@ -3665,7 +3676,8 @@ app.post('/api/professeurs', authAdmin, upload.single('image'), async (req, res)
       image: imagePath,
       actif: actifBool,
       cours,
-      matiere
+      matiere,
+      estPermanent: estPermanentBool // ✅ Ajout ici
     });
 
     await professeur.save();
@@ -3692,6 +3704,92 @@ app.post('/api/professeurs', authAdmin, upload.single('image'), async (req, res)
   } catch (err) {
     console.error('❌ Erreur lors de la création du professeur:', err);
     res.status(500).json({ message: '❌ Erreur serveur', error: err.message });
+  }
+});
+
+app.put('/api/professeurs/:id', authAdminOrPedagogique, upload.single('image'), async (req, res) => {
+  try {
+    const professeurId = req.params.id;
+    const {
+      nom,
+      genre,
+      dateNaissance,
+      telephone,
+      email,
+      motDePasse,
+      actif,
+      matiere,
+      estPermanent // ✅ Ajout du champ checkbox
+    } = req.body;
+
+    let cours = req.body.cours;
+
+    // 🧠 S'assurer que cours est un tableau
+    if (!cours) cours = [];
+    if (typeof cours === 'string') cours = [cours];
+
+    // 🔍 Récupérer les anciens cours du professeur
+    const ancienProf = await Professeur.findById(professeurId);
+    if (!ancienProf) return res.status(404).json({ message: "Professeur introuvable" });
+
+    const ancienCours = ancienProf.cours || [];
+
+    // ➖ Cours supprimés
+    const coursSupprimes = ancienCours.filter(c => !cours.includes(c));
+    // ➕ Cours ajoutés
+    const coursAjoutes = cours.filter(c => !ancienCours.includes(c));
+
+    // 🧼 Retirer le prof des cours supprimés
+    for (const coursNom of coursSupprimes) {
+      await Cours.updateOne(
+        { nom: coursNom },
+        { $pull: { professeur: ancienProf.nom } }
+      );
+    }
+
+    // 🧩 Ajouter le prof dans les cours ajoutés
+    for (const coursNom of coursAjoutes) {
+      await Cours.updateOne(
+        { nom: coursNom },
+        { $addToSet: { professeur: nom } }
+      );
+    }
+
+    // 🛠️ Données à mettre à jour
+    const updateData = {
+      nom,
+      genre,
+      dateNaissance: new Date(dateNaissance),
+      telephone,
+      email,
+      cours,
+      matiere,
+      actif: actif === 'true' || actif === true,
+      estPermanent: estPermanent === 'true' || estPermanent === true // ✅ Ajout ici
+    };
+
+    // 📷 Gestion de l'image
+    if (req.file) {
+      updateData.image = `/uploads/${req.file.filename}`;
+    }
+
+    // 🔐 Mot de passe s'il est modifié
+    if (motDePasse && motDePasse.trim() !== '') {
+      updateData.motDePasse = await bcrypt.hash(motDePasse, 10);
+    }
+
+    // ✅ Mise à jour du professeur
+    const updatedProf = await Professeur.findByIdAndUpdate(
+      professeurId,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-motDePasse');
+
+    res.json({ message: "✅ Professeur modifié avec succès", professeur: updatedProf });
+
+  } catch (err) {
+    console.error('❌ Erreur lors de la modification:', err);
+    res.status(500).json({ message: "Erreur lors de la modification", error: err.message });
   }
 });
 
@@ -3811,6 +3909,120 @@ app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
+app.post('/api/login', async (req, res) => {
+  const { email, motDePasse } = req.body;
+  
+  // ✅ Essayer comme admin
+  const admin = await Admin.findOne({ email });
+  if (admin && await bcrypt.compare(motDePasse, admin.motDePasse)) {
+    const token = jwt.sign({ id: admin._id, role: 'admin' }, 'jwt_secret_key', { expiresIn: '7d' });
+    return res.json({ user: admin, token, role: 'admin' });
+  }
+
+  // ✅ Essayer comme administratif
+  const administratif = await Administratif.findOne({ email });
+  if (administratif && await administratif.comparePassword(motDePasse)) {
+    if (!administratif.actif) {
+      return res.status(403).json({ message: '⛔ Votre compte administratif est inactif.' });
+    }
+    
+    const token = jwt.sign({ 
+      id: administratif._id, 
+      role: 'administratif',
+      nom: administratif.nom
+    }, 'jwt_secret_key', { expiresIn: '7d' });
+    
+    return res.json({ 
+      user: {
+        id: administratif._id,
+        nom: administratif.nom,
+        email: administratif.email,
+        telephone: administratif.telephone,
+        role: 'administratif'
+      }, 
+      token, 
+      role: 'administratif' 
+    });
+  }
+
+  // ✅ Essayer comme pédagogique  
+  const pedagogique = await Pedagogique.findOne({ email });
+  if (pedagogique && await pedagogique.comparePassword(motDePasse)) {
+    if (!pedagogique.actif) {
+      return res.status(403).json({ message: 'Votre compte pédagogique est inactif.' });
+    }
+    
+    const token = jwt.sign({ 
+      id: pedagogique._id, 
+      role: 'pedagogique',
+      filiere: pedagogique.filiere,
+      nom: pedagogique.nom
+    }, 'jwt_secret_key', { expiresIn: '7d' });
+    
+    return res.json({ 
+      user: {
+        id: pedagogique._id,
+        nom: pedagogique.nom,
+        email: pedagogique.email,
+        filiere: pedagogique.filiere,
+        role: 'pedagogique'
+      }, 
+      token, 
+      role: 'pedagogique' 
+    });
+  }
+
+  // ✅ Essayer comme gestionnaire de paiement
+  const paiementManager = await PaiementManager.findOne({ email });
+  if (paiementManager && await paiementManager.comparePassword(motDePasse)) {
+    if (!paiementManager.actif) {
+      return res.status(403).json({ message: '⛔ Votre compte gestionnaire est inactif' });
+    }
+    const token = jwt.sign({ id: paiementManager._id, role: 'paiement_manager' }, 'jwt_secret_key', { expiresIn: '7d' });
+    return res.json({ user: paiementManager, token, role: 'paiement_manager' });
+  }
+
+  // ✅ Essayer comme professeur
+  const professeur = await Professeur.findOne({ email });
+  if (professeur && await professeur.comparePassword(motDePasse)) {
+    if (!professeur.actif) {
+      return res.status(403).json({ message: '⛔️ Votre compte est inactif. Veuillez contacter l\'administration.' });
+    }
+
+    // ✅ Mise à jour de lastSeen
+    professeur.lastSeen = new Date();
+    await professeur.save();
+
+    const token = jwt.sign({ id: professeur._id, role: 'prof' }, 'jwt_secret_key', { expiresIn: '7d' });
+    return res.json({ user: professeur, token, role: 'prof' });
+  }
+
+  // ✅ Essayer comme commercial
+  const commercial = await Commercial.findOne({ email });
+  if (commercial && await commercial.comparePassword(motDePasse)) {
+    if (!commercial.actif) {
+      return res.status(403).json({ message: '⛔️ Votre compte commercial est inactif.' });
+    }
+    const token = jwt.sign({ id: commercial._id, role: 'commercial' }, 'jwt_secret_key', { expiresIn: '7d' });
+    return res.json({ user: commercial, token, role: 'commercial' });
+  }
+
+  // ✅ Essayer comme étudiant
+  const etudiant = await Etudiant.findOne({ email });
+  if (etudiant && await bcrypt.compare(motDePasse, etudiant.motDePasse)) {
+    if (!etudiant.actif) {
+      return res.status(403).json({ message: '⛔️ Votre compte est désactivé. Contactez l\'administration.' });
+    }
+    etudiant.lastSeen = new Date();
+    await etudiant.save();
+
+    const token = jwt.sign({ id: etudiant._id, role: 'etudiant' }, 'jwt_secret_key', { expiresIn: '7d' });
+    return res.json({ user: etudiant, token, role: 'etudiant' });
+  }
+  
+  // ❌ Si aucun ne correspond
+  return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+});
 // route: POST /api/professeurs/login
 app.post('/api/professeurs/login', async (req, res) => {
   try {
@@ -3831,93 +4043,10 @@ app.post('/api/professeurs/login', async (req, res) => {
 
 
 
-app.put('/api/professeurs/:id', authAdmin, upload.single('image'), async (req, res) => {
-  try {
-    const professeurId = req.params.id;
-    const {
-      nom,
-      genre,
-      dateNaissance,
-      telephone,
-      email,
-      motDePasse,
-      actif,
-      matiere // ✅ nouvelle propriété
-    } = req.body;
-
-    let cours = req.body.cours;
-
-    // 🧠 S'assurer que cours est un tableau
-    if (!cours) cours = [];
-    if (typeof cours === 'string') cours = [cours];
-
-    // 🔍 Récupérer les anciens cours du professeur
-    const ancienProf = await Professeur.findById(professeurId);
-    if (!ancienProf) return res.status(404).json({ message: "Professeur introuvable" });
-
-    const ancienCours = ancienProf.cours || [];
-
-    // ➖ Cours supprimés
-    const coursSupprimes = ancienCours.filter(c => !cours.includes(c));
-    // ➕ Cours ajoutés
-    const coursAjoutes = cours.filter(c => !ancienCours.includes(c));
-
-    // 🧼 Retirer le prof des cours supprimés
-    for (const coursNom of coursSupprimes) {
-      await Cours.updateOne(
-        { nom: coursNom },
-        { $pull: { professeur: ancienProf.nom } }
-      );
-    }
-
-    // 🧩 Ajouter le prof dans les cours ajoutés
-    for (const coursNom of coursAjoutes) {
-      await Cours.updateOne(
-        { nom: coursNom },
-        { $addToSet: { professeur: nom } }
-      );
-    }
-
-    // 🛠️ Données à mettre à jour
-    const updateData = {
-      nom,
-      genre,
-      dateNaissance: new Date(dateNaissance),
-      telephone,
-      email,
-      cours,
-      matiere, // ✅ ajout ici
-      actif: actif === 'true' || actif === true
-    };
-
-    // 📷 Gestion de l'image
-    if (req.file) {
-      updateData.image = `/uploads/${req.file.filename}`;
-    }
-
-    // 🔐 Mot de passe s'il est modifié
-    if (motDePasse && motDePasse.trim() !== '') {
-      updateData.motDePasse = await bcrypt.hash(motDePasse, 10);
-    }
-
-    // ✅ Mise à jour du professeur
-    const updatedProf = await Professeur.findByIdAndUpdate(
-      professeurId,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-motDePasse');
-
-    res.json({ message: "✅ Professeur modifié avec succès", professeur: updatedProf });
-
-  } catch (err) {
-    console.error('❌ Erreur lors de la modification:', err);
-    res.status(500).json({ message: "Erreur lors de la modification", error: err.message });
-  }
-});
 
 
 // routes/professeurs.js
-app.patch('/api/professeurs/:id/actif', authAdmin, async (req, res) => {
+app.patch('/api/professeurs/:id/actif', authAdminOrPedagogique, async (req, res) => {
   try {
     const prof = await Professeur.findById(req.params.id);
     if (!prof) return res.status(404).json({ message: 'Professeur introuvable' });
@@ -3975,7 +4104,7 @@ app.get('/api/etudiant/paiements', authEtudiant, async (req, res) => {
 
 
 
-app.delete('/api/professeurs/:id', authAdmin, async (req, res) => {
+app.delete('/api/professeurs/:id', authAdminOrPedagogique, async (req, res) => {
   try {
     await Professeur.findByIdAndDelete(req.params.id);
     res.json({ message: 'Professeur supprimé avec succès' });
@@ -4046,6 +4175,203 @@ app.get('/api/admin/professeurs-par-cours/:coursNom', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+// À ajouter dans votre app.js - Routes CRUD pour gérer les Administratifs
+
+// GET - Liste de tous les administratifs
+app.get('/api/administratifs', authAdmin, async (req, res) => {
+  try {
+    const administratifs = await Administratif.find()
+      .select('-motDePasse') // Exclure le mot de passe
+      .sort({ createdAt: -1 });
+    res.json(administratifs);
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// GET - Un administratif par ID
+app.get('/api/administratifs/:id', authAdmin, async (req, res) => {
+  try {
+    const administratif = await Administratif.findById(req.params.id)
+      .select('-motDePasse');
+    
+    if (!administratif) {
+      return res.status(404).json({ message: 'Administratif non trouvé' });
+    }
+    
+    res.json(administratif);
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// POST - Créer un nouvel administratif
+app.post('/api/administratifs', authAdmin, async (req, res) => {
+  try {
+    const { nom, telephone, email, motDePasse, actif } = req.body;
+
+    // Validation
+    if (!nom || !email || !motDePasse) {
+      return res.status(400).json({ message: 'Nom, email et mot de passe sont requis' });
+    }
+
+    if (motDePasse.length < 6) {
+      return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+    }
+
+    // Vérifier si l'email existe déjà
+    const existe = await Administratif.findOne({ email });
+    if (existe) {
+      return res.status(400).json({ message: 'Email déjà utilisé' });
+    }
+
+    const administratif = new Administratif({ 
+      nom, 
+      telephone, 
+      email, 
+      motDePasse, // Sera hashé automatiquement
+      actif: actif !== undefined ? actif : true
+    });
+
+    await administratif.save();
+
+    // Retourner sans le mot de passe
+    const administratifResponse = administratif.toObject();
+    delete administratifResponse.motDePasse;
+
+    res.status(201).json({ 
+      message: 'Administratif créé avec succès', 
+      administratif: administratifResponse 
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      res.status(400).json({ message: 'Email déjà utilisé' });
+    } else {
+      res.status(500).json({ message: 'Erreur serveur', error: err.message });
+    }
+  }
+});
+
+// PUT - Modifier un administratif
+app.put('/api/administratifs/:id', authAdmin, async (req, res) => {
+  try {
+    const { nom, telephone, email, motDePasse, actif } = req.body;
+
+    const administratif = await Administratif.findById(req.params.id);
+    if (!administratif) {
+      return res.status(404).json({ message: 'Administratif non trouvé' });
+    }
+
+    // Vérifier l'unicité de l'email
+    if (email && email !== administratif.email) {
+      const emailExiste = await Administratif.findOne({ email, _id: { $ne: req.params.id } });
+      if (emailExiste) {
+        return res.status(400).json({ message: 'Email déjà utilisé par un autre administratif' });
+      }
+    }
+
+    // Mise à jour des champs
+    if (nom) administratif.nom = nom;
+    if (telephone !== undefined) administratif.telephone = telephone;
+    if (email) administratif.email = email;
+    if (actif !== undefined) administratif.actif = actif;
+
+    // Mise à jour du mot de passe si fourni
+    if (motDePasse) {
+      if (motDePasse.length < 6) {
+        return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+      }
+      administratif.motDePasse = motDePasse; // Sera hashé automatiquement
+    }
+
+    await administratif.save();
+
+    // Retourner sans le mot de passe
+    const administratifResponse = administratif.toObject();
+    delete administratifResponse.motDePasse;
+
+    res.json({ 
+      message: 'Administratif mis à jour avec succès', 
+      administratif: administratifResponse 
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      res.status(400).json({ message: 'Email déjà utilisé' });
+    } else {
+      res.status(500).json({ message: 'Erreur serveur', error: err.message });
+    }
+  }
+});
+
+// DELETE - Supprimer un administratif
+app.delete('/api/administratifs/:id', authAdmin, async (req, res) => {
+  try {
+    const administratif = await Administratif.findById(req.params.id);
+    if (!administratif) {
+      return res.status(404).json({ message: 'Administratif non trouvé' });
+    }
+
+    await Administratif.findByIdAndDelete(req.params.id);
+    
+    res.json({ 
+      message: 'Administratif supprimé avec succès',
+      administratif: {
+        id: administratif._id,
+        nom: administratif.nom,
+        email: administratif.email
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// PATCH - Activer/Désactiver un administratif
+app.patch('/api/administratifs/:id/actif', authAdmin, async (req, res) => {
+  try {
+    const administratif = await Administratif.findById(req.params.id);
+    if (!administratif) {
+      return res.status(404).json({ message: 'Administratif non trouvé' });
+    }
+
+    administratif.actif = !administratif.actif;
+    await administratif.save();
+
+    // Retourner sans le mot de passe
+    const administratifResponse = administratif.toObject();
+    delete administratifResponse.motDePasse;
+
+    res.json({ 
+      message: `Administratif ${administratif.actif ? 'activé' : 'désactivé'} avec succès`, 
+      administratif: administratifResponse 
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// GET - Statistiques des administratifs (optionnel)
+app.get('/api/administratifs/stats/dashboard', authAdmin, async (req, res) => {
+  try {
+    const totalAdministratifs = await Administratif.countDocuments();
+    const administratifsActifs = await Administratif.countDocuments({ actif: true });
+    const administratifsInactifs = await Administratif.countDocuments({ actif: false });
+    
+    const recentAdministratifs = await Administratif.find()
+      .select('-motDePasse')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    res.json({
+      totalAdministratifs,
+      administratifsActifs,
+      administratifsInactifs,
+      recentAdministratifs
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
 app.get('/api/professeur/profile', authProfesseur, async (req, res) => {
@@ -4519,7 +4845,7 @@ app.get('/api/bulletins/professeur', authProfesseur, async (req, res) => {
 });
 
 // Admin: voir tous
-app.get('/api/bulletins', authAdmin, async (req, res) => {
+app.get('/api/bulletins',authAdminOrPaiementManager , async (req, res) => {
   try {
     const bulletins = await Bulletin.find()
       .populate({
@@ -5520,6 +5846,7 @@ app.patch('/api/commerciaux/:id/actif', authAdmin, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
+// ===== ROUTES SPÉCIFIQUES POUR LE DASHBOARD PÉDAGOGIQUE =====
 
 // ✅ Get statistics for commercials
 app.get('/api/commerciaux/statistiques', authAdmin, async (req, res) => {
@@ -6025,7 +6352,7 @@ app.get('/api/notifications', authAdminOrPaiementManager, async (req, res) => {
     const aujourdHui = new Date();
 
     // 1. Traitement des paiements expirés et nouveaux
-    const etudiants = await Etudiant.find({ actif: true }).lean();
+const etudiants = await Etudiant.find({ actif: true }).lean({ virtuals: true });
     const paiements = await Paiement.find().populate('etudiant', 'nomComplet actif image telephone email').lean();
 
     for (const etudiant of etudiants) {
@@ -7009,6 +7336,37 @@ app.post('/api/commercial/etudiants', authCommercial, uploadMultiple, async (req
     });
   }
 });
+
+
+
+
+
+
+// ===== ROUTES PÉDAGOGIQUES CORRIGÉES - VERSION FINALE =====
+// REMPLACEZ VOS ROUTES ACTUELLES PAR CELLES-CI
+
+// 1. Route pour obtenir les étudiants
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL =====
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL (avec logique de copie) =====
@@ -8231,261 +8589,235 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadMultiple, async (
     });
   }
 });
-// Dans votre fichier de routes commercial
 app.get('/api/comercial/stats', authCommercial, async (req, res) => {
   try {
-    const { periode, commercial } = req.query;
+    const { anneeScolaire, personnel } = req.query;
     
-    // CORRECTION 1: Calcul des dates corrigé
-    let dateDebut;
-    const maintenant = new Date();
+    // Log pour déboguer
+    console.log('=== DEBUG API STATS ===');
+    console.log('Query params:', { anneeScolaire, personnel });
+    console.log('req.commercialId:', req.commercialId); // Changé de req.user
+    console.log('========================');
     
-    switch(periode) {
-      case 'jour':
-        // Utiliser une nouvelle instance pour éviter la mutation
-        dateDebut = new Date();
-        dateDebut.setHours(0, 0, 0, 0);
-        break;
-      case 'semaine':
-        // Correction du calcul de début de semaine
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Lundi = début
-        dateDebut = new Date(today);
-        dateDebut.setDate(today.getDate() - diff);
-        dateDebut.setHours(0, 0, 0, 0);
-        break;
-      case 'mois':
-        dateDebut = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
-        break;
-      case 'annee':
-        dateDebut = new Date(maintenant.getFullYear(), 0, 1);
-        break;
-      default:
-        dateDebut = null;
+    // Construction du filtre de base
+    let filter = {};
+    
+    // Filtre par année scolaire
+    if (anneeScolaire && anneeScolaire.trim() !== '') {
+      filter.anneeScolaire = anneeScolaire;
     }
     
-    // CORRECTION 2: Convertir l'ID commercial en ObjectId si nécessaire
-    const filtreCommercial = commercial ? 
-      { commercial: mongoose.Types.ObjectId(commercial) } : {};
-    
-    // CORRECTION 3: Ajouter une vérification d'existence pour les requêtes
-    const totalEtudiants = await Etudiant.countDocuments(filtreCommercial);
-    const nouveauxEtudiants = dateDebut 
-      ? await Etudiant.countDocuments({ 
-          ...filtreCommercial,
-          createdAt: { $gte: dateDebut }
-        })
-      : totalEtudiants;
+    // Filtre personnel : si personnel=true, filtrer par le commercial connecté
+    if (personnel === 'true') {
+      if (!req.commercialId) { // Changé de req.user.id
+        return res.status(400).json({ 
+          message: 'ID du commercial non trouvé dans le token',
+          debug: {
+            commercialIdExists: !!req.commercialId,
+            commercialId: req.commercialId
+          }
+        });
+      }
       
-    const etudiantsActifs = await Etudiant.countDocuments({ 
-      ...filtreCommercial,
-      actif: true 
-    });
+      const commercialId = req.commercialId; // Changé de req.user.id
+      filter.commercial = new mongoose.Types.ObjectId(commercialId);
+      
+      console.log('Filter personnel:', filter);
+    }
     
-    const etudiantsPayes = await Etudiant.countDocuments({ 
-      ...filtreCommercial,
-      paye: true 
-    });
+    // Statistiques de base
+    const totalEtudiants = await Etudiant.countDocuments(filter);
+    const etudiantsActifs = await Etudiant.countDocuments({ ...filter, actif: true });
+    const etudiantsPayes = await Etudiant.countDocuments({ ...filter, paye: true });
     
-    // CORRECTION 4: Sécuriser les agrégations avec des vérifications
+    // Répartition par genre
     const repartitionGenre = await Etudiant.aggregate([
-      { $match: { ...filtreCommercial, genre: { $exists: true, $ne: null } } },
-      { $group: { 
-          _id: '$genre', 
-          count: { $sum: 1 } 
-      }},
-      { $project: { 
-          genre: '$_id', 
-          count: 1, 
-          _id: 0 
-      }}
+      { $match: { ...filter, genre: { $exists: true, $ne: null } } },
+      { $group: { _id: '$genre', count: { $sum: 1 } }}
     ]);
     
     const genreStats = {
-      hommes: repartitionGenre.find(g => g.genre === 'Homme')?.count || 0,
-      femmes: repartitionGenre.find(g => g.genre === 'Femme')?.count || 0
+      hommes: repartitionGenre.find(g => g._id === 'Homme')?.count || 0,
+      femmes: repartitionGenre.find(g => g._id === 'Femme')?.count || 0
     };
     
-    // CORRECTION 5: Limiter les résultats pour éviter la surcharge
-    const repartitionFiliere = await Etudiant.aggregate([
-      { $match: { ...filtreCommercial, filiere: { $exists: true, $ne: null, $ne: "" } } },
-      { $group: { 
-          _id: '$filiere', 
-          count: { $sum: 1 } 
-      }},
-      { $sort: { count: -1 } },
-      { $limit: 10 } // Limiter à 10 filières
+    // Répartition par type de formation
+    const repartitionTypeFormation = await Etudiant.aggregate([
+      { $match: { ...filter, typeFormation: { $exists: true, $ne: null, $ne: "" } } },
+      { $group: { _id: '$typeFormation', count: { $sum: 1 } }},
+      { $sort: { count: -1 } }
     ]);
     
-    const filiereStats = {};
-    repartitionFiliere.forEach(f => {
-      if (f._id && f._id.trim() !== '') {
-        filiereStats[f._id] = f.count;
+    const typeFormationStats = {};
+    repartitionTypeFormation.forEach(t => {
+      if (t._id && t._id.trim() !== '') {
+        typeFormationStats[t._id] = t.count;
       }
     });
     
+    // Répartition par niveau
     const repartitionNiveau = await Etudiant.aggregate([
-      { $match: { ...filtreCommercial, niveau: { $exists: true, $ne: null } } },
-      { $group: { 
-          _id: '$niveau', 
-          count: { $sum: 1 } 
-      }},
+      { $match: { ...filter, niveau: { $exists: true, $ne: null } } },
+      { $group: { _id: '$niveau', count: { $sum: 1 } }},
       { $sort: { _id: 1 } }
     ]);
     
     const niveauStats = {};
     repartitionNiveau.forEach(n => {
       if (n._id != null) {
-        niveauStats[`Niveau ${n._id}`] = n.count;
+        niveauStats[n._id] = n.count;
       }
     });
     
-    // CORRECTION 6: Améliorer l'évolution mensuelle
-    const evolutionMensuelle = await Etudiant.aggregate([
-      { $match: { ...filtreCommercial, createdAt: { $exists: true } } },
-      { $group: { 
-          _id: { 
-            year: { $year: '$createdAt' }, 
-            month: { $month: '$createdAt' } 
-          }, 
-          count: { $sum: 1 } 
-      }},
-      { $sort: { '_id.year': -1, '_id.month': -1 } },
-      { $limit: 12 },
-      { $sort: { '_id.year': 1, '_id.month': 1 } },
-      { $project: { 
-          mois: { 
-            $concat: [
-              { $toString: '$_id.month' },
-              '/',
-              { $toString: '$_id.year' }
-            ]
-          }, 
-          count: 1, 
-          _id: 0 
-      }}
+    // Évolution par année scolaire - Version simplifiée
+    let evolutionFilter = {};
+    if (personnel === 'true' && req.commercialId) { // Changé de req.user.id
+      evolutionFilter.commercial = new mongoose.Types.ObjectId(req.commercialId);
+    }
+    
+    const repartitionAnneeScolaire = await Etudiant.aggregate([
+      { $match: { 
+        ...evolutionFilter,
+        anneeScolaire: { $exists: true, $ne: null, $ne: "" } 
+      } },
+      { $group: { _id: '$anneeScolaire', count: { $sum: 1 } }},
+      { $sort: { _id: 1 } }
     ]);
     
-    // CORRECTION 7: Sécuriser le calcul du chiffre d'affaires
+    const anneeScolaireStats = {};
+    const evolutionAnneeScolaire = [];
+    repartitionAnneeScolaire.forEach(a => {
+      if (a._id && a._id.trim() !== '') {
+        anneeScolaireStats[a._id] = a.count;
+        evolutionAnneeScolaire.push({
+          anneeScolaire: a._id,
+          count: a.count
+        });
+      }
+    });
+    
+    // Calcul du chiffre d'affaires - Version simplifiée
     const chiffreAffaireResult = await Etudiant.aggregate([
       { $match: { 
-          ...filtreCommercial, 
+          ...filter, 
           prixTotal: { $exists: true, $type: "number", $gt: 0 } 
       }},
-      { $group: { 
-          _id: null, 
-          total: { $sum: '$prixTotal' } 
-      }}
+      { $group: { _id: null, total: { $sum: '$prixTotal' } }}
     ]);
     
     const chiffreAffaire = chiffreAffaireResult[0]?.total || 0;
     
-    // CORRECTION 8: Améliorer l'agrégation des commerciaux avec gestion d'erreurs
+    // Top commerciaux - Version simplifiée (seulement en vue générale)
     let topCommerciaux = [];
-    try {
-      topCommerciaux = await Commercial.aggregate([
-        { 
-          $lookup: {
-            from: 'etudiants', // Vérifier le nom exact de votre collection
-            localField: '_id',
-            foreignField: 'commercial',
-            as: 'etudiants'
-          }
-        },
-        { 
-          $addFields: {
-            etudiants: {
-              $filter: {
-                input: '$etudiants',
-                cond: { $ne: ['$$this', null] }
-              }
+    if (personnel !== 'true') {
+      try {
+        // Version très simplifiée pour éviter l'erreur $type
+        topCommerciaux = await Commercial.aggregate([
+          { 
+            $lookup: {
+              from: 'etudiants',
+              localField: '_id',
+              foreignField: 'commercial',
+              as: 'etudiants'
             }
-          }
-        },
-        { 
-          $project: {
-            nomComplet: { 
-              $trim: {
-                input: { 
-                  $concat: [
-                    { $ifNull: ['$prenom', ''] }, 
-                    ' ', 
-                    { $ifNull: ['$nom', ''] }
-                  ]
-                }
-              }
-            },
-            nom: { $ifNull: ['$nom', 'N/A'] },
-            prenom: { $ifNull: ['$prenom', 'N/A'] },
-            count: { $size: '$etudiants' },
-            chiffreAffaire: { 
-              $sum: {
-                $map: {
-                  input: '$etudiants',
-                  as: 'etudiant',
-                  in: { 
-                    $cond: [
-                      { $and: [
-                        { $ne: ['$$etudiant.prixTotal', null] },
-                        { $type: ['$$etudiant.prixTotal', 'number'] }
-                      ]},
-                      '$$etudiant.prixTotal',
-                      0
+          },
+          {
+            $addFields: {
+              etudiantsFiltres: anneeScolaire && anneeScolaire.trim() !== '' 
+                ? {
+                    $filter: {
+                      input: '$etudiants',
+                      cond: { $eq: ['$$this.anneeScolaire', anneeScolaire] }
+                    }
+                  }
+                : '$etudiants'
+            }
+          },
+          { 
+            $project: {
+              nomComplet: { 
+                $trim: {
+                  input: { 
+                    $concat: [
+                      { $ifNull: ['$nom', ''] }, 
+                      ' ', 
+                      { $ifNull: ['$telephone', ''] }
                     ]
+                  }
+                }
+              },
+              nom: { $ifNull: ['$nom', 'N/A'] },
+              telephone: { $ifNull: ['$telephone', 'N/A'] },
+              count: { $size: '$etudiantsFiltres' },
+              chiffreAffaire: { 
+                $sum: {
+                  $map: {
+                    input: '$etudiantsFiltres',
+                    as: 'etudiant',
+                    in: { $ifNull: ['$$etudiant.prixTotal', 0] }
                   }
                 }
               }
             }
-          }
-        },
-        { $match: { count: { $gt: 0 } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 }
-      ]);
-    } catch (commercialError) {
-      console.error('Erreur agrégation commerciaux:', commercialError);
-      // Fallback simple si l'agrégation échoue
-      topCommerciaux = await Commercial.find()
-        .select('nom prenom')
-        .limit(5)
-        .lean();
+          },
+          { $match: { count: { $gt: 0 } } },
+          { $sort: { count: -1 } },
+          { $limit: 5 }
+        ]);
+      } catch (commercialError) {
+        console.error('Erreur agrégation commerciaux:', commercialError);
+        topCommerciaux = [];
+      }
     }
     
-    // CORRECTION 9: Améliorer la requête des étudiants récents
-    const etudiantsRecents = await Etudiant.find(filtreCommercial)
+    // Étudiants récents
+    const etudiantsRecents = await Etudiant.find(filter)
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('prenom nomDeFamille filiere dateInscription createdAt paye image')
+      .select('prenom nomDeFamille typeFormation specialite filiere dateInscription createdAt paye image anneeScolaire')
       .lean();
     
-    // CORRECTION 10: Calcul correct du taux de conversion
+    // Calcul du taux de conversion
     const tauxConversion = totalEtudiants > 0 
       ? Math.round((etudiantsPayes / totalEtudiants) * 100) 
       : 0;
     
+    console.log('=== RÉSULTATS ===');
+    console.log('Total étudiants:', totalEtudiants);
+    console.log('Chiffre affaire:', chiffreAffaire);
+    console.log('================');
+    
     res.json({
       totalEtudiants,
-      nouveauxEtudiants,
+      nouveauxEtudiants: totalEtudiants,
       etudiantsActifs,
       etudiantsInactifs: Math.max(0, totalEtudiants - etudiantsActifs),
       etudiantsPayes,
       etudiantsNonPayes: Math.max(0, totalEtudiants - etudiantsPayes),
       repartitionGenre: genreStats,
-      repartitionFiliere: filiereStats,
+      repartitionTypeFormation: typeFormationStats,
       repartitionNiveau: niveauStats,
-      evolutionMensuelle,
+      repartitionAnneeScolaire: anneeScolaireStats,
+      evolutionAnneeScolaire,
       chiffreAffaire,
       topCommerciaux,
       etudiantsRecents,
-      tauxConversion
+      tauxConversion,
+      vuePersonnelle: personnel === 'true'
     });
     
   } catch (err) {
-    console.error('Erreur dans /api/comercial/stats:', err);
+    console.error('=== ERREUR API STATS ===');
+    console.error('Message:', err.message);
+    console.error('Stack:', err.stack);
+    console.error('========================');
+    
     res.status(500).json({ 
       message: 'Erreur serveur',
-      error: process.env.NODE_ENV === 'development' ? err.message : 'Erreur interne'
+      error: process.env.NODE_ENV === 'development' ? {
+        message: err.message,
+        stack: err.stack
+      } : 'Erreur interne'
     });
   }
 });
@@ -9170,7 +9502,512 @@ app.put('/api/admin/profile', authAdmin, async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur lors de la mise à jour' });
   }
 });
+// ===== ROUTES PÉDAGOGIQUE CORRIGÉES - VERSION FINALE =====
 
+// 1. Route pour obtenir les étudiants (CORRIGÉE)
+app.get('/api/pedagogique/etudiants', authPedagogique, async (req, res) => {
+  try {
+    const filierePedagogique = req.user.filiere;
+    const estGeneral = filierePedagogique === 'GENERAL';
+    
+    let query = {};
+    if (!estGeneral) {
+      // Pédagogique spécifique : seulement sa filière
+      query.filiere = filierePedagogique;
+    }
+    // Pour le général : query reste vide = tous les étudiants
+    
+    const etudiants = await Etudiant.find(query)
+      .populate('commercial', 'nom nomComplet')
+      .sort({ createdAt: -1 });
+
+    console.log(`📚 Pédagogique ${estGeneral ? 'GÉNÉRAL' : req.user.filiere} - ${etudiants.length} étudiants trouvés${estGeneral ? ' (Toutes filières)' : ''}`);
+    
+    res.json(etudiants);
+  } catch (error) {
+    console.error('Erreur récupération étudiants pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 2. Route pour obtenir les cours (CORRIGÉE)
+app.get('/api/pedagogique/cours', authPedagogique, async (req, res) => {
+  try {
+    const estGeneral = req.user.filiere === 'GENERAL';
+    
+    if (estGeneral) {
+      // Pédagogique général : TOUS les cours
+      const tousCours = await Cours.find({}).sort({ nom: 1 });
+      console.log(`📚 Pédagogique GÉNÉRAL - ${tousCours.length} cours trouvés (Tous)`);
+      return res.json(tousCours);
+    }
+    
+    // Pédagogique spécifique : logique actuelle
+    const tousCours = await Cours.find({}).sort({ nom: 1 });
+    const etudiants = await Etudiant.find({ filiere: req.user.filiere });
+    const coursDeFiliere = new Set();
+    
+    etudiants.forEach(etudiant => {
+      if (etudiant.cours && Array.isArray(etudiant.cours)) {
+        etudiant.cours.forEach(coursNom => {
+          coursDeFiliere.add(coursNom);
+        });
+      }
+    });
+    
+    const coursFiltres = tousCours.filter(cours => 
+      coursDeFiliere.has(cours.nom) || 
+      cours.nom.toLowerCase().includes(req.user.filiere.toLowerCase())
+    );
+    
+    console.log(`📚 Pédagogique ${req.user.filiere} - ${coursFiltres.length} cours trouvés`);
+    res.json(coursFiltres);
+    
+  } catch (error) {
+    console.error('Erreur récupération cours pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 3. Route pour obtenir les professeurs (CORRIGÉE)
+app.get('/api/pedagogique/professeurs', authPedagogique, async (req, res) => {
+  try {
+    const estGeneral = req.user.filiere === 'GENERAL';
+    
+    if (estGeneral) {
+      // Pédagogique général : TOUS les professeurs
+      const tousProfesseurs = await Professeur.find({}).sort({ nom: 1 });
+      console.log(`👨‍🏫 Pédagogique GÉNÉRAL - ${tousProfesseurs.length} professeurs trouvés (Tous)`);
+      return res.json(tousProfesseurs);
+    }
+    
+    // Pédagogique spécifique : logique actuelle
+    const etudiants = await Etudiant.find({ filiere: req.user.filiere });
+    const coursDeFiliere = new Set();
+    
+    etudiants.forEach(etudiant => {
+      if (etudiant.cours && Array.isArray(etudiant.cours)) {
+        etudiant.cours.forEach(coursNom => {
+          coursDeFiliere.add(coursNom);
+        });
+      }
+    });
+    
+    const professeurs = await Professeur.find({
+      $or: [
+        { cours: { $in: Array.from(coursDeFiliere) } },
+        { matiere: { $regex: req.user.filiere, $options: 'i' } }
+      ]
+    }).sort({ nom: 1 });
+    
+    console.log(`👨‍🏫 Pédagogique ${req.user.filiere} - ${professeurs.length} professeurs trouvés`);
+    res.json(professeurs);
+    
+  } catch (error) {
+    console.error('Erreur récupération professeurs pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 4. Route pour les statistiques (CORRIGÉE)
+app.get('/api/pedagogique/dashboard-stats', authPedagogique, async (req, res) => {
+  try {
+    let query = {};
+    const estGeneral = req.user.filiere === 'GENERAL';
+    
+    if (!estGeneral) {
+      query.filiere = req.user.filiere;
+    }
+    // Pour le général : query reste vide = tous les étudiants
+    
+    const etudiants = await Etudiant.find(query);
+    
+    const stats = {
+      filiere: req.user.filiere,
+      estGeneral: estGeneral,
+      
+      // Statistiques générales
+      totalEtudiants: etudiants.length,
+      etudiantsActifs: etudiants.filter(e => e.actif).length,
+      etudiantsInactifs: etudiants.filter(e => !e.actif).length,
+      etudiantsPayes: etudiants.filter(e => e.paye).length,
+      etudiantsNonPayes: etudiants.filter(e => !e.paye).length,
+      nouveauxEtudiants: etudiants.filter(e => e.nouvelleInscription).length,
+      
+      // Statistiques financières
+      chiffreAffaireTotal: etudiants.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0),
+      chiffreAffairePaye: etudiants.filter(e => e.paye).reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0),
+      chiffreAffaireNonPaye: etudiants.filter(e => !e.paye).reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0),
+      moyennePrixFormation: etudiants.length > 0 ? etudiants.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0) / etudiants.length : 0,
+      tauxPaiement: etudiants.length > 0 ? (etudiants.filter(e => e.paye).length / etudiants.length * 100) : 0,
+      
+      // Répartitions
+      repartitionFiliere: {},
+      repartitionNiveau: {},
+      repartitionAnneeScolaire: {},
+      repartitionSpecialite: {},
+      repartitionGenre: {
+        homme: etudiants.filter(e => e.genre === 'Homme').length,
+        femme: etudiants.filter(e => e.genre === 'Femme').length
+      }
+    };
+    
+    // Répartition par filière (TOUJOURS calculée, utile pour le général)
+    etudiants.forEach(e => {
+      const filiere = e.filiere || 'Non définie';
+      if (!stats.repartitionFiliere[filiere]) {
+        stats.repartitionFiliere[filiere] = { total: 0, payes: 0, ca: 0 };
+      }
+      stats.repartitionFiliere[filiere].total += 1;
+      if (e.paye) stats.repartitionFiliere[filiere].payes += 1;
+      stats.repartitionFiliere[filiere].ca += parseFloat(e.prixTotal) || 0;
+    });
+    
+    // Répartition par niveau
+    etudiants.forEach(e => {
+      const niveau = e.niveau || 'Non défini';
+      if (!stats.repartitionNiveau[niveau]) {
+        stats.repartitionNiveau[niveau] = { total: 0, payes: 0, ca: 0 };
+      }
+      stats.repartitionNiveau[niveau].total += 1;
+      if (e.paye) stats.repartitionNiveau[niveau].payes += 1;
+      stats.repartitionNiveau[niveau].ca += parseFloat(e.prixTotal) || 0;
+    });
+    
+    // Répartition par année scolaire
+    etudiants.forEach(e => {
+      const annee = e.anneeScolaire || 'Non définie';
+      if (!stats.repartitionAnneeScolaire[annee]) {
+        stats.repartitionAnneeScolaire[annee] = { total: 0, payes: 0, ca: 0 };
+      }
+      stats.repartitionAnneeScolaire[annee].total += 1;
+      if (e.paye) stats.repartitionAnneeScolaire[annee].payes += 1;
+      stats.repartitionAnneeScolaire[annee].ca += parseFloat(e.prixTotal) || 0;
+    });
+    
+    // Répartition par spécialité
+    etudiants.forEach(e => {
+      let specialite = 'Tronc commun';
+      
+      if (e.specialiteIngenieur) {
+        specialite = e.specialiteIngenieur;
+      } else if (e.specialiteLicencePro) {
+        specialite = e.specialiteLicencePro;
+      } else if (e.specialiteMasterPro) {
+        specialite = e.specialiteMasterPro;
+      } else if (e.specialite) {
+        specialite = e.specialite;
+      }
+      
+      if (!stats.repartitionSpecialite[specialite]) {
+        stats.repartitionSpecialite[specialite] = { total: 0, payes: 0, ca: 0 };
+      }
+      stats.repartitionSpecialite[specialite].total += 1;
+      if (e.paye) stats.repartitionSpecialite[specialite].payes += 1;
+      stats.repartitionSpecialite[specialite].ca += parseFloat(e.prixTotal) || 0;
+    });
+    
+    console.log(`📊 Stats pédagogique ${estGeneral ? 'GÉNÉRAL' : req.user.filiere} générées - ${etudiants.length} étudiants${estGeneral ? ' (Global)' : ''}`);
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Erreur génération statistiques pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 5. Route pour obtenir les cours détaillés (CORRIGÉE)
+app.get('/api/pedagogique/cours-detailles', authPedagogique, async (req, res) => {
+  try {
+    let etudiantsQuery = {};
+    const estGeneral = req.user.filiere === 'GENERAL';
+    
+    if (!estGeneral) {
+      etudiantsQuery.filiere = req.user.filiere;
+    }
+    
+    const etudiants = await Etudiant.find(etudiantsQuery);
+    const coursStats = {};
+    
+    etudiants.forEach(etudiant => {
+      if (etudiant.cours && Array.isArray(etudiant.cours)) {
+        etudiant.cours.forEach(coursNom => {
+          if (!coursStats[coursNom]) {
+            coursStats[coursNom] = {
+              nom: coursNom,
+              totalEtudiants: 0,
+              etudiantsPayes: 0,
+              etudiantsActifs: 0,
+              ca: 0,
+              professeurs: [],
+              repartitionFiliere: {}
+            };
+          }
+          
+          coursStats[coursNom].totalEtudiants += 1;
+          if (etudiant.paye) coursStats[coursNom].etudiantsPayes += 1;
+          if (etudiant.actif) coursStats[coursNom].etudiantsActifs += 1;
+          coursStats[coursNom].ca += parseFloat(etudiant.prixTotal) || 0;
+          
+          // Répartition par filière pour le général
+          if (estGeneral) {
+            const filiere = etudiant.filiere || 'Non définie';
+            if (!coursStats[coursNom].repartitionFiliere[filiere]) {
+              coursStats[coursNom].repartitionFiliere[filiere] = 0;
+            }
+            coursStats[coursNom].repartitionFiliere[filiere] += 1;
+          }
+        });
+      }
+    });
+    
+    // Récupérer les informations des cours et professeurs
+    const coursAvecDetails = await Promise.all(
+      Object.keys(coursStats).map(async (nomCours) => {
+        const cours = await Cours.findOne({ nom: nomCours });
+        const professeurs = await Professeur.find({ 
+          cours: nomCours 
+        }).select('nom email telephone matiere');
+        
+        return {
+          ...coursStats[nomCours],
+          professeurs: professeurs,
+          dateCreation: cours?.createdAt || null
+        };
+      })
+    );
+    
+    console.log(`📚 Cours détaillés pédagogique ${estGeneral ? 'GÉNÉRAL' : req.user.filiere} - ${coursAvecDetails.length} cours${estGeneral ? ' (Global)' : ''}`);
+    
+    res.json(coursAvecDetails);
+  } catch (error) {
+    console.error('Erreur récupération cours détaillés pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 6. Route pour obtenir les informations du pédagogique connecté (CORRIGÉE)
+app.get('/api/pedagogique/me', authPedagogique, async (req, res) => {
+  try {
+    const pedagogique = await Pedagogique.findById(req.user.id).select('-motDePasse');
+    
+    if (!pedagogique) {
+      return res.status(404).json({ message: 'Pédagogique non trouvé' });
+    }
+    
+    res.json({
+      ...pedagogique.toObject(),
+      estGeneral: pedagogique.filiere === 'GENERAL'
+    });
+  } catch (error) {
+    console.error('Erreur récupération info pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// ===== ROUTES GESTION PÉDAGOGIQUES (Admin seulement) =====
+
+// 1. Créer un nouveau pédagogique
+app.post('/api/pedagogiques', authAdmin, async (req, res) => {
+  try {
+    const { nom, telephone, email, motDePasse, filiere } = req.body;
+
+    // Validation des champs obligatoires
+    if (!nom || !email || !motDePasse || !filiere) {
+      return res.status(400).json({ 
+        message: 'Nom, email, mot de passe et filière sont obligatoires' 
+      });
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Format d\'email invalide' });
+    }
+
+    // Validation du mot de passe
+    if (motDePasse.length < 6) {
+      return res.status(400).json({ 
+        message: 'Le mot de passe doit contenir au moins 6 caractères' 
+      });
+    }
+
+    // Vérifier que l'email n'existe pas déjà
+    const emailExiste = await Pedagogique.findOne({ email: email.toLowerCase() });
+    if (emailExiste) {
+      return res.status(400).json({ message: 'Email déjà utilisé par un autre pédagogique' });
+    }
+
+    // Créer le nouveau pédagogique
+    const nouveauPedagogique = new Pedagogique({
+      nom: nom.trim(),
+      telephone: telephone?.trim() || '',
+      email: email.toLowerCase().trim(),
+      motDePasse: motDePasse, // Sera hashé automatiquement par le middleware
+      filiere: filiere
+    });
+
+    // Sauvegarder
+    const pedagogiqueSauve = await nouveauPedagogique.save();
+
+    // Réponse sans le mot de passe
+    const response = pedagogiqueSauve.toObject();
+    delete response.motDePasse;
+    
+    res.status(201).json({
+      message: 'Pédagogique créé avec succès',
+      pedagogique: response
+    });
+
+  } catch (error) {
+    console.error('Erreur création pédagogique:', error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ 
+        message: 'Erreur de validation', 
+        errors 
+      });
+    }
+
+    res.status(500).json({ message: 'Erreur interne du serveur' });
+  }
+});
+
+// 2. Lister tous les pédagogiques
+app.get('/api/pedagogiques', authAdmin, async (req, res) => {
+  try {
+    const pedagogiques = await Pedagogique.find({})
+      .select('-motDePasse')
+      .sort({ createdAt: -1 });
+    
+    res.json(pedagogiques);
+  } catch (error) {
+    console.error('Erreur récupération pédagogiques:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 3. Modifier un pédagogique
+app.put('/api/pedagogiques/:id', authAdmin, async (req, res) => {
+  try {
+    const { nom, telephone, email, filiere, actif, motDePasse } = req.body;
+    
+    const updateData = {};
+    
+    if (nom) updateData.nom = nom.trim();
+    if (telephone !== undefined) updateData.telephone = telephone.trim();
+    if (email) updateData.email = email.toLowerCase().trim();
+    if (filiere) updateData.filiere = filiere;
+    if (actif !== undefined) updateData.actif = actif;
+
+    if (motDePasse && motDePasse.trim() !== '') {
+      if (motDePasse.length < 6) {
+        return res.status(400).json({ 
+          message: 'Le mot de passe doit contenir au moins 6 caractères' 
+        });
+      }
+      updateData.motDePasse = motDePasse;
+    }
+
+    if (email) {
+      const emailExiste = await Pedagogique.findOne({ 
+        email: email.toLowerCase(),
+        _id: { $ne: req.params.id }
+      });
+      if (emailExiste) {
+        return res.status(400).json({ message: 'Email déjà utilisé' });
+      }
+    }
+
+    const pedagogique = await Pedagogique.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-motDePasse');
+
+    if (!pedagogique) {
+      return res.status(404).json({ message: 'Pédagogique non trouvé' });
+    }
+
+    res.json({
+      message: 'Pédagogique modifié avec succès',
+      pedagogique
+    });
+
+  } catch (error) {
+    console.error('Erreur modification pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 4. Supprimer un pédagogique
+app.delete('/api/pedagogiques/:id', authAdmin, async (req, res) => {
+  try {
+    const pedagogique = await Pedagogique.findByIdAndDelete(req.params.id);
+    
+    if (!pedagogique) {
+      return res.status(404).json({ message: 'Pédagogique non trouvé' });
+    }
+
+    res.json({ 
+      message: 'Pédagogique supprimé avec succès',
+      pedagogique: {
+        id: pedagogique._id,
+        nom: pedagogique.nom,
+        email: pedagogique.email,
+        filiere: pedagogique.filiere
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 5. Obtenir un pédagogique par ID
+app.get('/api/pedagogiques/:id', authAdmin, async (req, res) => {
+  try {
+    const pedagogique = await Pedagogique.findById(req.params.id)
+      .select('-motDePasse');
+    
+    if (!pedagogique) {
+      return res.status(404).json({ message: 'Pédagogique non trouvé' });
+    }
+
+    res.json(pedagogique);
+  } catch (error) {
+    console.error('Erreur récupération pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 6. Toggle actif/inactif
+app.patch('/api/pedagogiques/:id/toggle-actif', authAdmin, async (req, res) => {
+  try {
+    const pedagogique = await Pedagogique.findById(req.params.id);
+    
+    if (!pedagogique) {
+      return res.status(404).json({ message: 'Pédagogique non trouvé' });
+    }
+
+    pedagogique.actif = !pedagogique.actif;
+    await pedagogique.save();
+
+    const response = pedagogique.toObject();
+    delete response.motDePasse;
+
+    res.json({
+      message: `Pédagogique ${pedagogique.actif ? 'activé' : 'désactivé'} avec succès`,
+      pedagogique: response
+    });
+
+  } catch (error) {
+    console.error('Erreur toggle actif pédagogique:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
 // Lancer le serveur
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

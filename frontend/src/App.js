@@ -57,9 +57,18 @@ import PaiementsExpmanger from './pages/PaiementsExpmanger'; // Import de la pag
 import Dashboardmanager from './pages/Dashboardmanager';
 import EtudiantProfil from './pages/EtudiantProfil';
 import ProfesseurProfil from './pages/ProfesseurProfil';
-
-
-
+import PedagogiePage from './pages/PedagogiePage';
+import PedagogiqueDashboard from './pages/PedagogiqueDashboard';
+import PedagogiePageprof from './pages/PedagogiePageprof';
+import ListeCoursAdmin from './pages/ListeCoursAdmin';
+import PaiementsExpadmin from './pages/PaiementsExpadmin';
+import AdministratifPage from './pages/AdministratifPage';
+import DashboardAdministratif from './pages/DashboardAdministratif';
+import ListeEtudiantsAdmin from './pages/ListeEtudiantsAdmin';
+import ListePresencesAdmin from './pages/ListePresencesAdmin';
+import ListeBulletinsAdmin from './pages/ListeBulletinsAdmin';
+import ProfilEtudiantadmin from './pages/ProfilEtudiantadmin';
+import DashboardNormal from './pages/DashboardNormal';
 // Ajoutez cette route
 
    function AppContent() {
@@ -137,18 +146,22 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
         {/* Routes principales */}
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
- 
+        <Route path="/administratif" element={<DashboardAdministratif />} />
 
-
-
+/
+        <Route path="/administratif/presences" element={<ListePresencesAdmin />} />
+        <Route path="/administratif/bulletins" element={<ListeBulletinsAdmin />} />
+        <Route path="/administratif/classes" element={<ListeCoursAdmin />} />
+        <Route path="/administratif/etudiants" element={<ListeEtudiantsAdmin />} />
         {/* Routes Admin */}
-        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/liste-etudiants" element={<ListeEtudiants />} />
         <Route path="/ajouter-paiement" element={<AjouterPaiement />} />
         <Route path="/liste-paiements" element={<ListePaiements />} />
         <Route path="/liste-classes" element={<ListeCours />} />
         <Route path="/calendrier" element={<Calendrier />} />
         <Route path="/etudiants/:id" element={<ProfilEtudiant />} />
+                <Route path="/etudiant/:id" element={<ProfilEtudiantadmin />} />
+
         <Route path="/ajouter-professeur" element={<AjouterProfesseur />} />
         <Route path="/liste-professeurs" element={<ListeProfesseurs />} />
         <Route path="/ajouter-presence" element={<AjouterPresence />} />
@@ -165,7 +178,7 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
 
 
 <Route path="/professeur/profil" element={<ProfesseurProfil />} />
-
+<Route path="/pedagogique" element={<PedagogiqueDashboard />} />
 
 <Route path="/manager/ListePaiement" element={<ListePaiementsmanager />} /> 
 
@@ -175,20 +188,21 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
 <Route path="/manager/PaiementsExp" element={<PaiementsExpmanger />} /> 
 <Route path="/manager/AjouterPaiement" element={<AjouterPaiementmanager />} /> 
 
+<Route path="/dashboard-administratif" element={<DashboardAdministratif />} />
 
 <Route path="/admin/PaiementManager" element={< PaiementManagerPage />} />
 
+<Route path="/admin/pedagogiques" element={<PedagogiePage />} />
 
 <Route path="/commercial/etudiant" element={<Commercialetudiants />} />
-
+<Route path="/admin/administratifs" element={<AdministratifPage />} />
 
 <Route path="/admin/commercial" element={< CommercialPage />} />
 <Route path="/admin/Bulletin" element={< AdminBulletins />} />
 
 
 <Route path="/etudiant/Bulletin" element={< EtudiantBulletins />} />
-
-
+<Route path="/admin/dashboard" element={< DashboardNormal />} />
 
 
 <Route path="/admin/StatistiquesEtudiants" element={< StatistiquesEtudiants />} />
@@ -209,6 +223,10 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
         {/* Routes Étudiant */}
         <Route path="/etudiant/messages" element={<MessageEtudiant />} />
 
+
+        <Route path="/pedagogique/professeurs" element={<PedagogiePageprof />} />
+
+        <Route path="/admin/paiements-exp" element={<PaiementsExpadmin />} />
         <Route path="/etudiant" element={<DashboardEtudiant />} />
         <Route path="/etudiant/profile" element={<Profile />} />
         <Route path="/etudiant/presences" element={<EtudiantPresences />} />

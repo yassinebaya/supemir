@@ -61,7 +61,7 @@ const key = `${new Date(p.dateSession).toDateString()}_${p.cours}_${p.matiere ||
             totalCount,
             attendanceRate: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
           };
-        });
+        }).sort((a, b) => new Date(b.date) - new Date(a.date)); // ✅ ترتيب تنازلي حسب التاريخ
 
         // Extraire les cours, matières, périodes et professeurs uniques pour les filtres
         const uniqueCours = [...new Set(sessions.map(s => s.cours))];
@@ -165,7 +165,7 @@ if (dateTo) {
       );
     }
 
-    setFilteredSessions(filtered);
+    setFilteredSessions(filtered.sort((a, b) => new Date(b.date) - new Date(a.date))); // ✅ ترتيب النتائج المفلترة أيضًا
   }, [
   searchTerm,
   dateFilter,
@@ -225,7 +225,7 @@ const getMoisOptions = () => {
   const styles = {
     container: {
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+      background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
           padding: '20px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     },
@@ -435,11 +435,9 @@ const getMoisOptions = () => {
       backgroundColor: 'white',
       borderRadius: '12px',
       boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      maxWidth: '900px',
+      maxWidth: '800px',
       width: '100%',
-      maxHeight: '85vh', // ✅ Hauteur maximum réduite pour laisser plus d'espace
-      display: 'flex',
-      flexDirection: 'column',
+      maxHeight: '90vh',
       overflow: 'hidden'
     },
     modalHeader: {
@@ -447,28 +445,18 @@ const getMoisOptions = () => {
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      flexShrink: 0 // ✅ Empêche le header de se rétrécir
+      justifyContent: 'space-between'
     },
     modalBody: {
       padding: '24px',
-      flex: 1, // ✅ Prend tout l'espace disponible
-      overflowY: 'auto', // ✅ Scroll vertical seulement
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '24px'
-    },
-    modalFooter: {
-      padding: '16px 24px',
-      borderTop: '1px solid #e5e7eb',
-      backgroundColor: '#f9fafb',
-      flexShrink: 0 // ✅ Empêche le footer de se rétrécir
+      overflowY: 'auto',
+      maxHeight: 'calc(90vh - 120px)'
     },
     statsGrid: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
       gap: '16px',
-      flexShrink: 0 // ✅ Les statistiques ne se rétrécissent pas
+      marginBottom: '24px'
     },
     statCard: {
       padding: '16px',
@@ -489,26 +477,6 @@ const getMoisOptions = () => {
       backgroundColor: '#eff6ff',
       borderColor: '#bfdbfe',
       color: '#1e40af'
-    },
-    studentsContainer: {
-      backgroundColor: '#f9fafb',
-      borderRadius: '8px',
-      overflow: 'hidden',
-      border: '1px solid #e5e7eb',
-      display: 'flex',
-      flexDirection: 'column',
-      flex: 1 // ✅ Prend l'espace disponible restant
-    },
-    studentsHeader: {
-      padding: '12px 16px',
-      borderBottom: '1px solid #e5e7eb',
-      backgroundColor: '#f3f4f6',
-      flexShrink: 0
-    },
-    studentsTableContainer: {
-      flex: 1,
-      overflowY: 'auto', // ✅ Scroll seulement pour la liste des étudiants
-      backgroundColor: 'white'
     },
     badge: {
       display: 'inline-flex',
@@ -617,43 +585,6 @@ const getMoisOptions = () => {
             background-color: #f3f4f6;
             border-color: #9ca3af;
             color: #374151;
-          }
-          
-          /* ✅ Custom scrollbar pour une meilleure UX */
-          .students-table-container::-webkit-scrollbar {
-            width: 8px;
-          }
-          
-          .students-table-container::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-          }
-          
-          .students-table-container::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-          }
-          
-          .students-table-container::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-          }
-          
-          .modal-body::-webkit-scrollbar {
-            width: 8px;
-          }
-          
-          .modal-body::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
-          }
-          
-          .modal-body::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-          }
-          
-          .modal-body::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
           }
           
           @media (max-width: 768px) {
@@ -896,7 +827,7 @@ const getMoisOptions = () => {
           <div style={styles.card}>
             <div style={{ padding: '24px 24px 0 24px', borderBottom: '1px solid #e5e7eb' }}>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 16px 0' }}>
-                Sessions de cours
+                Sessions de classe
               </h2>
             </div>
             
@@ -1052,11 +983,11 @@ const getMoisOptions = () => {
           </div>
         )}
 
-        {/* Modal Détails avec Scroll Amélioré */}
+        {/* Modal Détails */}
         {sessionActive && (
           <div style={styles.modal}>
-            <div style={styles.modalContent}>
-              {/* Modal Header - Fixe */}
+            <div style={{ ...styles.modalContent, overflowY: 'auto', maxHeight: '90vh' }}>
+              {/* Modal Header */}
               <div style={styles.modalHeader}>
                 <div>
                   <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1068,9 +999,10 @@ const getMoisOptions = () => {
                     {sessionActive.cours}
                   </p>
                   <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Clock size={14} />
-                    {formatHoraire(sessionActive.presences[0]?.heure, sessionActive.presences[0]?.periode)}
-                  </p>
+  <Clock size={14} />
+  {formatHoraire(sessionActive.presences[0]?.heure, sessionActive.presences[0]?.periode)}
+</p>
+
                 </div>
                 <button
                   className="close-button"
@@ -1081,16 +1013,9 @@ const getMoisOptions = () => {
                 </button>
               </div>
 
-              {/* Modal Body - Ajout d'un scroll vertical pour tout le contenu */}
-              <div
-                style={{
-                  ...styles.modalBody,
-                  maxHeight: '65vh', // Limite la hauteur et active le scroll si besoin
-                  overflowY: 'auto'
-                }}
-                className="modal-body"
-              >
-                {/* Statistics Cards - Toujours visibles */}
+              {/* Modal Content */}
+              <div style={styles.modalBody}>
+                {/* Statistics Cards */}
                 <div style={styles.statsGrid}>
                   <div style={{ ...styles.statCard, ...styles.statCardGreen }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -1115,77 +1040,71 @@ const getMoisOptions = () => {
                   </div>
                 </div>
 
-                {/* Students Container - Avec Scroll Intégré */}
-                <div style={styles.studentsContainer}>
-                  <div style={styles.studentsHeader}>
-                    <h4 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>
-                      Liste des étudiants ({sessionActive.totalCount} étudiants)
-                    </h4>
+                {/* Students Table */}
+                <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f3f4f6' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>Liste des étudiants</h4>
                   </div>
                   
-                  {/* Desktop Students Table avec Scroll */}
+                  {/* Desktop Students Table */}
                   <div className="desktop-table">
-                    <div style={styles.studentsTableContainer} className="students-table-container">
-                      <table style={styles.table}>
-                        <thead style={{ backgroundColor: '#f9fafb', position: 'sticky', top: 0, zIndex: 10 }}>
-                          <tr>
-                            <th style={{ ...styles.th, padding: '12px 16px' }}>Étudiant</th>
-                            <th style={{ ...styles.th, padding: '12px 16px' }}>Statut</th>
-                            <th style={{ ...styles.th, padding: '12px 16px' }}>Remarque</th>
+                    <table style={styles.table}>
+                      <thead style={{ backgroundColor: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ ...styles.th, padding: '12px 16px' }}>Étudiant</th>
+                          <th style={{ ...styles.th, padding: '12px 16px' }}>Statut</th>
+                          <th style={{ ...styles.th, padding: '12px 16px' }}>Remarque</th>
+                        </tr>
+                      </thead>
+                      <tbody style={{ backgroundColor: 'white' }}>
+                        {sessionActive.presences.map(p => (
+                          <tr key={p._id} className="table-row">
+                            <td style={{ ...styles.td, padding: '12px 16px' }}>
+                              <span style={{ fontWeight: '500', color: '#111827' }}>
+                                {p.etudiant?.nomComplet || '—'}
+                              </span>
+                            </td>
+                            <td style={{ ...styles.td, padding: '12px 16px' }}>
+                              <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
+                                {p.present ? <Check size={12} /> : <X size={12} />}
+                                {p.present ? 'Présent' : 'Absent'}
+                              </span>
+                            </td>
+                            <td style={{ ...styles.td, padding: '12px 16px' }}>
+                              <span style={{ color: '#6b7280' }}>{p.remarque || '—'}</span>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody style={{ backgroundColor: 'white' }}>
-                          {sessionActive.presences.map(p => (
-                            <tr key={p._id} className="table-row">
-                              <td style={{ ...styles.td, padding: '12px 16px' }}>
-                                <span style={{ fontWeight: '500', color: '#111827' }}>
-                                  {p.etudiant?.nomComplet || '—'}
-                                </span>
-                              </td>
-                              <td style={{ ...styles.td, padding: '12px 16px' }}>
-                                <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
-                                  {p.present ? <Check size={12} /> : <X size={12} />}
-                                  {p.present ? 'Présent' : 'Absent'}
-                                </span>
-                              </td>
-                              <td style={{ ...styles.td, padding: '12px 16px' }}>
-                                <span style={{ color: '#6b7280' }}>{p.remarque || '—'}</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
 
-                  {/* Mobile Students Cards avec Scroll */}
+                  {/* Mobile Students Cards */}
                   <div className="mobile-cards">
-                    <div style={{ maxHeight: '300px', overflowY: 'auto' }} className="students-table-container">
-                      {sessionActive.presences.map(p => (
-                        <div key={p._id} style={{ padding: '16px', backgroundColor: 'white', borderBottom: '1px solid #f3f4f6' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                            <h5 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0, flex: 1 }}>
-                              {p.etudiant?.nomComplet || '—'}
-                            </h5>
-                            <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
-                              {p.present ? <Check size={12} /> : <X size={12} />}
-                              {p.present ? 'Présent' : 'Absent'}
-                            </span>
-                          </div>
-                          {p.remarque && (
-                            <div style={{ padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '12px', color: '#6b7280' }}>
-                              <strong>Remarque:</strong> {p.remarque}
-                            </div>
-                          )}
+                    {sessionActive.presences.map(p => (
+                      <div key={p._id} style={{ padding: '16px', backgroundColor: 'white', borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <h5 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0, flex: 1 }}>
+                            {p.etudiant?.nomComplet || '—'}
+                          </h5>
+                          <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
+                            {p.present ? <Check size={12} /> : <X size={12} />}
+                            {p.present ? 'Présent' : 'Absent'}
+                          </span>
                         </div>
-                      ))}
-                    </div>
+                        {p.remarque && (
+                          <div style={{ padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '12px', color: '#6b7280' }}>
+                            <strong>Remarque:</strong> {p.remarque}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Modal Footer - Fixe */}
-              <div style={styles.modalFooter}>
+              {/* Modal Footer */}
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
                 <button
                   onClick={() => setSessionActive(null)}
                   style={{
