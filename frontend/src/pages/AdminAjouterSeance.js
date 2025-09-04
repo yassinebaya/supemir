@@ -61,7 +61,7 @@ const EmploiDuTemps = () => {
         let coursData = []; // ✅ Declare coursData at the beginning
         
         // Récupérer les cours depuis votre API
-        const resCours = await fetch('http://195.179.229.230:5000/api/cours', {
+        const resCours = await fetch('http://localhost:5000/api/cours', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (resCours.ok) {
@@ -70,7 +70,7 @@ const EmploiDuTemps = () => {
         }
 
         // Récupérer les professeurs depuis votre API
-        const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', {
+        const resProfs = await fetch('http://localhost:5000/api/professeurs', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (resProfs.ok) {
@@ -79,7 +79,7 @@ const EmploiDuTemps = () => {
         }
 
         // Récupérer les séances existantes depuis votre API
-        const resSeances = await fetch('http://195.179.229.230:5000/api/seances', {
+        const resSeances = await fetch('http://localhost:5000/api/seances', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (resSeances.ok) {
@@ -193,7 +193,7 @@ const EmploiDuTemps = () => {
           let res;
           if (seanceData.seanceId) {
             // Modifier séance existante
-            res = await fetch(`http://195.179.229.230:5000/api/seances/${seanceData.seanceId}`, {
+            res = await fetch(`http://localhost:5000/api/seances/${seanceData.seanceId}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -203,7 +203,7 @@ const EmploiDuTemps = () => {
             });
           } else {
             // Créer nouvelle séance
-            res = await fetch('http://195.179.229.230:5000/api/seances', {
+            res = await fetch('http://localhost:5000/api/seances', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

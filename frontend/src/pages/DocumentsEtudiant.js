@@ -44,7 +44,7 @@ const DocumentsEtudiant = () => {
     const fetchDocuments = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://195.179.229.230:5000/api/documents', {
+        const res = await axios.get('http://localhost:5000/api/documents', {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -567,7 +567,7 @@ const DocumentsEtudiant = () => {
 
                     <div style={styles.buttonContainer}>
                       <a
-                        href={`http://195.179.229.230:5000${doc.fichier}`}
+                        href={`http://localhost:5000${doc.fichier}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{...styles.button, ...styles.buttonOutline}}
@@ -578,7 +578,7 @@ const DocumentsEtudiant = () => {
                         Voir
                       </a>
                       <a
-                        href={`http://195.179.229.230:5000${doc.fichier}`}
+                        href={`http://localhost:5000${doc.fichier}`}
                         download
                         style={{...styles.button, ...styles.buttonPrimary}}
                         onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
@@ -612,7 +612,7 @@ const DocumentsEtudiant = () => {
                     </div>
                     <div style={styles.listButtons}>
                       <a
-                        href={`http://195.179.229.230:5000${doc.fichier}`}
+                        href={`http://localhost:5000${doc.fichier}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{...styles.listButton, ...styles.buttonOutline}}
@@ -623,7 +623,7 @@ const DocumentsEtudiant = () => {
                         Voir
                       </a>
                       <a
-                        href={`http://195.179.229.230:5000${doc.fichier}`}
+                        href={`http://localhost:5000${doc.fichier}`}
                         download
                         style={{...styles.listButton, ...styles.buttonPrimary}}
                         onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}

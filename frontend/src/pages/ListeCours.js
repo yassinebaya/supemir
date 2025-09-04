@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, BookOpen, User, Eye, X, Users, GraduationCap, Trash2, Filter, Search } from 'lucide-react';
+import { Plus, BookOpen, User, Eye, X, Users, GraduationCap, Trash2, Filter, Search, Download } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 
 const ListeCours = () => {
@@ -35,9 +35,9 @@ const ListeCours = () => {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        const resCours = await fetch('http://195.179.229.230:5000/api/cours', config);
-        const resEtudiants = await fetch('http://195.179.229.230:5000/api/etudiants', config);
-        const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', config);
+        const resCours = await fetch('http://localhost:5000/api/cours', config);
+        const resEtudiants = await fetch('http://localhost:5000/api/etudiants', config);
+        const resProfs = await fetch('http://localhost:5000/api/professeurs', config);
 
         if (resCours.ok && resEtudiants.ok && resProfs.ok) {
           const coursData = await resCours.json();
@@ -108,7 +108,7 @@ const ListeCours = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://195.179.229.230:5000/api/cours', {
+      const response = await fetch('http://localhost:5000/api/cours', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ const ListeCours = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://195.179.229.230:5000/api/cours/${coursASupprimer._id}`, {
+      const response = await fetch(`http://localhost:5000/api/cours/${coursASupprimer._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -223,6 +223,50 @@ const ListeCours = () => {
     ? etudiants.filter(e => e.cours.includes(coursActuel.nom))
     : [];
 
+  // Fonction pour exporter les cours en CSV
+  const exportCoursToCSV = () => {
+    const getEtudiantsForCourse = (courseName) =>
+      etudiants.filter(e => {
+        const c = e.cours;
+        if (Array.isArray(c)) return c.includes(courseName);
+        if (typeof c === 'string') {
+          return c.split(',').map(s => s.trim()).includes(courseName);
+        }
+        return false;
+      });
+
+    const rows = [
+      ["Nom du classe", "Professeurs", "Nombre d'étudiants", "Étudiants"]
+    ];
+
+    coursFiltres.forEach(c => {
+      const profs = Array.isArray(c.professeur)
+        ? c.professeur.join(', ')
+        : (c.professeur || '');
+      const etuds = getEtudiantsForCourse(c.nom);
+      const etudsNames = etuds.map(e => e.nomComplet || e.nom || '').join(' | ');
+      rows.push([c.nom, profs, String(etuds.length), etudsNames]);
+    });
+
+    const csv = '\uFEFF' + rows
+      .map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    a.href = url;
+    a.download = `cours_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.csv`;
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const styles = {
     container: {
       minHeight: '100vh',
@@ -252,12 +296,11 @@ const ListeCours = () => {
       textAlign: 'center',
       gap: '20px'
     },
-    headerLeft: {
+    headerButtons: {
       display: 'flex',
-      alignItems: 'center',
-      gap: '0.75rem'
+      gap: '1rem',
+      alignItems: 'center'
     },
-    
     title: {
       fontSize: '32px',
       fontWeight: 'bold',
@@ -273,6 +316,21 @@ const ListeCours = () => {
     },
     addButton: {
       background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+      color: 'white',
+      border: 'none',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '0.75rem',
+      fontWeight: '600',
+      cursor: 'pointer',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      transition: 'all 0.2s ease',
+      fontSize: '1rem'
+    },
+    exportButton: {
+      background: 'linear-gradient(135deg, #10b981, #059669)',
       color: 'white',
       border: 'none',
       padding: '0.75rem 1.5rem',
@@ -862,21 +920,38 @@ const ListeCours = () => {
                 <h1 style={{ ...styles.title, textAlign: 'center', width: '100%' }}>Gestion des Classes</h1>
               </div>
             </div>
-            <button
-              onClick={() => setShowAjoutModal(true)}
-              style={styles.addButton}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-              }}
-            >
-              <Plus size={20} />
-              Nouveau Classe
-            </button>
+            <div style={styles.headerButtons}>
+              <button
+                onClick={exportCoursToCSV}
+                style={styles.exportButton}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <Download size={20} />
+                Exporter (Excel)
+              </button>
+              <button
+                onClick={() => setShowAjoutModal(true)}
+                style={styles.addButton}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <Plus size={20} />
+                Nouveau Classe
+              </button>
+            </div>
           </div>
         </div>
 

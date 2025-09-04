@@ -111,7 +111,7 @@ const DashboardCommercial = () => {
         params.personnel = 'true';
       }
       
-      const res = await fetch('http://195.179.229.230:5000/api/comercial/stats?' + new URLSearchParams(params), {
+      const res = await fetch('http://localhost:5000/api/comercial/stats?' + new URLSearchParams(params), {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${token}`,

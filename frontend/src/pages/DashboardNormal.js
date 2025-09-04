@@ -13,8 +13,8 @@ const DashboardNormal = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Filtre par année scolaire
-  const [anneeScolaireFilter, setAnneeScolaireFilter] = useState('2024/2025');
+  // Filtre par année scolaire - commencer vide pour sélection auto de 2025/2026
+  const [anneeScolaireFilter, setAnneeScolaireFilter] = useState('');
   const [anneesDisponibles, setAnneesDisponibles] = useState([]);
 
   // Ajouter après les états existants
@@ -26,7 +26,6 @@ const DashboardNormal = () => {
     nouveauxInscrits: { count: 0, ca: 0 },
     reinscriptions: { count: 0, ca: 0 },
     total: { count: 0, ca: 0 },
-    preinscrits: { count: 0, ca: 0 },
     recouvrement: { percentage: 0, ca: 0 }
   });
 
@@ -37,13 +36,6 @@ const DashboardNormal = () => {
     ta: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 }
   });
 
-  const [tableauPreinscrits, setTableauPreinscrits] = useState({
-    global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-    fi: { total: 0, masi: 0, irm: 0, ca: 0 },
-    executive: { total: 0, masi: 0, irm: 0, ca: 0 },
-    ta: { total: 0, masi: 0, irm: 0, ca: 0 }
-  });
-
   const [tableauReinscriptions, setTableauReinscriptions] = useState({
     global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
     fi: { total: 0, masi: 0, irm: 0, ca: 0 },
@@ -51,13 +43,12 @@ const DashboardNormal = () => {
     ta: { total: 0, masi: 0, irm: 0, ca: 0 }
   });
 
-  // DONNÉES FIXES POUR 2024/2025
+  // DONNÉES FIXES POUR 2024/2025 UNIQUEMENT
   const donneesFixes2024_2025 = {
     chiffreAffaire: {
       nouveauxInscrits: { count: 202, ca: 5410608.98 },
       reinscriptions: { count: 47, ca: 1306440.0 },
       total: { count: 249, ca: 6717048.98 },
-      preinscrits: { count: 9, ca: 257000.0 },
       recouvrement: { percentage: 56.64, ca: 3949767.74 }
     },
     tableauInscrits: {
@@ -65,12 +56,6 @@ const DashboardNormal = () => {
       fi: { total: 59, masi: 15, irm: 44, ca: 1731608.98 },
       executive: { total: 90, masi: 19, irm: 42, autre: 29, ca: 2299000.0 },
       ta: { total: 53, masi: 26, irm: 27, autre: 0, ca: 1380000.0 }
-    },
-    tableauPreinscrits: {
-      global: { total: 9, fi: 1, ta: 0, executive: 8, ca: 257000.0 },
-      fi: { total: 1, masi: 0, irm: 1, ca: 33000.0 },
-      executive: { total: 8, masi: 0, irm: 7, ca: 224000.0 },
-      ta: { total: 0, masi: 0, irm: 0, ca: 0.0 }
     },
     tableauReinscriptions: {
       global: { total: 47, fi: 33, ta: 14, executive: 0, ca: 1306440.0 },
@@ -87,10 +72,10 @@ const DashboardNormal = () => {
       const token = localStorage.getItem('token');
 
       const [etudiantsRes, commerciauxRes] = await Promise.all([
-        fetch('http://195.179.229.230:5000/api/etudiant', {
+        fetch('http://localhost:5000/api/etudiant', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://195.179.229.230:5000/api/commerciaux', {
+        fetch('http://localhost:5000/api/commerciaux', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -110,7 +95,19 @@ const DashboardNormal = () => {
         .reverse();
       setAnneesDisponibles(annees);
 
-      calculerStatistiques(etudiantsData);
+      // Déterminer l'année scolaire à sélectionner
+      let anneeASelectionner = anneeScolaireFilter;
+      if (!anneeASelectionner && annees.length > 0) {
+        if (annees.includes('2025/2026')) {
+          anneeASelectionner = '2025/2026';
+        } else {
+          anneeASelectionner = annees[0];
+        }
+        setAnneeScolaireFilter(anneeASelectionner);
+      }
+
+      // Calculer les statistiques immédiatement avec l'année sélectionnée
+      calculerStatistiquesAvecAnnee(etudiantsData, anneeASelectionner || anneeScolaireFilter);
       await fetchStatistiques();
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
@@ -126,7 +123,7 @@ const DashboardNormal = () => {
   const fetchStatistiques = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://195.179.229.230:5000/api/commerciaux/statistiques', {
+      const res = await fetch('http://localhost:5000/api/commerciaux/statistiques', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -211,50 +208,50 @@ const DashboardNormal = () => {
     })).sort((a, b) => b.total - a.total);
   };
 
-  // Calcul des statistiques
+  // Calcul des statistiques (LOGIQUE CORRIGEE selon nouvelleInscription)
   const calculerStatistiques = (data) => {
-    if (anneeScolaireFilter === '2024/2025') {
+    calculerStatistiquesAvecAnnee(data, anneeScolaireFilter);
+  };
+
+  // Nouvelle fonction pour calculer les statistiques avec une année spécifique
+  const calculerStatistiquesAvecAnnee = (data, anneeFilter) => {
+    // Garder les données fixes pour 2024/2025
+    if (anneeFilter === '2024/2025') {
       setChiffreAffaire(donneesFixes2024_2025.chiffreAffaire);
       setTableauInscrits(donneesFixes2024_2025.tableauInscrits);
-      setTableauPreinscrits(donneesFixes2024_2025.tableauPreinscrits);
       setTableauReinscriptions(donneesFixes2024_2025.tableauReinscriptions);
       return;
     }
 
     const etudiantsFiltres = data.filter(
-      (e) => anneeScolaireFilter === 'toutes' || e.anneeScolaire === anneeScolaireFilter
+      (e) => anneeFilter === 'toutes' || e.anneeScolaire === anneeFilter
     );
 
-    // Inscrits: prixTotal > 0 | Préinscrits: prixTotal == 0 ou vide
     const toNum = (v) => (v === null || v === undefined || v === '' ? 0 : parseFloat(v) || 0);
-    const inscrits = etudiantsFiltres.filter((e) => toNum(e.prixTotal) > 0);
-    const preinscrits = etudiantsFiltres.filter((e) => toNum(e.prixTotal) === 0);
-
-    const nouveauxInscrits = inscrits.filter((e) => e.nouvelleInscription === true);
-    const reinscriptions = inscrits.filter((e) => e.nouvelleInscription === false);
-
+    
+    // Pour les autres années : tous les étudiants selon nouvelleInscription (même avec prix vide)
+    const nouveauxInscrits = etudiantsFiltres.filter((e) => e.nouvelleInscription === true);
+    const reinscriptions = etudiantsFiltres.filter((e) => e.nouvelleInscription === false);
+    
     const caNouveau = nouveauxInscrits.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
     const caReinscription = reinscriptions.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
-    const caPreinscrit = preinscrits.reduce((sum, e) => sum + toNum(e.prixTotal), 0); // 0
     const caTotal = caNouveau + caReinscription;
 
-    const etudiantsPayes = inscrits.filter((e) => e.paye === true);
+    // Pour le recouvrement, ne considérer que les étudiants payés
+    const etudiantsPayes = etudiantsFiltres.filter((e) => e.paye === true);
     const caRecouvre = etudiantsPayes.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
-    const caTotalPotentiel = inscrits.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
 
     setChiffreAffaire({
       nouveauxInscrits: { count: nouveauxInscrits.length, ca: caNouveau },
       reinscriptions: { count: reinscriptions.length, ca: caReinscription },
-      total: { count: inscrits.length, ca: caTotal },
-      preinscrits: { count: preinscrits.length, ca: caPreinscrit },
+      total: { count: nouveauxInscrits.length + reinscriptions.length, ca: caTotal },
       recouvrement: {
-        percentage: caTotalPotentiel > 0 ? (caRecouvre / caTotalPotentiel) * 100 : 0,
+        percentage: caTotal > 0 ? (caRecouvre / caTotal) * 100 : 0,
         ca: caRecouvre
       }
     });
 
-    calculerTableauInscrits(inscrits, toNum);
-    calculerTableauPreinscrits(preinscrits, toNum);
+    calculerTableauInscrits(nouveauxInscrits, toNum);
     calculerTableauReinscriptions(reinscriptions, toNum);
   };
 
@@ -298,46 +295,6 @@ const DashboardNormal = () => {
     });
 
     setTableauInscrits(stats);
-  };
-
-  const calculerTableauPreinscrits = (preinscrits, toNum) => {
-    const stats = {
-      global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-      fi: { total: 0, masi: 0, irm: 0, ca: 0 },
-      executive: { total: 0, masi: 0, irm: 0, ca: 0 },
-      ta: { total: 0, masi: 0, irm: 0, ca: 0 }
-    };
-
-    preinscrits.forEach((etudiant) => {
-      const type = determinerTypeFormation(etudiant);
-      const filiere = (etudiant.filiere || '').toLowerCase();
-      const ca = toNum(etudiant.prixTotal);
-
-      stats.global.total += 1;
-      stats.global.ca += ca;
-
-      if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
-        stats.global.fi += 1;
-        stats.fi.total += 1;
-        stats.fi.ca += ca;
-        if (filiere.includes('masi')) stats.fi.masi += 1;
-        else if (filiere.includes('irm')) stats.fi.irm += 1;
-      } else if (type === 'Executive') {
-        stats.global.executive += 1;
-        stats.executive.total += 1;
-        stats.executive.ca += ca;
-        if (filiere.includes('masi')) stats.executive.masi += 1;
-        else if (filiere.includes('irm')) stats.executive.irm += 1;
-      } else if (type === 'TA') {
-        stats.global.ta += 1;
-        stats.ta.total += 1;
-        stats.ta.ca += ca;
-        if (filiere.includes('masi')) stats.ta.masi += 1;
-        else if (filiere.includes('irm')) stats.ta.irm += 1;
-      }
-    });
-
-    setTableauPreinscrits(stats);
   };
 
   const calculerTableauReinscriptions = (reinscriptions, toNum) => {
@@ -418,18 +375,20 @@ const DashboardNormal = () => {
     window.location.href = '/';
   };
 
-  const handleAnneeChange = (nouvelleAnnee) => setAnneeScolaireFilter(nouvelleAnnee);
+  const handleAnneeChange = (nouvelleAnnee) => {
+    setAnneeScolaireFilter(nouvelleAnnee);
+    // Calculer immédiatement les statistiques avec la nouvelle année
+    if (etudiants.length > 0) {
+      calculerStatistiquesAvecAnnee(etudiants, nouvelleAnnee);
+    }
+  };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (etudiants.length > 0 || anneeScolaireFilter === '2024/2025') {
-      calculerStatistiques(etudiants);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anneeScolaireFilter]);
+  // Supprimer l'useEffect qui dépendait de anneeScolaireFilter pour éviter les recalculs inutiles
+  // Les statistiques sont maintenant calculées directement dans fetchData et handleAnneeChange
 
   if (loading) {
     return (
@@ -510,7 +469,7 @@ const DashboardNormal = () => {
               </button>
             </div>
 
-            {/* Filtre par année scolaire */}
+            {/* Filtre par année scolaire - 2025/2026 EN PREMIER */}
             <div
               style={{
                 display: 'flex',
@@ -537,9 +496,10 @@ const DashboardNormal = () => {
                 }}
               >
                 <option value="toutes">Toutes les années</option>
+                <option value="2025/2026">2025/2026</option>
                 <option value="2024/2025">2024/2025</option>
                 {anneesDisponibles
-                  .filter((a) => a !== '2024/2025')
+                  .filter((a) => a !== '2024/2025' && a !== '2025/2026')
                   .map((annee) => (
                     <option key={annee} value={annee}>
                       {annee}
@@ -583,7 +543,7 @@ const DashboardNormal = () => {
                 </tr>
                 <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>réinscriptions</strong>
+                    <strong>Réinscriptions</strong>
                     <br />
                     <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{chiffreAffaire.reinscriptions.count}</span>
                   </td>
@@ -599,16 +559,6 @@ const DashboardNormal = () => {
                   </td>
                   <td style={{ padding: '1rem', textAlign: 'center' }}>
                     <strong style={{ fontSize: '1.1rem' }}>{formatMoney(chiffreAffaire.total.ca)} MAD</strong>
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>préinscrits</strong>
-                    <br />
-                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{chiffreAffaire.preinscrits.count}</span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>{formatMoney(chiffreAffaire.preinscrits.ca)} MAD</strong>
                   </td>
                 </tr>
                 <tr>
@@ -703,7 +653,7 @@ const DashboardNormal = () => {
             </div>
           </div>
 
-          {/* Tableau des préinscrits */}
+          {/* Tableau des réinscriptions */}
           <div
             style={{
               background: '#fff',
@@ -722,7 +672,7 @@ const DashboardNormal = () => {
                 textAlign: 'center'
               }}
             >
-              Tableau des préinscrits {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
+              Tableau des réinscriptions {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
             </h2>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
@@ -730,80 +680,7 @@ const DashboardNormal = () => {
               <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Global</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  Total d'inscrits <strong>{tableauPreinscrits.global.total}</strong>
-                </div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>FI <strong>{tableauPreinscrits.global.fi}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>TA <strong>{tableauPreinscrits.global.ta}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-                  Executive <strong>{tableauPreinscrits.global.executive}</strong>
-                </div>
-                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
-                  {formatMoney(tableauPreinscrits.global.ca)} MAD
-                </div>
-              </div>
-
-              {/* FI */}
-              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
-                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>FI</h3>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauPreinscrits.fi.total}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauPreinscrits.fi.masi}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>IRM <strong>{tableauPreinscrits.fi.irm}</strong></div>
-                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
-                  {formatMoney(tableauPreinscrits.fi.ca)} MAD
-                </div>
-              </div>
-
-              {/* Executive */}
-              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
-                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Exécutive</h3>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauPreinscrits.executive.total}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauPreinscrits.executive.masi}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>IRM <strong>{tableauPreinscrits.executive.irm}</strong></div>
-                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
-                  {formatMoney(tableauPreinscrits.executive.ca)} MAD
-                </div>
-              </div>
-
-              {/* TA */}
-              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
-                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>TA</h3>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauPreinscrits.ta.total}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauPreinscrits.ta.masi}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>IRM <strong>{tableauPreinscrits.ta.irm}</strong></div>
-                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
-                  {formatMoney(tableauPreinscrits.ta.ca)} MAD
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tableau des réinscriptions */}
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '8px',
-              padding: '2rem',
-              border: '1px solid #e5e7eb'
-            }}
-          >
-            <h2
-              style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                marginBottom: '2rem',
-                textAlign: 'center'
-              }}
-            >
-              Tableau des réinscriptions
-            </h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-              {/* Global */}
-              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
-                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Global</h3>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  Total d'inscrits <strong>{tableauReinscriptions.global.total}</strong>
+                  Total de réinscriptions <strong>{tableauReinscriptions.global.total}</strong>
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>FI <strong>{tableauReinscriptions.global.fi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>TA <strong>{tableauReinscriptions.global.ta}</strong></div>
@@ -819,7 +696,7 @@ const DashboardNormal = () => {
               <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>FI</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  Total d'inscrits FI <strong>{tableauReinscriptions.fi.total}</strong>
+                  Total FI <strong>{tableauReinscriptions.fi.total}</strong>
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.fi.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.fi.irm}</strong></div>
@@ -833,7 +710,7 @@ const DashboardNormal = () => {
               <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Exécutive</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  Total d'inscrits Executive <strong>{tableauReinscriptions.executive.total}</strong>
+                  Total Executive <strong>{tableauReinscriptions.executive.total}</strong>
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
@@ -847,7 +724,7 @@ const DashboardNormal = () => {
               <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>TA</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  Total d'inscrits TA <strong>{tableauReinscriptions.ta.total}</strong>
+                  Total TA <strong>{tableauReinscriptions.ta.total}</strong>
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.ta.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.ta.irm}</strong></div>

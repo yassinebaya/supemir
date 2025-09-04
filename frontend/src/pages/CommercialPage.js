@@ -44,7 +44,7 @@ const CommercialPage = () => {
 
   const fetchCommerciaux = async () => {
     try {
-      const res = await fetch('http://195.179.229.230:5000/api/commerciaux', { headers });
+      const res = await fetch('http://localhost:5000/api/commerciaux', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des commerciaux');
       const data = await res.json();
       setCommerciaux(data);
@@ -56,7 +56,7 @@ const CommercialPage = () => {
 
   const fetchAllEtudiants = async () => {
     try {
-      const res = await fetch('http://195.179.229.230:5000/api/etudiants', { headers });
+      const res = await fetch('http://localhost:5000/api/etudiants', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des étudiants');
       const data = await res.json();
       setAllEtudiants(data);
@@ -68,7 +68,7 @@ const CommercialPage = () => {
   const fetchStatistiques = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://195.179.229.230:5000/api/commerciaux/statistiques', { headers });
+      const res = await fetch('http://localhost:5000/api/commerciaux/statistiques', { headers });
       
       if (!res.ok) {
         throw new Error(`Erreur HTTP: ${res.status}`);
@@ -161,8 +161,8 @@ const CommercialPage = () => {
     setLoading(true);
     try {
       const url = editingCommercial 
-        ? `http://195.179.229.230:5000/api/commerciaux/${editingCommercial._id}`
-        : 'http://195.179.229.230:5000/api/commerciaux'; // Fixed endpoint consistency
+        ? `http://localhost:5000/api/commerciaux/${editingCommercial._id}`
+        : 'http://localhost:5000/api/commerciaux'; // Fixed endpoint consistency
       
       const method = editingCommercial ? 'PUT' : 'POST';
       
@@ -209,7 +209,7 @@ const CommercialPage = () => {
     
     setLoading(true);
     try {
-      const res = await fetch(`http://195.179.229.230:5000/api/commerciaux/${commercialToDelete._id}`, {
+      const res = await fetch(`http://localhost:5000/api/commerciaux/${commercialToDelete._id}`, {
         method: 'DELETE',
         headers
       });
@@ -235,7 +235,7 @@ const CommercialPage = () => {
   const handleToggleActive = async (commercial) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://195.179.229.230:5000/api/commerciaux/${commercial._id}/actif`, {
+      const res = await fetch(`http://localhost:5000/api/commerciaux/${commercial._id}/actif`, {
         method: 'PATCH',
         headers
       });

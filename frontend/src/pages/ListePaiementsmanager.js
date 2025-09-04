@@ -118,7 +118,7 @@ const [filters, setFilters] = useState({
   const fetchPaiements = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://195.179.229.230:5000/api/paiements', {
+      const res = await fetch('http://localhost:5000/api/paiements', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -136,7 +136,7 @@ const [filters, setFilters] = useState({
   const fetchExpirés = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://195.179.229.230:5000/api/paiements/exp', {
+      const res = await fetch('http://localhost:5000/api/paiements/exp', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

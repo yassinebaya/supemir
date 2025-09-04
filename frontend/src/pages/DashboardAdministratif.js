@@ -58,12 +58,12 @@ const AdminDashboard = () => {
 
       // Récupération parallèle des données
       const [etudiantsRes, coursRes, paiementsRes, evenementsRes, presencesRes, professeursRes] = await Promise.all([
-        fetch('http://195.179.229.230:5000/api/etudiants', { headers }),
-        fetch('http://195.179.229.230:5000/api/cours', { headers }),
-        fetch('http://195.179.229.230:5000/api/paiements', { headers }),
-        fetch('http://195.179.229.230:5000/api/evenements', { headers }),
-        fetch('http://195.179.229.230:5000/api/presences', { headers }),
-        fetch('http://195.179.229.230:5000/api/professeurs', { headers })
+        fetch('http://localhost:5000/api/etudiants', { headers }),
+        fetch('http://localhost:5000/api/cours', { headers }),
+        fetch('http://localhost:5000/api/paiements', { headers }),
+        fetch('http://localhost:5000/api/evenements', { headers }),
+        fetch('http://localhost:5000/api/presences', { headers }),
+        fetch('http://localhost:5000/api/professeurs', { headers })
       ]);
 
       // Vérification des statuts
@@ -97,7 +97,7 @@ const AdminDashboard = () => {
       // Paiements expirés
       let paiementsExpiresCount = 0;
       try {
-        const paiementsExpRes = await fetch('http://195.179.229.230:5000/api/paiements/exp', { headers });
+        const paiementsExpRes = await fetch('http://localhost:5000/api/paiements/exp', { headers });
         if (paiementsExpRes.ok) {
           const paiementsExpires = await paiementsExpRes.json();
           paiementsExpiresCount = Array.isArray(paiementsExpires) ? paiementsExpires.length : 0;

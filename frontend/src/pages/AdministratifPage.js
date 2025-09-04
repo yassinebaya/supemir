@@ -37,7 +37,7 @@ const AdministratifPage = () => {
 
   const fetchAdministratifs = async () => {
     try {
-      const res = await fetch('http://195.179.229.230:5000/api/administratifs', { headers });
+      const res = await fetch('http://localhost:5000/api/administratifs', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des administratifs');
       const data = await res.json();
       setAdministratifs(data);
@@ -97,8 +97,8 @@ const AdministratifPage = () => {
     setLoading(true);
     try {
       const url = editingAdministratif 
-        ? `http://195.179.229.230:5000/api/administratifs/${editingAdministratif._id}`
-        : 'http://195.179.229.230:5000/api/administratifs';
+        ? `http://localhost:5000/api/administratifs/${editingAdministratif._id}`
+        : 'http://localhost:5000/api/administratifs';
       
       const method = editingAdministratif ? 'PUT' : 'POST';
       
@@ -143,7 +143,7 @@ const AdministratifPage = () => {
     
     setLoading(true);
     try {
-      const res = await fetch(`http://195.179.229.230:5000/api/administratifs/${administratifToDelete._id}`, {
+      const res = await fetch(`http://localhost:5000/api/administratifs/${administratifToDelete._id}`, {
         method: 'DELETE',
         headers
       });
@@ -168,7 +168,7 @@ const AdministratifPage = () => {
   const handleToggleActive = async (administratif) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://195.179.229.230:5000/api/administratifs/${administratif._id}/actif`, {
+      const res = await fetch(`http://localhost:5000/api/administratifs/${administratif._id}/actif`, {
         method: 'PATCH',
         headers
       });

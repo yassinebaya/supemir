@@ -96,7 +96,7 @@ const ListeProfesseurs = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://195.179.229.230:5000/api/professeurs', {
+      const res = await axios.get('http://localhost:5000/api/professeurs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProfesseurs(res.data);
@@ -110,7 +110,7 @@ const ListeProfesseurs = () => {
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://195.179.229.230:5000/api/cours', {
+      const res = await axios.get('http://localhost:5000/api/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCours(res.data);
@@ -217,7 +217,7 @@ const ListeProfesseurs = () => {
       formAjout.cours.forEach(c => formData.append('cours[]', c));
       if (imageFile) formData.append('image', imageFile);
 
-      await axios.post('http://195.179.229.230:5000/api/professeurs', formData, {
+      await axios.post('http://localhost:5000/api/professeurs', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -332,7 +332,7 @@ const ListeProfesseurs = () => {
       formModifier.cours.forEach(c => formData.append('cours[]', c));
       if (imageFileModifier) formData.append('image', imageFileModifier);
 
-      await axios.put(`http://195.179.229.230:5000/api/professeurs/${professeurAModifier._id}`, formData, {
+      await axios.put(`http://localhost:5000/api/professeurs/${professeurAModifier._id}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -358,7 +358,7 @@ const ListeProfesseurs = () => {
   const handleToggleActif = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://195.179.229.230:5000/api/professeurs/${id}/actif`, {}, {
+      await axios.patch(`http://localhost:5000/api/professeurs/${id}/actif`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Rafraîchir la liste après le toggle
@@ -373,7 +373,7 @@ const ListeProfesseurs = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://195.179.229.230:5000/api/professeurs/${id}`, {
+      await axios.delete(`http://localhost:5000/api/professeurs/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Rafraîchir la liste après suppression
@@ -723,7 +723,7 @@ const ListeProfesseurs = () => {
                     <td className="image-colonne">
                       {p.image ? (
                         <img 
-                          src={`http://195.179.229.230:5000${p.image}`} 
+                          src={`http://localhost:5000${p.image}`} 
                           alt="professeur" 
                           className="image-etudiant"
                         />
@@ -772,7 +772,7 @@ const ListeProfesseurs = () => {
                     <div className="carte-image">
                       {p.image ? (
                         <img 
-                          src={`http://195.179.229.230:5000${p.image}`} 
+                          src={`http://localhost:5000${p.image}`} 
                           alt="professeur" 
                           className="carte-photo"
                         />
@@ -1135,7 +1135,7 @@ const ListeProfesseurs = () => {
           <div className="etudiant-image-section">
             {professeurSelectionne.image ? (
               <img 
-                src={`http://195.179.229.230:5000${professeurSelectionne.image}`} 
+                src={`http://localhost:5000${professeurSelectionne.image}`} 
                 alt="Photo du professeur" 
                 className="etudiant-image-large"
               />
@@ -1399,7 +1399,7 @@ const ListeProfesseurs = () => {
             <div className="image-actuelle">
               <small>Image actuelle :</small>
               <img 
-                src={`http://195.179.229.230:5000${professeurAModifier.image}`} 
+                src={`http://localhost:5000${professeurAModifier.image}`} 
                 alt="Image actuelle" 
                 className="image-preview"
                 style={{width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px'}}

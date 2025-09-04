@@ -93,19 +93,19 @@ const PedagogiqueDashboard = () => {
 
       // Utilisation des routes spécifiques au pédagogique
       const [etudiantsRes, coursRes, professeursRes, statsRes, coursDetaillesRes] = await Promise.all([
-        fetch('http://195.179.229.230:5000/api/pedagogique/etudiants', {
+        fetch('http://localhost:5000/api/pedagogique/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/cours', {
+        fetch('http://localhost:5000/api/pedagogique/cours', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/professeurs', {
+        fetch('http://localhost:5000/api/pedagogique/professeurs', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/dashboard-stats', {
+        fetch('http://localhost:5000/api/pedagogique/dashboard-stats', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/cours-detailles', {
+        fetch('http://localhost:5000/api/pedagogique/cours-detailles', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -1307,7 +1307,7 @@ const PedagogiqueDashboard = () => {
                             <td className="image-colonne">
                               {e.image ? (
                                 <img
-                                  src={`http://195.179.229.230:5000${e.image}`}
+                                  src={`http://localhost:5000${e.image}`}
                                   alt="etudiant"
                                   className="image-etudiant"
                                 />
@@ -1644,7 +1644,7 @@ const PedagogiqueDashboard = () => {
                     </h3>
                     <div className="student-photo">
                       <img
-                        src={`http://195.179.229.230:5000${selectedStudent.image}`}
+                        src={`http://localhost:5000${selectedStudent.image}`}
                         alt="Photo étudiant"
                         className="modal-student-image"
                       />

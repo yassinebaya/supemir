@@ -58,10 +58,10 @@ const DashboardEtudiant = () => {
 
       // Récupération parallèle des données
       const [profileRes, presencesRes, absencesRes, paiementsRes] = await Promise.all([
-        fetch('http://195.179.229.230:5000/api/etudiant/profile', { headers }),
-        fetch('http://195.179.229.230:5000/api/etudiant/presences', { headers }),
-        fetch('http://195.179.229.230:5000/api/etudiant/absences', { headers }),
-        fetch('http://195.179.229.230:5000/api/etudiant/paiements', { headers })
+        fetch('http://localhost:5000/api/etudiant/profile', { headers }),
+        fetch('http://localhost:5000/api/etudiant/presences', { headers }),
+        fetch('http://localhost:5000/api/etudiant/absences', { headers }),
+        fetch('http://localhost:5000/api/etudiant/paiements', { headers })
       ]);
 
       // Vérification des statuts de réponse
