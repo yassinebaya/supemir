@@ -1,12 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Book, Clock, Users, Download, GraduationCap, MapPin, BookOpen } from 'lucide-react';
-import SidebarProfesseur from '../components/SidebarProf'; // Assure-toi que ce composant existe
+import { 
+  Calendar, 
+  ChevronLeft, 
+  ChevronRight, 
+  Book, 
+  Clock, 
+  Users, 
+  Download, 
+  GraduationCap, 
+  MapPin, 
+  BookOpen,
+  DollarSign,
+  TrendingUp,
+  BarChart3,
+  Eye
+} from 'lucide-react';
+import SidebarProfesseur from '../components/SidebarProf';
 
 const SeancesProfesseur = () => {
   const [seances, setSeances] = useState([]);
+  const [professeurInfo, setProfesseurInfo] = useState(null);
+  const [statistiques, setStatistiques] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [viewMode, setViewMode] = useState('emploi'); // 'emploi' ou 'statistiques'
+  const [selectedPeriod, setSelectedPeriod] = useState({
+    mois: new Date().getMonth() + 1,
+    annee: new Date().getFullYear()
+  });
 
   const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   const creneaux = [
@@ -15,6 +37,22 @@ const SeancesProfesseur = () => {
     { debut: '14:00', fin: '16:00', label: '14h - 16h' },
     { debut: '16:00', fin: '18:00', label: '16h - 18h' }
   ];
+
+  const mois = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
+
+  // Fonction pour calculer la durée d'une séance
+  const calculerDureeSeance = (heureDebut, heureFin) => {
+    const [heureD, minuteD] = heureDebut.split(':').map(Number);
+    const [heureF, minuteF] = heureFin.split(':').map(Number);
+    
+    const minutesDebut = heureD * 60 + minuteD;
+    const minutesFin = heureF * 60 + minuteF;
+    
+    return (minutesFin - minutesDebut) / 60;
+  };
 
   // Fonction pour obtenir les dates de la semaine
   const getWeekDates = (date) => {
@@ -38,38 +76,82 @@ const SeancesProfesseur = () => {
   };
 
   useEffect(() => {
-    const fetchSeances = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setMessage({ type: 'error', text: "Token d'authentification manquant" });
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch('http://localhost:5000/api/seances/professeur', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setSeances(data);
-        } else {
-          setMessage({ type: 'error', text: 'Erreur lors du chargement des séances' });
-        }
-      } catch (err) {
-        console.error('Erreur lors de la récupération des séances', err);
-        setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSeances();
+    fetchProfesseurInfo();
   }, []);
+
+  useEffect(() => {
+    if (viewMode === 'statistiques') {
+      fetchStatistiques();
+    }
+  }, [viewMode, selectedPeriod]);
+
+  const fetchSeances = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setMessage({ type: 'error', text: "Token d'authentification manquant" });
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch('http://195.179.229.230:5000/api/seances/professeur', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSeances(data);
+      } else {
+        setMessage({ type: 'error', text: 'Erreur lors du chargement des séances' });
+      }
+    } catch (err) {
+      console.error('Erreur lors de la récupération des séances', err);
+      setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProfesseurInfo = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://195.179.229.230:5000/api/professeurs/mon-profil', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProfesseurInfo(data);
+      }
+    } catch (err) {
+      console.error('Erreur récupération profil:', err);
+    }
+  };
+
+  const fetchStatistiques = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams();
+      params.append('mois', selectedPeriod.mois);
+      params.append('annee', selectedPeriod.annee);
+      
+      const res = await fetch(
+        `http://195.179.229.230:5000/api/professeurs/mon-rapport?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (res.ok) {
+        const data = await res.json();
+        setStatistiques(data);
+      }
+    } catch (err) {
+      console.error('Erreur statistiques:', err);
+    }
+  };
 
   // Organiser les séances par jour et créneau
   const organiserSeances = () => {
@@ -77,7 +159,13 @@ const SeancesProfesseur = () => {
     
     seances.forEach(seance => {
       const key = `${seance.jour}-${seance.heureDebut}-${seance.heureFin}`;
-      emploi[key] = seance;
+      emploi[key] = {
+        ...seance,
+        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin),
+        montant: professeurInfo && !professeurInfo.estPermanent && professeurInfo.tarifHoraire 
+          ? calculerDureeSeance(seance.heureDebut, seance.heureFin) * professeurInfo.tarifHoraire 
+          : 0
+      };
     });
     
     return emploi;
@@ -92,12 +180,101 @@ const SeancesProfesseur = () => {
     setCurrentWeek(newDate);
   };
 
-  // Télécharger l'emploi du temps en CSV
+  // Obtenir les statistiques rapides
+  const getStatsRapides = () => {
+    const coursUniques = [...new Set(seances.map(s => s.cours).filter(Boolean))];
+    const matieresUniques = [...new Set(seances.map(s => s.matiere).filter(Boolean))];
+    const sallesUniques = [...new Set(seances.map(s => s.salle).filter(Boolean))];
+    
+    const totalHeures = seances.reduce((total, seance) => {
+      return total + calculerDureeSeance(seance.heureDebut, seance.heureFin);
+    }, 0);
+
+    const totalMontant = professeurInfo && !professeurInfo.estPermanent && professeurInfo.tarifHoraire
+      ? totalHeures * professeurInfo.tarifHoraire
+      : 0;
+    
+    return {
+      totalSeances: seances.length,
+      totalCours: coursUniques.length,
+      totalMatieres: matieresUniques.length,
+      totalSalles: sallesUniques.length,
+      totalHeures: Math.round(totalHeures * 100) / 100,
+      totalMontant: Math.round(totalMontant * 100) / 100
+    };
+  };
+
+  const stats = getStatsRapides();
+
+  // Obtenir la prochaine séance
+  const getNextSeance = () => {
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('fr-FR', { weekday: 'long' });
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    const jourMapping = {
+      'lundi': 'Lundi',
+      'mardi': 'Mardi',
+      'mercredi': 'Mercredi',
+      'jeudi': 'Jeudi',
+      'vendredi': 'Vendredi',
+      'samedi': 'Samedi'
+    };
+    
+    const jourActuel = jourMapping[currentDay.toLowerCase()];
+    
+    const seancesAujourdhui = seances.filter(s => 
+      s.jour === jourActuel && s.heureDebut > currentTime
+    ).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
+    
+    if (seancesAujourdhui.length > 0) {
+      return seancesAujourdhui[0];
+    }
+    
+    const ordreDays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const indexActuel = ordreDays.indexOf(jourActuel);
+    
+    for (let i = indexActuel + 1; i < ordreDays.length; i++) {
+      const seancesJour = seances.filter(s => s.jour === ordreDays[i])
+        .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
+      if (seancesJour.length > 0) {
+        return seancesJour[0];
+      }
+    }
+    
+    return null;
+  };
+
+  const prochaineSeance = getNextSeance();
+
+  // Télécharger l'emploi du temps
   const downloadSchedule = () => {
     let csvContent = '';
-    csvContent += `Emploi du Temps Professeur - Semaine du ${formatDate(weekDates[0])} au ${formatDate(weekDates[5])}\n\n`;
+    csvContent += `Emploi du Temps Professeur - ${professeurInfo?.nom || 'Professeur'}\n`;
+    csvContent += `Semaine du ${formatDate(weekDates[0])} au ${formatDate(weekDates[5])}\n\n`;
+    
+    // Informations du professeur
+    if (professeurInfo) {
+      csvContent += `INFORMATIONS PROFESSEUR\n`;
+      csvContent += `Nom: ${professeurInfo.nom}\n`;
+      csvContent += `Type: ${professeurInfo.estPermanent ? 'Permanent' : 'Entrepreneur'}\n`;
+      if (!professeurInfo.estPermanent && professeurInfo.tarifHoraire) {
+        csvContent += `Tarif horaire: ${professeurInfo.tarifHoraire} DH/h\n`;
+      }
+      csvContent += `\n`;
+    }
+
+    // Statistiques de la semaine
+    csvContent += `STATISTIQUES SEMAINE\n`;
+    csvContent += `Total séances: ${stats.totalSeances}\n`;
+    csvContent += `Total heures: ${stats.totalHeures}h\n`;
+    if (stats.totalMontant > 0) {
+      csvContent += `Total montant: ${stats.totalMontant.toFixed(2)} DH\n`;
+    }
+    csvContent += `\n`;
     
     // En-tête du tableau
+    csvContent += `EMPLOI DU TEMPS\n`;
     csvContent += 'Horaires;';
     jours.forEach((jour, index) => {
       csvContent += `${jour} (${formatDate(weekDates[index])});`;
@@ -116,7 +293,9 @@ const SeancesProfesseur = () => {
           const coursInfo = seance.cours || 'Cours';
           const matiereInfo = seance.matiere ? ` (${seance.matiere})` : '';
           const salleInfo = seance.salle ? ` - Salle: ${seance.salle}` : '';
-          csvContent += `"${coursInfo}${matiereInfo}${salleInfo}";`;
+          const dureeInfo = ` - ${seance.dureeHeures}h`;
+          const montantInfo = seance.montant > 0 ? ` - ${seance.montant.toFixed(2)} DH` : '';
+          csvContent += `"${coursInfo}${matiereInfo}${salleInfo}${dureeInfo}${montantInfo}";`;
         } else {
           csvContent += '";';
         }
@@ -124,7 +303,6 @@ const SeancesProfesseur = () => {
       csvContent += '\n';
     });
 
-    // Créer et télécharger le fichier
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -135,77 +313,15 @@ const SeancesProfesseur = () => {
     link.click();
     document.body.removeChild(link);
 
-    setMessage({ type: 'success', text: '📁 Emploi du temps téléchargé avec succès !' });
+    setMessage({ type: 'success', text: 'Emploi du temps téléchargé avec succès !' });
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
-
-  // Obtenir les statistiques
-  const getStats = () => {
-    const coursUniques = [...new Set(seances.map(s => s.cours).filter(Boolean))];
-    const matieresUniques = [...new Set(seances.map(s => s.matiere).filter(Boolean))];
-    const sallesUniques = [...new Set(seances.map(s => s.salle).filter(Boolean))];
-    const totalHeures = seances.length * 2; // Approximation : 2h par séance
-    
-    return {
-      totalSeances: seances.length,
-      totalCours: coursUniques.length,
-      totalMatieres: matieresUniques.length,
-      totalSalles: sallesUniques.length,
-      totalHeures: totalHeures
-    };
-  };
-
-  const stats = getStats();
-
-  // Obtenir la prochaine séance
-  const getNextSeance = () => {
-    const now = new Date();
-    const currentDay = now.toLocaleDateString('fr-FR', { weekday: 'long' });
-    const currentTime = now.toTimeString().slice(0, 5);
-    
-    // Convertir le jour français en jour utilisé dans l'app
-    const jourMapping = {
-      'lundi': 'Lundi',
-      'mardi': 'Mardi',
-      'mercredi': 'Mercredi',
-      'jeudi': 'Jeudi',
-      'vendredi': 'Vendredi',
-      'samedi': 'Samedi'
-    };
-    
-    const jourActuel = jourMapping[currentDay.toLowerCase()];
-    
-    // Trouver les séances d'aujourd'hui qui n'ont pas encore commencé
-    const seancesAujourdhui = seances.filter(s => 
-      s.jour === jourActuel && s.heureDebut > currentTime
-    ).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
-    
-    if (seancesAujourdhui.length > 0) {
-      return seancesAujourdhui[0];
-    }
-    
-    // Sinon, trouver la prochaine séance cette semaine
-    const ordreDays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-    const indexActuel = ordreDays.indexOf(jourActuel);
-    
-    for (let i = indexActuel + 1; i < ordreDays.length; i++) {
-      const seancesJour = seances.filter(s => s.jour === ordreDays[i])
-        .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
-      if (seancesJour.length > 0) {
-        return seancesJour[0];
-      }
-    }
-    
-    return null;
-  };
-
-  const prochaineSeance = getNextSeance();
 
   const styles = {
     container: {
       display: 'flex',
       minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
     },
     content: {
       flexGrow: 1,
@@ -220,6 +336,37 @@ const SeancesProfesseur = () => {
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
       marginBottom: '20px',
       textAlign: 'center'
+    },
+    modeSelector: {
+      display: 'flex',
+      gap: '10px',
+      justifyContent: 'center',
+      marginBottom: '20px'
+    },
+    modeButton: {
+      padding: '10px 20px',
+      border: '2px solid #059669',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: '500',
+      transition: 'all 0.2s'
+    },
+    modeButtonActive: {
+      backgroundColor: '#059669',
+      color: 'white'
+    },
+    modeButtonInactive: {
+      backgroundColor: 'white',
+      color: '#059669'
+    },
+    professeurInfo: {
+      backgroundColor: '#fff',
+      padding: '20px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+      marginBottom: '20px',
+      border: '2px solid #059669'
     },
     statsContainer: {
       display: 'grid',
@@ -271,6 +418,19 @@ const SeancesProfesseur = () => {
       borderRadius: '8px',
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
       marginBottom: '20px'
+    },
+    controlRow: {
+      display: 'flex',
+      gap: '15px',
+      alignItems: 'center',
+      marginBottom: '15px',
+      flexWrap: 'wrap'
+    },
+    select: {
+      padding: '8px 12px',
+      border: '1px solid #d1d5db',
+      borderRadius: '6px',
+      fontSize: '14px'
     },
     weekNavigation: {
       display: 'flex',
@@ -351,7 +511,7 @@ const SeancesProfesseur = () => {
       border: '1px solid #e5e7eb',
       padding: '8px',
       verticalAlign: 'top',
-      height: '110px',
+      height: '130px',
       width: 'calc(100% / 7)',
       position: 'relative'
     },
@@ -390,6 +550,17 @@ const SeancesProfesseur = () => {
       alignItems: 'center',
       gap: '2px'
     },
+    dureeInfo: {
+      fontWeight: '500',
+      color: '#0ea5e9',
+      fontSize: '10px',
+      marginBottom: '2px'
+    },
+    montantInfo: {
+      fontWeight: '600',
+      color: '#dc2626',
+      fontSize: '10px'
+    },
     message: {
       padding: '12px 16px',
       borderRadius: '6px',
@@ -416,6 +587,13 @@ const SeancesProfesseur = () => {
       textAlign: 'center',
       padding: '40px',
       color: '#6b7280'
+    },
+    statistiquesContainer: {
+      backgroundColor: '#fff',
+      padding: '20px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+      marginBottom: '20px'
     }
   };
 
@@ -449,108 +627,59 @@ const SeancesProfesseur = () => {
         <div style={styles.header}>
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#1f2937' }}>
             <GraduationCap size={24} style={{ verticalAlign: 'middle', marginRight: '10px' }} />
-            Mes Cours - Emploi du Temps
+            Mon Dashboard Professeur
           </h1>
         </div>
 
-        {/* Prochaine séance */}
-        {prochaineSeance && (
-          <div style={styles.nextSeanceCard}>
-            <div style={styles.nextSeanceTitle}>
-              <Clock size={20} />
-              Prochaine séance
-            </div>
-            <div style={styles.nextSeanceInfo}>
-              <strong>{prochaineSeance.cours}</strong> - {prochaineSeance.jour} à {prochaineSeance.heureDebut}
-              {prochaineSeance.matiere && <span> ({prochaineSeance.matiere})</span>}
-              {prochaineSeance.salle && <span> - Salle: {prochaineSeance.salle}</span>}
+        {/* Sélecteur de mode */}
+        <div style={styles.modeSelector}>
+          <button
+            style={{
+              ...styles.modeButton,
+              ...(viewMode === 'emploi' ? styles.modeButtonActive : styles.modeButtonInactive)
+            }}
+            onClick={() => setViewMode('emploi')}
+          >
+            <Calendar size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+            Emploi du Temps
+          </button>
+          <button
+            style={{
+              ...styles.modeButton,
+              ...(viewMode === 'statistiques' ? styles.modeButtonActive : styles.modeButtonInactive)
+            }}
+            onClick={() => setViewMode('statistiques')}
+          >
+            <BarChart3 size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+            Mes Statistiques
+          </button>
+        </div>
+
+        {/* Informations du professeur */}
+        {professeurInfo && (
+          <div style={styles.professeurInfo}>
+            <h3 style={{ margin: '0 0 10px 0', color: '#374151' }}>
+              {professeurInfo.nom}
+            </h3>
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{
+                backgroundColor: professeurInfo.estPermanent ? '#d1fae5' : '#fef3c7',
+                color: professeurInfo.estPermanent ? '#065f46' : '#92400e',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                {professeurInfo.estPermanent ? 'Professeur Permanent' : 'Entrepreneur'}
+              </span>
+              {!professeurInfo.estPermanent && professeurInfo.tarifHoraire && (
+                <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                  Tarif: {professeurInfo.tarifHoraire} DH/heure
+                </span>
+              )}
             </div>
           </div>
         )}
-
-        {/* Statistiques */}
-        <div style={styles.statsContainer}>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalSeances}</div>
-            <div style={styles.statLabel}>
-              <Clock size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Séances par semaine
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalCours}</div>
-            <div style={styles.statLabel}>
-              <Book size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Cours différents
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalMatieres}</div>
-            <div style={styles.statLabel}>
-              <BookOpen size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Matières
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalSalles}</div>
-            <div style={styles.statLabel}>
-              <MapPin size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Salles
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalHeures}h</div>
-            <div style={styles.statLabel}>
-              <Users size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Heures d'enseignement
-            </div>
-          </div>
-        </div>
-
-        {/* Contrôles */}
-        <div style={styles.controls}>
-          {/* Navigation des semaines */}
-          <div style={styles.weekNavigation}>
-            <button 
-              style={styles.weekButton} 
-              onClick={() => changeWeek(-1)}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#047857'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#059669'}
-            >
-              <ChevronLeft size={16} />
-              Semaine précédente
-            </button>
-            <div style={styles.weekInfo}>
-              Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[5])}
-            </div>
-            <button 
-              style={styles.weekButton} 
-              onClick={() => changeWeek(1)}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#047857'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#059669'}
-            >
-              Semaine suivante
-              <ChevronRight size={16} />
-            </button>
-          </div>
-
-          {/* Bouton de téléchargement */}
-          <button 
-            style={styles.downloadButton}
-            onClick={downloadSchedule}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#d97706';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#f59e0b';
-              e.target.style.transform = 'translateY(0px)';
-            }}
-          >
-            <Download size={18} />
-            Télécharger mon emploi du temps
-          </button>
-        </div>
 
         {/* Message */}
         {message.text && (
@@ -562,75 +691,380 @@ const SeancesProfesseur = () => {
           </div>
         )}
 
-        {/* Tableau de l'emploi du temps */}
-        {seances.length > 0 ? (
-          <div style={styles.tableContainer}>
-            <div style={styles.tableTitle}>
-               Mes Cours - Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[5])}
+        {/* Mode Emploi du Temps */}
+        {viewMode === 'emploi' && (
+          <>
+            {/* Prochaine séance */}
+            {prochaineSeance && (
+              <div style={styles.nextSeanceCard}>
+                <div style={styles.nextSeanceTitle}>
+                  <Clock size={20} />
+                  Prochaine séance
+                </div>
+                <div style={styles.nextSeanceInfo}>
+                  <strong>{prochaineSeance.cours}</strong> - {prochaineSeance.jour} à {prochaineSeance.heureDebut}
+                  {prochaineSeance.matiere && <span> ({prochaineSeance.matiere})</span>}
+                  {prochaineSeance.salle && <span> - Salle: {prochaineSeance.salle}</span>}
+                  <div style={{ marginTop: '5px', fontSize: '14px', color: '#6b7280' }}>
+                    Durée: {calculerDureeSeance(prochaineSeance.heureDebut, prochaineSeance.heureFin)}h
+                    {professeurInfo && !professeurInfo.estPermanent && professeurInfo.tarifHoraire && (
+                      <span> - Montant: {(calculerDureeSeance(prochaineSeance.heureDebut, prochaineSeance.heureFin) * professeurInfo.tarifHoraire).toFixed(2)} DH</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Statistiques rapides */}
+            <div style={styles.statsContainer}>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>{stats.totalSeances}</div>
+                <div style={styles.statLabel}>
+                  <Clock size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                  Séances par semaine
+                </div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>{stats.totalHeures}h</div>
+                <div style={styles.statLabel}>
+                  <Users size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                  Heures d'enseignement
+                </div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>{stats.totalCours}</div>
+                <div style={styles.statLabel}>
+                  <Book size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                  Cours différents
+                </div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>{stats.totalMatieres}</div>
+                <div style={styles.statLabel}>
+                  <BookOpen size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                  Matières
+                </div>
+              </div>
+              {stats.totalMontant > 0 && (
+                <div style={styles.statCard}>
+                  <div style={styles.statNumber}>{stats.totalMontant} DH</div>
+                  <div style={styles.statLabel}>
+                    <DollarSign size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                    Revenus semaine
+                  </div>
+                </div>
+              )}
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.headerCell}>Horaires</th>
-                    {jours.map((jour, index) => (
-                      <th key={jour} style={styles.headerCell}>
-                        {jour}<br />
-                        <small>{formatDate(weekDates[index])}</small>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {creneaux.map(creneau => (
-                    <tr key={`${creneau.debut}-${creneau.fin}`}>
-                      <td style={styles.timeCell}>
-                        {creneau.label}
-                      </td>
-                      {jours.map(jour => {
-                        const key = `${jour}-${creneau.debut}-${creneau.fin}`;
-                        const seance = emploiOrganise[key];
-                        
-                        return (
-                          <td key={jour} style={styles.cell}>
-                            {seance ? (
-                              <div style={styles.seanceCard}>
-                                <div>
-                                  <div style={styles.coursName}>
-                                    {seance.cours || 'Cours'}
-                                  </div>
-                                  {/* Affichage de la matière avec icône */}
-                                  {seance.matiere && (
-                                    <div style={styles.matiereName}>
-                                      <BookOpen size={10} />
-                                      {seance.matiere}
-                                    </div>
-                                  )}
-                                  {/* Affichage de la salle avec icône */}
-                                  {seance.salle && (
-                                    <div style={styles.salleName}>
-                                      <MapPin size={10} />
-                                      {seance.salle}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ) : null}
+
+            {/* Contrôles */}
+            <div style={styles.controls}>
+              <div style={styles.weekNavigation}>
+                <button 
+                  style={styles.weekButton} 
+                  onClick={() => changeWeek(-1)}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#047857'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#059669'}
+                >
+                  <ChevronLeft size={16} />
+                  Semaine précédente
+                </button>
+                <div style={styles.weekInfo}>
+                  Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[5])}
+                </div>
+                <button 
+                  style={styles.weekButton} 
+                  onClick={() => changeWeek(1)}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#047857'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#059669'}
+                >
+                  Semaine suivante
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+
+              <button 
+                style={styles.downloadButton}
+                onClick={downloadSchedule}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#d97706';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#f59e0b';
+                  e.target.style.transform = 'translateY(0px)';
+                }}
+              >
+                <Download size={18} />
+                Télécharger mon emploi du temps
+              </button>
+            </div>
+
+            {/* Tableau de l'emploi du temps */}
+            {seances.length > 0 ? (
+              <div style={styles.tableContainer}>
+                <div style={styles.tableTitle}>
+                  Mes Cours - Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[5])}
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.headerCell}>Horaires</th>
+                        {jours.map((jour, index) => (
+                          <th key={jour} style={styles.headerCell}>
+                            {jour}<br />
+                            <small>{formatDate(weekDates[index])}</small>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {creneaux.map(creneau => (
+                        <tr key={`${creneau.debut}-${creneau.fin}`}>
+                          <td style={styles.timeCell}>
+                            {creneau.label}
                           </td>
-                        );
-                      })}
-                    </tr>
+                          {jours.map(jour => {
+                            const key = `${jour}-${creneau.debut}-${creneau.fin}`;
+                            const seance = emploiOrganise[key];
+                            
+                            return (
+                              <td key={jour} style={styles.cell}>
+                                {seance ? (
+                                  <div style={styles.seanceCard}>
+                                    <div>
+                                      <div style={styles.coursName}>
+                                        {seance.cours || 'Cours'}
+                                      </div>
+                                      {seance.matiere && (
+                                        <div style={styles.matiereName}>
+                                          <BookOpen size={10} />
+                                          {seance.matiere}
+                                        </div>
+                                      )}
+                                      {seance.salle && (
+                                        <div style={styles.salleName}>
+                                          <MapPin size={10} />
+                                          {seance.salle}
+                                        </div>
+                                      )}
+                                      <div style={styles.dureeInfo}>
+                                        <Clock size={10} />
+                                        {seance.dureeHeures}h
+                                      </div>
+                                      {seance.montant > 0 && (
+                                        <div style={styles.montantInfo}>
+                                          <DollarSign size={10} />
+                                          {seance.montant.toFixed(2)} DH
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div style={styles.emptyState}>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>👨‍🏫</div>
+                <div style={{ fontSize: '18px', marginBottom: '10px' }}>Aucun cours programmé</div>
+                <div>Vos cours apparaîtront ici une fois qu'ils seront assignés par l'administration.</div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Mode Statistiques */}
+        {viewMode === 'statistiques' && (
+          <>
+            {/* Contrôles période */}
+            <div style={styles.controls}>
+              <div style={styles.controlRow}>
+                <select
+                  style={styles.select}
+                  value={selectedPeriod.mois}
+                  onChange={(e) => setSelectedPeriod(prev => ({ ...prev, mois: parseInt(e.target.value) }))}
+                >
+                  {mois.map((m, index) => (
+                    <option key={index} value={index + 1}>{m}</option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+
+                <select
+                  style={styles.select}
+                  value={selectedPeriod.annee}
+                  onChange={(e) => setSelectedPeriod(prev => ({ ...prev, annee: parseInt(e.target.value) }))}
+                >
+                  {[2023, 2024, 2025, 2026].map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+
+                <button
+                  style={styles.weekButton}
+                  onClick={fetchStatistiques}
+                >
+                  <TrendingUp size={16} />
+                  Actualiser
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div style={styles.emptyState}>
-            <div style={{ fontSize: '48px', marginBottom: '10px' }}>👨‍🏫</div>
-            <div style={{ fontSize: '18px', marginBottom: '10px' }}>Aucun cours programmé</div>
-            <div>Vos cours apparaîtront ici une fois qu'ils seront assignés par l'administration.</div>
-          </div>
+
+            {/* Statistiques détaillées */}
+            {statistiques && (
+              <div style={styles.statistiquesContainer}>
+                <h3 style={{ margin: '0 0 20px 0', color: '#374151' }}>
+                  Mes Statistiques - {mois[selectedPeriod.mois - 1]} {selectedPeriod.annee}
+                </h3>
+
+                {/* Statistiques principales */}
+                <div style={styles.statsContainer}>
+                  <div style={styles.statCard}>
+                    <div style={styles.statNumber}>{statistiques.statistiques.totalHeures}h</div>
+                    <div style={styles.statLabel}>
+                      <Clock size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                      Total Heures
+                    </div>
+                  </div>
+                  <div style={styles.statCard}>
+                    <div style={styles.statNumber}>{statistiques.statistiques.totalSeances}</div>
+                    <div style={styles.statLabel}>
+                      <Calendar size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                      Séances
+                    </div>
+                  </div>
+                  <div style={styles.statCard}>
+                    <div style={styles.statNumber}>{statistiques.statistiques.coursUniques}</div>
+                    <div style={styles.statLabel}>
+                      <Book size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                      Cours Différents
+                    </div>
+                  </div>
+                  <div style={styles.statCard}>
+                    <div style={styles.statNumber}>{statistiques.statistiques.moyenneHeuresParJour}h</div>
+                    <div style={styles.statLabel}>
+                      <TrendingUp size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                      Moyenne/Jour
+                    </div>
+                  </div>
+                  {statistiques.statistiques.totalAPayer > 0 && (
+                    <div style={styles.statCard}>
+                      <div style={styles.statNumber}>{statistiques.statistiques.totalAPayer.toFixed(2)} DH</div>
+                      <div style={styles.statLabel}>
+                        <DollarSign size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
+                        Total Gagné
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Répartition par jour */}
+                {Object.keys(statistiques.statistiques.repartitionJours).length > 0 && (
+                  <div style={{ marginTop: '30px' }}>
+                    <h4 style={{ margin: '0 0 20px 0', color: '#374151' }}>
+                      Répartition des Heures par Jour
+                    </h4>
+                    {Object.entries(statistiques.statistiques.repartitionJours).map(([jour, heures]) => {
+                      const maxHeures = Math.max(...Object.values(statistiques.statistiques.repartitionJours));
+                      const percentage = maxHeures > 0 ? (heures / maxHeures) * 100 : 0;
+                      
+                      return (
+                        <div key={jour} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          marginBottom: '10px'
+                        }}>
+                          <div style={{
+                            width: '100px',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}>{jour}</div>
+                          <div style={{
+                            flex: 1,
+                            height: '20px',
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: '10px',
+                            overflow: 'hidden',
+                            marginRight: '10px'
+                          }}>
+                            <div style={{
+                              height: '100%',
+                              backgroundColor: '#059669',
+                              borderRadius: '10px',
+                              transition: 'width 0.3s ease',
+                              width: `${percentage}%`
+                            }}></div>
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            color: '#374151'
+                          }}>{heures}h</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Détail des séances */}
+                {statistiques.seances && statistiques.seances.length > 0 && (
+                  <div style={{ marginTop: '30px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>
+                      Détail de Mes Séances
+                    </h4>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={styles.headerCell}>Jour</th>
+                            <th style={styles.headerCell}>Horaire</th>
+                            <th style={styles.headerCell}>Cours</th>
+                            <th style={styles.headerCell}>Matière</th>
+                            <th style={styles.headerCell}>Salle</th>
+                            <th style={styles.headerCell}>Durée</th>
+                            {professeurInfo && !professeurInfo.estPermanent && (
+                              <th style={styles.headerCell}>Montant</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {statistiques.seances.map((seance, index) => (
+                            <tr key={index}>
+                              <td style={styles.timeCell}>{seance.jour}</td>
+                              <td style={styles.timeCell}>{seance.heureDebut} - {seance.heureFin}</td>
+                              <td style={styles.timeCell}>{seance.cours}</td>
+                              <td style={styles.timeCell}>{seance.matiere || '-'}</td>
+                              <td style={styles.timeCell}>{seance.salle || '-'}</td>
+                              <td style={styles.timeCell}>{seance.dureeHeures}h</td>
+                              {professeurInfo && !professeurInfo.estPermanent && (
+                                <td style={styles.timeCell}>
+                                  {(seance.dureeHeures * professeurInfo.tarifHoraire).toFixed(2)} DH
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!statistiques && (
+              <div style={styles.emptyState}>
+                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📊</div>
+                <div style={{ fontSize: '18px', marginBottom: '10px' }}>Aucune donnée disponible</div>
+                <div>Sélectionnez une période pour voir vos statistiques.</div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

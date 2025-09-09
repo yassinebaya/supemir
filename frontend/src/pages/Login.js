@@ -35,7 +35,7 @@ const handleLogin = async () => {
   setMessage('');
 
   try {
-    const res = await fetch('http://localhost:5000/api/login', {
+    const res = await fetch('http://195.179.229.230:5000/api/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -63,6 +63,8 @@ setTimeout(() => {
     window.location.href = '/administratif';
   } else if (data.role === 'prof') {
     window.location.href = '/professeur';
+  } else if (data.role === 'finance_prof') { // 🆕 NOUVEAU - Professeur de Finance
+    window.location.href = '/finance-prof';
   } else if (data.role === 'etudiant') {
     window.location.href = '/etudiant';
   } else if (data.role === 'commercial') {

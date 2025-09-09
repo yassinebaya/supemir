@@ -27,7 +27,7 @@ const NotificationProf = ({ onNavigate }) => {
   const dropdownRef = useRef(null);
   
   // Configuration de l'API
-  const API_BASE = 'http://localhost:5000/api';
+  const API_BASE = 'http://195.179.229.230:5000/api';
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     return {

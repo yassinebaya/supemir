@@ -48,7 +48,7 @@ const PedagogiePage = () => {
 
   const fetchPedagogiques = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/pedagogiques', { headers });
+      const res = await fetch('http://195.179.229.230:5000/api/pedagogiques', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des pédagogiques');
       const data = await res.json();
       setPedagogiques(data);
@@ -113,8 +113,8 @@ const PedagogiePage = () => {
     setLoading(true);
     try {
       const url = editingPedagogique 
-        ? `http://localhost:5000/api/pedagogiques/${editingPedagogique._id}`
-        : 'http://localhost:5000/api/pedagogiques';
+        ? `http://195.179.229.230:5000/api/pedagogiques/${editingPedagogique._id}`
+        : 'http://195.179.229.230:5000/api/pedagogiques';
       
       const method = editingPedagogique ? 'PUT' : 'POST';
       
@@ -160,7 +160,7 @@ const PedagogiePage = () => {
     
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/pedagogiques/${pedagogiqueToDelete._id}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/pedagogiques/${pedagogiqueToDelete._id}`, {
         method: 'DELETE',
         headers
       });
@@ -185,7 +185,7 @@ const PedagogiePage = () => {
   const handleToggleActive = async (pedagogique) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:5000/api/pedagogiques/${pedagogique._id}/toggle-actif`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/pedagogiques/${pedagogique._id}/toggle-actif`, {
         method: 'PATCH',
         headers
       });

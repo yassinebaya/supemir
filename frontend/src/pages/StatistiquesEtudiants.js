@@ -55,13 +55,13 @@ const EnhancedDashboard = () => {
       const token = localStorage.getItem('token');
       
       const [etudiantsRes, commerciauxRes, coursRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/etudiant', {
+        axios.get('http://195.179.229.230:5000/api/etudiant', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:5000/api/commerciaux', {
+        axios.get('http://195.179.229.230:5000/api/commerciaux', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('http://localhost:5000/api/cours', {
+        axios.get('http://195.179.229.230:5000/api/cours', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);

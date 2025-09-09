@@ -8,10 +8,16 @@ import {
   BookOpen,
   GraduationCap,
   Award,
-  Building
+  Building,
+  DollarSign,
+  FileText,
+  Clock,
+  Users,
+  Badge,
+  Download,
+  AlertCircle
 } from 'lucide-react';
-import Sidebar from '../components/SidebarProf'; // Composant sidebar pour professeu
-
+import Sidebar from '../components/SidebarProf';
 import { useNavigate } from 'react-router-dom';
 import HeaderProf from '../components/Headerprof';
  
@@ -29,14 +35,14 @@ const ProfileProfesseur = () => {
     const role = localStorage.getItem('role');
     const token = localStorage.getItem('token');
 
-      if (!token || role !== 'prof') {
-      navigate('/'); // redirection vers la page d'accueil
+    if (!token || role !== 'prof') {
+      navigate('/');
       return;
     }
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/professeur/profile', {
+        const res = await fetch('http://195.179.229.230:5000/api/professeur/profile', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -66,6 +72,44 @@ const ProfileProfesseur = () => {
       age--;
     }
     return `${age} ans`;
+  };
+
+  const getStatutDossierColor = (statut) => {
+    switch (statut) {
+      case 'complet':
+      case 'valide':
+        return '#10b981';
+      case 'en_attente':
+        return '#f59e0b';
+      case 'incomplet':
+      case 'rejete':
+        return '#ef4444';
+      default:
+        return '#6b7280';
+    }
+  };
+
+  const getStatutDossierText = (statut) => {
+    switch (statut) {
+      case 'complet': return 'Dossier Complet';
+      case 'valide': return 'Dossier Validé';
+      case 'en_attente': return 'En Attente de Validation';
+      case 'incomplet': return 'Dossier Incomplet';
+      case 'rejete': return 'Dossier Rejeté';
+      default: return 'Statut Inconnu';
+    }
+  };
+
+  const downloadDocument = (docPath, docName) => {
+    if (!docPath) return;
+    
+    const link = document.createElement('a');
+    link.href = `http://195.179.229.230:5000${docPath}`;
+    link.download = docName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loading) {
@@ -105,7 +149,7 @@ const ProfileProfesseur = () => {
             <div style={styles.avatarContainer}>
               {professeur.image ? (
                 <img
-                  src={`http://localhost:5000${professeur.image}`}
+                  src={`http://195.179.229.230:5000${professeur.image}`}
                   alt="Profil"
                   style={styles.avatar}
                 />
@@ -125,9 +169,25 @@ const ProfileProfesseur = () => {
             <div style={styles.profileInfo}>
               <h2 style={styles.profileName}>{professeur.nom}</h2>
               <p style={styles.profileEmail}>{professeur.email}</p>
-              {professeur.matiere && (
-                <p style={styles.profileMatiere}>Professeur de {professeur.matiere}</p>
-              )}
+              <div style={styles.badgeContainer}>
+                <div style={{
+                  ...styles.typeBadge,
+                  backgroundColor: professeur.estPermanent ? '#dbeafe' : '#fef3c7',
+                  color: professeur.estPermanent ? '#1e40af' : '#d97706'
+                }}>
+                  <Badge size={14} />
+                  {professeur.estPermanent ? 'Professeur Permanent' : 'Professeur Entrepreneur'}
+                </div>
+                {!professeur.estPermanent && (
+                  <div style={{
+                    ...styles.statutBadge,
+                    backgroundColor: getStatutDossierColor(professeur.statutDossier) + '20',
+                    color: getStatutDossierColor(professeur.statutDossier)
+                  }}>
+                    {getStatutDossierText(professeur.statutDossier)}
+                  </div>
+                )}
+              </div>
               <div style={styles.statusContainer}>
                 <span style={{
                   ...styles.statusText,
@@ -140,7 +200,7 @@ const ProfileProfesseur = () => {
           </div>
         </div>
 
-        {/* Information Cards */}
+        {/* Information Cards Grid */}
         <div style={styles.cardsGrid}>
           {/* Personal Information */}
           <div style={styles.infoCard}>
@@ -149,15 +209,6 @@ const ProfileProfesseur = () => {
               <h3 style={styles.cardTitle}>Informations Personnelles</h3>
             </div>
             <div style={styles.cardContent}>
-              {professeur.matiere && (
-                <div style={styles.infoItem}>
-                  <Award size={18} color="#6b7280" />
-                  <div style={styles.infoDetails}>
-                    <span style={styles.infoLabel}>Matière enseignée</span>
-                    <span style={styles.infoValue}>{professeur.matiere}</span>
-                  </div>
-                </div>
-              )}
               <div style={styles.infoItem}>
                 <Phone size={18} color="#6b7280" />
                 <div style={styles.infoDetails}>
@@ -186,10 +237,61 @@ const ProfileProfesseur = () => {
                   </div>
                 </div>
               )}
+              {professeur.dateEmbauche && (
+                <div style={styles.infoItem}>
+                  <Building size={18} color="#6b7280" />
+                  <div style={styles.infoDetails}>
+                    <span style={styles.infoLabel}>Date d'embauche</span>
+                    <span style={styles.infoValue}>
+                      {new Date(professeur.dateEmbauche).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-        
+          {/* Professional Information */}
+          {!professeur.estPermanent && (
+            <div style={styles.infoCard}>
+              <div style={styles.cardHeader}>
+                <DollarSign size={20} color="#059669" />
+                <h3 style={styles.cardTitle}>Informations Professionnelles</h3>
+              </div>
+              <div style={styles.cardContent}>
+                <div style={styles.infoItem}>
+                  <DollarSign size={18} color="#6b7280" />
+                  <div style={styles.infoDetails}>
+                    <span style={styles.infoLabel}>Tarif horaire</span>
+                    <span style={styles.infoValue}>
+                      {professeur.tarifHoraire ? `${professeur.tarifHoraire} DH/heure` : 'Non défini'}
+                    </span>
+                  </div>
+                </div>
+                <div style={styles.infoItem}>
+                  <Clock size={18} color="#6b7280" />
+                  <div style={styles.infoDetails}>
+                    <span style={styles.infoLabel}>Total heures/semaine</span>
+                    <span style={styles.infoValue}>
+                      {professeur.coursEnseignes ? 
+                        professeur.coursEnseignes.reduce((total, cours) => total + (cours.heuresParSemaine || 0), 0) + ' heures'
+                        : '0 heures'
+                      }
+                    </span>
+                  </div>
+                </div>
+                {professeur.notes && (
+                  <div style={styles.infoItem}>
+                    <FileText size={18} color="#6b7280" />
+                    <div style={styles.infoDetails}>
+                      <span style={styles.infoLabel}>Notes administratives</span>
+                      <span style={styles.infoValue}>{professeur.notes}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Courses Information */}
           <div style={styles.infoCard}>
@@ -198,14 +300,44 @@ const ProfileProfesseur = () => {
               <h3 style={styles.cardTitle}>Mes Cours</h3>
             </div>
             <div style={styles.cardContent}>
-              {professeur.cours && professeur.cours.length > 0 ? (
+              {professeur.coursEnseignes && professeur.coursEnseignes.length > 0 ? (
+                <div style={styles.coursesList}>
+                  {professeur.coursEnseignes.map((cours, index) => (
+                    <div key={index} style={styles.courseItem}>
+                      <div style={styles.courseIcon}>
+                        <BookOpen size={16} color="#059669" />
+                      </div>
+                      <div style={styles.courseDetails}>
+                        <span style={styles.courseName}>{cours.nomCours}</span>
+                        <div style={styles.courseInfo}>
+                          <span style={styles.courseMatiere}>{cours.matiere}</span>
+                          {cours.niveau && (
+                            <span style={styles.courseNiveau}>• {cours.niveau}</span>
+                          )}
+                          {cours.heuresParSemaine && (
+                            <span style={styles.courseHeures}>• {cours.heuresParSemaine}h/sem</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : professeur.cours && professeur.cours.length > 0 ? (
+                // Fallback pour l'ancien système
                 <div style={styles.coursesList}>
                   {professeur.cours.map((cours, index) => (
                     <div key={index} style={styles.courseItem}>
                       <div style={styles.courseIcon}>
                         <BookOpen size={16} color="#059669" />
                       </div>
-                      <span style={styles.courseName}>{cours}</span>
+                      <div style={styles.courseDetails}>
+                        <span style={styles.courseName}>{cours}</span>
+                        {professeur.matiere && (
+                          <div style={styles.courseInfo}>
+                            <span style={styles.courseMatiere}>{professeur.matiere}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -217,6 +349,58 @@ const ProfileProfesseur = () => {
               )}
             </div>
           </div>
+
+          {/* Documents (for entrepreneurs only) */}
+          {!professeur.estPermanent && professeur.documents && (
+            <div style={styles.infoCard}>
+              <div style={styles.cardHeader}>
+                <FileText size={20} color="#7c3aed" />
+                <h3 style={styles.cardTitle}>Mes Documents</h3>
+              </div>
+              <div style={styles.cardContent}>
+                <div style={styles.documentsList}>
+                  {Object.entries(professeur.documents).map(([key, value]) => {
+                    const documentNames = {
+                      diplome: 'Diplôme',
+                      cv: 'CV',
+                      rib: 'RIB',
+                      copieCin: 'Copie CIN',
+                      engagement: 'Lettre d\'engagement',
+                      vacataire: 'Contrat vacataire'
+                    };
+                    
+                    return (
+                      <div key={key} style={styles.documentItem}>
+                        <div style={styles.documentInfo}>
+                          <FileText size={16} color="#6b7280" />
+                          <span style={styles.documentName}>{documentNames[key]}</span>
+                        </div>
+                        <div style={styles.documentStatus}>
+                          {value && value.trim() !== '' ? (
+                            <div style={styles.documentActions}>
+                              <CheckCircle size={16} color="#10b981" />
+                              <button
+                                style={styles.downloadButton}
+                                onClick={() => downloadDocument(value, documentNames[key])}
+                              >
+                                <Download size={14} />
+                                Télécharger
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={styles.documentMissing}>
+                              <AlertCircle size={16} color="#ef4444" />
+                              <span style={styles.missingText}>Non fourni</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -324,15 +508,35 @@ const styles = {
   profileEmail: {
     fontSize: '1rem',
     color: '#6b7280',
-    margin: '0 0 0.25rem 0',
+    margin: '0 0 0.75rem 0',
   },
   
-  profileMatiere: {
-    fontSize: '0.875rem',
-    color: '#4f46e5',
-    fontWeight: '500',
-    margin: '0 0 0.5rem 0',
-    fontStyle: 'italic',
+  badgeContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+    marginBottom: '0.5rem',
+  },
+  
+  typeBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.375rem',
+    padding: '0.375rem 0.75rem',
+    borderRadius: '0.5rem',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  
+  statutBadge: {
+    padding: '0.375rem 0.75rem',
+    borderRadius: '0.5rem',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   
   statusContainer: {
@@ -415,7 +619,7 @@ const styles = {
   
   courseItem: {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: '0.75rem',
     padding: '0.75rem',
     backgroundColor: '#f0fdf4',
@@ -430,12 +634,41 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  
+  courseDetails: {
+    flex: 1,
+    minWidth: 0,
   },
   
   courseName: {
     fontSize: '0.875rem',
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#065f46',
+    display: 'block',
+    marginBottom: '0.25rem',
+  },
+  
+  courseInfo: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+    fontSize: '0.75rem',
+    color: '#6b7280',
+  },
+  
+  courseMatiere: {
+    fontWeight: '500',
+    color: '#059669',
+  },
+  
+  courseNiveau: {
+    color: '#6b7280',
+  },
+  
+  courseHeures: {
+    color: '#6b7280',
   },
   
   noCourses: {
@@ -451,6 +684,73 @@ const styles = {
     fontSize: '0.875rem',
     color: '#6b7280',
     margin: 0,
+  },
+  
+  documentsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  
+  documentItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '0.75rem',
+    backgroundColor: '#fafafa',
+    borderRadius: '0.5rem',
+    border: '1px solid #e5e7eb',
+  },
+  
+  documentInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  
+  documentName: {
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#1f2937',
+  },
+  
+  documentStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  
+  documentActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  
+  downloadButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.25rem',
+    padding: '0.375rem 0.75rem',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    borderRadius: '0.375rem',
+    fontSize: '0.75rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  
+  documentMissing: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  
+  missingText: {
+    fontSize: '0.75rem',
+    color: '#ef4444',
+    fontWeight: '500',
   },
   
   loadingContainer: {
@@ -504,6 +804,11 @@ styleSheet.textContent = `
   button:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #e5e7eb !important;
+  }
+  
+  .download-button:hover {
+    background-color: #e5e7eb;
   }
   
   @media (max-width: 768px) {
@@ -514,6 +819,16 @@ styleSheet.textContent = `
     
     .cards-grid {
       grid-template-columns: 1fr;
+    }
+    
+    .badge-container {
+      justify-content: center;
+    }
+    
+    .document-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
     }
   }
 `;

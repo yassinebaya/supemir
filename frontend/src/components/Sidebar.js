@@ -118,6 +118,15 @@ const Sidebar = ({ onLogout }) => {
       icon: Clock
     },
     {
+      path: '/admin/finance-profs',
+      label: 'Finance Professeurs',
+      icon: Wallet
+    },
+    {
+      path: '/admin/rapports-professeurs',
+      label: 'Rapports Professeurs',
+      icon: FileText
+    },    {
       path: '/calendrier',
       label: 'Calendrier',
       icon: Calendar
@@ -172,6 +181,26 @@ const Sidebar = ({ onLogout }) => {
       path: '/pedagogique/professeurs',
       label: 'Professeurs',
       icon: User
+    },
+    {
+      path: '/pedagogique/emploi-pedagogique',
+      label: 'Emploi du temps',
+      icon: Calendar
+    }
+
+  ];
+
+  // Navigation items pour finance (limitée)
+  const financeNavigationItems = [
+    {
+      path: '/finance-prof',
+      label: 'Dashboard',
+      icon: Home
+    },
+    {
+      path: '/finance/listeprofesseurs',
+      label: 'Liste Professeurs',
+      icon: Users
     }
   ];
 
@@ -179,6 +208,9 @@ const Sidebar = ({ onLogout }) => {
   const getNavigationItems = () => {
     if (userRole === 'pedagogique') {
       return pedagogiqueNavigationItems;
+    }
+    if (userRole === 'finance_prof' || userRole === 'finance') {
+      return financeNavigationItems;
     }
     return adminNavigationItems; // Par défaut pour admin et autres rôles
   };
@@ -188,6 +220,9 @@ const Sidebar = ({ onLogout }) => {
     if (userRole === 'pedagogique') {
       const filiere = userInfo?.filiere === 'GENERAL' ? 'GÉNÉRAL' : userInfo?.filiere;
       return `Pédagogique ${filiere || ''}`;
+    }
+    if (userRole === 'finance_prof' || userRole === 'finance') {
+      return 'Finance Prof';
     }
     return 'Supemir Admin';
   };
@@ -229,19 +264,17 @@ const Sidebar = ({ onLogout }) => {
           --sidebar-bg: #ffffff;
           --sidebar-border: #e5e7eb;
           --sidebar-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-          --primary-color: ${userRole === 'pedagogique' ? '#7c3aed' : '#4f46e5'};
-          --primary-hover: ${userRole === 'pedagogique' ? '#6d28d9' : '#4338ca'};
-          --primary-light: ${userRole === 'pedagogique' ? '#f3e8ff' : '#eef2ff'};
+          --primary-color: #4f46e5;
+          --primary-hover: #4338ca;
+          --primary-light: #eef2ff;
           --text-primary: #1f2937;
           --text-secondary: #6b7280;
           --text-muted: #9ca3af;
           --hover-bg: #f9fafb;
-          --active-bg: ${userRole === 'pedagogique' ? '#f3e8ff' : '#eef2ff'};
+          --active-bg: #eef2ff;
           --border-radius: 12px;
           --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          --header-gradient: ${userRole === 'pedagogique' 
-            ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)' 
-            : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)'};
+          --header-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
           --logout-color: #dc2626;
           --logout-hover: #b91c1c;
           --logout-bg: #fef2f2;
@@ -363,7 +396,7 @@ const Sidebar = ({ onLogout }) => {
           display: flex;
           align-items: center;
           gap: 12px;
-          font-size: ${userRole === 'pedagogique' ? '16px' : '20px'};
+          font-size: 20px;
           font-weight: 700;
           color: white;
           margin: 0;
@@ -490,7 +523,7 @@ const Sidebar = ({ onLogout }) => {
         }
 
         .nav-item.active .nav-icon-wrapper {
-          background: ${userRole === 'pedagogique' ? '#ddd6fe' : '#c7d2fe'};
+          background: #c7d2fe;
         }
 
         .nav-item.active .nav-icon {

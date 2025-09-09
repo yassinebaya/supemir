@@ -7,7 +7,7 @@ import Sidebar from '../components/Sidebar'; // ✅ استيراد صحيح
 
 import {
   Users, GraduationCap, CreditCard, TrendingUp, Award, UserCheck,
-  DollarSign, Calendar, Target, BarChart3, PieChart as PieChartIcon,
+  Calendar, Target, BarChart3, PieChart as PieChartIcon,
   Activity, Globe, MapPin, Clock, BookOpen, Eye, Filter, LogOut,
   RefreshCw, ChevronDown, ChevronUp, AlertTriangle, User, Phone,
   IdCard, FileText, Shield, CheckCircle, XCircle, Building, 
@@ -19,10 +19,8 @@ import {
     localStorage.removeItem('token');
     window.location.href = '/';
   };
-const COLORS = [
-  '#2563eb', '#059669', '#7c3aed', '#dc2626', '#ea580c', '#0891b2', 
-  '#9333ea', '#ca8a04', '#e11d48', '#0d9488', '#7c2d12', '#1e40af'
-];
+// Update COLORS to include more variety while keeping simple
+const COLORS = ['#3b82f6', '#10b981', '#6b7280', '#1d4ed8', '#059669', '#4b5563'];
 
 const PedagogiqueDashboard = () => {
   const [etudiants, setEtudiants] = useState([]);
@@ -53,10 +51,14 @@ const PedagogiqueDashboard = () => {
   // Pour les professeurs
   const [searchTermProfs, setSearchTermProfs] = useState('');
   const [filtreMatiereProfs, setFiltreMatiereProfs] = useState('toutes');
+  const [filtreCoursProfs, setFiltreCoursProfs] = useState('tous');
 
   // Pour le modal de détails
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
+
+  // Ajouter le filtre par cours pour les étudiants
+  const [filtreCoursStudents, setFiltreCoursStudents] = useState('tous');
 
   useEffect(() => {
     fetchData();
@@ -93,19 +95,19 @@ const PedagogiqueDashboard = () => {
 
       // Utilisation des routes spécifiques au pédagogique
       const [etudiantsRes, coursRes, professeursRes, statsRes, coursDetaillesRes] = await Promise.all([
-        fetch('http://localhost:5000/api/pedagogique/etudiants', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/pedagogique/cours', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/cours', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/pedagogique/professeurs', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/professeurs', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/pedagogique/dashboard-stats', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/dashboard-stats', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/pedagogique/cours-detailles', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/cours-detailles', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -243,6 +245,13 @@ const PedagogiqueDashboard = () => {
       }
     }
 
+    // NOUVEAU : Filtre par cours
+    if (filtreCoursStudents !== 'tous') {
+      filtered = filtered.filter(e => 
+        e.cours && Array.isArray(e.cours) && e.cours.includes(filtreCoursStudents)
+      );
+    }
+
     return filtered;
   };
 
@@ -262,6 +271,23 @@ const PedagogiqueDashboard = () => {
 
     if (filtreMatiereProfs !== 'toutes') {
       filtered = filtered.filter(p => p.matiere === filtreMatiereProfs);
+    }
+
+    // NOUVEAU : Filtre par cours
+    if (filtreCoursProfs !== 'tous') {
+      filtered = filtered.filter(p => {
+        // Vérifier dans coursEnseignes
+        if (p.coursEnseignes && Array.isArray(p.coursEnseignes)) {
+          return p.coursEnseignes.some(enseignement => 
+            enseignement.nomCours === filtreCoursProfs
+          );
+        }
+        // Vérifier dans cours (ancien système)
+        if (p.cours && Array.isArray(p.cours)) {
+          return p.cours.includes(filtreCoursProfs);
+        }
+        return false;
+      });
     }
 
     return filtered;
@@ -438,30 +464,49 @@ const PedagogiqueDashboard = () => {
     
     etudiantsFiltres.forEach(e => {
       let specialite = 'Tronc commun';
-      if (e.specialiteIngenieur) {
+      let typeFormation = e.typeFormation || 'Non défini';
+      
+      // Déterminer la spécialité selon le type de formation
+      if (e.typeFormation === 'CYCLE_INGENIEUR' && e.specialiteIngenieur) {
         specialite = e.specialiteIngenieur;
-      } else if (e.specialiteLicencePro) {
+      } else if (e.typeFormation === 'LICENCE_PRO' && e.specialiteLicencePro) {
         specialite = e.specialiteLicencePro;
-      } else if (e.specialiteMasterPro) {
+      } else if (e.typeFormation === 'MASTER_PRO' && e.specialiteMasterPro) {
         specialite = e.specialiteMasterPro;
-      } else if (e.specialite) {
+      } else if ((e.typeFormation === 'MASI' || e.typeFormation === 'IRM') && e.specialite) {
         specialite = e.specialite;
       }
       
-      if (!specialitesStats[specialite]) {
-        specialitesStats[specialite] = { total: 0, payes: 0, ca: 0 };
+      // Créer une clé unique combinant typeFormation et spécialité
+      const cleUnique = `${typeFormation}|${specialite}`;
+      
+      if (!specialitesStats[cleUnique]) {
+        specialitesStats[cleUnique] = { 
+          typeFormation,
+          specialite,
+          specialiteComplete: specialite,
+          total: 0, 
+          payes: 0, 
+          ca: 0 
+        };
       }
-      specialitesStats[specialite].total += 1;
-      if (e.paye) specialitesStats[specialite].payes += 1;
-      specialitesStats[specialite].ca += parseFloat(e.prixTotal) || 0;
+      
+      specialitesStats[cleUnique].total += 1;
+      if (e.paye) specialitesStats[cleUnique].payes += 1;
+      specialitesStats[cleUnique].ca += parseFloat(e.prixTotal) || 0;
     });
 
-    return Object.entries(specialitesStats).map(([specialite, data]) => ({
-      specialite: specialite.length > 40 ? specialite.substring(0, 40) + '...' : specialite,
-      specialiteComplete: specialite,
+    return Object.values(specialitesStats).map(data => ({
       ...data,
+      specialite: data.specialite.length > 40 ? data.specialite.substring(0, 40) + '...' : data.specialite,
       tauxReussite: data.total > 0 ? ((data.payes / data.total) * 100).toFixed(1) : 0
-    })).sort((a, b) => b.total - a.total);
+    })).sort((a, b) => {
+      // Trier d'abord par typeFormation, puis par total
+      if (a.typeFormation !== b.typeFormation) {
+        return a.typeFormation.localeCompare(b.typeFormation);
+      }
+      return b.total - a.total;
+    });
   };
 
   // Analyse par année scolaire basée sur les données filtrées
@@ -516,6 +561,25 @@ const PedagogiqueDashboard = () => {
   }).filter(Boolean))];
   const genresDisponibles = [...new Set(etudiants.map(e => e.genre).filter(Boolean))];
   const matieresDisponibles = [...new Set(professeurs.map(p => p.matiere).filter(Boolean))];
+  
+  // NOUVEAU : Obtenir les cours disponibles séparément pour étudiants et professeurs
+  const coursDisponiblesEtudiants = [...new Set(
+    etudiants.flatMap(e => e.cours || [])
+  )].filter(Boolean).sort();
+
+  const coursDisponiblesProfesseurs = [...new Set([
+    // Cours des professeurs (nouveau système)
+    ...professeurs.flatMap(p => 
+      p.coursEnseignes ? p.coursEnseignes.map(ens => ens.nomCours) : []
+    ),
+    // Cours des professeurs (ancien système)
+    ...professeurs.flatMap(p => p.cours || [])
+  ])].filter(Boolean).sort();
+
+  // Log de débogage pour vérifier les cours
+  console.log('Cours disponibles étudiants:', coursDisponiblesEtudiants);
+  console.log('Cours disponibles professeurs:', coursDisponiblesProfesseurs);
+  console.log('Exemple étudiant cours:', etudiants[0]?.cours);
 
   const formatMoney = (amount) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -606,114 +670,136 @@ const PedagogiqueDashboard = () => {
         {headerVisible ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
       </button>
 
-      {/* En-tête spécifique pédagogique */}
+      {/* Header simplifié */}
       {headerVisible && (
-        <header className="dashboard-header dashboard-header-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-          <div className="container">
-            <div className="header-content header-content-center">
-              <div className="header-info header-info-center">
-                <h1>
-                  <GraduationCap size={28} />
-                  Dashboard Pédagogique - {userInfo?.filiere === 'GENERAL' ? 'GÉNÉRAL 🌟' : userInfo?.filiere || stats?.filiere || 'Chargement...'}
-                  {userInfo?.filiere === 'GENERAL' && (
-                    <span className="general-badge">
-                      <Shield size={16} />
-                      ACCÈS GLOBAL
-                    </span>
-                  )}
-                </h1>
-                <div className="header-stats header-stats-center">
-                  <span className="header-stat">
-                    <Users size={16} />
-                    {statsGenerales.totalEtudiants} étudiants {userInfo?.filiere === 'GENERAL' ? '(Toutes filières)' : ''}
-                  </span>
-                  <span className="header-stat">
-                    <BookOpen size={16} />
-                    {cours.length} cours
-                  </span>
-                  <span className="header-stat">
-                    <User size={16} />
-                    {professeurs.length} professeurs
-                  </span>
-                  <span className="header-stat">
-                    <DollarSign size={16} />
-                    {formatMoney(statsGenerales.chiffreAffaireTotal)}
-                  </span>
-                  <span className="header-stat">
-                    <Percent size={16} />
-                    {statsGenerales.tauxPaiement.toFixed(1)}% payé
-                  </span>
-                </div>
-                
-                {/* Indicateur de filtres actifs */}
-                {(filtreAnneeScolaire !== 'toutes' || filtreNiveau !== 'tous' || filtreSpecialite !== 'toutes' || searchTerm) && (
-                  <div className="filters-active-indicator">
-                    <Filter size={14} />
-                    <span>Filtres appliqués ({etudiantsFiltres.length} résultats)</span>
-                    <button onClick={resetFilters} className="reset-filters-btn">
-                      <X size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="header-controls header-controls-center">
-                <div className="search-container">
-                  <div className="search-input-container">
-                    <Search size={16} />
-                    <input
-                      type="text"
-                      placeholder={userInfo?.filiere === 'GENERAL' ? "Rechercher dans toutes les filières..." : "Rechercher un étudiant..."}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="search-input"
-                    />
-                    {searchTerm && (
-                      <button onClick={() => setSearchTerm('')} className="clear-search-btn">
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="filters-container">
-                  <select value={filtreAnneeScolaire} onChange={(e) => setFiltreAnneeScolaire(e.target.value)} className="filter-select">
-                    <option value="toutes">Toutes les années scolaires</option>
-                    {anneesDisponibles.map(annee => (
-                      <option key={annee} value={annee}>
-                        {annee} {annee === '2025/2026' ? '(Année actuelle)' : ''}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select value={filtreNiveau} onChange={(e) => setFiltreNiveau(e.target.value)} className="filter-select">
-                    <option value="tous">Tous les niveaux</option>
-                    {niveauxDisponibles.map(niveau => (
-                      <option key={niveau} value={niveau}>Niveau {niveau}</option>
-                    ))}
-                  </select>
-
-                  <select value={filtreSpecialite} onChange={(e) => setFiltreSpecialite(e.target.value)} className="filter-select">
-                    <option value="toutes">Toutes spécialités</option>
-                    {specialitesDisponibles.map(specialite => (
-                      <option key={specialite} value={specialite}>
-                        {specialite.length > 30 ? specialite.substring(0, 30) + '...' : specialite}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button onClick={fetchData} className="btn-refresh">
-                  <RefreshCw size={16} />
-                  Actualiser
-                </button>
-              </div>
+        <header className="simple-header">
+          <div className="header-container">
+            <h1>Dashboard Pédagogique - {userInfo?.filiere === 'GENERAL' ? 'GÉNÉRAL' : userInfo?.filiere || stats?.filiere}</h1>
+            <div className="header-stats">
+              <span>{statsGenerales.totalEtudiants} étudiants</span>
+              <span>{cours.length} cours</span>
+              <span>{professeurs.length} professeurs</span>
+              <span>{formatMoney(statsGenerales.chiffreAffaireTotal)}</span>
+              <span>{statsGenerales.tauxPaiement.toFixed(1)}% payé</span>
             </div>
+            
+            {/* Filtres simplifiés */}
+            <div className="simple-filters">
+              <input
+                type="text"
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="simple-search"
+              />
+              
+              <select 
+                value={filtreAnneeScolaire} 
+                onChange={(e) => setFiltreAnneeScolaire(e.target.value)} 
+                className="simple-select"
+              >
+                <option value="toutes">Toutes les années</option>
+                {anneesDisponibles.map(annee => (
+                  <option key={annee} value={annee}>{annee}</option>
+                ))}
+              </select>
+
+              <select 
+                value={filtreNiveau} 
+                onChange={(e) => setFiltreNiveau(e.target.value)} 
+                className="simple-select"
+              >
+                <option value="tous">Tous niveaux</option>
+                {niveauxDisponibles.map(niveau => (
+                  <option key={niveau} value={niveau}>Niveau {niveau}</option>
+                ))}
+              </select>
+
+              <button onClick={resetFilters} className="simple-btn">
+                Réinitialiser
+              </button>
+            </div>
+
+            {/* Indicateur simple */}
+            {(filtreAnneeScolaire !== 'toutes' || filtreNiveau !== 'tous' || filtreSpecialite !== 'toutes' || searchTerm) && (
+              <div className="simple-indicator">
+                {etudiantsFiltres.length} résultats trouvés
+              </div>
+            )}
           </div>
         </header>
       )}
 
-      <div className="dashboard-container">
+      {/* Navigation simplifiée */}
+      <div className="simple-tabs">
+        <button 
+          className={`simple-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          Vue d'ensemble
+        </button>
+        <button 
+          className={`simple-tab-btn ${activeTab === 'niveaux' ? 'active' : ''}`}
+          onClick={() => setActiveTab('niveaux')}
+        >
+          Par Niveau
+        </button>
+        <button 
+          className={`simple-tab-btn ${activeTab === 'specialites' ? 'active' : ''}`}
+          onClick={() => setActiveTab('specialites')}
+        >
+          Par Spécialité
+        </button>
+        <button 
+          className={`simple-tab-btn ${activeTab === 'annees' ? 'active' : ''}`}
+          onClick={() => setActiveTab('annees')}
+        >
+          Par Année
+        </button>
+        <button 
+          className={`simple-tab-btn ${activeTab === 'cours-profs' ? 'active' : ''}`}
+          onClick={() => setActiveTab('cours-profs')}
+        >
+          Cours & Professeurs
+        </button>
+        <button 
+          className={`simple-tab-btn ${activeTab === 'students' ? 'active' : ''}`}
+          onClick={() => setActiveTab('students')}
+        >
+          Étudiants
+        </button>
+        <button 
+          className={`simple-tab-btn ${activeTab === 'professors' ? 'active' : ''}`}
+          onClick={() => setActiveTab('professors')}
+        >
+          Professeurs
+        </button>
+      </div>
+
+      <div className="simple-container">
+        {/* Statistiques simplifiées */}
+        <div className="simple-stats-grid">
+          <div className="simple-stat-card">
+            <h3>{statsGeneralesFiltered.totalEtudiants}</h3>
+            <p>Étudiants</p>
+          </div>
+
+          <div className="simple-stat-card">
+            <h3>{formatMoney(statsGeneralesFiltered.chiffreAffaireTotal)}</h3>
+            <p>Chiffre d'affaires</p>
+          </div>
+
+          <div className="simple-stat-card">
+            <h3>{statsGeneralesFiltered.tauxPaiement.toFixed(1)}%</h3>
+            <p>Taux de paiement</p>
+          </div>
+
+          <div className="simple-stat-card">
+            <h3>{formatMoney(statsGeneralesFiltered.moyennePrixFormation)}</h3>
+            <p>Prix moyen</p>
+          </div>
+        </div>
+
         {/* Navigation par onglets */}
         <div className="tabs-navigation">
           <button 
@@ -771,54 +857,7 @@ const PedagogiqueDashboard = () => {
           
           {activeTab === 'overview' && (
             <>
-              {/* Statistiques principales */}
-              <div className="stats-section">
-                <div className="stats-grid">
-                  <div className="stat-card blue">
-                    <div className="stat-icon">
-                      <Users size={24} />
-                    </div>
-                    <div className="stat-content">
-                      <h3>{statsGeneralesFiltered.totalEtudiants}</h3>
-                      <p>Étudiants {userInfo?.filiere === 'GENERAL' ? '(Toutes filières)' : '(filtrés)'}</p>
-                      <span className="stat-detail">{statsGeneralesFiltered.etudiantsActifs} actifs • {statsGeneralesFiltered.nouveauxEtudiants} nouveaux</span>
-                    </div>
-                  </div>
-
-                  <div className="stat-card green">
-                    <div className="stat-icon">
-                      <DollarSign size={24} />
-                    </div>
-                    <div className="stat-content">
-                      <h3>{formatMoney(statsGeneralesFiltered.chiffreAffaireTotal)}</h3>
-                      <p>CA {userInfo?.filiere === 'GENERAL' ? '(Global)' : '(filtré)'}</p>
-                      <span className="stat-detail">{formatMoney(statsGeneralesFiltered.chiffreAffairePaye)} encaissé</span>
-                    </div>
-                  </div>
-
-                  <div className="stat-card purple">
-                    <div className="stat-icon">
-                      <Percent size={24} />
-                    </div>
-                    <div className="stat-content">
-                      <h3>{statsGeneralesFiltered.tauxPaiement.toFixed(1)}%</h3>
-                      <p>Taux de Paiement</p>
-                      <span className="stat-detail">{statsGeneralesFiltered.etudiantsPayes} étudiants payés</span>
-                    </div>
-                  </div>
-
-                  <div className="stat-card orange">
-                    <div className="stat-icon">
-                      <Award size={24} />
-                    </div>
-                    <div className="stat-content">
-                      <h3>{formatMoney(statsGeneralesFiltered.moyennePrixFormation)}</h3>
-                      <p>Prix Moyen</p>
-                      <span className="stat-detail">par formation</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+         
 
               {/* Section spéciale pour pédagogique général : Répartition par filière */}
               {userInfo?.filiere === 'GENERAL' && stats && stats.repartitionFiliere && (
@@ -1022,6 +1061,7 @@ const PedagogiqueDashboard = () => {
                   <table className="analysis-table">
                     <thead>
                       <tr>
+                        <th>Type Formation</th>
                         <th>Spécialité</th>
                         <th>Étudiants</th>
                         <th>Payés</th>
@@ -1032,6 +1072,11 @@ const PedagogiqueDashboard = () => {
                     <tbody>
                       {specialitesData.map((spec, index) => (
                         <tr key={index}>
+                          <td className="type-formation-badge">
+                            <span className={`formation-badge ${spec.typeFormation?.toLowerCase()}`}>
+                              {spec.typeFormation}
+                            </span>
+                          </td>
                           <td className="specialite-name" title={spec.specialiteComplete}>
                             {spec.specialite}
                           </td>
@@ -1250,11 +1295,26 @@ const PedagogiqueDashboard = () => {
                       <option value="non-payes">Non payés</option>
                     </select>
 
+                    {/* NOUVEAU : Filtre par cours pour les étudiants - UNIQUEMENT leurs cours */}
+                    <select 
+                      value={filtreCoursStudents} 
+                      onChange={(e) => setFiltreCoursStudents(e.target.value)} 
+                      className="students-filter-select"
+                    >
+                      <option value="tous">Tous les cours</option>
+                      {coursDisponiblesEtudiants.map(cours => (
+                        <option key={cours} value={cours}>
+                          {cours.length > 30 ? cours.substring(0, 30) + '...' : cours}
+                        </option>
+                      ))}
+                    </select>
+
                     <button 
                       onClick={() => {
                         setSearchTermStudents('');
                         setFiltreGenreStudents('tous');
                         setFiltreStatutStudents('tous');
+                        setFiltreCoursStudents('tous');
                       }}
                       className="reset-students-filters-btn"
                     >
@@ -1265,69 +1325,71 @@ const PedagogiqueDashboard = () => {
                 </div>
                 
                 <div className="tableau-container">
-                  <table className="tableau-etudiants">
-                    <thead>
-                      <tr>
-                        <th>Nom Complet</th>
-                        <th>Genre</th>
-                        <th>Date de Naissance</th>
-                        <th>Âge</th>
-                        <th>Téléphone</th>
-                        <th>Email</th>
-                        <th>Filière</th>
-                        <th>Niveau</th>
-                        <th>Statut</th>
-                        <th>Image</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {etudiantsFiltered.length === 0 ? (
+                  <div className="table-scroll-wrapper">
+                    <table className="tableau-etudiants">
+                      <thead>
                         <tr>
-                          <td colSpan="11" className="aucun-resultat">
-                            Aucun étudiant trouvé
-                          </td>
+                          <th>Nom Complet</th>
+                          <th>Genre</th>
+                          <th>Date de Naissance</th>
+                          <th>Âge</th>
+                          <th>Téléphone</th>
+                          <th>Email</th>
+                          <th>Filière</th>
+                          <th>Niveau</th>
+                          <th>Statut</th>
+                          <th>Image</th>
+                          <th>Actions</th>
                         </tr>
-                      ) : (
-                        etudiantsFiltered.map((e) => (
-                          <tr key={e._id}>
-                            <td className="nom-colonne">{e.prenom} {e.nomDeFamille}</td>
-                            <td>{e.genre || 'N/A'}</td>
-                            <td>{formatDate(e.dateNaissance)}</td>
-                            <td>{calculerAge(e.dateNaissance)} ans</td>
-                            <td>{e.telephone || 'N/A'}</td>
-                            <td>{e.email || 'N/A'}</td>
-                            <td className="filiere-colonne">{e.filiere || 'N/A'}</td>
-                            <td className="niveau-colonne">{e.niveauFormation || e.cycle || 'N/A'}</td>
-                            <td className="statut-colonne">
-                              <span className={`statut-text ${e.actif ? 'actif' : 'inactif'}`}>
-                                {e.actif ? 'Actif' : 'Inactif'}
-                              </span>
-                            </td>
-                            <td className="image-colonne">
-                              {e.image ? (
-                                <img
-                                  src={`http://localhost:5000${e.image}`}
-                                  alt="etudiant"
-                                  className="image-etudiant"
-                                />
-                              ) : (
-                                <div className="pas-image">N/A</div>
-                              )}
-                            </td>
-                            <td className="actions-colonne">
-                              <button
-                                onClick={() => handleViewStudent(e)}
-                                className="btn-voir"
-                              >
-                                Voir
-                              </button>
+                      </thead>
+                      <tbody>
+                        {etudiantsFiltered.length === 0 ? (
+                          <tr>
+                            <td colSpan="11" className="aucun-resultat">
+                              Aucun étudiant trouvé
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          etudiantsFiltered.map((e) => (
+                            <tr key={e._id}>
+                              <td className="nom-colonne">{e.prenom} {e.nomDeFamille}</td>
+                              <td>{e.genre || 'N/A'}</td>
+                              <td>{formatDate(e.dateNaissance)}</td>
+                              <td>{calculerAge(e.dateNaissance)} ans</td>
+                              <td>{e.telephone || 'N/A'}</td>
+                              <td>{e.email || 'N/A'}</td>
+                              <td className="filiere-colonne">{e.filiere || 'N/A'}</td>
+                              <td className="niveau-colonne">{e.niveauFormation || e.cycle || 'N/A'}</td>
+                              <td className="statut-colonne">
+                                <span className={`statut-text ${e.actif ? 'actif' : 'inactif'}`}>
+                                  {e.actif ? 'Actif' : 'Inactif'}
+                                </span>
+                              </td>
+                              <td className="image-colonne">
+                                {e.image ? (
+                                  <img
+                                    src={`http://195.179.229.230:5000${e.image}`}
+                                    alt="etudiant"
+                                    className="image-etudiant"
+                                  />
+                                ) : (
+                                  <div className="pas-image">N/A</div>
+                                )}
+                              </td>
+                              <td className="actions-colonne">
+                                <button
+                                  onClick={() => handleViewStudent(e)}
+                                  className="btn-voir"
+                                >
+                                  Voir
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </>
@@ -1371,10 +1433,25 @@ const PedagogiqueDashboard = () => {
                       ))}
                     </select>
 
+                    {/* NOUVEAU : Filtre par cours pour les professeurs - UNIQUEMENT leurs cours */}
+                    <select 
+                      value={filtreCoursProfs} 
+                      onChange={(e) => setFiltreCoursProfs(e.target.value)} 
+                      className="professors-filter-select"
+                    >
+                      <option value="tous">Tous les cours</option>
+                      {coursDisponiblesProfesseurs.map(cours => (
+                        <option key={cours} value={cours}>
+                          {cours.length > 30 ? cours.substring(0, 30) + '...' : cours}
+                        </option>
+                      ))}
+                    </select>
+
                     <button 
                       onClick={() => {
                         setSearchTermProfs('');
                         setFiltreMatiereProfs('toutes');
+                        setFiltreCoursProfs('tous');
                       }}
                       className="reset-professors-filters-btn"
                     >
@@ -1437,53 +1514,7 @@ const PedagogiqueDashboard = () => {
                     </div>
                   )}
                 </div>
-                
-                {/* Professeurs par filière section déplacée ici */}
-                <div className="section-separator">
-                  <h2 className="section-title">
-                    <Building size={24} />
-                    Professeurs par Filière et Types de Formation
-                  </h2>
-                  
-                  <div className="professeurs-grid">
-                    {professeursParsFiliere.map((filiere, index) => (
-                      <div key={index} className="professeur-card">
-                        <div className="professeur-header">
-                          <h3>{filiere.filiere}</h3>
-                          <div className="professeur-badges">
-                            <span className="badge blue">{filiere.etudiants} étudiants</span>
-                            <span className="badge green">{filiere.nbProfesseurs} prof(s)</span>
-                          </div>
-                        </div>
-                        
-                        <div className="types-formation">
-                          <h4>Types de Formation :</h4>
-                          <div className="types-list">
-                            {filiere.typeFormations.map((type, idx) => (
-                              <span key={idx} className="type-badge">{type}</span>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <div className="professeurs-list">
-                          <h4>Professeurs :</h4>
-                          {filiere.professeurs.length > 0 ? (
-                            <ul>
-                              {filiere.professeurs.map((prof, idx) => (
-                                <li key={idx} className="professeur-item">
-                                  <UserCog size={16} />
-                                  {prof}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="no-professor">Aucun professeur assigné</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              
               </div>
             </>
           )}
@@ -1598,7 +1629,7 @@ const PedagogiqueDashboard = () => {
                 {/* Informations financières */}
                 <div className="student-info-section">
                   <h3>
-                    <DollarSign size={20} />
+                    <TrendingUp size={20} />
                     Informations Financières
                   </h3>
                   <div className="info-grid">
@@ -1644,7 +1675,7 @@ const PedagogiqueDashboard = () => {
                     </h3>
                     <div className="student-photo">
                       <img
-                        src={`http://localhost:5000${selectedStudent.image}`}
+                        src={`http://195.179.229.230:5000${selectedStudent.image}`}
                         alt="Photo étudiant"
                         className="modal-student-image"
                       />
@@ -1657,788 +1688,526 @@ const PedagogiqueDashboard = () => {
         </div>
       )}
 
-      {/* Styles CSS */}
+      {/* Styles CSS ultra simplifiés avec nouvelles couleurs */}
       <style jsx>{`
         .enhanced-dashboard {
+          background: #f8fafc;
           min-height: 100vh;
-          background-color: #f8fafc;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          color: #1e293b;
-          position: relative;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          color: #1f2937;
         }
 
-        .header-toggle-btn {
-          position: fixed;
-          top: 1rem;
-          right: 1rem;
-          z-index: 1000;
+        /* HEADER AVEC NOUVELLES COULEURS */
+        .simple-header {
           background: white;
-          border: 2px solid #667eea;
-          border-radius: 50%;
-          width: 3rem;
-          height: 3rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          transition: all 0.3s ease;
-          color: #667eea;
+          border-bottom: 3px solid #3b82f6;
+          padding: 1.5rem 0;
+          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
         }
 
-        .header-toggle-btn:hover {
-          background: #667eea;
-          color: white;
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .header-toggle-btn:active {
-          transform: translateY(0);
-        }
-
-        .loading-container, .error-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 100vh;
-          background-color: #f8fafc;
-        }
-
-        .loading-content, .error-content {
-          text-align: center;
-          padding: 2rem;
-        }
-
-        .loading-spinner {
-          width: 48px;
-          height: 48px;
-          border: 4px solid #e2e8f0;
-          border-top: 4px solid #667eea;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin: 0 auto 1.5rem;
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        .loading-text, .error-title {
-          font-size: 1.25rem;
-          font-weight: 600;
-          color: #475569;
-          margin-bottom: 0.5rem;
-        }
-
-        .error-title {
-          color: #dc2626;
-        }
-
-        .loading-subtext, .error-message {
-          color: #64748b;
-          margin-bottom: 1rem;
-        }
-
-        .btn-retry {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #667eea;
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.5rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
+        .header-container {
+          max-width: 1200px;
           margin: 0 auto;
+          padding: 0 1rem;
         }
 
-        .btn-retry:hover {
-          background: #5a6fd8;
-          transform: translateY(-1px);
-        }
-
-        .dashboard-header-center {
+        .simple-header h1 {
+          font-size: 1.75rem;
+          color: #1f2937;
+          margin: 0 0 1rem 0;
+          font-weight: 700;
           text-align: center;
-          padding-top: 1.5rem;
-          padding-bottom: 1.5rem;
         }
 
-        .container {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 1.5rem;
-        }
-
-        .header-content-center {
-          flex-direction: column;
-          align-items: center;
+        .header-stats {
+          display: flex;
           justify-content: center;
+          gap: 2rem;
+          font-size: 0.875rem;
+          color: #1f2937;
+          margin-bottom: 1.5rem;
+          flex-wrap: wrap;
+          font-weight: 600;
+        }
+
+        .header-stats span {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          font-weight: 600;
+        }
+
+        .simple-filters {
           display: flex;
-          width: 100%;
-        }
-
-        .header-info-center {
-          text-align: center;
-          color: white;
-          width: 100%;
-        }
-
-        .header-info-center h1 {
-          color: white;
-          font-weight: bold;
-          font-size: 2rem;
-          margin-bottom: 1rem;
           justify-content: center;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          width: 100%;
-        }
-
-        .header-stats-center {
-          display: flex;
           gap: 1rem;
+          align-items: center;
           flex-wrap: wrap;
-          justify-content: center;
-          color: white;
-          width: 100%;
           margin-bottom: 1rem;
         }
 
-        .header-stat {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(255, 255, 255, 0.15);
-          backdrop-filter: blur(10px);
-          padding: 0.5rem 1rem;
-          border-radius: 0.5rem;
+        .simple-search {
+          padding: 0.75rem;
+          border: 2px solid #10b981;
+          border-radius: 8px;
           font-size: 0.875rem;
-          font-weight: 500;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .filters-active-indicator {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(10px);
-          padding: 0.5rem 1rem;
-          border-radius: 0.5rem;
-          font-size: 0.875rem;
-          font-weight: 500;
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          color: #fef3c7;
-        }
-
-        .reset-filters-btn {
-          background: rgba(255, 255, 255, 0.2);
-          border: none;
-          color: white;
-          padding: 0.25rem;
-          border-radius: 0.25rem;
-          cursor: pointer;
-          display:
-          left: 0.75rem;
-          color: rgba(255, 255, 255, 0.7);
-          z-index: 1;
-        }
-
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 1rem 0.75rem 2.5rem;
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 0.5rem;
-          background: rgba(255, 255, 255, 0.15);
-          backdrop-filter: blur(10px);
-          color: white;
-          font-size: 0.875rem;
+          min-width: 250px;
           outline: none;
-          transition: all 0.2s;
+          color: #1f2937;
+          font-weight: 500;
+          transition: all 0.3s ease;
         }
 
-        .search-input::placeholder {
-          color: rgba(255, 255, 255, 0.7);
+        .simple-search:focus {
+          border-color: #059669;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
 
-        .search-input:focus {
-          background: rgba(255, 255, 255, 0.25);
-          border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .clear-search-btn {
-          position: absolute;
-          right: 0.75rem;
-          background: none;
-          border: none;
-          color: rgba(255, 255, 255, 0.7);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          padding: 0.25rem;
-          border-radius: 0.25rem;
-          transition: all 0.2s;
-        }
-
-        .clear-search-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
-          color: white;
-        }
-
-        .filters-container {
-          display: flex;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-
-        .filter-select {
-          padding: 0.5rem 0.75rem;
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 0.5rem;
-          background: rgba(255, 255, 255, 0.15);
-          backdrop-filter: blur(10px);
-          color: white;
+        .simple-select {
+          padding: 0.75rem;
+          border: 2px solid #6b7280;
+          border-radius: 8px;
           font-size: 0.875rem;
+          background: white;
           cursor: pointer;
-          min-width: 140px;
+          color: #1f2937;
+          min-width: 150px;
+          outline: none;
+          font-weight: 500;
+          transition: all 0.3s ease;
         }
 
-        .filter-select option {
-          background: #374151;
-          color: white;
+        .simple-select:focus {
+          border-color: #4b5563;
+          box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
         }
 
-        .btn-refresh {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(255, 255, 255, 0.15);
+        .simple-btn {
+          background: linear-gradient(135deg, #6b7280, #4b5563);
           color: white;
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          border: none;
           padding: 0.75rem 1.5rem;
-          border-radius: 0.5rem;
-          font-weight: 600;
+          border-radius: 8px;
           cursor: pointer;
-          transition: all 0.2s;
-          backdrop-filter: blur(10px);
+          font-size: 0.875rem;
+          font-weight: 600;
+          transition: all 0.3s ease;
         }
 
-        .btn-refresh:hover {
-          background: rgba(255, 255, 255, 0.25);
+        .simple-btn:hover {
+          background: linear-gradient(135deg, #4b5563, #374151);
           transform: translateY(-1px);
         }
 
-        .tabs-navigation {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 1.5rem;
-          display: flex;
-          gap: 0.5rem;
-          background: white;
-          border-bottom: 1px solid #e2e8f0;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-          overflow-x: auto;
-        }
-
-        .tab-btn {
-          display: flex;
-          align-items: center;
-          gap:  0.5rem;
-          padding: 1rem 1.5rem;
-          background: none;
-          border: none;
+        .simple-indicator {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+          padding: 0.75rem 1.5rem;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          text-align: center;
+          margin-top: 1rem;
           font-weight: 600;
-          color: #64748b;
+        }
+
+        /* NAVIGATION AVEC NOUVELLES COULEURS */
+        .simple-tabs {
+          background: white;
+          border-bottom: 3px solid #10b981;
+          padding: 0;
+          max-width: 1200px;
+          margin: 0 auto;
+          overflow-x: auto;
+          display: flex;
+          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
+        }
+
+        .simple-tab-btn {
+          padding: 1rem 1.5rem;
+          border: none;
+          background: white;
+          color: #6b7280;
+          font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s;
-          border-bottom: 2px solid transparent;
+          border-bottom: 3px solid transparent;
           white-space: nowrap;
+          transition: all 0.3s ease;
         }
 
-        .tab-btn.active {
-          color: #667eea;
-          border-bottom-color: #667eea;
-          background: #f8fafc;
+        .simple-tab-btn.active {
+          color: #10b981;
+          border-bottom-color: #10b981;
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
         }
 
-        .tab-btn:hover {
-          color: #667eea;
-          background: #f8fafc;
+        .simple-tab-btn:hover {
+          color: #059669;
+          background: #f0fdf4;
+        }
+
+        /* CONTAINER PRINCIPAL */
+        .simple-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 2rem 1rem;
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%) !important;
+
         }
 
         .dashboard-container {
-          max-width: 1400px;
+          max-width: 1200px;
           margin: 0 auto;
-          padding: 2rem 1.5rem;
+        }
+/* FORMATION TYPES SECTION - COMPLET */
+        .formation-types-section {
+          margin-bottom: 3rem;
         }
 
-        .dashboard-content {
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-        }
-
-        .stats-grid {
+        .formation-types-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 1.5rem;
-        }
-
-        @media (max-width: 1024px) {
-          .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 640px) {
-          .stats-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .filters-container {
-            flex-direction: column;
-          }
-          
-          .filter-select {
-            min-width: 200px;
-          }
-        }
-
-        .stat-card {
-          background: white;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 2rem;
           padding: 1.5rem;
-          border-radius: 0.75rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border-left: 4px solid;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          transition: all 0.3s;
+        }
+
+        .formation-type-card {
+          background: white;
+          border-radius: 16px;
+          padding: 2rem;
+          border: 2px solid #e5e7eb;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           position: relative;
           overflow: hidden;
         }
 
-        .stat-card::before {
+        .formation-type-card::before {
           content: '';
           position: absolute;
           top: 0;
+          left: 0;
           right: 0;
-          width: 100px;
-          height: 100px;
-          border-radius: 50%;
-          opacity: 0.1;
-          transform: translate(30px, -30px);
-          transition: all 0.3s;
+          height: 4px;
+          background: linear-gradient(135deg, #3b82f6, #10b981);
+          transition: all 0.3s ease;
         }
 
-        .stat-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.15);
+        .formation-type-card:hover {
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
+          border-color: #10b981;
         }
 
-        .stat-card.blue { 
-          border-left-color: #2563eb; 
+        .formation-type-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
         }
-        .stat-card.blue::before { background: #2563eb; }
 
-        .stat-card.green { 
-          border-left-color: #059669; 
-        }
-        .stat-card.green::before { background: #059669; }
-
-        .stat-card.purple { 
-          border-left-color: #667eea; 
-        }
-        .stat-card.purple::before { background: #667eea; }
-
-        .stat-card.orange { 
-          border-left-color: #ea580c; 
-        }
-        .stat-card.orange::before { background: #ea580c; }
-
-        .stat-icon {
-          width: 3.5rem;
-          height: 3.5rem;
-          border-radius: 0.75rem;
+        .formation-type-icon {
+          width: 4rem;
+          height: 4rem;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          position: relative;
-          z-index: 1;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
-        .stat-card.blue .stat-icon { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-        .stat-card.green .stat-icon { background: linear-gradient(135deg, #059669, #047857); }
-        .stat-card.purple .stat-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
-        .stat-card.orange .stat-icon { background: linear-gradient(135deg, #ea580c, #dc2626); }
-
-        .stat-content {
-          flex: 1;
-          z-index: 1;
-          position: relative;
-        }
-
-        .stat-content h3 {
-          font-size: 2rem;
+        .formation-type-info h3 {
+          font-size: 1.25rem;
           font-weight: 700;
-          color: #1e293b;
-          margin-bottom: 0.25rem;
-          line-height: 1.2;
+          color: #1f2937;
+          margin: 0;
         }
 
-        .stat-content p {
-          color: #64748b;
+        .formation-type-code {
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+          color: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 20px;
+          font-size: 0.75rem;
           font-weight: 600;
-          margin-bottom: 0.5rem;
-          font-size: 1rem;
+          text-transform: uppercase;
         }
 
-        .stat-detail {
-          font-size: 0.875rem;
-          color: #94a3b8;
-          font-weight: 500;
+        .formation-type-stats {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1rem;
+          margin-bottom: 1.5rem;
         }
 
-        .section-title {
+        .formation-stat {
+          text-align: center;
+          padding: 1rem;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          transition: all 0.3s ease;
+        }
+
+        .formation-stat:hover {
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+          border-color: #10b981;
+          transform: scale(1.05);
+        }
+
+        .formation-stat-value {
+          display: block;
           font-size: 1.5rem;
           font-weight: 700;
-          color: #1e293b;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 1.5rem;
-          padding-bottom: 0.75rem;
-          border-bottom: 2px solid #f1f5f9;
+          color: #10b981;
+          margin-bottom: 0.25rem;
         }
 
-        .filtered-indicator {
-          font-size: 0.875rem;
-          color: #ea580c;
-          font-weight: 500;
-          background: #fef3c7;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
-          margin-left: 0.5rem;
-        }
-
-        .charts-section {
-          margin-top: 2rem;
-        }
-
-        .charts-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 2rem;
-        }
-
-        @media (max-width: 1024px) {
-          .charts-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .chart-card {
-          background: white;
-          padding: 1.5rem;
-          border-radius: 1rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid #f1f5f9;
-        }
-
-        .chart-card h3 {
-          font-size: 1.125rem;
+        .formation-stat-label {
+          font-size: 0.75rem;
+          color: #6b7280;
           font-weight: 600;
-          color: #1e293b;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 1.5rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
-        .no-data {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 300px;
-          color: #94a3b8;
-          font-weight: 500;
-        }
-
-        .table-container {
-          background: white;
-          border-radius: 1rem;
-          overflow: hidden;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid #f1f5f9;
-          overflow-x: auto;
-        }
-
-        .analysis-table {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 600px;
-        }
-
-        .analysis-table th {
-          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-          padding: 1rem;
-          text-align: left;
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.875rem;
-          border-bottom: 2px solid #e5e7eb;
-          white-space: nowrap;
-        }
-
-        .analysis-table td {
-          padding: 1rem;
-          border-bottom: 1px solid #f3f4f6;
-          vertical-align: middle;
-        }
-
-        .analysis-table tbody tr:hover {
-          background: #f8fafc;
-        }
-
-        .no-data-table {
-          text-align: center;
-          padding: 3rem;
-          color: #94a3b8;
-          font-weight: 500;
-        }
-
-        .niveau-name,
-        .specialite-name,
-        .annee-name {
-          font-weight: 600;
-          color: #1e293b;
-        }
-
-        .specialite-name {
-          cursor: help;
-        }
-
-        .badge {
-          display: inline-block;
-          padding: 0.375rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.875rem;
-          font-weight: 600;
+        .formation-ca {
+          background: linear-gradient(135deg, #10b981, #059669);
           color: white;
+          padding: 1rem;
+          border-radius: 12px;
           text-align: center;
-          min-width: 2.5rem;
         }
 
-        .badge.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-        .badge.green { background: linear-gradient(135deg, #059669, #047857); }
-
-        .money {
-          font-weight: 600;
-          color: #1e293b;
-          font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-          font-size: 0.9rem;
+        .formation-ca-label {
+          display: block;
+          font-size: 0.75rem;
+          opacity: 0.9;
+          margin-bottom: 0.25rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
 
-        .rate {
-          padding: 0.375rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.875rem;
-          font-weight: 600;
+        .formation-ca-value {
+          font-size: 1.25rem;
+          font-weight: 700;
         }
 
-        .rate.good {
-          background: #dcfce7;
-          color: #166534;
-        }
-
-        .rate.warning {
-          background: #fef3c7;
-          color: #92400e;
-        }
-
-        /* Cours & Professeurs Styles */
+        /* COURS CARDS - COMPLET */
         .cours-professeurs-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-          gap: 1.5rem;
-        }
-
-        @media (max-width: 640px) {
-          .cours-professeurs-grid {
-            grid-template-columns: 1fr;
-          }
+          gap: 2rem;
+          padding: 1.5rem;
         }
 
         .cours-card {
           background: white;
-          border-radius: 1rem;
-          padding: 1.5rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid #f1f5f9;
-          transition: all 0.3s;
+          border-radius: 16px;
+          padding: 2rem;
+          border: 2px solid #e5e7eb;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .cours-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(135deg, #3b82f6, #10b981);
         }
 
         .cours-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
+          border-color: #10b981;
         }
 
         .cours-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 1rem;
+          margin-bottom: 1.5rem;
           gap: 1rem;
         }
 
         .cours-title {
-          font-size: 1.125rem;
-          font-weight: 600;
-          color: #1e293b;
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          margin: 0;
+          gap: 0.75rem;
           flex: 1;
         }
 
         .cours-stats-badges {
           display: flex;
-          flex-direction: column;
           gap: 0.5rem;
-          flex-shrink: 0;
+          flex-wrap: wrap;
+          align-items: center;
         }
 
         .stat-badge {
           display: flex;
           align-items: center;
-          gap: 0.375rem;
-          padding: 0.375rem 0.75rem;
-          border-radius: 9999px;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
           font-size: 0.75rem;
-          font-weight: 600;
+          font-weight: 700;
           color: white;
-          text-align: center;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
           white-space: nowrap;
         }
-
-        .stat-badge.blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-        .stat-badge.green { background: linear-gradient(135deg, #059669, #047857); }
 
         .cours-details {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 1.5rem;
         }
 
         .cours-financial {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem;
-          background: #f8fafc;
-          border-radius: 0.5rem;
-          border: 1px solid #e2e8f0;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          padding: 1.5rem;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          transition: all 0.3s ease;
+        }
+
+        .cours-financial:hover {
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+          border-color: #10b981;
         }
 
         .financial-item {
           display: flex;
-          flex-direction: column;
+          justify-content: space-between;
           align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .financial-item:last-child {
+          margin-bottom: 0;
         }
 
         .financial-item .label {
-          font-size: 0.75rem;
-          color: #64748b;
-          margin-bottom: 0.25rem;
+          font-weight: 600;
+          color: #6b7280;
+          font-size: 0.875rem;
         }
 
         .financial-item .value {
-          font-weight: 600;
-          color: #1e293b;
-          font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+          font-weight: 700;
+          color: #10b981;
+          font-size: 1rem;
         }
 
         .professeurs-section {
-          border-top: 1px solid #e2e8f0;
-          padding-top: 1rem;
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+          padding: 1.5rem;
+          border-radius: 12px;
+          border: 1px solid #10b981;
+          transition: all 0.3s ease;
+        }
+
+        .professeurs-section:hover {
+          border-color: #059669;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
         }
 
         .professeurs-title {
           font-size: 1rem;
-          font-weight: 600;
-          color: #374151;
+          font-weight: 700;
+          color: #10b981;
+          margin: 0 0 1rem 0;
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          margin: 0 0 0.75rem 0;
         }
 
         .professeurs-list {
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 1rem;
         }
 
         .professeur-item {
-          background: #f8fafc;
-          border-radius: 0.5rem;
+          background: white;
           padding: 1rem;
-          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          border: 1px solid #d1d5db;
+          transition: all 0.3s ease;
+        }
+
+        .professeur-item:hover {
+          border-color: #10b981;
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+          transform: translateX(4px);
         }
 
         .professeur-info {
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
+          gap: 0.5rem;
         }
 
         .professeur-nom {
-          font-weight: 600;
-          color: #1e293b;
-          font-size: 0.9rem;
+          font-weight: 700;
+          color: #1f2937;
+          font-size: 1rem;
         }
 
         .professeur-email,
         .professeur-tel {
-          font-size: 0.75rem;
-          color: #64748b;
           display: flex;
           align-items: center;
-          gap: 0.25rem;
+          gap: 0.5rem;
+          font-size: 0.875rem;
+          color: #6b7280;
         }
 
         .professeur-matiere {
-          margin-top: 0.5rem;
           font-size: 0.75rem;
-          color: #7c3aed;
-          font-style: italic;
+          color: #10b981;
+          font-weight: 600;
+          background: #f0fdf4;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          display: inline-block;
+          margin-top: 0.5rem;
         }
 
         .cours-meta {
-          border-top: 1px solid #e2e8f0;
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 1rem;
           padding-top: 1rem;
+          border-top: 1px solid #e5e7eb;
         }
 
         .creation-date {
-          font-size: 0.75rem;
-          color: #64748b;
           display: flex;
           align-items: center;
-          gap: 0.25rem;
+          gap: 0.5rem;
+          font-size: 0.75rem;
+          color: #6b7280;
+          font-weight: 500;
         }
 
         .no-data-courses {
           text-align: center;
-          padding: 3rem;
-          color: #94a3b8;
+          padding: 4rem 2rem;
+          color: #6b7280;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -2447,216 +2216,115 @@ const PedagogiqueDashboard = () => {
 
         .no-data-courses h3 {
           font-size: 1.25rem;
-          font-weight: 600;
-          color: #64748b;
+          font-weight: 700;
           margin: 0;
+          color: #374151;
         }
 
         .no-data-courses p {
-          font-size: 0.9rem;
-          color: #94a3b8;
-          max-width: 400px;
-          line-height: 1.5;
+          font-size: 1rem;
           margin: 0;
+          max-width: 500px;
         }
 
-        /* Tableau des étudiants */
-        .tableau-container {
-          background: white;
-          border-radius: 1rem;
-          overflow: hidden;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid #f1f5f9;
-          overflow-x: auto;
-        }
-
-        .tableau-etudiants {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 1200px;
-        }
-
-        .tableau-etudiants th {
-          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-          padding: 1rem;
-          text-align: left;
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.875rem;
-          border-bottom: 2px solid #e5e7eb;
-          position: sticky;
-          top: 0;
-          z-index: 10;
-          white-space: nowrap;
-        }
-
-        .tableau-etudiants td {
-          padding: 1rem;
-          border-bottom: 1px solid #f3f4f6;
-          vertical-align: middle;
-        }
-
-        .tableau-etudiants tbody tr:hover {
-          background: #f8fafc;
-        }
-
-        .image-etudiant {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 2px solid #e5e7eb;
-        }
-
-        .pas-image {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: #f1f5f9;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.75rem;
-          color: #64748b;
-          border: 2px solid #e5e7eb;
-        }
-
-        .statut-text.actif {
-          color: #059669;
-          font-weight: 600;
-        }
-
-        .statut-text.inactif {
-          color: #dc2626;
-          font-weight: 600;
-        }
-
-        .btn-voir {
-          background: linear-gradient(135deg, #3b82f6, #2563eb);
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 0.5rem;
-          cursor: pointer;
-          font-size: 0.875rem;
-          font-weight: 600;
-          transition: all 0.2s;
-        }
-
-        .btn-voir:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .aucun-resultat {
-          text-align: center;
-          color: #64748b;
-          font-style: italic;
-          padding: 2rem;
-        }
-
-        .nom-colonne {
-          font-weight: 600;
-          color: #1e293b;
-        }
-
-        .filiere-colonne {
-          font-weight: 500;
-          color: #667eea;
-        }
-
-        .niveau-colonne {
-          font-weight: 500;
-          color: #059669;
-        }
-
-        /* Grille des professeurs */
-        .professeurs-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-          gap: 1.5rem;
-        }
-
-        @media (max-width: 640px) {
-          .professeurs-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        .professeur-card {
-          background: white;
-          border-radius: 1rem;
+        /* PROFESSOR CARDS - COMPLET */
+        .professors-list {
           padding: 1.5rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          border: 1px solid #f1f5f9;
-          transition: all 0.3s;
         }
 
-        .professeur-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        .professors-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          gap: 2rem;
         }
 
-        .professeur-header {
+        .professor-card {
+          background: white;
+          border-radius: 16px;
+          padding: 2rem;
+          border: 2px solid #e5e7eb;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .professor-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+
+        .professor-card:hover {
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+          border-color: #3b82f6;
+        }
+
+        .professor-header {
           display: flex;
           align-items: center;
           gap: 1rem;
-          margin-bottom: 1rem;
+          margin-bottom: 1.5rem;
         }
 
-        .professeur-avatar {
-          width: 3rem;
-          height: 3rem;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
-        .professeur-info {
+        .professor-info {
           flex: 1;
         }
 
-        .professeur-name {
-          font-size: 1.125rem;
-          font-weight: 600;
-          color: #1e293b;
-          margin: 0 0 0.25rem 0;
-          line-height: 1.3;
-        }
-
-        .professeur-subject {
-          font-size: 0.875rem;
-          color: #667eea;
-          font-weight: 500;
-          background: #eff6ff;
-          padding: 0.25rem 0.75rem;
-          border-radius: 9999px;
-          display: inline-block;
+        .professor-name {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 0.5rem 0;
         }
 
         .professor-details {
           display: flex;
           flex-direction: column;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
         }
 
         .professor-contact {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          color: #64748b;
+          gap: 0.75rem;
+          padding: 0.75rem;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          border-radius: 8px;
+          border: 1px solid #e5e7eb;
+          transition: all 0.3s ease;
+        }
+
+        .professor-contact:hover {
+          background: linear-gradient(135deg, #eff6ff, #dbeafe);
+          border-color: #3b82f6;
+          transform: translateX(4px);
+        }
+
+        .professor-contact span {
           font-size: 0.875rem;
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .professor-courses {
+          background: linear-gradient(135deg, #eff6ff, #dbeafe);
+          padding: 1.5rem;
+          border-radius: 12px;
+          border: 1px solid #3b82f6;
         }
 
         .professor-courses h4 {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #374151;
-          margin: 0 0 0.5rem 0;
+          font-size: 1rem;
+          font-weight: 700;
+          color: #3b82f6;
+          margin: 0 0 1rem 0;
         }
 
         .courses-list {
@@ -2665,754 +2333,1122 @@ const PedagogiqueDashboard = () => {
           gap: 0.5rem;
         }
 
-        .course-badge {
-          background: #f3f4f6;
+        .no-professors {
+          text-align: center;
+          padding: 4rem 2rem;
+          color: #6b7280;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .no-professors h3 {
+          font-size: 1.25rem;
+          font-weight: 700;
+          margin: 0;
           color: #374151;
-          padding: 0.25rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.75rem;
+        }
+
+        .no-professors p {
+          font-size: 1rem;
+          margin: 0;
+          max-width: 500px;
+        }
+
+        /* MODAL COMPLET */
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .student-info-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          gap: 2rem;
+          padding: 2rem;
+        }
+
+        .student-modal-content {
+          max-height: calc(90vh - 80px);
+          overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color: #10b981 #f3f4f6;
+        }
+
+        .student-modal-content::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .student-modal-content::-webkit-scrollbar-track {
+          background: #f3f4f6;
+          border-radius: 4px;
+        }
+
+        .student-modal-content::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, #10b981, #059669);
+          border-radius: 4px;
+        }
+
+        .student-photo {
+          text-align: center;
+          padding: 1rem;
+        }
+
+        .payment-status {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-weight: 700;
+        }
+
+        /* TYPE FORMATION BADGES COULEURS SPÉCIFIQUES */
+        .formation-badge.cycle_ingenieur {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+
+        .formation-badge.licence_pro {
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .formation-badge.master_pro {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .formation-badge.masi {
+          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        }
+
+        .formation-badge.irm {
+          background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .type-formation-badge {
+          text-align: center;
+        }
+
+        /* STATS PRINCIPALES OVERVIEW */
+        .stats-section {
+          margin-bottom: 3rem;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 2rem;
+        }
+
+        .stat-card {
+          background: white;
+          padding: 2rem;
+          border-radius: 12px;
+          border: 2px solid #e5e7eb;
+          text-align: center;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .stat-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(135deg, #3b82f6, #10b981);
+        }
+
+        .stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon {
+          width: 4rem;
+          height: 4rem;
+          margin: 0 auto 1rem auto;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .stat-card.green .stat-icon {
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .stat-card.purple .stat-icon {
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+
+        .stat-card.orange .stat-icon {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .stat-content h3 {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .stat-content p {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #6b7280;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .stat-detail {
+          font-size: 0.875rem;
+          color: #9ca3af;
           font-weight: 500;
         }
 
-        .section-separator {
-          margin-top: 3rem;
-          padding-top: 2rem;
-          border-top: 2px solid #f1f5f9;
+        /* TABS NAVIGATION CACHÉE */
+        .tabs-navigation {
+          display: none;
         }
 
-        /* Student Modal */
+        /* RESPONSIVE POUR LES NOUVELLES CARTES */
+        @media (max-width: 768px) {
+          .formation-types-grid,
+          .professors-grid,
+          .cours-professeurs-grid {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+          }
+
+          .formation-type-stats {
+            grid-template-columns: 1fr;
+          }
+
+          .student-info-grid {
+            grid-template-columns: 1fr;
+            padding: 1rem;
+          }
+
+          .cours-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+          }
+
+          .cours-stats-badges {
+            align-self: stretch;
+          }
+
+          .simple-container {
+            padding: 1rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .formation-type-card,
+          .professor-card,
+          .cours-card {
+            padding: 1rem;
+          }
+
+          .formation-type-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 0.5rem;
+          }
+
+          .formation-type-icon {
+            width: 3rem;
+            height: 3rem;
+          }
+
+          .stat-card {
+            padding: 1.5rem;
+          }
+
+          .stat-icon {
+            width: 3rem;
+            height: 3rem;
+          }
+
+          .stat-content h3 {
+            font-size: 1.75rem;
+          }
+        }
+        .dashboard-content {
+          padding: 2rem 1rem;
+        }
+
+        /* STATISTIQUES AVEC COULEURS VARIÉES */
+        .simple-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 3rem;
+        }
+
+        .simple-stat-card {
+          background: white;
+          padding: 2rem;
+          border-radius: 12px;
+          border: 2px solid #e5e7eb;
+          text-align: center;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .simple-stat-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(135deg, #3b82f6, #10b981);
+        }
+
+        .simple-stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+
+        .simple-stat-card:nth-child(1)::before {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+
+        .simple-stat-card:nth-child(2)::before {
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .simple-stat-card:nth-child(3)::before {
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+
+        .simple-stat-card:nth-child(4)::before {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .simple-stat-card h3 {
+          font-size: 2.5rem;
+          color: #1f2937;
+          margin: 0 0 0.5rem 0;
+          font-weight: 700;
+        }
+
+        .simple-stat-card:nth-child(1) h3 { color: #3b82f6; }
+        .simple-stat-card:nth-child(2) h3 { color: #10b981; }
+        .simple-stat-card:nth-child(3) h3 { color: #6b7280; }
+        .simple-stat-card:nth-child(4) h3 { color: #f59e0b; }
+
+        .simple-stat-card p {
+          color: #1f2937;
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        /* BOUTON TOGGLE AVEC NOUVELLE COULEUR */
+        .header-toggle-btn {
+          position: fixed;
+          top: 1rem;
+          right: 1rem;
+          z-index: 1000;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 3rem;
+          height: 3rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+          transition: all 0.3s ease;
+        }
+
+        .header-toggle-btn:hover {
+          background: linear-gradient(135deg, #059669, #047857);
+          transform: scale(1.05);
+        }
+
+        /* SECTIONS AVEC NOUVELLES COULEURS */
+        .section {
+          background: white;
+          border-radius: 12px;
+          border: 2px solid #e5e7eb;
+          margin-bottom: 2rem;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: white;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          padding: 1rem;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .filtered-indicator {
+          background: #1f2937;
+          color: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          margin-left: 1rem;
+        }
+
+        /* CHARTS AVEC NOUVELLES COULEURS */
+        .charts-section {
+          margin-bottom: 3rem;
+        }
+
+        .charts-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+          gap: 2rem;
+        }
+
+        .chart-card {
+          background: white;
+          padding: 1.5rem;
+          border-radius: 12px;
+          border: 2px solid #e5e7eb;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-card h3 {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 1.5rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          border-bottom: 2px solid #10b981;
+          padding-bottom: 0.75rem;
+        }
+
+        /* TABLEAUX AVEC SCROLL ET NOUVELLES COULEURS */
+        .table-container {
+          background: white;
+          border-radius: 12px;
+          border: 2px solid #e5e7eb;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* NOUVEAU: Wrapper pour le scroll de la table étudiants */
+        .tableau-container {
+          background: white;
+          border-radius: 12px;
+          border: 2px solid #10b981;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+        }
+
+        .table-scroll-wrapper {
+          overflow-x: auto;
+          overflow-y: auto;
+          max-height: 600px;
+          scrollbar-width: thin;
+          scrollbar-color: #10b981 #f3f4f6;
+        }
+
+        .table-scroll-wrapper::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        .table-scroll-wrapper::-webkit-scrollbar-track {
+          background: #f3f4f6;
+          border-radius: 4px;
+        }
+
+        .table-scroll-wrapper::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, #10b981, #059669);
+          border-radius: 4px;
+        }
+
+        .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        .analysis-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .analysis-table th {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          padding: 1rem;
+          text-align: left;
+          font-weight: 700;
+          font-size: 0.875rem;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+
+        .analysis-table td {
+          padding: 1rem;
+          border-bottom: 1px solid #e5e7eb;
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .analysis-table tbody tr:hover {
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+        }
+
+        .no-data-table {
+          text-align: center;
+          padding: 3rem;
+          color: #6b7280;
+          font-weight: 600;
+          font-size: 1.1rem;
+        }
+
+        /* BADGES AVEC NOUVELLES COULEURS */
+        .badge {
+          display: inline-block;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          font-weight: 700;
+          color: white;
+          text-align: center;
+          min-width: 3rem;
+        }
+
+        .badge.blue { 
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        .badge.green { 
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .money {
+          font-weight: 700;
+          color: #10b981;
+          font-size: 1.1rem;
+        }
+
+        .rate {
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          font-weight: 700;
+        }
+
+        .rate.good {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+        }
+
+        .rate.warning {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: white;
+        }
+
+        .no-data {
+          text-align: center;
+          padding: 3rem;
+          color: #6b7280;
+          font-weight: 600;
+          font-size: 1.1rem;
+        }
+
+        /* FORMATION BADGES AVEC NOUVELLES COULEURS */
+        .formation-badge {
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: white;
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+          text-transform: uppercase;
+        }
+
+        /* FILTRES ÉTUDIANTS AVEC NOUVELLES COULEURS */
+        .students-filters,
+        .professors-filters {
+          background: white;
+          padding: 1.5rem;
+          border-radius: 12px;
+          border: 2px solid #10b981;
+          margin-bottom: 2rem;
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+        }
+
+        .students-filters-row,
+        .professors-filters-row {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .search-input-container {
+          position: relative;
+          flex: 1;
+          min-width: 300px;
+          max-width: 400px;
+        }
+
+        .search-input-container svg {
+          position: absolute;
+          left: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #10b981;
+          z-index: 1;
+        }
+
+        .students-search-input,
+        .professors-search-input {
+          width: 100%;
+          padding: 0.75rem 1rem 0.75rem 2.5rem;
+          border: 2px solid #10b981;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          outline: none;
+          font-weight: 500;
+          color: #1f2937;
+          transition: all 0.3s ease;
+        }
+
+        .students-search-input:focus,
+        .professors-search-input:focus {
+          border-color: #059669;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .students-filter-select,
+        .professors-filter-select {
+          padding: 0.75rem 1rem;
+          border: 2px solid #6b7280;
+          border-radius: 8px;
+          background: white;
+          color: #1f2937;
+          font-size: 0.875rem;
+          cursor: pointer;
+          min-width: 150px;
+          font-weight: 500;
+          outline: none;
+          transition: all 0.3s ease;
+        }
+
+        .students-filter-select:focus,
+        .professors-filter-select:focus {
+          border-color: #4b5563;
+          box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
+        }
+
+        .reset-students-filters-btn,
+        .reset-professors-filters-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: white;
+          border: none;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.3s ease;
+        }
+
+        .reset-students-filters-btn:hover,
+        .reset-professors-filters-btn:hover {
+          background: linear-gradient(135deg, #d97706, #b45309);
+          transform: translateY(-1px);
+        }
+
+        .clear-search-btn {
+          position: absolute;
+          right: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: #10b981;
+          cursor: pointer;
+          padding: 0.25rem;
+          border-radius: 50%;
+          transition: all 0.3s ease;
+        }
+
+        .clear-search-btn:hover {
+          background: #f0fdf4;
+          color: #059669;
+        }
+
+        /* TABLEAU ÉTUDIANTS AVEC SCROLL ET NOUVELLES COULEURS */
+        .tableau-etudiants {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 1200px;
+        }
+
+        .tableau-etudiants th {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          padding: 1rem;
+          text-align: left;
+          font-weight: 700;
+          font-size: 0.875rem;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+
+        .tableau-etudiants td {
+          padding: 1rem;
+          border-bottom: 1px solid #e5e7eb;
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .tableau-etudiants tbody tr:hover {
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+        }
+
+        .image-etudiant {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          object-fit: cover;
+          border: 2px solid #10b981;
+        }
+
+        .pas-image {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.75rem;
+          font-weight: 700;
+        }
+
+        .statut-text.actif {
+          color: #10b981;
+          font-weight: 700;
+        }
+
+        .statut-text.inactif {
+          color: #f59e0b;
+          font-weight: 700;
+        }
+
+        .btn-voir {
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          color: white;
+          border: none;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }
+
+        .btn-voir:hover {
+          background: linear-gradient(135deg, #1d4ed8, #1e40af);
+          transform: translateY(-1px);
+        }
+
+        .aucun-resultat {
+          text-align: center;
+          color: #6b7280;
+          font-weight: 600;
+          padding: 3rem;
+          font-size: 1.1rem;
+        }
+
+        .nom-colonne {
+          font-weight: 700;
+          color: #1f2937;
+        }
+
+        .filiere-colonne {
+          font-weight: 600;
+          color: #10b981;
+        }
+
+        .niveau-colonne {
+          font-weight: 600;
+          color: #6b7280;
+        }
+
+        .statut-colonne,
+        .image-colonne,
+        .actions-colonne {
+          text-align: center;
+        }
+
+        /* AUTRES CARTES AVEC NOUVELLES COULEURS */
+        .professor-card,
+        .cours-card,
+        .formation-type-card {
+          background: white;
+          border-radius: 12px;
+          padding: 1.5rem;
+          border: 2px solid #e5e7eb;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          transition: all 0.3s ease;
+        }
+
+        .professor-card:hover,
+        .cours-card:hover,
+        .formation-type-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
+        }
+
+        .professor-avatar {
+          width: 3rem;
+          height: 3rem;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          flex-shrink: 0;
+        }
+
+        .professor-subject {
+          font-size: 0.875rem;
+          color: white;
+          background: linear-gradient(135deg, #10b981, #059669);
+          padding: 0.25rem 0.75rem;
+          border-radius: 20px;
+          font-weight: 600;
+          display: inline-block;
+        }
+
+        .course-badge {
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+          color: white;
+          padding: 0.25rem 0.5rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        .stat-badge.blue { 
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        .stat-badge.green { 
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .type-badge {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: white;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+        }
+
+        /* MODAL AVEC NOUVELLES COULEURS */
         .modal-overlay {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(31, 41, 55, 0.8);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 1000;
-          padding: 1rem;
         }
 
         .student-modal {
           background: white;
-          border-radius: 1rem;
-          max-width: 800px;
-          width: 100%;
-          padding: 2rem;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+          border-radius: 12px;
+          border: 2px solid #10b981;
+          max-width: 900px;
+          width: 90%;
+          max-height: 90%;
           overflow-y: auto;
-          max-height: 90vh;
+          box-shadow: 0 20px 50px rgba(16, 185, 129, 0.2);
         }
 
         .student-modal-header {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          padding: 1.5rem;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 1.5rem;
         }
 
         .student-modal-header h2 {
           font-size: 1.5rem;
           font-weight: 700;
-          color: #1e293b;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
           margin: 0;
-        }
-
-        .modal-close-btn {
-          background: none;
-          border: none;
-          color: #64748b;
-          cursor: pointer;
-          padding: 0.5rem;
-          border-radius: 0.5rem;
-          transition: all 0.2s;
-        }
-
-        .modal-close-btn:hover {
-          background: #f1f5f9;
-          color: #1e293b;
-        }
-
-        .student-info-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 1.5rem;
-        }
-
-        .student-info-section {
-          background: #f8fafc;
-          border-radius: 0.75rem;
-          padding: 1.5rem;
-          border: 1px solid #e2e8f0;
-        }
-
-        .student-info-section h3 {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          font-size: 1rem;
-          font-weight: 600;
-          color: #374151;
-          margin: 0 0 1rem 0;
-          padding-bottom: 0.5rem;
-          border-bottom: 1px solid #e2e8f0;
-        }
-
-        .info-grid {
-          display: grid;
           gap: 0.75rem;
         }
 
-        .info-item {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0.5rem;
+        .modal-close-btn {
+          background: white;
+          color: #10b981;
+          border: none;
+          cursor: pointer;
+          padding: 0.5rem;
+          border-radius: 8px;
+          font-weight: 700;
+          display: flex;
           align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+        }
+
+        .modal-close-btn:hover {
+          background: #f0fdf4;
+          transform: scale(1.05);
+        }
+
+        .student-info-section {
+          border: 2px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 1.5rem;
+          transition: all 0.3s ease;
+        }
+
+        .student-info-section:hover {
+          border-color: #10b981;
+        }
+
+        .student-info-section h3 {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #10b981;
+          margin: 0 0 1rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          border-bottom: 2px solid #10b981;
+          padding-bottom: 0.5rem;
+        }
+
+        .info-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.75rem;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          border-radius: 8px;
+          border: 1px solid #e5e7eb;
+          transition: all 0.3s ease;
+        }
+
+        .info-item:hover {
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+          border-color: #10b981;
         }
 
         .info-item label {
+          font-weight: 700;
+          color: #1f2937;
           font-size: 0.875rem;
-          font-weight: 500;
-          color: #64748b;
+          flex-shrink: 0;
+          margin-right: 1rem;
         }
 
         .info-item span {
+          font-weight: 600;
+          color: #10b981;
           font-size: 0.875rem;
-          color: #1e293b;
-          font-weight: 500;
-        }
-
-        .price-value {
-          font-weight: 600;
-          color: #059669;
-          font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-        }
-
-        .payment-status {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          font-weight: 600;
+          text-align: right;
+          word-break: break-word;
         }
 
         .payment-status.paid {
-          color: #059669;
+          color: #10b981;
         }
 
         .payment-status.unpaid {
-          color: #dc2626;
+          color: #f59e0b;
         }
 
         .status.active {
-          color: #059669;
-          font-weight: 600;
+          color: #10b981;
+          font-weight: 700;
         }
 
         .status.inactive {
-          color: #dc2626;
-          font-weight: 600;
-        }
-
-        .student-photo {
-          text-align: center;
+          color: #f59e0b;
+          font-weight: 700;
         }
 
         .modal-student-image {
           max-width: 200px;
-          max-height: 200px;
-          border-radius: 0.75rem;
+          max-height: 250px;
+          border-radius: 12px;
+          border: 3px solid #10b981;
           object-fit: cover;
-          border: 3px solid #e2e8f0;
         }
-/* ===========================================
-   STYLES CSS MANQUANTS POUR LE DASHBOARD
-   =========================================== */
 
-/* 1. FILTRES SPÉCIFIQUES AUX ÉTUDIANTS */
-.students-filters {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f1f5f9;
-  margin-bottom: 2rem;
-}
-
-.students-filters-row {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.students-search-input {
-  width: 100%;
-  min-width: 300px;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  background: #ffffff;
-  color: #1f2937;
-  font-size: 0.875rem;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.students-search-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.students-filter-select {
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  background: white;
-  color: #1f2937;
-  font-size: 0.875rem;
-  cursor: pointer;
-  min-width: 150px;
-  transition: all 0.2s;
-}
-
-.students-filter-select:focus {
-  border-color: #667eea;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.reset-students-filters-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.reset-students-filters-btn:hover {
-  background: #e2e8f0;
-  color: #475569;
-}
-
-/* 2. FILTRES SPÉCIFIQUES AUX PROFESSEURS */
-.professors-filters {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f1f5f9;
-  margin-bottom: 2rem;
-}
-
-.professors-filters-row {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.professors-search-input {
-  width: 100%;
-  min-width: 300px;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  background: #ffffff;
-  color: #1f2937;
-  font-size: 0.875rem;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.professors-search-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.professors-filter-select {
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  background: white;
-  color: #1f2937;
-  font-size: 0.875rem;
-  cursor: pointer;
-  min-width: 150px;
-  transition: all 0.2s;
-}
-
-.professors-filter-select:focus {
-  border-color: #667eea;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.reset-professors-filters-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.reset-professors-filters-btn:hover {
-  background: #e2e8f0;
-  color: #475569;
-}
-
-/* 3. LISTE DES PROFESSEURS */
-.professors-list {
-  background: white;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f1f5f9;
-  overflow: hidden;
-}
-
-.no-professors {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  text-align: center;
-  gap: 1rem;
-}
-
-.no-professors h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #64748b;
-  margin: 0;
-}
-
-.no-professors p {
-  font-size: 0.875rem;
-  color: #94a3b8;
-  max-width: 400px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.professors-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 1.5rem;
-  padding: 1.5rem;
-}
-
-.professor-card {
-  background: white;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f1f5f9;
-  transition: all 0.3s ease;
-}
-
-.professor-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-  border-color: #e2e8f0;
-}
-
-.professor-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.professor-avatar {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.professor-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.professor-name {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 0.25rem 0;
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.professor-subject {
-  font-size: 0.875rem;
-  color: #667eea;
-  font-weight: 500;
-  background: #eff6ff;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.professor-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.professor-contact {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #64748b;
-  font-size: 0.875rem;
-  word-break: break-all;
-}
-
-.professor-courses {
-  border-top: 1px solid #f1f5f9;
-  padding-top: 1rem;
-}
-
-.professor-courses h4 {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-  margin: 0 0 0.75rem 0;
-}
-
-.courses-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.course-badge {
-  background: #f3f4f6;
-  color: #374151;
-  padding: 0.375rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid #e5e7eb;
-}
-
-/* 4. TYPES DE FORMATION */
-.formation-types-section {
-  margin: 2rem 0;
-}
-
-.formation-types-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-.formation-type-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f1f5f9;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.formation-type-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 100px;
-  height: 100px;
-  background: var(--formation-color, #2563eb);
-  opacity: 0.05;
-  border-radius: 50%;
-  transform: translate(30px, -30px);
-}
-
-.formation-type-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
-}
-
-.formation-type-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.formation-type-icon {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.formation-type-info {
-  flex: 1;
-}
-
-.formation-type-info h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 0.25rem 0;
-}
-
-.formation-type-code {
-  font-size: 0.875rem;
-  color: #64748b;
-  font-weight: 500;
-  background: #f8fafc;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-}
-
-.formation-type-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.formation-stat {
-  text-align: center;
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 0.5rem;
-  border: 1px solid #f1f5f9;
-}
-
-.formation-stat-value {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 0.25rem;
-}
-
-.formation-stat-label {
-  font-size: 0.75rem;
-  color: #64748b;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.formation-ca {
-  padding-top: 1rem;
-  border-top: 1px solid #f1f5f9;
-  text-align: center;
-}
-
-.formation-ca-label {
-  display: block;
-  font-size: 0.875rem;
-  color: #64748b;
-  margin-bottom: 0.5rem;
-}
-
-.formation-ca-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #059669;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-}
-
-/* 5. RESPONSIVE DESIGN AMÉLIORÉ */
-@media (max-width: 1024px) {
-  .students-filters-row,
-  .professors-filters-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .students-search-input,
-  .professors-search-input {
-    min-width: 100%;
-  }
-  
-  .formation-types-grid {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  }
-  
-  .formation-type-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .students-filters,
-  .professors-filters {
-    padding: 1rem;
-  }
-  
-  .professors-grid {
-    grid-template-columns: 1fr;
-    padding: 1rem;
-  }
-  
-  .formation-types-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .formation-type-stats {
-    grid-template-columns: 1fr;
-  }
-  
-  .formation-stat {
-    padding: 0.75rem;
-  }
-  
-  .professor-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 0.75rem;
-  }
-  
-  .professor-info {
-    text-align: center;
-  }
-  
-  .courses-list {
-    justify-content: center;
-  }
-}
-
-/* 6. ANIMATIONS SUPPLÉMENTAIRES */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.students-filters,
-.professors-filters,
-.formation-type-card,
-.professor-card {
-  animation: slideIn 0.3s ease-out;
-}
-
-/* 7. ÉTATS DE FOCUS AMÉLIORÉS */
-.students-filter-select:focus,
-.professors-filter-select:focus {
-  transform: translateY(-1px);
-}
-
-.reset-students-filters-btn:focus,
-.reset-professors-filters-btn:focus {
-  outline: 2px solid #667eea;
-  outline-offset: 2px;
-}
-
-/* 8. AMÉLIORATION DES COULEURS DE STATUT */
-.professor-contact svg {
-  color: #667eea;
-}
-
-.formation-type-card:hover .formation-type-icon {
-  transform: scale(1.05);
-  transition: transform 0.3s ease;
-}
-
-/* 9. SCROLLBAR PERSONNALISÉE */
-.professors-list::-webkit-scrollbar,
-.students-filters::-webkit-scrollbar {
-  width: 6px;
-}
-
-.professors-list::-webkit-scrollbar-track,
-.students-filters::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-.professors-list::-webkit-scrollbar-thumb,
-.students-filters::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.professors-list::-webkit-scrollbar-thumb:hover,
-.students-filters::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* 10. STYLE POUR LES LISTES VIDES */
-.no-professors,
-.no-data-courses {
-  transition: all 0.3s ease;
-}
-
-.no-professors:hover,
-.no-data-courses:hover {
-  transform: translateY(-2px);
-}
-        /* CSS pour le badge général */
-        .general-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.25rem;
-          background: linear-gradient(135deg, #9333ea, #7c3aed);
+        /* RESPONSIVE AMÉLIORÉ */
+        @media (max-width: 768px) {
+          .header-stats span {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+          }
+
+          .table-scroll-wrapper {
+            max-height: 400px;
+          }
+
+          .tableau-etudiants {
+            min-width: 800px;
+          }
+
+          .simple-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          }
+        }
+
+        @media (max-width: 480px) {
+          .table-scroll-wrapper {
+            max-height: 300px;
+          }
+
+          .tableau-etudiants th,
+          .tableau-etudiants td {
+            padding: 0.5rem;
+            font-size: 0.75rem;
+          }
+        }
+
+        /* SCROLL GÉNÉRAL POUR TOUTES LES TABLES */
+        .table-container {
+          overflow-x: auto;
+          scrollbar-width: thin;
+          scrollbar-color: #10b981 #f3f4f6;
+        }
+
+        .table-container::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+
+        .table-container::-webkit-scrollbar-track {
+          background: #f3f4f6;
+          border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, #10b981, #059669);
+          border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        /* AUTRES STYLES INCHANGÉS */
+        .stats-section {
+          margin-bottom: 3rem;
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 2rem;
+        }
+
+        .stat-card {
+          background: white;
+          padding: 2rem;
+          border-radius: 12px;
+          border: 2px solid #e5e7eb;
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon {
+          width: 4rem;
+          height: 4rem;
+          margin: 0 auto 1rem auto;
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
           color: white;
-          padding: 0.375rem 0.75rem;
-          border-radius: 9999px;
-          font-size: 0.75rem;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .stat-card.green .stat-icon {
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .stat-card.purple .stat-icon {
+          background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+
+        .stat-card.orange .stat-icon {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .tabs-navigation {
+          display: none;
+        }
+
+        /* AUTRES GRILLES INCHANGÉES */
+        .professors-grid,
+        .professeurs-grid,
+        .cours-professeurs-grid,
+        .formation-types-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          gap: 2rem;
+          padding: 1.5rem;
+        }
+
+        .niveau-name,
+        .specialite-name,
+        .annee-name {
           font-weight: 700;
-          margin-left: 1rem;
-          box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);
-          animation: pulse-badge 2s infinite;
+          color: #1f2937;
+          font-size: 1rem;
         }
 
-        @keyframes pulse-badge {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-
-        .general-badge:hover {
-          background: linear-gradient(135deg, #7c3aed, #6d28d9);
-          transform: scale(1.1);
+        .price-value {
+          font-weight: 700;
+          color: #10b981;
+          font-size: 1.1rem;
         }
       `}</style>
     </div>

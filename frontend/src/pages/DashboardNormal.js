@@ -65,6 +65,81 @@ const DashboardNormal = () => {
     }
   };
 
+  // Fonction pour récupérer les statistiques commerciales
+  const fetchStatistiques = async (anneeFilter = null) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Utiliser l'année passée en paramètre ou celle du state
+      const anneeActuelle = anneeFilter || anneeScolaireFilter;
+      
+      // Si c'est pour 2024/2025, ne pas afficher de commerciaux (ils n'existaient pas encore)
+      if (anneeActuelle === '2024/2025') {
+        setStatistiques([]);
+        return;
+      }
+      
+      // Pour les autres années, calculer depuis les données des étudiants
+      calculerStatistiquesCommerciaux(anneeActuelle);
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error);
+      setStatistiques([]);
+    }
+  };
+
+  // Nouvelle fonction pour calculer les statistiques des commerciaux depuis les données étudiants
+  const calculerStatistiquesCommerciaux = (anneeFilter) => {
+    // Filtrer les étudiants selon l'année
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? etudiants 
+      : etudiants.filter(e => e.anneeScolaire === anneeFilter);
+
+    // Grouper par commercial
+    const statsParCommercial = {};
+    
+    etudiantsFiltres.forEach(etudiant => {
+      // Utiliser 'commercial' au lieu de 'commercialId' selon votre modèle
+      const commercialId = etudiant.commercial || 'inconnu';
+      
+      if (!statsParCommercial[commercialId]) {
+        // Trouver les infos du commercial
+        const commercial = commerciaux.find(c => c._id === commercialId);
+        
+        statsParCommercial[commercialId] = {
+          nom: commercial ? commercial.nom : 'Commercial inconnu',
+          email: commercial ? commercial.email : '',
+          telephone: commercial ? commercial.telephone : '',
+          chiffreAffaire: 0,
+          totalRecu: 0,
+          reste: 0,
+          countEtudiants: 0,
+          actif: commercial ? commercial.actif !== false : true,
+          estAdminInscription: commercial ? commercial.estAdminInscription || false : false
+        };
+      }
+      
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      statsParCommercial[commercialId].chiffreAffaire += prixTotal;
+      statsParCommercial[commercialId].countEtudiants += 1;
+      
+      // Si l'étudiant a payé, ajouter au total reçu, sinon au reste
+      if (etudiant.paye) {
+        statsParCommercial[commercialId].totalRecu += prixTotal;
+      } else {
+        statsParCommercial[commercialId].reste += prixTotal;
+      }
+    });
+
+    // Convertir en array, filtrer les commerciaux inconnus et trier par chiffre d'affaires décroissant
+    const statistiquesCalculees = Object.entries(statsParCommercial)
+      .filter(([commercialId, stats]) => commercialId !== 'inconnu') // Exclure les étudiants sans commercial
+      .map(([commercialId, stats]) => stats)
+      .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
+
+    setStatistiques(statistiquesCalculees);
+  };
+
   // Récupération des données
   const fetchData = async () => {
     try {
@@ -72,10 +147,10 @@ const DashboardNormal = () => {
       const token = localStorage.getItem('token');
 
       const [etudiantsRes, commerciauxRes] = await Promise.all([
-        fetch('http://localhost:5000/api/etudiant', {
+        fetch('http://195.179.229.230:5000/api/etudiant', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/commerciaux', {
+        fetch('http://195.179.229.230:5000/api/commerciaux', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -108,7 +183,11 @@ const DashboardNormal = () => {
 
       // Calculer les statistiques immédiatement avec l'année sélectionnée
       calculerStatistiquesAvecAnnee(etudiantsData, anneeASelectionner || anneeScolaireFilter);
-      await fetchStatistiques();
+      
+      // IMPORTANT: Calculer les statistiques des commerciaux immédiatement après avoir défini les données
+      // Utiliser directement les données chargées au lieu d'attendre que les states soient mis à jour
+      calculerStatistiquesCommerciauxDirectement(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
+      
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
       setError('Impossible de charger les données');
@@ -119,37 +198,56 @@ const DashboardNormal = () => {
     }
   };
 
-  // Fonction pour récupérer les statistiques commerciales
-  const fetchStatistiques = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/commerciaux/statistiques', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+  // Nouvelle fonction qui utilise directement les données passées en paramètres
+  const calculerStatistiquesCommerciauxDirectement = (etudiantsData, commerciauxData, anneeFilter) => {
+    // Filtrer les étudiants selon l'année
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? etudiantsData 
+      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
+
+    // Grouper par commercial
+    const statsParCommercial = {};
+    
+    etudiantsFiltres.forEach(etudiant => {
+      // Utiliser 'commercial' au lieu de 'commercialId' selon votre modèle
+      const commercialId = etudiant.commercial || 'inconnu';
       
-      if (!res.ok) {
-        throw new Error(`Erreur HTTP: ${res.status}`);
+      if (!statsParCommercial[commercialId]) {
+        // Trouver les infos du commercial
+        const commercial = commerciauxData.find(c => c._id === commercialId);
+        
+        statsParCommercial[commercialId] = {
+          nom: commercial ? commercial.nom : 'Commercial inconnu',
+          email: commercial ? commercial.email : '',
+          telephone: commercial ? commercial.telephone : '',
+          chiffreAffaire: 0,
+          totalRecu: 0,
+          reste: 0,
+          countEtudiants: 0,
+          actif: commercial ? commercial.actif !== false : true,
+          estAdminInscription: commercial ? commercial.estAdminInscription || false : false
+        };
       }
       
-      const data = await res.json();
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      statsParCommercial[commercialId].chiffreAffaire += prixTotal;
+      statsParCommercial[commercialId].countEtudiants += 1;
       
-      const transformedData = data.map(stat => ({
-        nom: stat.commercialInfo?.nom || 'Commercial inconnu',
-        email: stat.commercialInfo?.email || '',
-        telephone: stat.commercialInfo?.telephone || '',
-        chiffreAffaire: stat.chiffreAffaire || 0,
-        totalRecu: stat.totalRecu || 0,
-        reste: stat.reste || 0,
-        countEtudiants: stat.countEtudiants || 0,
-        actif: stat.commercialInfo?.actif !== false,
-        estAdminInscription: stat.commercialInfo?.estAdminInscription || false
-      }));
-      
-      setStatistiques(transformedData);
-    } catch (error) {
-      console.error('Erreur lors du chargement des statistiques:', error);
-      setStatistiques([]);
-    }
+      // Si l'étudiant a payé, ajouter au total reçu, sinon au reste
+      if (etudiant.paye) {
+        statsParCommercial[commercialId].totalRecu += prixTotal;
+      } else {
+        statsParCommercial[commercialId].reste += prixTotal;
+      }
+    });
+
+    // Convertir en array, filtrer les commerciaux inconnus et trier par chiffre d'affaires décroissant
+    const statistiquesCalculees = Object.entries(statsParCommercial)
+      .filter(([commercialId, stats]) => commercialId !== 'inconnu') // Exclure les étudiants sans commercial
+      .map(([commercialId, stats]) => stats)
+      .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
+
+    setStatistiques(statistiquesCalculees);
   };
 
   // Fonction d'analyse des filières
@@ -380,6 +478,7 @@ const DashboardNormal = () => {
     // Calculer immédiatement les statistiques avec la nouvelle année
     if (etudiants.length > 0) {
       calculerStatistiquesAvecAnnee(etudiants, nouvelleAnnee);
+      fetchStatistiques(nouvelleAnnee); // Recalculer aussi les stats commerciaux
     }
   };
 
@@ -760,74 +859,74 @@ const DashboardNormal = () => {
               }}
             >
               <Users size={24} />
-              Performance des Commerciaux
+              Performance des Commerciaux {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
             </h2>
             
-            <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
-                <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-                  <tr>
-                    <th style={{ 
-                      padding: '1rem 1.25rem', 
-                      textAlign: 'left', 
-                      fontWeight: '700', 
-                      color: '#374151', 
-                      fontSize: '0.875rem',
-                      borderBottom: '2px solid #e5e7eb'
-                    }}>Commercial</th>
-                    <th style={{ 
-                      padding: '1rem 1.25rem', 
-                      textAlign: 'left', 
-                      fontWeight: '700', 
-                      color: '#374151', 
-                      fontSize: '0.875rem',
-                      borderBottom: '2px solid #e5e7eb'
-                    }}>Contact</th>
-                    <th style={{ 
-                      padding: '1rem 1.25rem', 
-                      textAlign: 'left', 
-                      fontWeight: '700', 
-                      color: '#374151', 
-                      fontSize: '0.875rem',
-                      borderBottom: '2px solid #e5e7eb'
-                    }}>Étudiants</th>
-                    <th style={{ 
-                      padding: '1rem 1.25rem', 
-                      textAlign: 'left', 
-                      fontWeight: '700', 
-                      color: '#374151', 
-                      fontSize: '0.875rem',
-                      borderBottom: '2px solid #e5e7eb'
-                    }}>Chiffre d'Affaires</th>
-                    <th style={{ 
-                      padding: '1rem 1.25rem', 
-                      textAlign: 'left', 
-                      fontWeight: '700', 
-                      color: '#374151', 
-                      fontSize: '0.875rem',
-                      borderBottom: '2px solid #e5e7eb'
-                    }}>Montant Reçu</th>
-                    <th style={{ 
-                      padding: '1rem 1.25rem', 
-                      textAlign: 'left', 
-                      fontWeight: '700', 
-                      color: '#374151', 
-                      fontSize: '0.875rem',
-                      borderBottom: '2px solid #e5e7eb'
-                    }}>Reste à Payer</th>
-                    <th style={{ 
-                      padding: '1rem 1.25rem', 
-                      textAlign: 'left', 
-                      fontWeight: '700', 
-                      color: '#374151', 
-                      fontSize: '0.875rem',
-                      borderBottom: '2px solid #e5e7eb'
-                    }}>Taux Recouvrement</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {statistiques.length > 0 ? (
-                    statistiques.map((stat, index) => {
+            {statistiques.length > 0 ? (
+              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+                  <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                    <tr>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Commercial</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Contact</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Étudiants</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Chiffre d'Affaires</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Montant Reçu</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Reste à Payer</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Taux Recouvrement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statistiques.map((stat, index) => {
                       const tauxRecouvrement = stat.chiffreAffaire > 0 
                         ? ((stat.totalRecu / stat.chiffreAffaire) * 100).toFixed(1)
                         : 0;
@@ -978,22 +1077,20 @@ const DashboardNormal = () => {
                           </td>
                         </tr>
                       );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan="7" style={{ 
-                        textAlign: 'center', 
-                        color: '#94a3b8', 
-                        fontStyle: 'italic', 
-                        padding: '2rem' 
-                      }}>
-                        Aucune donnée disponible
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                color: '#94a3b8', 
+                fontStyle: 'italic', 
+                padding: '2rem' 
+              }}>
+                Aucune donnée commerciale disponible pour cette année
+              </div>
+            )}
           </div>
 
           {/* Analyse Détaillée par Filière */}

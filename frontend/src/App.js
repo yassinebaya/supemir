@@ -69,8 +69,12 @@ import ListePresencesAdmin from './pages/ListePresencesAdmin';
 import ListeBulletinsAdmin from './pages/ListeBulletinsAdmin';
 import ProfilEtudiantadmin from './pages/ProfilEtudiantadmin';
 import DashboardNormal from './pages/DashboardNormal';
-// Ajoutez cette route
-
+import RapportsProfesseurs from './pages/RapportsProfesseurs';
+import EmploiCreation from './pages/EmploiCreation';
+import EmploiPedagogique from './pages/EmploiPedagogique';
+import FinanceProfPage from './pages/FinanceProfPage';
+import RapportsFinanceProfs from './pages/RapportsFinanceProfs';
+import ListeProfesseursfinance from './pages/ListeProfesseursfinance';
    function AppContent() {
      const location = useLocation();
    
@@ -171,6 +175,9 @@ import DashboardNormal from './pages/DashboardNormal';
 <Route path="/admin/seances" element={<AdminAjouterSeance />} />
 <Route path="/etudiant/seances" element={<SeancesEtudiant />} />
 <Route path="/professeur/seances" element={<SeancesProfesseur />} />
+<Route path="/admin/rapports-professeurs" element={<RapportsProfesseurs />} />  
+<Route path="/admin/rapports-professeurs" element={<RapportsProfesseurs />} />  
+<Route path="/admin/emploi-creation" element={<EmploiCreation />} />  
 
 <Route path="/commercial" element={<Commercial />} /> 
 
@@ -206,6 +213,8 @@ import DashboardNormal from './pages/DashboardNormal';
 
 
 <Route path="/admin/StatistiquesEtudiants" element={< StatistiquesEtudiants />} />
+<Route path="/admin/finance-profs" element={<FinanceProfPage />} />
+<Route path="/finance-prof" element={<RapportsFinanceProfs />} />
 
         {/* Routes Professeur */}
         <Route path="/professeur" element={<ProfesseurDashboard />} />
@@ -222,10 +231,12 @@ import DashboardNormal from './pages/DashboardNormal';
 
         {/* Routes Étudiant */}
         <Route path="/etudiant/messages" element={<MessageEtudiant />} />
-
+        <Route path="/finance/listeprofesseurs" element={<ListeProfesseursfinance />} />
 
         <Route path="/pedagogique/professeurs" element={<PedagogiePageprof />} />
 
+
+        <Route path="/pedagogique/emploi-pedagogique" element={<EmploiPedagogique />} />
         <Route path="/admin/paiements-exp" element={<PaiementsExpadmin />} />
         <Route path="/etudiant" element={<DashboardEtudiant />} />
         <Route path="/etudiant/profile" element={<Profile />} />

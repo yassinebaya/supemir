@@ -28,6 +28,7 @@ const AjouterPresence = () => {
   const [periode, setPeriode] = useState('matin');
   const [presences, setPresences] = useState([]);
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,7 +43,7 @@ const AjouterPresence = () => {
           return;
         }
 
-        const res = await axios.get('http://localhost:5000/api/professeur/mes-cours', {
+        const res = await axios.get('http://195.179.229.230:5000/api/professeur/mes-cours', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -88,6 +89,17 @@ const AjouterPresence = () => {
       .remarque-input:focus {
         border-color: #3b82f6 !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+      }
+      
+      /* Animation de rotation pour l'icône de chargement */
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Style pour bouton désactivé */
+      button:disabled {
+        pointer-events: none;
       }
       
       /* Responsive Design */
@@ -271,7 +283,7 @@ const AjouterPresence = () => {
       try {
         const token = localStorage.getItem('token');
         
-        const res = await axios.get('http://localhost:5000/api/professeur/etudiants', {
+        const res = await axios.get('http://195.179.229.230:5000/api/professeur/etudiants', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -313,6 +325,12 @@ const AjouterPresence = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 🔒 Empêcher les clics multiples
+    if (isSubmitting) {
+      return; // Sortir si déjà en cours d'enregistrement
+    }
+
     const token = localStorage.getItem('token');
 
     // Validation des champs requis
@@ -327,32 +345,43 @@ const AjouterPresence = () => {
       return;
     }
 
+    // 🔒 Commencer l'enregistrement - bloquer le bouton
+    setIsSubmitting(true);
+    setMessage('loading'); // Afficher le message de chargement
+
     // Création du format d'heure pour l'envoi
     const heure = `${heureDebut}-${heureFin}`;
 
     try {
-      for (const pres of presences) {
-        await axios.post('http://localhost:5000/api/presences', {
+      // Enregistrer toutes les présences en parallèle (plus rapide)
+      const promises = presences.map(pres => 
+        axios.post('http://195.179.229.230:5000/api/presences', {
           etudiant: pres.etudiant,
           cours: selectedCours,
           dateSession,
           present: pres.present,
           remarque: pres.remarque,
-          heure,        // 🆕 Ajout du champ heure
-          periode       // 🆕 Ajout du champ periode
+          heure,
+          periode
         }, {
           headers: { Authorization: `Bearer ${token}` },
-        });
-      }
+        })
+      );
+
+      // Attendre que toutes les requêtes se terminent
+      await Promise.all(promises);
+      
       setMessage('success');
       
-      // 🆕 Rafraîchir la page après 2 secondes pour éviter les doublons
+      // Rafraîchir après 2 secondes
       setTimeout(() => {
         window.location.reload();
       }, 2000);
+      
     } catch (err) {
       console.error('Erreur:', err);
       setMessage('error');
+      setIsSubmitting(false); // 🔓 Réactiver le bouton en cas d'erreur
     }
   };
 
@@ -630,22 +659,50 @@ const AjouterPresence = () => {
                 <div style={styles.submitContainer}>
                   <button 
                     type="submit" 
-                    style={styles.submitButton}
+                    style={{
+                      ...styles.submitButton,
+                      opacity: isSubmitting ? 0.6 : 1,
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      background: isSubmitting 
+                        ? 'linear-gradient(135deg, #9ca3af, #6b7280)' 
+                        : 'linear-gradient(135deg, #3b82f6, #4f46e5)'
+                    }}
                     onClick={handleSubmit}
+                    disabled={isSubmitting}
                     className="submit-button"
                     onMouseEnter={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #1e40af, #3730a3)';
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)';
+                      if (!isSubmitting) {
+                        e.target.style.background = 'linear-gradient(135deg, #1e40af, #3730a3)';
+                        e.target.style.transform = 'translateY(-2px)';
+                        e.target.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #3b82f6, #4f46e5)';
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)';
+                      if (!isSubmitting) {
+                        e.target.style.background = 'linear-gradient(135deg, #3b82f6, #4f46e5)';
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)';
+                      }
                     }}
                   >
-                    <Save style={styles.buttonIcon} />
-                    Enregistrer la présence
+                    {isSubmitting ? (
+                      <>
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          border: '2px solid #ffffff',
+                          borderTop: '2px solid transparent',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }} />
+                        Enregistrement en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Save style={styles.buttonIcon} />
+                        Enregistrer la présence
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -655,14 +712,29 @@ const AjouterPresence = () => {
             {message && (
               <div style={{
                 ...styles.messageContainer,
-                backgroundColor: message === 'success' ? '#dcfce7' : '#fee2e2',
-                borderColor: message === 'success' ? '#16a34a' : '#dc2626',
-                color: message === 'success' ? '#166534' : '#991b1b'
+                backgroundColor: message === 'success' ? '#dcfce7' : 
+                                message === 'loading' ? '#eff6ff' : '#fee2e2',
+                borderColor: message === 'success' ? '#16a34a' : 
+                           message === 'loading' ? '#3b82f6' : '#dc2626',
+                color: message === 'success' ? '#166534' : 
+                      message === 'loading' ? '#1e40af' : '#991b1b'
               }}>
                 {message === 'success' ? (
                   <>
                     <CheckCircle style={styles.messageIcon} />
                     Présence enregistrée avec succès ! Redirection en cours...
+                  </>
+                ) : message === 'loading' ? (
+                  <>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      border: '2px solid #3b82f6',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    Enregistrement en cours, veuillez patienter...
                   </>
                 ) : (
                   <>

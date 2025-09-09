@@ -43,7 +43,7 @@ const MesExercicesEtudiant = () => {
     const fetchExercices = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/etudiant/mes-exercices', {
+        const res = await fetch('http://195.179.229.230:5000/api/etudiant/mes-exercices', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -68,7 +68,7 @@ const MesExercicesEtudiant = () => {
     setDeletingId(exerciceId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/etudiant/exercices/${exerciceId}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/etudiant/exercices/${exerciceId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -683,7 +683,7 @@ const MesExercicesEtudiant = () => {
 
               <div style={styles.actionsContainer}>
                 <a
-                  href={`http://localhost:5000${ex.fichier}`}
+                  href={`http://195.179.229.230:5000${ex.fichier}`}
                   target="_blank"
                   rel="noreferrer"
                   style={styles.downloadButton}

@@ -86,7 +86,7 @@ const etudiantSchema = new mongoose.Schema({
     ]
   },
   
-  // NOUVEAU: Type de formation pour différencier les parcours
+  // NOUVEAU: Type de formation pour typeFormationifférencier les parcours
   typeFormation: {
     type: String,
     enum: [
@@ -112,8 +112,8 @@ const etudiantSchema = new mongoose.Schema({
       'Développement Commercial et Marketing Digital',
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
-      'Informatique – Cnam'
-    ]
+ 'Informatique – Cnam',
+      'Achat & Logistique'    ]
   },
   
   // NOUVEAU: Options pour Licences Professionnelles
@@ -592,8 +592,8 @@ etudiantSchema.statics.getSpecialitesLicencePro = function() {
     'Développement Commercial et Marketing Digital',
     'Management et Conduite de Travaux – Cnam',
     'Electrotechnique et systèmes – Cnam',
-    'Informatique – Cnam'
-  ];
+ 'Informatique – Cnam',
+      'Achat & Logistique'  ];
 };
 
 etudiantSchema.statics.getSpecialitesMasterPro = function() {

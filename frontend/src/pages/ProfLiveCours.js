@@ -9,7 +9,7 @@ const ProfLiveCours = () => {
     const fetchCours = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/professeur/mes-cours', {
+        const res = await fetch('http://195.179.229.230:5000/api/professeur/mes-cours', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
