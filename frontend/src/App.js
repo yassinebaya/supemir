@@ -75,6 +75,11 @@ import EmploiPedagogique from './pages/EmploiPedagogique';
 import FinanceProfPage from './pages/FinanceProfPage';
 import RapportsFinanceProfs from './pages/RapportsFinanceProfs';
 import ListeProfesseursfinance from './pages/ListeProfesseursfinance';
+import RevenusMensuels from './pages/RevenusMensuels';
+import EvaluationEtudiants from './pages/EvaluationEtudiants';
+
+
+
    function AppContent() {
      const location = useLocation();
    
@@ -179,7 +184,10 @@ import ListeProfesseursfinance from './pages/ListeProfesseursfinance';
 <Route path="/admin/rapports-professeurs" element={<RapportsProfesseurs />} />  
 <Route path="/admin/emploi-creation" element={<EmploiCreation />} />  
 
-<Route path="/commercial" element={<Commercial />} /> 
+
+<Route path="/administratif/evaluation-etudiants" element={<EvaluationEtudiants />} />
+<Route path="/admin/revenus-mensuels" element={<RevenusMensuels />} />
+<Route path="/commercial" element={<Commercial />} />
 
 <Route path="/professeur/AjouterBulletin" element={<ProfAjouterBulletin />} />
 

@@ -1414,7 +1414,7 @@ const [loadingExport, setLoadingExport] = useState(false);
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://195.179.229.230:5000/api/commerciaux', {
+      const res = await axios.get('http://195.179.229.230:5000/api/commerciau', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCommerciaux(res.data);

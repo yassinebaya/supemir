@@ -31,16 +31,16 @@ const DashboardNormal = () => {
 
   const [tableauInscrits, setTableauInscrits] = useState({
     global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-    fi: { total: 0, masi: 0, irm: 0, ca: 0 },
-    executive: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 },
-    ta: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 }
+    fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+    executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+    ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
   });
 
   const [tableauReinscriptions, setTableauReinscriptions] = useState({
     global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-    fi: { total: 0, masi: 0, irm: 0, ca: 0 },
-    executive: { total: 0, masi: 0, irm: 0, ca: 0 },
-    ta: { total: 0, masi: 0, irm: 0, ca: 0 }
+    fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+    executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+    ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
   });
 
   // DONNÉES FIXES POUR 2024/2025 UNIQUEMENT
@@ -53,15 +53,15 @@ const DashboardNormal = () => {
     },
     tableauInscrits: {
       global: { total: 202, fi: 59, ta: 53, executive: 90, ca: 5410608.98 },
-      fi: { total: 59, masi: 15, irm: 44, ca: 1731608.98 },
-      executive: { total: 90, masi: 19, irm: 42, autre: 29, ca: 2299000.0 },
-      ta: { total: 53, masi: 26, irm: 27, autre: 0, ca: 1380000.0 }
+      fi: { total: 59, masi: 15, irm: 44, cycleIngenieur: 0, ca: 1731608.98 },
+      executive: { total: 90, masi: 19, irm: 42, autre: 29, licencePro: 0, masterPro: 0, ca: 2299000.0 },
+      ta: { total: 53, masi: 26, irm: 27, cycleIngenieur: 0, ca: 1380000.0 }
     },
     tableauReinscriptions: {
       global: { total: 47, fi: 33, ta: 14, executive: 0, ca: 1306440.0 },
-      fi: { total: 33, masi: 7, irm: 26, ca: 928440.0 },
-      executive: { total: 0, masi: 0, irm: 0, ca: 0.0 },
-      ta: { total: 14, masi: 10, irm: 4, ca: 378000.0 }
+      fi: { total: 33, masi: 7, irm: 26, cycleIngenieur: 0, ca: 928440.0 },
+      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0.0 },
+      ta: { total: 14, masi: 10, irm: 4, cycleIngenieur: 0, ca: 378000.0 }
     }
   };
 
@@ -356,39 +356,63 @@ const DashboardNormal = () => {
   const calculerTableauInscrits = (inscrits, toNum) => {
     const stats = {
       global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-      fi: { total: 0, masi: 0, irm: 0, ca: 0 },
-      executive: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 },
-      ta: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 }
+      fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+      ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
     };
 
     inscrits.forEach((etudiant) => {
       const type = determinerTypeFormation(etudiant);
-      const filiere = (etudiant.filiere || '').toLowerCase();
       const ca = toNum(etudiant.prixTotal);
+      const typeFormation = etudiant.typeFormation;
 
+      // Global
       stats.global.total += 1;
       stats.global.ca += ca;
 
+      // Classification par type
       if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
         stats.global.fi += 1;
         stats.fi.total += 1;
         stats.fi.ca += ca;
-        if (filiere.includes('masi')) stats.fi.masi += 1;
-        else if (filiere.includes('irm')) stats.fi.irm += 1;
+        
+        if (typeFormation === 'MASI') {
+          stats.fi.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.fi.irm += 1;
+        } else if (typeFormation === 'CYCLE_INGENIEUR') {
+          stats.fi.cycleIngenieur += 1;
+        }
+        
       } else if (type === 'Executive') {
         stats.global.executive += 1;
         stats.executive.total += 1;
         stats.executive.ca += ca;
-        if (filiere.includes('masi')) stats.executive.masi += 1;
-        else if (filiere.includes('irm')) stats.executive.irm += 1;
-        else stats.executive.autre += 1;
+        
+        if (typeFormation === 'MASI') {
+          stats.executive.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.executive.irm += 1;
+        } else if (typeFormation === 'LICENCE_PRO') {
+          stats.executive.licencePro += 1;
+        } else if (typeFormation === 'MASTER_PRO') {
+          stats.executive.masterPro += 1;
+        } else {
+          stats.executive.autre += 1;
+        }
+        
       } else if (type === 'TA') {
         stats.global.ta += 1;
         stats.ta.total += 1;
         stats.ta.ca += ca;
-        if (filiere.includes('masi')) stats.ta.masi += 1;
-        else if (filiere.includes('irm')) stats.ta.irm += 1;
-        else stats.ta.autre += 1;
+        
+        if (typeFormation === 'MASI') {
+          stats.ta.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.ta.irm += 1;
+        } else if (typeFormation === 'CYCLE_INGENIEUR') {
+          stats.ta.cycleIngenieur += 1;
+        }
       }
     });
 
@@ -398,15 +422,15 @@ const DashboardNormal = () => {
   const calculerTableauReinscriptions = (reinscriptions, toNum) => {
     const stats = {
       global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-      fi: { total: 0, masi: 0, irm: 0, ca: 0 },
-      executive: { total: 0, masi: 0, irm: 0, ca: 0 },
-      ta: { total: 0, masi: 0, irm: 0, ca: 0 }
+      fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+      ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
     };
 
     reinscriptions.forEach((etudiant) => {
       const type = determinerTypeFormation(etudiant);
-      const filiere = (etudiant.filiere || '').toLowerCase();
       const ca = toNum(etudiant.prixTotal);
+      const typeFormation = etudiant.typeFormation;
 
       stats.global.total += 1;
       stats.global.ca += ca;
@@ -415,54 +439,179 @@ const DashboardNormal = () => {
         stats.global.fi += 1;
         stats.fi.total += 1;
         stats.fi.ca += ca;
-        if (filiere.includes('masi')) stats.fi.masi += 1;
-        else if (filiere.includes('irm')) stats.fi.irm += 1;
+        
+        if (typeFormation === 'MASI') {
+          stats.fi.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.fi.irm += 1;
+        } else if (typeFormation === 'CYCLE_INGENIEUR') {
+          stats.fi.cycleIngenieur += 1;
+        }
+        
       } else if (type === 'Executive') {
         stats.global.executive += 1;
         stats.executive.total += 1;
         stats.executive.ca += ca;
-        if (filiere.includes('masi')) stats.executive.masi += 1;
-        else if (filiere.includes('irm')) stats.executive.irm += 1;
+        
+        if (typeFormation === 'MASI') {
+          stats.executive.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.executive.irm += 1;
+        } else if (typeFormation === 'LICENCE_PRO') {
+          stats.executive.licencePro += 1;
+        } else if (typeFormation === 'MASTER_PRO') {
+          stats.executive.masterPro += 1;
+        } else {
+          stats.executive.autre += 1;
+        }
+        
       } else if (type === 'TA') {
         stats.global.ta += 1;
         stats.ta.total += 1;
         stats.ta.ca += ca;
-        if (filiere.includes('masi')) stats.ta.masi += 1;
-        else if (filiere.includes('irm')) stats.ta.irm += 1;
+        
+        if (typeFormation === 'MASI') {
+          stats.ta.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.ta.irm += 1;
+        } else if (typeFormation === 'CYCLE_INGENIEUR') {
+          stats.ta.cycleIngenieur += 1;
+        }
       }
     });
 
     setTableauReinscriptions(stats);
   };
 
-  // ✅ Détermination robuste du type de formation, adaptée à votre modèle
+  // ✅ Fonction de classification basée sur STRUCTURE_FORMATION
   const determinerTypeFormation = (etudiant) => {
     const tf = etudiant.typeFormation;
+    
     if (tf) {
-      // Map explicite du modèle -> catégories Dashboard
-      if (tf === 'LICENCE_PRO' || tf === 'MASTER_PRO') return 'Executive';
+      // Nouvelles formations avec classification claire
+      if (tf === 'LICENCE_PRO') return 'Executive';
+      if (tf === 'MASTER_PRO') return 'Executive';
+      
       if (tf === 'CYCLE_INGENIEUR') {
+        const niveau = (etudiant.niveauFormation || '').toLowerCase();
+        const cycle = (etudiant.cycle || '').toLowerCase();
+        
+        // Si c'est explicitement marqué comme executive dans le niveau/cycle
+        if (niveau.includes('executive') || cycle.includes('executive')) return 'Executive';
+        
+        // Si c'est marqué comme TA/alternance
+        if (niveau.includes('ta') || niveau.includes('altern') || cycle.includes('ta') || cycle.includes('altern') || niveau === 'ta') {
+          return 'TA';
+        }
+        
+        // Par défaut, CYCLE_INGENIEUR = FI
+        return 'FI';
+      }
+      
+      // Anciennes formations MASI/IRM
+      if (tf === 'MASI' || tf === 'IRM') {
         const niveau = (etudiant.niveauFormation || '').toLowerCase();
         if (niveau.includes('executive')) return 'Executive';
         if (niveau.includes('ta') || niveau.includes('altern') || niveau === 'ta') return 'TA';
         return 'FI';
       }
-      if (tf === 'Executive' || tf === 'TA' || tf === 'FI') return tf; // au cas où
+      
+      // Fallback direct
+      if (tf === 'Executive' || tf === 'TA' || tf === 'FI') return tf;
     }
 
-    // Fallback: utiliser niveauFormation + cycle
+    // Fallback: utiliser niveauFormation + cycle (logique existante)
     const niveau = (etudiant.niveauFormation || '').toLowerCase();
     const cycle = (etudiant.cycle || '').toLowerCase();
+    
     if (niveau.includes('executive') || cycle.includes('executive')) return 'Executive';
-    if (
-      niveau.includes('ta') ||
-      niveau.includes('altern') ||
-      cycle.includes('ta') ||
-      cycle.includes('altern') ||
-      niveau === 'ta'
-    )
+    if (niveau.includes('ta') || niveau.includes('altern') || cycle.includes('ta') || cycle.includes('altern') || niveau === 'ta') {
       return 'TA';
+    }
+    
     return 'FI';
+  };
+
+  // ✅ Classification MASI/IRM/Autre basée sur STRUCTURE_FORMATION
+  const determinerFiliereClassification = (etudiant) => {
+    const tf = etudiant.typeFormation;
+    
+    // Pour LICENCE_PRO
+    if (tf === 'LICENCE_PRO') {
+      const specialite = etudiant.specialiteLicencePro || '';
+      
+      // Spécialités IRM (informatique/technique)
+      const specialitesIRM = [
+        'Tests Logiciels avec Tests Automatisés',
+        'Développement Informatique Full Stack',
+        'Administration des Systèmes, Bases de Données, Cybersécurité et Cloud Computing',
+        'Réseaux et Cybersécurité',
+        'Electrotechnique et systèmes – Cnam',
+        'Informatique – Cnam'
+      ];
+      
+      // Spécialités MASI (business/management)
+      const specialitesIMASI = [
+        'Marketing digital e-business Casablanca',
+        'Gestion de la Qualité',
+        'Finance, Audit & Entrepreneuriat',
+        'Développement Commercial et Marketing Digital',
+        'Management et Conduite de Travaux – Cnam',
+        'Achat & Logistique'
+      ];
+      
+      if (specialitesIRM.includes(specialite)) return 'irm';
+      if (specialitesIMASI.includes(specialite)) return 'masi';
+      return 'autre';
+    }
+    
+    // Pour MASTER_PRO
+    if (tf === 'MASTER_PRO') {
+      const specialite = etudiant.specialiteMasterPro || '';
+      
+      // Spécialités IRM (informatique/technique)
+      const specialitesIRM = [
+        'Informatique, Data Sciences, Cloud, Cybersécurité & Intelligence Artificielle (DU IDCIA)',
+        'Management des Systèmes d\'Information',
+        'Big Data et Intelligence Artificielle',
+        'Cybersécurité et Transformation Digitale',
+        'Génie Informatique et Innovation Technologique'
+      ];
+      
+      // Spécialités MASI (business/management)
+      const specialitesIMASI = [
+        'QHSSE & Performance Durable',
+        'Achat, Logistique et Supply Chain Management',
+        'Finance, Audit & Entrepreneuriat',
+        'Développement Commercial et Marketing Digital'
+      ];
+      
+      if (specialitesIRM.includes(specialite)) return 'irm';
+      if (specialitesIMASI.includes(specialite)) return 'masi';
+      return 'autre';
+    }
+    
+    // Pour CYCLE_INGENIEUR
+    if (tf === 'CYCLE_INGENIEUR') {
+      const specialite = etudiant.specialiteIngenieur || '';
+      
+      if (specialite === 'Génie Informatique') return 'irm';
+      if (specialite === 'Génie Mécatronique' || specialite === 'Génie Civil') return 'autre';
+      return 'autre';
+    }
+    
+    // Pour anciennes formations MASI/IRM
+    if (tf === 'MASI') return 'masi';
+    if (tf === 'IRM') return 'irm';
+    
+    // Fallback avec logique existante
+    const filiere = (etudiant.filiere || '').toLowerCase();
+    const specialite = (etudiant.specialite || '').toLowerCase();
+    
+    if (filiere.includes('masi') || specialite.includes('masi')) return 'masi';
+    if (filiere.includes('irm') || specialite.includes('irm')) return 'irm';
+    
+    return 'autre';
   };
 
   const formatMoney = (amount) =>
@@ -720,7 +869,10 @@ const DashboardNormal = () => {
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>FI</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.fi.total}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.fi.masi}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.fi.irm}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.fi.irm}</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauInscrits.fi.cycleIngenieur}</strong></div>
+                )}
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauInscrits.fi.ca)} MAD
                 </div>
@@ -730,9 +882,30 @@ const DashboardNormal = () => {
               <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Exécutive</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.executive.total}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
+                
+                {/* Affichage conditionnel selon l'année */}
+                {anneeScolaireFilter === '2024/2025' ? (
+                  <>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
+                  </>
+                ) : (
+                  <>
+                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.masi > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
+                    )}
+                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.irm > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
+                    )}
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Licence Pro <strong>{tableauInscrits.executive.licencePro}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Master Pro <strong>{tableauInscrits.executive.masterPro}</strong></div>
+                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.autre > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
+                    )}
+                  </>
+                )}
+                
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauInscrits.executive.ca)} MAD
                 </div>
@@ -744,7 +917,9 @@ const DashboardNormal = () => {
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.ta.total}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.ta.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.ta.irm}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.ta.autre}</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauInscrits.ta.cycleIngenieur}</strong></div>
+                )}
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauInscrits.ta.ca)} MAD
                 </div>
@@ -799,7 +974,9 @@ const DashboardNormal = () => {
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.fi.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.fi.irm}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>G-C <strong>0</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauReinscriptions.fi.cycleIngenieur}</strong></div>
+                )}
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauReinscriptions.fi.ca)} MAD
                 </div>
@@ -811,9 +988,30 @@ const DashboardNormal = () => {
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                   Total Executive <strong>{tableauReinscriptions.executive.total}</strong>
                 </div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>G-C <strong>0</strong></div>
+                
+                {/* Affichage conditionnel selon l'année */}
+                {anneeScolaireFilter === '2024/2025' ? (
+                  <>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
+                    <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Autre <strong>{tableauReinscriptions.executive.autre}</strong></div>
+                  </>
+                ) : (
+                  <>
+                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.masi > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
+                    )}
+                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.irm > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
+                    )}
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Licence Pro <strong>{tableauReinscriptions.executive.licencePro}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Master Pro <strong>{tableauReinscriptions.executive.masterPro}</strong></div>
+                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.autre > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauReinscriptions.executive.autre}</strong></div>
+                    )}
+                  </>
+                )}
+                
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauReinscriptions.executive.ca)} MAD
                 </div>
@@ -827,7 +1025,9 @@ const DashboardNormal = () => {
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.ta.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.ta.irm}</strong></div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>G-C <strong>0</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauReinscriptions.ta.cycleIngenieur}</strong></div>
+                )}
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauReinscriptions.ta.ca)} MAD
                 </div>

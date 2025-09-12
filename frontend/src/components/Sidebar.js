@@ -78,6 +78,11 @@ const Sidebar = ({ onLogout }) => {
       icon: Home
     },
     {
+      path: '/admin/revenus-mensuels',
+      label: 'Revenus Mensuels',
+      icon: BarChart3
+    },
+    {
       path: '/update-profil',
       label: 'Profil',
       icon: Shield,

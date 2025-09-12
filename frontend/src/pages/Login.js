@@ -210,10 +210,10 @@ setTimeout(() => {
         }
 
         .brand-logo {
-          width: 140px;
-          height: 140px;
+          width: 280px;
+          height: 280px;
           margin: 0 auto 30px;
-          background:white;
+          background: white;
           border-radius: 28px;
           backdrop-filter: blur(20px);
           display: flex;
@@ -232,8 +232,8 @@ setTimeout(() => {
         }
 
         .brand-logo img {
-          width: 90px;
-          height: 90px;
+          width: 250px;
+          height: 250px;
           object-fit: contain;
           filter: brightness(1.2) contrast(1.1);
         }
@@ -502,6 +502,14 @@ setTimeout(() => {
             padding: 10px;
             font-size: 12px;
           }
+          .brand-logo {
+            width: 200px;
+            height: 200px;
+          }
+          .brand-logo img {
+            width: 180px;
+            height: 180px;
+          }
         }
 
         @media (max-width: 768px) {
@@ -525,13 +533,13 @@ setTimeout(() => {
             margin-bottom: 30px;
           }
           .brand-logo {
-            width: 80px;
-            height: 80px;
+            width: 140px;
+            height: 140px;
             margin: 0 auto 16px;
           }
           .brand-logo img {
-            width: 60px;
-            height: 60px;
+            width: 120px;
+            height: 120px;
           }
           .brand-title {
             font-size: 24px;
@@ -608,16 +616,24 @@ setTimeout(() => {
             padding: 14px;
             font-size: 14px;
           }
+          .brand-logo {
+            width: 100px;
+            height: 100px;
+          }
+          .brand-logo img {
+            width: 85px;
+            height: 85px;
+          }
         }
 
         @media (max-width: 360px) {
           .brand-logo {
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
           }
           .brand-logo img {
-            width: 45px;
-            height: 45px;
+            width: 70px;
+            height: 70px;
           }
           .login-icon {
             width: 48px;
@@ -646,8 +662,6 @@ setTimeout(() => {
           {/* Panneau gauche - Branding */}
           <div className="left-panel">
             <div className="left-panel-overlay"></div>
-            
-          
             
             <div className="brand-section">
               <div className="brand-logo">

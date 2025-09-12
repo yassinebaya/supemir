@@ -1205,6 +1205,7 @@ const ListeEtudiants = () => {
     sourceInscription: '',
     dateInscription: '',
     typePaiement: '',
+    modePaiement: 'mensuel',
     prixTotal: '',
     pourcentageBourse: '',
     situation: '',
@@ -1272,6 +1273,7 @@ const ListeEtudiants = () => {
     sourceInscription: '',
     dateInscription: '',
     typePaiement: '',
+    modePaiement: 'mensuel',
     prixTotal: '',
     pourcentageBourse: '',
     situation: '',
@@ -1493,6 +1495,7 @@ const ListeEtudiants = () => {
       sourceInscription: '',
       dateInscription: '',
       typePaiement: '',
+      modePaiement: 'mensuel',
       prixTotal: '',
       pourcentageBourse: '',
       situation: '',
@@ -1560,6 +1563,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       sourceInscription: etudiant.sourceInscription || '',
       dateInscription: etudiant.dateInscription ? etudiant.dateInscription.slice(0, 10) : '',
       typePaiement: etudiant.typePaiement || '',
+      modePaiement: etudiant.modePaiement || 'mensuel',
       prixTotal: etudiant.prixTotal || '',
       pourcentageBourse: etudiant.pourcentageBourse || '',
       situation: etudiant.situation || '',
@@ -1632,6 +1636,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       sourceInscription: '',
       dateInscription: '',
       typePaiement: '',
+      modePaiement: 'mensuel',
       prixTotal: '',
       pourcentageBourse: '',
       situation: '',
@@ -2689,6 +2694,23 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
 
                 <div className="form-row">
                   <div className="form-group">
+                    <label>Mode de Paiement *</label>
+                    <select
+                      name="modePaiement"
+                      value={formAjout.modePaiement}
+                      onChange={handleChangeAjout}
+                      required
+                    >
+                      <option value="semestriel">Semestriel (2 tranches)</option>
+                      <option value="trimestriel">Trimestriel (3 tranches)</option>
+                      <option value="mensuel">Mensuel (10 tranches)</option>
+                      <option value="annuel">Annuel (paiement complet)</option>
+                    </select>
+                    <small style={{color: '#666', fontSize: '12px'}}>
+                      Semestriel par défaut. Annuel = paiement immédiat complet.
+                    </small>
+                  </div>
+                  <div className="form-group">
                     <label>Prix Total</label>
                     <input
                       type="number"
@@ -2702,6 +2724,9 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       step="1"
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Pourcentage Bourse (%)</label>
                     <input
@@ -2714,9 +2739,6 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       max="100"
                     />
                   </div>
-                </div>
-
-                <div className="form-row">
                   <div className="form-group">
                     <label>Type de Paiement</label>
                     <input
@@ -2727,6 +2749,9 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       onChange={handleChangeAjout}
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Situation</label>
                     <input
@@ -3319,6 +3344,23 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
 
                 <div className="form-row">
                   <div className="form-group">
+                    <label>Mode de Paiement *</label>
+                    <select
+                      name="modePaiement"
+                      value={formModifier.modePaiement}
+                      onChange={handleChangeModifier}
+                      required
+                    >
+                      <option value="semestriel">Semestriel (2 tranches)</option>
+                      <option value="trimestriel">Trimestriel (3 tranches)</option>
+                      <option value="mensuel">Mensuel (10 tranches)</option>
+                      <option value="annuel">Annuel (paiement complet)</option>
+                    </select>
+                    <small style={{color: '#666', fontSize: '12px'}}>
+                      Semestriel par défaut. Annuel = paiement immédiat complet.
+                    </small>
+                  </div>
+                  <div className="form-group">
                     <label>Prix Total</label>
                     <input
                       type="number"
@@ -3332,6 +3374,9 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       step="1"
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Pourcentage Bourse (%)</label>
                     <input
@@ -3344,9 +3389,6 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       max="100"
                     />
                   </div>
-                </div>
-
-                <div className="form-row">
                   <div className="form-group">
                     <label>Type de Paiement</label>
                     <input
@@ -3357,6 +3399,9 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                       onChange={handleChangeModifier}
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Situation</label>
                     <input
@@ -3854,6 +3899,15 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <div className="info-row">
                       <span className="info-label">Source d'inscription:</span>
                       <span className="info-value">{etudiantSelectionne.sourceInscription}</span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.modePaiement && (
+                    <div className="info-row">
+                      <span className="info-label">Mode de paiement:</span>
+                      <span className="info-value">
+                        <CreditCard size={16} className="info-icon" />
+                        {etudiantSelectionne.modePaiement}
+                      </span>
                     </div>
                   )}
                   {etudiantSelectionne.prixTotal && (

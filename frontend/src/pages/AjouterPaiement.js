@@ -9,8 +9,7 @@ import {
   Calendar,
   BadgeEuro,
   StickyNote,
-  Info,
-  GraduationCap
+  Info
 } from 'lucide-react';
 
 const handleLogout = () => {
@@ -26,6 +25,8 @@ const AjouterPaiement = () => {
   const [prixTotalEtudiant, setPrixTotalEtudiant] = useState(0);
   const [totalDejaPaye, setTotalDejaPaye] = useState(0);
   const [resteAPayer, setResteAPayer] = useState(0);
+  const [modePaiementEtudiant, setModePaiementEtudiant] = useState('');
+  const [infosModesPaiement, setInfosModesPaiement] = useState(null);
   
   const [form, setForm] = useState({
     etudiant: '',
@@ -34,8 +35,8 @@ const AjouterPaiement = () => {
     nombreMois: 1,
     montant: '',
     note: '',
-    typePaiement: 'mensuel',
-    incluePrixInscription: false
+    typePaiement: 'formation', // 'inscription' ou 'formation'
+    estInscription: false
   });
 
   const [message, setMessage] = useState('');
@@ -100,18 +101,50 @@ const AjouterPaiement = () => {
       }
 
       const token = localStorage.getItem('token');
-      const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      
+      // Récupérer les infos détaillées de paiement
+      try {
+        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}/info`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-      const paiements = resPaiements.data || [];
-      const totalPaye = paiements.reduce((acc, p) => acc + (p.montant || 0), 0);
-      const prixTotal = etudiantComplet?.prixTotal || 0;
-      const reste = Math.max(0, prixTotal - totalPaye);
+        const infos = resPaiements.data;
+        
+        // Mettre à jour les états avec les nouvelles données
+        setPrixTotalEtudiant(infos.etudiant.prixTotal);
+        setTotalDejaPaye(infos.totaux.formation); // Total formation uniquement
+        setResteAPayer(infos.totaux.resteAPayer);
+        setModePaiementEtudiant(infos.etudiant.modePaiement);
+        setInfosModesPaiement(infos.infosModesPaiement);
 
-      setPrixTotalEtudiant(prixTotal);
-      setTotalDejaPaye(totalPaye);
-      setResteAPayer(reste);
+        // Auto-remplir selon le mode de paiement
+        if (infos.etudiant.modePaiement !== 'annuel' && infos.prochaineTranche) {
+          setForm(prev => ({
+            ...prev,
+            montant: infos.prochaineTranche.montant.toString(),
+            nombreMois: infos.prochaineTranche.nombreMois,
+            note: infos.prochaineTranche.description
+          }));
+        }
+      } catch (infoErr) {
+        console.warn('API /info non disponible, utilisation de l\'ancienne méthode:', infoErr);
+        
+        // Fallback vers l'ancienne méthode
+        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const paiements = resPaiements.data || [];
+        const totalPaye = paiements.reduce((acc, p) => acc + (p.montant || 0), 0);
+        const prixTotal = etudiantComplet?.prixTotal || 0;
+        const reste = Math.max(0, prixTotal - totalPaye);
+
+        setPrixTotalEtudiant(prixTotal);
+        setTotalDejaPaye(totalPaye);
+        setResteAPayer(reste);
+        setModePaiementEtudiant(etudiantComplet?.modePaiement || 'semestriel');
+        setInfosModesPaiement(null);
+      }
 
     } catch (err) {
       console.error('Erreur lors du calcul des paiements:', err);
@@ -119,6 +152,8 @@ const AjouterPaiement = () => {
       setPrixTotalEtudiant(prixTotal);
       setTotalDejaPaye(0);
       setResteAPayer(prixTotal);
+      setModePaiementEtudiant(etudiantComplet?.modePaiement || 'semestriel');
+      setInfosModesPaiement(null);
     }
   };
 
@@ -126,29 +161,20 @@ const AjouterPaiement = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // ✅ Fonction pour gérer la case à cocher
-  const handleCheckboxChange = (e) => {
-    const isChecked = e.target.checked;
-    
-    if (isChecked) {
-      // ✅ Ajouter "Prix inscription: " à la note existante
-      const noteActuelle = form.note;
-      const nouveauTexte = noteActuelle + (noteActuelle ? ' + Prix inscription: ' : 'Prix inscription: ');
-      setForm({ 
-        ...form, 
-        incluePrixInscription: true,
-        note: nouveauTexte
-      });
-    } else {
-      // ✅ Enlever le texte "Prix inscription: " de la note
-      const noteActuelle = form.note;
-      const noteSansPrix = noteActuelle.replace(/ \+ Prix inscription: [0-9]*/, '').replace(/Prix inscription: [0-9]*/, '').trim();
-      setForm({ 
-        ...form, 
-        incluePrixInscription: false,
-        note: noteSansPrix
-      });
-    }
+  // Nouveau handler pour le type de paiement
+  const handleTypePaiementChange = (type) => {
+    setForm(prev => ({
+      ...prev,
+      typePaiement: type,
+      estInscription: type === 'inscription',
+      // Si inscription, masquer date et mois
+      moisDebut: type === 'inscription' ? '' : prev.moisDebut,
+      nombreMois: type === 'inscription' ? 0 : (infosModesPaiement?.moisParTranche || 1),
+      // CORRECTION : utiliser les infos du mode au lieu de prev.montant
+      montant: type === 'inscription' ? '' : (infosModesPaiement?.montantParTranche?.toString() || ''),
+      note: type === 'inscription' ? 'Frais d\'inscription' : 
+            (infosModesPaiement ? infosModesPaiement.description : '')
+    }));
   };
 
   const handleEtudiantChange = async (selectedEtudiant) => {
@@ -190,12 +216,18 @@ const AjouterPaiement = () => {
   };
 
   const handleSubmit = async () => {
-    if (resteAPayer <= 0) {
+    // Si mode annuel et que l'étudiant est déjà marqué comme payé
+    if (modePaiementEtudiant === 'annuel' && etudiantsComplets.find(e => e._id === form.etudiant)?.paye) {
+      setMessage('❌ Cet étudiant en mode annuel est déjà marqué comme payé.');
+      return;
+    }
+
+    if (!form.estInscription && resteAPayer <= 0) {
       setMessage('❌ Cet étudiant a déjà payé la totalité du montant dû.');
       return;
     }
 
-    if (parseFloat(form.montant) > resteAPayer) {
+    if (!form.estInscription && parseFloat(form.montant) > resteAPayer) {
       setMessage(`❌ Le montant ne peut pas dépasser le reste à payer (${resteAPayer} MAD).`);
       return;
     }
@@ -205,11 +237,11 @@ const AjouterPaiement = () => {
     const paiementData = {
       etudiant: form.etudiant,
       cours: form.cours,
-      moisDebut: form.moisDebut,
+      moisDebut: form.moisDebut || new Date().toISOString().split('T')[0],
       nombreMois: form.nombreMois,
-      montant: form.montant,
-      note: form.note, // ✅ La note contient tout (note + prix inscription si inclus)
-      typePaiement: form.typePaiement
+      montant: parseFloat(form.montant),
+      note: form.note,
+      estInscription: form.estInscription
     };
 
     try {
@@ -218,20 +250,22 @@ const AjouterPaiement = () => {
       });
       setMessage('✅ Paiement ajouté avec succès');
       
-      setForm({
-        etudiant: '',
-        cours: [],
+      // Recharger les données de l'étudiant
+      if (form.etudiant) {
+        const etudiantComplet = etudiantsComplets.find(e => e._id === form.etudiant);
+        await handleEtudiantChangeInternal(etudiantComplet, form.etudiant);
+      }
+      
+      // Réinitialiser seulement certains champs
+      setForm(prev => ({
+        ...prev,
         moisDebut: '',
-        nombreMois: 1,
         montant: '',
         note: '',
-        typePaiement: 'mensuel',
-        incluePrixInscription: false
-      });
+        typePaiement: 'formation',
+        estInscription: false
+      }));
       
-      setPrixTotalEtudiant(0);
-      setTotalDejaPaye(0);
-      setResteAPayer(0);
     } catch (err) {
       console.error('Erreur ajout:', err);
       setMessage('❌ Erreur lors de l\'ajout du paiement');
@@ -289,11 +323,11 @@ const AjouterPaiement = () => {
   }, [form.typePaiement]);
 
   useEffect(() => {
-    if (form.typePaiement === 'annuel') {
-      const montantMensuel = form.montant / (form.nombreMois || 1);
-      setForm(prev => ({ ...prev, montant: montantMensuel * 12 }));
+    if (form.typePaiement === 'annuel' && form.montant && form.nombreMois) {
+      const montantMensuel = parseFloat(form.montant) / form.nombreMois;
+      setForm(prev => ({ ...prev, montant: (montantMensuel * 12).toString() }));
     }
-  }, [form.nombreMois]);
+  }, [form.nombreMois, form.montant, form.typePaiement]);
 
   const styles = {
     container: {
@@ -508,13 +542,21 @@ const AjouterPaiement = () => {
                 <div style={styles.infoValue}>{prixTotalEtudiant} MAD</div>
               </div>
               <div style={styles.infoItem}>
-                <div style={styles.infoLabel}>Déjà Payé</div>
+                <div style={styles.infoLabel}>Formation Payée</div>
                 <div style={{...styles.infoValue, ...styles.infoValuePaid}}>{totalDejaPaye} MAD</div>
               </div>
               <div style={styles.infoItem}>
                 <div style={styles.infoLabel}>Reste à Payer</div>
                 <div style={{...styles.infoValue, ...styles.infoValueRemaining}}>{resteAPayer} MAD</div>
               </div>
+              
+              {/* Affichage du mode de paiement */}
+              {modePaiementEtudiant && (
+                <div style={styles.infoItem}>
+                  <div style={styles.infoLabel}>Mode de Paiement</div>
+                  <div style={styles.infoValue}>{modePaiementEtudiant}</div>
+                </div>
+              )}
             </div>
           )}
 
@@ -560,35 +602,84 @@ const AjouterPaiement = () => {
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>
-                  <Calendar size={16} style={{color: '#8b5cf6'}} />
-                  Date de début
+                  <BadgeEuro size={16} style={{color: '#8b5cf6'}} />
+                  Type de Paiement
                 </label>
-                <input
-                  type="date"
-                  name="moisDebut"
-                  value={form.moisDebut}
-                  onChange={handleChange}
-                  required
-                  style={styles.input}
-                />
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <button
+                    type="button"
+                    onClick={() => handleTypePaiementChange('formation')}
+                    style={{
+                      ...styles.button,
+                      backgroundColor: form.typePaiement === 'formation' ? '#3b82f6' : '#e5e7eb',
+                      color: form.typePaiement === 'formation' ? 'white' : '#374151'
+                    }}
+                  >
+                    Formation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTypePaiementChange('inscription')}
+                    style={{
+                      ...styles.button,
+                      backgroundColor: form.typePaiement === 'inscription' ? '#8b5cf6' : '#e5e7eb',
+                      color: form.typePaiement === 'inscription' ? 'white' : '#374151'
+                    }}
+                  >
+                    Frais d'inscription
+                  </button>
+                </div>
               </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  <Calendar size={16} style={{color: '#f59e0b'}} />
-                  Nombre de mois
-                </label>
-                <input
-                  type="number"
-                  name="nombreMois"
-                  value={form.nombreMois}
-                  onChange={handleChange}
-                  min="1"
-                  required
-                  style={styles.input}
-                />
-              </div>
+              
+              {/* Affichage conditionnel des infos du mode */}
+              {infosModesPaiement && form.typePaiement === 'formation' && (
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Informations Mode</label>
+                  <div style={{...styles.input, backgroundColor: '#f9fafb', fontSize: '12px'}}>
+                    {infosModesPaiement.description}<br/>
+                    Montant par tranche: {infosModesPaiement.montantParTranche} MAD<br/>
+                    Mois par tranche: {infosModesPaiement.moisParTranche}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Masquer ces champs si c'est un paiement d'inscription */}
+            {!form.estInscription && (
+              <div style={styles.formRow}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>
+                    <Calendar size={16} style={{color: '#8b5cf6'}} />
+                    Date de début
+                  </label>
+                  <input
+                    type="date"
+                    name="moisDebut"
+                    value={form.moisDebut}
+                    onChange={handleChange}
+                    required
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>
+                    <Calendar size={16} style={{color: '#f59e0b'}} />
+                    Nombre de mois
+                  </label>
+                  <input
+                    type="number"
+                    name="nombreMois"
+                    value={form.nombreMois}
+                    onChange={handleChange}
+                    min="1"
+                    required
+                    style={styles.input}
+                    readOnly={infosModesPaiement} // Auto-rempli selon le mode
+                  />
+                </div>
+              </div>
+            )}
 
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
@@ -628,35 +719,13 @@ const AjouterPaiement = () => {
                   <StickyNote size={16} style={{color: '#eab308'}} />
                   Note (optionnel)
                 </label>
-                
-                {/* ✅ Case à cocher pour inclure prix d'inscription dans la note */}
-                <div style={styles.checkboxContainer}>
-                  <input
-                    type="checkbox"
-                    id="incluePrixInscription"
-                    checked={form.incluePrixInscription}
-                    onChange={handleCheckboxChange}
-                    style={styles.checkbox}
-                  />
-                  <label htmlFor="incluePrixInscription" style={styles.checkboxLabel}>
-                    <GraduationCap size={16} style={{color: '#8b5cf6'}} />
-                    Inclure prix d'inscription
-                  </label>
-                </div>
-                
                 <textarea
                   name="note"
                   value={form.note}
                   onChange={handleChange}
-                  placeholder={form.incluePrixInscription ? "Écrivez votre note + le montant après 'Prix inscription: '" : "Ajouter une note..."}
+                  placeholder="Ajouter une note..."
                   style={styles.textarea}
                 />
-                
-                {form.incluePrixInscription && (
-                  <small style={{color: '#8b5cf6', marginTop: '5px', fontSize: '12px'}}>
-                    💡 Ajoutez le montant après "Prix inscription: " dans le champ ci-dessus
-                  </small>
-                )}
               </div>
             </div>
 

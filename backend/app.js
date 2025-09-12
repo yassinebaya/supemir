@@ -9,6 +9,7 @@ const fs = require('fs');
 const Commercial = require('./models/commercialModel');
 const Administratif = require('./models/Administratif');
 const FinanceProf = require('./models/financeProfModel');
+const FormulaireEvaluation = require('./models/FormulaireEvaluation');
 
 const Bulletin = require('./models/Bulletin'); // en haut
 const PaiementManager = require('./models/paiementManagerModel');
@@ -464,7 +465,7 @@ const uploadMultiple = upload.fields([
   { name: 'dtsBac2', maxCount: 1 },
   { name: 'licence', maxCount: 1 }
 ]);
-
+// Route POST pour créer un étudiant
 app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
   try {
     const {
@@ -476,7 +477,8 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       pourcentageBourse, situation, nouvelleInscription, paye, handicape,
       resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
       typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
-      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro
+      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
+      modePaiement
     } = req.body;
 
     // Validation des champs obligatoires
@@ -497,6 +499,13 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
     }
 
+    // CORRECTION: Validation du mode de paiement avec toutes les valeurs
+    if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
+      return res.status(400).json({ 
+        message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
+      });
+    }
+
     // Vérification de l'unicité de l'email
     const existe = await Etudiant.findOne({ email });
     if (existe) return res.status(400).json({ message: 'Email déjà utilisé' });
@@ -507,7 +516,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       if (codeExiste) return res.status(400).json({ message: 'Code étudiant déjà utilisé' });
     }
 
-    // ===== DÉTERMINATION AUTOMATIQUE DU TYPE DE FORMATION =====
+    // Détermination automatique du type de formation
     let typeFormationFinal = typeFormation;
     if (!typeFormationFinal && filiere) {
       const mappingFiliere = {
@@ -520,20 +529,17 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       typeFormationFinal = mappingFiliere[filiere];
     }
 
-    // ===== AUTO-ASSIGNATION DU NIVEAU =====
+    // Auto-assignation du niveau
     let niveauFinal = parseInt(niveau) || null;
     
-    // Auto-assignation du niveau selon le type de formation
     if (typeFormationFinal === 'LICENCE_PRO') {
       niveauFinal = 3; // Licence Pro = toujours niveau 3
     } else if (typeFormationFinal === 'MASTER_PRO') {
       niveauFinal = 4; // Master Pro = toujours niveau 4
     }
 
-    // ===== VALIDATION SELON LE TYPE DE FORMATION =====
-    
+    // Validation selon le type de formation
     if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      // Validation pour formation d'ingénieur
       if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
         return res.status(400).json({ 
           message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
@@ -602,8 +608,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       }
 
     } else if (typeFormationFinal === 'LICENCE_PRO') {
-      // ===== VALIDATION POUR LICENCE PRO (NIVEAU AUTO-ASSIGNÉ À 3) =====
-      
       if (!specialiteLicencePro) {
         return res.status(400).json({ 
           message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
@@ -631,17 +635,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
         }
       }
 
-      const specialitesAvecOptions = [
-        'Développement Informatique Full Stack',
-        'Réseaux et Cybersécurité'
-      ];
-
-      if (optionLicencePro && !specialitesAvecOptions.includes(specialiteLicencePro)) {
-        return res.status(400).json({ 
-          message: `La spécialité "${specialiteLicencePro}" ne propose pas d'options` 
-        });
-      }
-
       if (cycle || specialiteIngenieur || optionIngenieur || specialiteMasterPro || optionMasterPro) {
         return res.status(400).json({ 
           message: 'Les champs Cycle Ingénieur et Master Pro ne sont pas disponibles pour LICENCE_PRO' 
@@ -649,8 +642,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       }
 
     } else if (typeFormationFinal === 'MASTER_PRO') {
-      // ===== VALIDATION POUR MASTER PRO (NIVEAU AUTO-ASSIGNÉ À 4) =====
-      
       if (!specialiteMasterPro) {
         return res.status(400).json({ 
           message: 'Une spécialité est obligatoire pour Master Professionnel' 
@@ -677,17 +668,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
         }
       }
 
-      const specialitesAvecOptions = [
-        'Cybersécurité et Transformation Digitale',
-        'Génie Informatique et Innovation Technologique'
-      ];
-
-      if (optionMasterPro && !specialitesAvecOptions.includes(specialiteMasterPro)) {
-        return res.status(400).json({ 
-          message: `La spécialité "${specialiteMasterPro}" ne propose pas d'options` 
-        });
-      }
-
       if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro) {
         return res.status(400).json({ 
           message: 'Les champs Cycle Ingénieur et Licence Pro ne sont pas disponibles pour MASTER_PRO' 
@@ -695,8 +675,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       }
 
     } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      // ===== VALIDATION POUR LES ANCIENNES FORMATIONS (MASI, IRM) =====
-      
       if (!niveauFinal) {
         return res.status(400).json({ 
           message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
@@ -744,8 +722,8 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       }
     }
 
-    // ===== GESTION DES COURS AVEC LIMITE =====
-    const MAX_ETUDIANTS =20;
+    // Gestion des cours avec limite
+    const MAX_ETUDIANTS = 20;
     let coursArray = [];
 
     if (cours) {
@@ -819,7 +797,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       }
     }
 
-    // ===== TRAITEMENT DES FICHIERS =====
+    // Traitement des fichiers
     const getFilePath = (fileField) => {
       return req.files && req.files[fileField] && req.files[fileField][0] 
         ? `/uploads/${req.files[fileField][0].filename}` 
@@ -870,7 +848,12 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
     }
 
-    // ===== CRÉATION DE L'ÉTUDIANT AVEC NIVEAU AUTO-ASSIGNÉ =====
+    // Logique automatique pour le mode de paiement annuel
+    if (modePaiement === 'annuel' && paye === undefined) {
+      req.body.paye = true;
+    }
+
+    // Création de l'étudiant
     const etudiantData = {
       prenom: prenom.trim(),
       nomDeFamille: nomDeFamille.trim(),
@@ -883,7 +866,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       passeport: passeport?.trim() || '',
       lieuNaissance: lieuNaissance?.trim() || '',
       pays: pays?.trim() || '',
-      niveau: niveauFinal, // LE NIVEAU EST MAINTENANT AUTO-ASSIGNÉ
+      niveau: niveauFinal,
       niveauFormation: niveauFormation?.trim() || '',
       filiere: filiere?.trim() || '',
       typeFormation: typeFormationFinal,
@@ -903,6 +886,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       codeEtudiant: codeEtudiant?.trim() || '',
       dateEtReglement: dateEtReglementFormatted,
       cours: coursArray,
+      modePaiement: modePaiement || 'semestriel',
       
       // Fichiers
       image: imagePath,
@@ -928,10 +912,8 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       anneeScolaire: anneeScolaire || undefined
     };
 
-    // ===== ASSIGNATION DES CHAMPS SPÉCIFIQUES SELON LE TYPE DE FORMATION =====
-    
+    // Assignation des champs spécifiques selon le type de formation
     if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      // Formation d'ingénieur
       const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
       etudiantData.cycle = cycleCalcule;
       etudiantData.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
@@ -944,7 +926,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       etudiantData.optionMasterPro = undefined;
       
     } else if (typeFormationFinal === 'LICENCE_PRO') {
-      // Licence Professionnelle - NIVEAU AUTO-ASSIGNÉ À 3
       etudiantData.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
       etudiantData.optionLicencePro = optionLicencePro?.trim() || undefined;
       etudiantData.cycle = undefined;
@@ -956,7 +937,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       etudiantData.option = '';
       
     } else if (typeFormationFinal === 'MASTER_PRO') {
-      // Master Professionnel - NIVEAU AUTO-ASSIGNÉ À 4
       etudiantData.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
       etudiantData.optionMasterPro = optionMasterPro?.trim() || undefined;
       etudiantData.cycle = undefined;
@@ -968,7 +948,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       etudiantData.option = '';
       
     } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      // Anciennes formations
       etudiantData.specialite = specialite?.trim() || '';
       etudiantData.option = option?.trim() || '';
       etudiantData.cycle = undefined;
@@ -990,7 +969,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
     res.status(201).json(etudiantResponse);
 
   } catch (err) {
-    console.error('❌ Erreur ajout étudiant:', err);
+    console.error('Erreur ajout étudiant:', err);
     
     if (err.name === 'ValidationError') {
       const errors = Object.values(err.errors).map(e => e.message);
@@ -1009,6 +988,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
   }
 });
 
+// Route PUT pour modifier un étudiant
 app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
   try {
     const {
@@ -1020,36 +1000,34 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       pourcentageBourse, situation, nouvelleInscription, paye, handicape,
       resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
       typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
-      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro
+      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
+      modePaiement
     } = req.body;
 
-    // 1. 🔍 RECHERCHER L'ÉTUDIANT EXISTANT
+    // Rechercher l'étudiant existant
     const etudiantExistant = await Etudiant.findById(req.params.id);
     if (!etudiantExistant) {
       return res.status(404).json({ message: 'Étudiant non trouvé' });
     }
 
-    console.log(`📋 Étudiant trouvé: ${etudiantExistant.prenom} ${etudiantExistant.nomDeFamille}`);
-    console.log(`📋 Données reçues - Niveau: "${niveau}", Filière: "${filiere}"`);
-    console.log(`📋 Spécialité reçue: "${specialiteIngenieur}", Option reçue: "${optionIngenieur}"`);
+    // CORRECTION: Validation du mode de paiement avec toutes les valeurs
+    if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
+      return res.status(400).json({ 
+        message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
+      });
+    }
 
-    // 2. 🎯 DÉTECTER SI C'EST UNE NOUVELLE ANNÉE SCOLAIRE
+    // Détecter si c'est une nouvelle année scolaire
     const estNouvelleAnneeScolaire = anneeScolaire && 
                                     anneeScolaire.trim() !== '' && 
                                     anneeScolaire !== etudiantExistant.anneeScolaire;
 
     if (estNouvelleAnneeScolaire) {
-      console.log(`🆕 NOUVELLE ANNÉE SCOLAIRE DÉTECTÉE: ${etudiantExistant.anneeScolaire} → ${anneeScolaire}`);
-      
-      // ===== CODE POUR NOUVELLE ANNÉE SCOLAIRE (inchangé) =====
-      // ... (tout le code existant pour nouvelle année)
-      // Je ne répète pas ce code car il fonctionne déjà
+      // Code pour nouvelle année scolaire (si nécessaire)
+      // ... (code existant pour nouvelle année)
     }
 
-    // 3. ✏️ MODIFICATION NORMALE (PAS DE NOUVELLE ANNÉE SCOLAIRE)
-    console.log(`✏️ Modification normale de l'étudiant existant`);
-    
-    // ===== DÉTERMINATION DU TYPE DE FORMATION =====
+    // Modification normale
     const filiereFinale = filiere || etudiantExistant.filiere;
     let typeFormationFinal = typeFormation || etudiantExistant.typeFormation;
     
@@ -1064,40 +1042,29 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       typeFormationFinal = mappingFiliere[filiereFinale];
     }
 
-    // ===== 🔥 DÉTERMINATION DU NIVEAU =====
+    // Détermination du niveau
     let niveauFinal;
     if (niveau !== undefined && niveau !== null && niveau !== '') {
       niveauFinal = parseInt(niveau);
-      console.log(`✅ Nouveau niveau explicite reçu: "${niveau}" -> ${niveauFinal}`);
     } else {
       niveauFinal = etudiantExistant.niveau;
-      console.log(`✅ Niveau gardé de l'existant: ${niveauFinal}`);
     }
     
-    // Auto-assignation du niveau pour LP et MP seulement
+    // Auto-assignation du niveau pour LP et MP
     if (typeFormationFinal === 'LICENCE_PRO') {
       niveauFinal = 3;
-      console.log(`🔒 Niveau forcé à 3 pour Licence Pro`);
     } else if (typeFormationFinal === 'MASTER_PRO') {
       niveauFinal = 4;
-      console.log(`🔒 Niveau forcé à 4 pour Master Pro`);
     }
-    
-    console.log(`✅ Niveau final déterminé: ${niveauFinal} (Type: ${typeFormationFinal})`);
 
-    // ===== 🔥 VALIDATION CORRIGÉE SELON LE TYPE DE FORMATION =====
-    
+    // Validation selon le type de formation
     if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      console.log(`🔍 Validation CYCLE_INGENIEUR - Niveau: ${niveauFinal}`);
-      
-      // Validation du niveau
       if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
         return res.status(400).json({ 
           message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
         });
       }
 
-      // Validation pour Classes Préparatoires (années 1-2)
       if (niveauFinal >= 1 && niveauFinal <= 2) {
         if (specialiteIngenieur || optionIngenieur) {
           return res.status(400).json({ 
@@ -1106,14 +1073,10 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
         }
       }
 
-      // Validation pour Cycle Ingénieur (années 3-5)
       if (niveauFinal >= 3 && niveauFinal <= 5) {
-        // 🔥 CORRECTION : Déterminer quelle spécialité utiliser
         const specialiteAUtiliser = specialiteIngenieur !== undefined 
           ? specialiteIngenieur 
           : etudiantExistant.specialiteIngenieur;
-        
-        console.log(`🔍 Spécialité à utiliser: "${specialiteAUtiliser}"`);
         
         if (!specialiteAUtiliser) {
           return res.status(400).json({ 
@@ -1121,13 +1084,10 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
           });
         }
         
-        // 🔥 VALIDATION DE L'OPTION POUR LA 5ÈME ANNÉE SEULEMENT
         if (niveauFinal === 5) {
           const optionAUtiliser = optionIngenieur !== undefined 
             ? optionIngenieur 
             : etudiantExistant.optionIngenieur;
-          
-          console.log(`🔍 Option à utiliser (année 5): "${optionAUtiliser}"`);
           
           if (!optionAUtiliser) {
             return res.status(400).json({ 
@@ -1135,7 +1095,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
             });
           }
           
-          // 🔥 VALIDATION DE LA COMPATIBILITÉ SPÉCIALITÉ-OPTION
           const STRUCTURE_OPTIONS_INGENIEUR = {
             'Génie Informatique': [
               'Sécurité & Mobilité Informatique',
@@ -1155,7 +1114,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
           };
 
           const optionsDisponibles = STRUCTURE_OPTIONS_INGENIEUR[specialiteAUtiliser];
-          console.log(`🔍 Options disponibles pour "${specialiteAUtiliser}":`, optionsDisponibles);
           
           if (!optionsDisponibles || !optionsDisponibles.includes(optionAUtiliser)) {
             return res.status(400).json({ 
@@ -1163,12 +1121,8 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
             });
           }
         }
-        
-        // 🔥 POUR LES ANNÉES 3-4 : PAS DE VALIDATION D'OPTION
-        // Car l'option n'est requise qu'en 5ème année
       }
 
-      // Vérifier qu'on n'a pas de champs LP/MP
       if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
         return res.status(400).json({ 
           message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
@@ -1176,8 +1130,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       }
 
     } else if (typeFormationFinal === 'LICENCE_PRO') {
-      console.log(`🔍 Validation LICENCE_PRO`);
-      
       const specialiteSource = specialiteLicencePro || etudiantExistant.specialiteLicencePro;
       if (!specialiteSource) {
         return res.status(400).json({ 
@@ -1208,8 +1160,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       }
 
     } else if (typeFormationFinal === 'MASTER_PRO') {
-      console.log(`🔍 Validation MASTER_PRO`);
-      
       const specialiteSource = specialiteMasterPro || etudiantExistant.specialiteMasterPro;
       if (!specialiteSource) {
         return res.status(400).json({ 
@@ -1239,18 +1189,14 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       }
 
     } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      console.log(`🔍 Validation ${typeFormationFinal} - Niveau: ${niveauFinal}`);
-      
       if (!niveauFinal) {
         return res.status(400).json({ 
           message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
         });
       }
       
-      // Validation spécialité pour niveau >= 3
       if (niveauFinal >= 3) {
         const specialiteAUtiliser = specialite !== undefined ? specialite : etudiantExistant.specialite;
-        console.log(`🔍 Validation spécialité - Fournie: "${specialite}", Existante: "${etudiantExistant.specialite}", À utiliser: "${specialiteAUtiliser}"`);
         
         if (!specialiteAUtiliser || specialiteAUtiliser.trim() === '') {
           return res.status(400).json({ 
@@ -1259,10 +1205,8 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
         }
       }
 
-      // Validation option pour niveau 5
       if (niveauFinal === 5) {
         const optionAUtiliser = option !== undefined ? option : etudiantExistant.option;
-        console.log(`🔍 Validation option - Fournie: "${option}", Existante: "${etudiantExistant.option}", À utiliser: "${optionAUtiliser}"`);
         
         if (!optionAUtiliser || optionAUtiliser.trim() === '') {
           return res.status(400).json({ 
@@ -1271,7 +1215,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
         }
       }
 
-      // Validation structure formation
       if (specialite !== undefined || niveauFinal !== etudiantExistant.niveau) {
         const specialiteAValider = specialite !== undefined ? specialite : etudiantExistant.specialite;
         if (specialiteAValider && specialiteAValider.trim() !== '') {
@@ -1289,7 +1232,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
           };
 
           const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
-          console.log(`🔍 Spécialités disponibles pour ${typeFormationFinal} niveau ${niveauFinal}:`, specialitesDisponibles);
           
           if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialiteAValider)) {
             return res.status(400).json({ 
@@ -1300,7 +1242,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       }
     }
 
-    // ===== GESTION DES COURS AVEC LIMITE =====
+    // Gestion des cours avec limite
     const MAX_ETUDIANTS = 20;
     let coursArray = etudiantExistant.cours || [];
 
@@ -1341,7 +1283,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
             coursExiste = nouveauCours;
           }
 
-          // Compter en excluant l'étudiant actuel pour éviter les faux positifs
+          // Compter en excluant l'étudiant actuel
           const count = await Etudiant.countDocuments({ 
             cours: nomAvecSuffixe,
             _id: { $ne: req.params.id }
@@ -1381,7 +1323,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       }
     }
 
-    // ===== FONCTIONS UTILITAIRES =====
+    // Fonctions utilitaires
     const toDate = (val) => {
       if (!val) return undefined;
       const date = new Date(val);
@@ -1396,7 +1338,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
 
     const toBool = (val) => val === 'true' || val === true;
 
-    // ===== VALIDATIONS DES CHAMPS OBLIGATOIRES =====
+    // Validations des champs obligatoires
     if (prenom !== undefined && !prenom.trim()) {
       return res.status(400).json({ message: 'Le prénom est obligatoire' });
     }
@@ -1417,7 +1359,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
         return res.status(400).json({ message: 'Format d\'email invalide' });
       }
 
-      // Vérification de l'unicité de l'email (sauf pour l'étudiant actuel)
       const emailExiste = await Etudiant.findOne({ 
         email: email.toLowerCase().trim(), 
         _id: { $ne: req.params.id } 
@@ -1444,7 +1385,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
     }
 
-    // ===== TRAITEMENT DES FICHIERS UPLOADÉS =====
+    // Traitement des fichiers uploadés
     const getFilePath = (fileField) => {
       return req.files && req.files[fileField] && req.files[fileField][0] 
         ? `/uploads/${req.files[fileField][0].filename}` 
@@ -1460,7 +1401,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     const dtsBac2Path = getFilePath('dtsBac2');
     const licencePath = getFilePath('licence');
 
-    // ===== CRÉER L'OBJET DE MODIFICATIONS =====
+    // Créer l'objet de modifications
     const modifications = {};
 
     // Appliquer toutes les modifications reçues
@@ -1477,9 +1418,8 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     if (lieuNaissance !== undefined) modifications.lieuNaissance = lieuNaissance.trim();
     if (pays !== undefined) modifications.pays = pays.trim();
     
-    // 🔥 LIGNE CRUCIALE: TOUJOURS ASSIGNER LE NIVEAU FINAL CALCULÉ
+    // Toujours assigner le niveau final calculé
     modifications.niveau = niveauFinal;
-    console.log(`🔥 ASSIGNATION NIVEAU DANS MODIFICATIONS: ${niveauFinal}`);
     
     if (niveauFormation !== undefined) modifications.niveauFormation = niveauFormation.trim();
     if (filiere !== undefined) modifications.filiere = filiere.trim();
@@ -1509,6 +1449,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       modifications.commercial = (commercial === null || commercial === '' || commercial === 'null') ? null : commercial;
     }
     if (anneeScolaire !== undefined) modifications.anneeScolaire = anneeScolaire;
+    if (modePaiement !== undefined) modifications.modePaiement = modePaiement;
 
     // Validation du mot de passe si fourni
     if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
@@ -1519,20 +1460,21 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       modifications.motDePasse = hashedPassword;
     }
 
-    // ===== 🔥 ASSIGNATION DES CHAMPS SPÉCIFIQUES SELON LE TYPE DE FORMATION =====
+    // Logique automatique pour le mode de paiement annuel
+    if (modePaiement === 'annuel' && paye === undefined) {
+      modifications.paye = true;
+    }
+
+    // Assignation des champs spécifiques selon le type de formation
     if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      // Formation d'ingénieur
       const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
       modifications.cycle = cycleCalcule;
       
-      // 🔥 CORRECTION : Gestion intelligente des spécialités et options d'ingénieur
       if (specialiteIngenieur !== undefined) {
         modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
         
-        // 🔥 Si on change de spécialité, on efface l'option pour éviter l'incompatibilité
+        // Si on change de spécialité, on efface l'option pour éviter l'incompatibilité
         if (specialiteIngenieur !== etudiantExistant.specialiteIngenieur) {
-          console.log(`🔄 Changement de spécialité détecté: "${etudiantExistant.specialiteIngenieur}" -> "${specialiteIngenieur}"`);
-          console.log(`🔄 Effacement de l'ancienne option: "${etudiantExistant.optionIngenieur}"`);
           modifications.optionIngenieur = undefined;
         }
       }
@@ -1550,7 +1492,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       modifications.optionMasterPro = undefined;
       
     } else if (typeFormationFinal === 'LICENCE_PRO') {
-      // Licence Professionnelle
       if (specialiteLicencePro !== undefined) modifications.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
       if (optionLicencePro !== undefined) modifications.optionLicencePro = optionLicencePro?.trim() || undefined;
       modifications.cycle = undefined;
@@ -1562,7 +1503,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       modifications.option = '';
       
     } else if (typeFormationFinal === 'MASTER_PRO') {
-      // Master Professionnel
       if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
       if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
       modifications.cycle = undefined;
@@ -1574,9 +1514,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       modifications.option = '';
       
     } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      // Anciennes formations
-      console.log(`🔍 Assignation ${typeFormationFinal} - Spécialité: "${specialite}", Option: "${option}"`);
-      
       if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
       if (option !== undefined) modifications.option = option?.trim() || '';
       
@@ -1590,7 +1527,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       modifications.optionMasterPro = undefined;
     }
 
-    // ===== TRAITEMENT DES FICHIERS UPLOADÉS =====
+    // Traitement des fichiers uploadés
     if (imagePath !== undefined) modifications.image = imagePath;
     if (fichierInscritPath !== undefined) modifications.fichierInscrit = fichierInscritPath;
     if (originalBacPath !== undefined) modifications.originalBac = originalBacPath;
@@ -1604,27 +1541,13 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     modifications.updatedAt = new Date();
     modifications.modifiePar = req.adminId;
 
-    console.log(`🔍 Modifications finales à appliquer:`, {
-      niveau: modifications.niveau,
-      filiere: modifications.filiere,
-      typeFormation: modifications.typeFormation,
-      specialiteIngenieur: modifications.specialiteIngenieur,
-      optionIngenieur: modifications.optionIngenieur,
-      specialite: modifications.specialite,
-      option: modifications.option,
-      specialiteLicencePro: modifications.specialiteLicencePro,
-      optionLicencePro: modifications.optionLicencePro,
-      specialiteMasterPro: modifications.specialiteMasterPro,
-      optionMasterPro: modifications.optionMasterPro
-    });
-
-    // 4. 💾 MISE À JOUR DU DOCUMENT EXISTANT
+    // Mise à jour du document existant
     const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
       req.params.id,
       modifications,
       { 
-        new: true, // Retourner le document mis à jour
-        runValidators: true // Exécuter les validations Mongoose
+        new: true,
+        runValidators: true
       }
     );
 
@@ -1632,15 +1555,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       return res.status(404).json({ message: 'Étudiant non trouvé lors de la mise à jour' });
     }
 
-    console.log(`✅ Étudiant mis à jour avec succès - ID: ${etudiantMiseAJour._id}`);
-    console.log(`📋 Nouveau niveau: ${etudiantMiseAJour.niveau}`);
-    console.log(`📋 Nouvelle filière: ${etudiantMiseAJour.filiere}`);
-    console.log(`📋 Nouvelle spécialité ingénieur: ${etudiantMiseAJour.specialiteIngenieur}`);
-    console.log(`📋 Nouvelle option ingénieur: ${etudiantMiseAJour.optionIngenieur}`);
-    console.log(`📋 Nouvelle spécialité MASI/IRM: ${etudiantMiseAJour.specialite}`);
-    console.log(`📋 Nouvelle option MASI/IRM: ${etudiantMiseAJour.option}`);
-
-    // 📤 RETOURNER LE DOCUMENT MIS À JOUR (sans mot de passe)
+    // Retourner le document mis à jour (sans mot de passe)
     const etudiantResponse = etudiantMiseAJour.toObject();
     delete etudiantResponse.motDePasse;
 
@@ -1651,7 +1566,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Erreur lors de la mise à jour étudiant:', err);
+    console.error('Erreur lors de la mise à jour étudiant:', err);
     
     if (err.name === 'ValidationError') {
       const errors = Object.values(err.errors).map(e => e.message);
@@ -6236,44 +6151,800 @@ app.put('/api/actualites/:id', authAdmin, upload.single('image'), async (req, re
   }
 });
 
+
+app.get('/api/revenus/modes-paiement/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const anneeScolaire = req.params.anneeScolaire;
+    
+    // Filtrer les étudiants selon l'année scolaire
+    const filter = { actif: true };
+    if (anneeScolaire && anneeScolaire !== 'toutes') {
+      filter.anneeScolaire = anneeScolaire;
+    }
+    
+    const etudiants = await Etudiant.find(filter);
+    
+    // Calculer les statistiques par mode de paiement
+    const stats = {
+      totalEtudiants: etudiants.length,
+      totalCA: 0,
+      repartitionModes: {
+        annuel: { count: 0, ca: 0 },
+        semestriel: { count: 0, ca: 0 },
+        trimestriel: { count: 0, ca: 0 },
+        mensuel: { count: 0, ca: 0 }
+      }
+    };
+    
+    etudiants.forEach(etudiant => {
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      const mode = etudiant.modePaiement || 'semestriel';
+      
+      stats.totalCA += prixTotal;
+      if (stats.repartitionModes[mode]) {
+        stats.repartitionModes[mode].count += 1;
+        stats.repartitionModes[mode].ca += prixTotal;
+      }
+    });
+    
+    res.json(stats);
+    
+  } catch (error) {
+    console.error('Erreur lors du calcul des modes de paiement:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route sans paramètre pour "toutes les années"
+app.get('/api/revenus/modes-paiement', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const etudiants = await Etudiant.find({ actif: true });
+    
+    const stats = {
+      totalEtudiants: etudiants.length,
+      totalCA: 0,
+      repartitionModes: {
+        annuel: { count: 0, ca: 0 },
+        semestriel: { count: 0, ca: 0 },
+        trimestriel: { count: 0, ca: 0 },
+        mensuel: { count: 0, ca: 0 }
+      }
+    };
+    
+    etudiants.forEach(etudiant => {
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      const mode = etudiant.modePaiement || 'semestriel';
+      
+      stats.totalCA += prixTotal;
+      if (stats.repartitionModes[mode]) {
+        stats.repartitionModes[mode].count += 1;
+        stats.repartitionModes[mode].ca += prixTotal;
+      }
+    });
+    
+    res.json(stats);
+    
+  } catch (error) {
+    console.error('Erreur lors du calcul des modes de paiement:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Route pour obtenir les prévisions mensuelles détaillées
+app.get('/api/revenus/previsions-mensuelles/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const anneeScolaire = req.params.anneeScolaire;
+    
+    // Filtrer les étudiants selon l'année scolaire
+    const filter = { actif: true };
+    if (anneeScolaire && anneeScolaire !== 'toutes') {
+      filter.anneeScolaire = anneeScolaire;
+    }
+    
+    const etudiants = await Etudiant.find(filter);
+    
+    // Générer les 12 mois de l'année scolaire
+    const mois = [
+      'Septembre', 'Octobre', 'Novembre', 'Décembre',
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août'
+    ];
+    
+    const previsions = mois.map((nomMois, indexMois) => {
+      const revenus = {
+        mois: nomMois,
+        annuel: 0,
+        semestriel: 0,
+        trimestriel: 0,
+        mensuel: 0,
+        total: 0,
+        details: {
+          annuel: { etudiants: 0, description: 'Paiement complet' },
+          semestriel: { etudiants: 0, description: 'Tranches semestrielles' },
+          trimestriel: { etudiants: 0, description: 'Tranches trimestrielles' },
+          mensuel: { etudiants: 0, description: 'Paiements mensuels' }
+        }
+      };
+
+      etudiants.forEach(etudiant => {
+        const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+        const mode = etudiant.modePaiement || 'semestriel';
+
+        switch (mode) {
+          case 'annuel':
+            // Paiement annuel en septembre (mois 0)
+            if (indexMois === 0) {
+              revenus.annuel += prixTotal;
+              revenus.details.annuel.etudiants += 1;
+            }
+            break;
+
+          case 'semestriel':
+            // 2 tranches : septembre (mois 0) et février (mois 5)
+            if (indexMois === 0 || indexMois === 5) {
+              revenus.semestriel += Math.round(prixTotal / 2);
+              revenus.details.semestriel.etudiants += 1;
+            }
+            break;
+
+          case 'trimestriel':
+            // 3 tranches : septembre (0), janvier (4), mai (8)
+            if (indexMois === 0 || indexMois === 4 || indexMois === 8) {
+              revenus.trimestriel += Math.round(prixTotal / 3);
+              revenus.details.trimestriel.etudiants += 1;
+            }
+            break;
+
+          case 'mensuel':
+            // 10 tranches : septembre à juin (mois 0 à 9)
+            if (indexMois >= 0 && indexMois <= 9) {
+              revenus.mensuel += Math.round(prixTotal / 10);
+              revenus.details.mensuel.etudiants += 1;
+            }
+            break;
+        }
+      });
+
+      revenus.total = revenus.annuel + revenus.semestriel + revenus.trimestriel + revenus.mensuel;
+      return revenus;
+    });
+    
+    // Calculer le total annuel
+    const totalAnnuel = previsions.reduce((sum, mois) => sum + mois.total, 0);
+    
+    res.json({
+      previsions,
+      totalAnnuel,
+      anneeScolaire: anneeScolaire || 'toutes'
+    });
+    
+  } catch (error) {
+    console.error('Erreur lors du calcul des prévisions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route sans paramètre pour "toutes les années"
+app.get('/api/revenus/previsions-mensuelles', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const etudiants = await Etudiant.find({ actif: true });
+    
+    // Générer les 12 mois de l'année scolaire
+    const mois = [
+      'Septembre', 'Octobre', 'Novembre', 'Décembre',
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août'
+    ];
+    
+    const previsions = mois.map((nomMois, indexMois) => {
+      const revenus = {
+        mois: nomMois,
+        annuel: 0,
+        semestriel: 0,
+        trimestriel: 0,
+        mensuel: 0,
+        total: 0,
+        details: {
+          annuel: { etudiants: 0, description: 'Paiement complet' },
+          semestriel: { etudiants: 0, description: 'Tranches semestrielles' },
+          trimestriel: { etudiants: 0, description: 'Tranches trimestrielles' },
+          mensuel: { etudiants: 0, description: 'Paiements mensuels' }
+        }
+      };
+
+      etudiants.forEach(etudiant => {
+        const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+        const mode = etudiant.modePaiement || 'semestriel';
+
+        switch (mode) {
+          case 'annuel':
+            if (indexMois === 0) {
+              revenus.annuel += prixTotal;
+              revenus.details.annuel.etudiants += 1;
+            }
+            break;
+          case 'semestriel':
+            if (indexMois === 0 || indexMois === 5) {
+              revenus.semestriel += Math.round(prixTotal / 2);
+              revenus.details.semestriel.etudiants += 1;
+            }
+            break;
+          case 'trimestriel':
+            if (indexMois === 0 || indexMois === 4 || indexMois === 8) {
+              revenus.trimestriel += Math.round(prixTotal / 3);
+              revenus.details.trimestriel.etudiants += 1;
+            }
+            break;
+          case 'mensuel':
+            if (indexMois >= 0 && indexMois <= 9) {
+              revenus.mensuel += Math.round(prixTotal / 10);
+              revenus.details.mensuel.etudiants += 1;
+            }
+            break;
+        }
+      });
+
+      revenus.total = revenus.annuel + revenus.semestriel + revenus.trimestriel + revenus.mensuel;
+      return revenus;
+    });
+    
+    const totalAnnuel = previsions.reduce((sum, mois) => sum + mois.total, 0);
+    
+    res.json({
+      previsions,
+      totalAnnuel,
+      anneeScolaire: 'toutes'
+    });
+    
+  } catch (error) {
+    console.error('Erreur lors du calcul des prévisions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Route pour obtenir toutes les années scolaires disponibles
+app.get('/api/revenus/annees-disponibles', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const annees = await Etudiant.distinct('anneeScolaire', { anneeScolaire: { $ne: null } });
+    
+    // Trier avec 2025/2026 en premier
+    const anneesTriees = annees.sort((a, b) => {
+      if (a === '2025/2026') return -1;
+      if (b === '2025/2026') return 1;
+      return b.localeCompare(a);
+    });
+    
+    res.json(anneesTriees);
+    
+  } catch (error) {
+    console.error('Erreur lors de la récupération des années:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ✅ Route pour export Excel des prévisions (optionnel)
+app.get('/api/revenus/export/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const anneeScolaire = req.params.anneeScolaire;
+    
+    // Récupérer les données de prévisions
+    // (Réutiliser la logique de la route previsions-mensuelles)
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=previsions-revenus-${anneeScolaire || 'toutes'}.xlsx`);
+    
+    // Générer le fichier Excel ici (utiliser une librairie comme xlsx)
+    // res.send(excelBuffer);
+    
+    res.json({ message: 'Export en cours de développement' });
+    
+  } catch (error) {
+    console.error('Erreur lors de l\'export:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/revenus/export', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=previsions-revenus-toutes.xlsx');
+    
+    res.json({ message: 'Export en cours de développement' });
+    
+  } catch (error) {
+    console.error('Erreur lors de l\'export:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+app.get('/api/etudiants/:etudiantId/mode-paiement', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findById(req.params.etudiantId);
+    if (!etudiant) {
+      return res.status(404).json({ message: "Étudiant non trouvé" });
+    }
+
+    if (etudiant.modePaiement === 'annuel') {
+      return res.json({
+        modePaiement: 'annuel',
+        description: 'Paiement annuel complet',
+        utiliseChampPaye: true,
+        paye: etudiant.paye
+      });
+    }
+
+    const infos = Etudiant.getInfosPaiement(etudiant.modePaiement, etudiant.prixTotal);
+    
+    res.json({
+      modePaiement: etudiant.modePaiement,
+      prixTotal: etudiant.prixTotal,
+      infos: infos,
+      utiliseChampPaye: false
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+app.get('/api/paiements/etudiant/:etudiantId/info', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const etudiantId = req.params.etudiantId;
+    
+    const etudiant = await Etudiant.findById(etudiantId);
+    if (!etudiant) {
+      return res.status(404).json({ message: "Étudiant non trouvé" });
+    }
+
+    const paiements = await Paiement.find({ etudiant: etudiantId });
+    
+    // Séparation des paiements
+    const paiementsInscription = paiements.filter(p => 
+      p.typePaiement === 'inscription' || p.estInscription === true
+    );
+    const paiementsFormation = paiements.filter(p => 
+      p.typePaiement === 'formation' || p.estInscription === false
+    );
+    
+    const totalInscription = paiementsInscription.reduce((acc, p) => acc + p.montant, 0);
+    const totalFormation = paiementsFormation.reduce((acc, p) => acc + p.montant, 0);
+    const totalGeneral = totalInscription + totalFormation;
+    
+    // LOGIQUE CORRIGÉE : 
+    // 1. Prix total = 90000 DH (formation)
+    // 2. Après inscription de 3000 DH → reste 87000 DH à diviser
+    const prixTotalOriginal = etudiant.prixTotal; // 90000
+    const montantFormationADiviser = Math.max(0, prixTotalOriginal - totalInscription); // 90000 - 3000 = 87000
+    const resteFormation = Math.max(0, montantFormationADiviser - totalFormation);
+    
+    let infosMode = null;
+    let prochaineTranche = null;
+
+    // Calcul des tranches sur le montant formation restant après inscription
+    if (etudiant.modePaiement !== 'annuel' && montantFormationADiviser > 0) {
+      switch (etudiant.modePaiement) {
+        case 'semestriel':
+          infosMode = {
+            nombreTranches: 2,
+            montantParTranche: Math.round(montantFormationADiviser / 2), // 87000 / 2 = 43500
+            moisParTranche: 5,
+            description: "2 tranches semestrielles",
+            baseCalcul: montantFormationADiviser
+          };
+          break;
+        case 'trimestriel':
+          infosMode = {
+            nombreTranches: 3,
+            montantParTranche: Math.round(montantFormationADiviser / 3), // 87000 / 3 = 29000
+            moisParTranche: 3,
+            description: "3 tranches trimestrielles",
+            baseCalcul: montantFormationADiviser
+          };
+          break;
+        case 'mensuel':
+          infosMode = {
+            nombreTranches: 10,
+            montantParTranche: Math.round(montantFormationADiviser / 10), // 87000 / 10 = 8700
+            moisParTranche: 1,
+            description: "10 tranches mensuelles",
+            baseCalcul: montantFormationADiviser
+          };
+          break;
+      }
+
+      if (infosMode && resteFormation > 0) {
+        const nombreTranchesFormationPayees = paiementsFormation.length;
+        
+        if (nombreTranchesFormationPayees < infosMode.nombreTranches) {
+          let montantProchaineTranche;
+          
+          if (nombreTranchesFormationPayees === infosMode.nombreTranches - 1) {
+            // Dernière tranche : prendre le reste exact pour éviter les arrondis
+            montantProchaineTranche = resteFormation;
+          } else {
+            // Tranches normales : utiliser le montant calculé
+            montantProchaineTranche = Math.min(infosMode.montantParTranche, resteFormation);
+          }
+          
+          prochaineTranche = {
+            numeroTranche: nombreTranchesFormationPayees + 1,
+            montant: montantProchaineTranche,
+            nombreMois: infosMode.moisParTranche,
+            description: `Tranche formation ${nombreTranchesFormationPayees + 1}/${infosMode.nombreTranches}`,
+            typePayment: 'formation'
+          };
+        }
+      }
+    }
+
+    // Vérifier si inscription est due
+    let inscriptionDue = totalInscription === 0;
+
+    res.json({
+      etudiant: {
+        id: etudiant._id,
+        nomComplet: `${etudiant.prenom} ${etudiant.nomDeFamille}`.trim(),
+        prixTotal: etudiant.prixTotal,
+        modePaiement: etudiant.modePaiement,
+        paye: etudiant.paye
+      },
+      totaux: {
+        inscription: totalInscription,
+        formation: totalFormation,
+        general: totalGeneral,
+        prixTotalOriginal: prixTotalOriginal, // 90000
+        montantFormationADiviser: montantFormationADiviser, // 87000 après inscription
+        resteAPayer: resteFormation,
+        inscriptionDue: inscriptionDue
+      },
+      paiements: {
+        inscription: paiementsInscription,
+        formation: paiementsFormation,
+        tous: paiements
+      },
+      infosModesPaiement: infosMode,
+      prochaineTranche: prochaineTranche,
+      
+      // Debug détaillé
+      debug: {
+        prixTotalOriginal: prixTotalOriginal, // 90000
+        totalInscription: totalInscription, // 3000
+        montantFormationADiviser: montantFormationADiviser, // 87000
+        totalFormation: totalFormation, // Ce qui a été payé en formation
+        resteFormation: resteFormation, // Ce qui reste à payer
+        nombreTranchesFormationPayees: paiementsFormation.length,
+        montantParTranche: infosMode?.montantParTranche // 8700 pour mensuel
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de la récupération des informations", error: err.message });
+  }
+});
+
+// API POST inchangée
 app.post('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
   try {
-    const { etudiant, cours, moisDebut, nombreMois, montant, note } = req.body;
+    const { etudiant, cours, moisDebut, nombreMois, montant, note, estInscription, typePaiement } = req.body;
     const coursArray = Array.isArray(cours) ? cours : [cours];
+
+    // Déterminer le type de paiement
+    let typePaymentFinal = typePaiement || 'formation';
+    if (estInscription === true) {
+      typePaymentFinal = 'inscription';
+    }
+
+    // Calculer le numéro de tranche SEULEMENT pour les paiements de formation
+    let numeroTranche = null;
+    if (typePaymentFinal === 'formation') {
+      const paiementsFormationExistants = await Paiement.find({
+        etudiant,
+        $or: [
+          { typePaiement: 'formation' },
+          { estInscription: false }
+        ]
+      });
+      numeroTranche = paiementsFormationExistants.length + 1;
+    }
 
     const paiement = new Paiement({
       etudiant,
       cours: coursArray,
-      moisDebut: new Date(moisDebut),
-      nombreMois,
+      moisDebut: new Date(moisDebut || Date.now()),
+      nombreMois: nombreMois || (typePaymentFinal === 'inscription' ? 0 : 1),
       montant,
       note,
+      typePaiement: typePaymentFinal,
+      estInscription: typePaymentFinal === 'inscription',
+      numeroTranche: numeroTranche,
       creePar: req.adminId
     });
 
     await paiement.save();
 
-    // ✅ بعد حفظ الدفع، حساب مجموع المدفوعات
-    const paiements = await Paiement.find({ etudiant });
-    const totalPaye = paiements.reduce((acc, p) => acc + p.montant, 0);
+    // Calcul pour marquer l'étudiant comme payé
+    const paiementsFormation = await Paiement.find({ 
+      etudiant, 
+      $or: [
+        { typePaiement: 'formation' },
+        { estInscription: false }
+      ]
+    });
+    const paiementsInscription = await Paiement.find({ 
+      etudiant, 
+      $or: [
+        { typePaiement: 'inscription' },
+        { estInscription: true }
+      ]
+    });
+    
+    const totalPayeFormation = paiementsFormation.reduce((acc, p) => acc + p.montant, 0);
+    const totalInscription = paiementsInscription.reduce((acc, p) => acc + p.montant, 0);
 
-    // ✅ جلب بيانات الطالب
+    // Mise à jour du statut de l'étudiant
     const etudiantDoc = await Etudiant.findById(etudiant);
     if (etudiantDoc) {
-      if (totalPaye >= etudiantDoc.prixTotal) {
-        etudiantDoc.paye = true;
+      if (etudiantDoc.modePaiement === 'annuel') {
+        // Pour mode annuel : ne pas modifier automatiquement
       } else {
-        etudiantDoc.paye = false;
+        // Calculer le montant formation requis après inscription
+        const montantFormationRequis = Math.max(0, etudiantDoc.prixTotal - totalInscription);
+        
+        if (totalPayeFormation >= montantFormationRequis) {
+          etudiantDoc.paye = true;
+        } else {
+          etudiantDoc.paye = false;
+        }
+        await etudiantDoc.save();
       }
-      await etudiantDoc.save();
     }
 
-    res.status(201).json({ message: 'Paiement groupé ajouté', paiement });
+    res.status(201).json({ 
+      message: 'Paiement ajouté avec succès', 
+      paiement,
+      totalPayeFormation,
+      montantFormationRequis: etudiantDoc ? Math.max(0, etudiantDoc.prixTotal - totalInscription) : 0,
+      modePaiement: etudiantDoc?.modePaiement,
+      typePaiement: typePaymentFinal,
+      numeroTranche: numeroTranche
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+// Nouvelle route API à ajouter dans votre serveur
+// À ajouter dans votre fichier serveur (app.js ou server.js)
 
+app.get('/api/revenus/previsions/:anneeScolaire', authAdmin, async (req, res) => {
+  try {
+    const anneeScolaire = decodeURIComponent(req.params.anneeScolaire);
+    
+    console.log(`Calcul des prévisions pour l'année: "${anneeScolaire}"`);
+    
+    if (!anneeScolaire || anneeScolaire === 'undefined') {
+      return res.status(400).json({
+        success: false,
+        message: 'Année scolaire non fournie ou invalide'
+      });
+    }
+    
+    // Récupérer les étudiants pour l'année scolaire
+    const query = anneeScolaire === 'toutes' ? { actif: true } : { anneeScolaire, actif: true };
+    const etudiants = await Etudiant.find(query);
+    
+    console.log(`Nombre d'étudiants trouvés: ${etudiants.length} pour l'année: "${anneeScolaire}"`);
+    
+    // Récupérer TOUS les paiements pour ces étudiants
+    const etudiantIds = etudiants.map(e => e._id);
+    const paiements = await Paiement.find({ 
+      etudiant: { $in: etudiantIds } 
+    }).populate('etudiant', 'modePaiement prixTotal anneeScolaire nomComplet');
+    
+    console.log(`Nombre de paiements trouvés: ${paiements.length}`);
+    
+    // Séparer les paiements inscription vs formation
+    const paiementsInscription = paiements.filter(p => 
+      p.typePaiement === 'inscription' || p.estInscription === true
+    );
+    const paiementsFormation = paiements.filter(p => 
+      p.typePaiement === 'formation' || p.estInscription === false
+    );
+    
+    console.log(`Paiements inscription: ${paiementsInscription.length}, Formation: ${paiementsFormation.length}`);
+    
+    // ANALYSE DES PAIEMENTS D'INSCRIPTION PAR ÉTUDIANT
+    console.log('=== ANALYSE DES PAIEMENTS D\'INSCRIPTION ===');
+    const analysePaiementsInscription = {};
+    paiementsInscription.forEach(paiement => {
+      const etudiantId = paiement.etudiant._id.toString();
+      if (!analysePaiementsInscription[etudiantId]) {
+        analysePaiementsInscription[etudiantId] = {
+          nomEtudiant: paiement.etudiant.nomComplet || 'Nom non disponible',
+          paiements: [],
+          total: 0
+        };
+      }
+      analysePaiementsInscription[etudiantId].paiements.push({
+        montant: paiement.montant,
+        date: paiement.dateCreation || paiement.createdAt
+      });
+      analysePaiementsInscription[etudiantId].total += paiement.montant;
+    });
+
+    // Afficher l'analyse
+    Object.entries(analysePaiementsInscription).forEach(([etudiantId, data]) => {
+      console.log(`Étudiant: ${data.nomEtudiant}`);
+      console.log(`  - Nombre de paiements d'inscription: ${data.paiements.length}`);
+      console.log(`  - Total inscription payé: ${data.total} MAD`);
+    });
+    console.log('=== FIN ANALYSE INSCRIPTIONS ===');
+    
+    // Calculer les montants réels
+    const totalInscriptionReel = paiementsInscription.reduce((sum, p) => sum + p.montant, 0);
+    const totalFormationReel = paiementsFormation.reduce((sum, p) => sum + p.montant, 0);
+    
+    // Générer les prévisions par mois
+    const mois = [
+      'Septembre', 'Octobre', 'Novembre', 'Décembre',
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août'
+    ];
+
+    const previsions = mois.map((nomMois, indexMois) => {
+      const revenus = {
+        mois: nomMois,
+        inscription: 0,
+        annuel: 0,
+        semestriel: 0,
+        trimestriel: 0,
+        mensuel: 0,
+        total: 0,
+        details: {
+          inscription: { etudiants: 0 },
+          annuel: { etudiants: 0 },
+          semestriel: { etudiants: 0 },
+          trimestriel: { etudiants: 0 },
+          mensuel: { etudiants: 0 }
+        }
+      };
+
+      etudiants.forEach(etudiant => {
+        const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+        const mode = etudiant.modePaiement || 'semestriel';
+
+        // Récupérer les paiements d'inscription réels pour cet étudiant
+        const paiementsInscriptionEtudiant = paiementsInscription.filter(p => 
+          p.etudiant && p.etudiant._id && p.etudiant._id.toString() === etudiant._id.toString()
+        );
+        
+        // Calculer le total d'inscription réellement payé
+        const totalInscriptionPaye = paiementsInscriptionEtudiant.reduce((sum, p) => sum + p.montant, 0);
+        
+        // CORRECTION PRINCIPALE : Calculer le prix formation individuel
+        // Si l'étudiant a payé une inscription, on la déduit du prix total
+        // Sinon, on utilise tout le prix total comme formation
+        const prixFormation = totalInscriptionPaye > 0 ? 
+          Math.max(0, prixTotal - totalInscriptionPaye) : 
+          prixTotal;
+
+        console.log(`Étudiant ${etudiant.nomComplet}: Prix total ${prixTotal}, Inscription payée ${totalInscriptionPaye}, Formation ${prixFormation}, Mode: ${mode}`);
+
+        // CORRECTION INSCRIPTION : SEULEMENT en septembre ET SEULEMENT pour les étudiants qui ont payé
+        if (indexMois === 0 && totalInscriptionPaye > 0) {
+          revenus.inscription += totalInscriptionPaye;
+          revenus.details.inscription.etudiants += 1;
+          console.log(`  → Inscription comptée: ${totalInscriptionPaye} MAD`);
+        }
+
+        // FORMATION selon le mode de paiement - UTILISEZ prixFormation calculé individuellement
+        switch (mode) {
+          case 'annuel':
+            if (indexMois === 0) {
+              revenus.annuel += prixFormation;
+              revenus.details.annuel.etudiants += 1;
+              console.log(`  → Annuel: ${prixFormation} MAD (était ${prixTotal}, inscription déduite: ${totalInscriptionPaye})`);
+            }
+            break;
+
+          case 'semestriel':
+            if (indexMois === 0 || indexMois === 5) {
+              const montantSemestriel = Math.round(prixFormation / 2);
+              revenus.semestriel += montantSemestriel;
+              revenus.details.semestriel.etudiants += 1;
+              console.log(`  → Semestriel mois ${nomMois}: ${montantSemestriel} MAD (${prixFormation}/2, inscription déduite: ${totalInscriptionPaye})`);
+            }
+            break;
+
+          case 'trimestriel':
+            if (indexMois === 0 || indexMois === 4 || indexMois === 8) {
+              const montantTrimestriel = Math.round(prixFormation / 3);
+              revenus.trimestriel += montantTrimestriel;
+              revenus.details.trimestriel.etudiants += 1;
+              console.log(`  → Trimestriel mois ${nomMois}: ${montantTrimestriel} MAD (${prixFormation}/3, inscription déduite: ${totalInscriptionPaye})`);
+            }
+            break;
+
+          case 'mensuel':
+            if (indexMois >= 0 && indexMois <= 9) {
+              const montantMensuel = Math.round(prixFormation / 10);
+              revenus.mensuel += montantMensuel;
+              revenus.details.mensuel.etudiants += 1;
+              console.log(`  → Mensuel mois ${nomMois}: ${montantMensuel} MAD (${prixFormation}/10, inscription déduite: ${totalInscriptionPaye})`);
+            }
+            break;
+        }
+      });
+
+      revenus.total = revenus.inscription + revenus.annuel + revenus.semestriel + revenus.trimestriel + revenus.mensuel;
+      
+      if (revenus.total > 0) {
+        console.log(`Mois ${nomMois}: Inscription=${revenus.inscription}, Annuel=${revenus.annuel}, Semestriel=${revenus.semestriel}, Trimestriel=${revenus.trimestriel}, Mensuel=${revenus.mensuel}, Total=${revenus.total}`);
+      }
+      
+      return revenus;
+    });
+
+    // Statistiques globales
+    const stats = {
+      totalEtudiants: etudiants.length,
+      totalInscriptionReel: totalInscriptionReel,
+      totalFormationReel: totalFormationReel,
+      totalCAPrevisionnel: previsions.reduce((sum, m) => sum + m.total, 0),
+      repartitionModes: {
+        annuel: { count: 0, ca: 0 },
+        semestriel: { count: 0, ca: 0 },
+        trimestriel: { count: 0, ca: 0 },
+        mensuel: { count: 0, ca: 0 }
+      }
+    };
+
+    // Calculer la répartition par mode
+    etudiants.forEach(etudiant => {
+      const mode = etudiant.modePaiement || 'semestriel';
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      
+      if (stats.repartitionModes[mode]) {
+        stats.repartitionModes[mode].count += 1;
+        stats.repartitionModes[mode].ca += prixTotal;
+      }
+    });
+
+    console.log('=== RÉSUMÉ FINAL ===');
+    console.log('Statistiques calculées:', stats);
+    console.log('Total CA prévisionnel:', stats.totalCAPrevisionnel);
+    console.log('Étudiants avec inscription payée:', Object.keys(analysePaiementsInscription).length);
+    console.log('===================');
+
+    res.json({
+      success: true,
+      anneeScolaire: anneeScolaire,
+      statistiques: stats,
+      previsionsMensuelles: previsions,
+      debug: {
+        anneeScolaireRecue: req.params.anneeScolaire,
+        anneeScolaireDecode: anneeScolaire,
+        totalEtudiants: etudiants.length,
+        totalPaiements: paiements.length,
+        paiementsInscription: paiementsInscription.length,
+        paiementsFormation: paiementsFormation.length,
+        totalInscriptionReel: totalInscriptionReel,
+        totalFormationReel: totalFormationReel,
+        etudiantsAvecInscription: Object.keys(analysePaiementsInscription).length,
+        analysePaiementsInscription: analysePaiementsInscription,
+        exempleCalcul: etudiants.length > 0 ? {
+          etudiant: etudiants[0].nomComplet,
+          prixTotal: etudiants[0].prixTotal,
+          inscriptionPayee: analysePaiementsInscription[etudiants[0]._id.toString()]?.total || 0,
+          prixFormation: analysePaiementsInscription[etudiants[0]._id.toString()] ? 
+            (parseFloat(etudiants[0].prixTotal) || 0) - analysePaiementsInscription[etudiants[0]._id.toString()].total :
+            (parseFloat(etudiants[0].prixTotal) || 0),
+          mode: etudiants[0].modePaiement
+        } : null
+      }
+    });
+
+  } catch (err) {
+    console.error('Erreur API revenus:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors du calcul des revenus', 
+      error: err.message 
+    });
+  }
+});
 app.post('/api/messages/upload', authEtudiant, uploadMessageFile.single('fichier'), async (req, res) => {
   try {
     const { contenu, destinataireId, roleDestinataire } = req.body;
@@ -6509,17 +7180,7 @@ app.get('/api/bulletins',authAdminOrPaiementManager , async (req, res) => {
 
 // ✅ Lister les paiements
 
-app.get('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
-  try {
-    const paiements = await Paiement.find()
-      .populate('etudiant', 'prenom nomDeFamille nomComplet telephone') // afficher nomComplet et téléphone
-      .populate('creePar', 'nom'); // afficher اسم المدير
 
-    res.json(paiements);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 app.get('/api/paiements/exp', authAdminOrPaiementManager, async (req, res) => {
   try {
@@ -10776,7 +11437,28 @@ app.patch('/api/admin/paiement-managers/:id/toggle-active', authAdmin, async (re
   }
 });
 
+app.get('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const paiements = await Paiement.find()
+      .populate('etudiant', 'prenom nomDeFamille nomComplet telephone modePaiement') // AJOUTER modePaiement
+      .populate('creePar', 'nom');
 
+    res.json(paiements);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const paiements = await Paiement.find({ etudiant: req.params.etudiantId })
+      .populate('etudiant', 'modePaiement prixTotal paye'); // AJOUTER les infos nécessaires
+    
+    res.json(paiements);
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de la récupération des paiements", error: err.message });
+  }
+});
 app.get('/api/paiement-manager/etudiants', authPaiementManager, async (req, res) => {
   try {
     const { actif, paye } = req.query;
@@ -13065,7 +13747,275 @@ app.get('/api/professeurs/:id', authAdminOrPaiementManager, async (req, res) => 
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
+// GET - Récupérer tous les étudiants avec filtrage
+app.get('/api/etudiants-evaluation', authAdmin, async (req, res) => {
+  try {
+    const { commercialId } = req.query;
+    
+    let filter = {};
+    if (commercialId) {
+      filter.commercial = commercialId;
+    }
+    
+    const etudiants = await Etudiant.find(filter)
+      .select('-motDePasse')
+      .populate('commercial', 'nom prenom email')
+      .populate('creeParAdmin', 'nom email')
+      .sort({ createdAt: -1 });
+    
+    // Pour chaque étudiant, vérifier s'il a déjà une évaluation
+    const etudiantsAvecEvaluation = await Promise.all(
+      etudiants.map(async (etudiant) => {
+        const evaluation = await FormulaireEvaluation.findOne({ 
+          etudiant: etudiant._id 
+        }).sort({ createdAt: -1 });
+        
+        return {
+          ...etudiant.toObject(),
+          evaluationExistante: evaluation ? {
+            _id: evaluation._id,
+            statutEvaluation: evaluation.statutEvaluation,
+            scoreDocuments: evaluation.scoreDocuments,
+            pourcentageValidite: evaluation.pourcentageValidite,
+            expire: evaluation.expire,
+            dateExpiration: evaluation.dateExpiration,
+            peutEtreModifiee: evaluation.peutEtreModifiee
+          } : null
+        };
+      })
+    );
+    
+    res.json(etudiantsAvecEvaluation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+// POST - Créer une nouvelle évaluation pour un étudiant
+app.post('/api/evaluations/:etudiantId', authAdmin, async (req, res) => {
+  try {
+    const { etudiantId } = req.params;
+    const { documents, commentaireGeneral } = req.body;
+    
+    // Vérifier si l'étudiant existe
+    const etudiant = await Etudiant.findById(etudiantId).populate('commercial');
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+    
+    // Vérifier s'il existe déjà une évaluation en cours
+    let evaluation = await FormulaireEvaluation.findOne({
+      etudiant: etudiantId,
+      statutEvaluation: 'en_cours'
+    });
+    
+    if (evaluation) {
+      // Mettre à jour l'évaluation existante
+      if (documents) {
+        evaluation.documents = { ...evaluation.documents, ...documents };
+      }
+      if (commentaireGeneral !== undefined) {
+        evaluation.commentaireGeneral = commentaireGeneral;
+      }
+      await evaluation.save();
+    } else {
+      // Créer nouvelle évaluation
+      evaluation = new FormulaireEvaluation({
+        etudiant: etudiantId,
+        commercial: etudiant.commercial._id,
+        evaluateur: req.adminId,
+        documents: documents || {},
+        commentaireGeneral: commentaireGeneral || ''
+      });
+      await evaluation.save();
+    }
+    
+    // Peupler les références pour la réponse
+    await evaluation.populate([
+      { path: 'etudiant', select: 'prenom nomDeFamille email typeFormation' },
+      { path: 'commercial', select: 'nom prenom email' },
+      { path: 'evaluateur', select: 'nom email' }
+    ]);
+    
+    res.json(evaluation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Récupérer une évaluation spécifique
+app.get('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
+  try {
+    const evaluation = await FormulaireEvaluation.findById(req.params.evaluationId)
+      .populate('etudiant', 'prenom nomDeFamille email typeFormation niveau specialite')
+      .populate('commercial', 'nom prenom email')
+      .populate('evaluateur', 'nom email');
+    
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Évaluation non trouvée' });
+    }
+    
+    res.json(evaluation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - Mettre à jour une évaluation
+app.put('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
+  try {
+    const { evaluationId } = req.params;
+    const { documents, commentaireGeneral } = req.body;
+    
+    const evaluation = await FormulaireEvaluation.findById(evaluationId);
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Évaluation non trouvée' });
+    }
+    
+    // Vérifier si l'évaluation peut être modifiée
+    if (!evaluation.peutEtreModifiee) {
+      return res.status(400).json({ 
+        message: 'Cette évaluation ne peut plus être modifiée (expirée ou finalisée)' 
+      });
+    }
+    
+    // Mettre à jour les documents
+    if (documents) {
+      evaluation.documents = { ...evaluation.documents, ...documents };
+    }
+    
+    // Mettre à jour le commentaire général
+    if (commentaireGeneral !== undefined) {
+      evaluation.commentaireGeneral = commentaireGeneral;
+    }
+    
+    await evaluation.save();
+    
+    await evaluation.populate([
+      { path: 'etudiant', select: 'prenom nomDeFamille email typeFormation' },
+      { path: 'commercial', select: 'nom prenom email' },
+      { path: 'evaluateur', select: 'nom email' }
+    ]);
+    
+    res.json(evaluation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - Finaliser une évaluation (Complet/Incomplet)
+app.put('/api/evaluation/:evaluationId/finaliser', authAdmin, async (req, res) => {
+  try {
+    const { evaluationId } = req.params;
+    const { statut, commentaireGeneral } = req.body;
+    
+    if (!['complet', 'incomplet'].includes(statut)) {
+      return res.status(400).json({ 
+        message: 'Statut invalide. Doit être "complet" ou "incomplet"' 
+      });
+    }
+    
+    const evaluation = await FormulaireEvaluation.findById(evaluationId);
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Évaluation non trouvée' });
+    }
+    
+    // Vérifier si l'évaluation peut être modifiée
+    if (!evaluation.peutEtreModifiee) {
+      return res.status(400).json({ 
+        message: 'Cette évaluation ne peut plus être modifiée (expirée ou finalisée)' 
+      });
+    }
+    
+    // Finaliser l'évaluation
+    evaluation.finaliser(statut);
+    if (commentaireGeneral) {
+      evaluation.commentaireGeneral = commentaireGeneral;
+    }
+    
+    await evaluation.save();
+    
+    await evaluation.populate([
+      { path: 'etudiant', select: 'prenom nomDeFamille email typeFormation' },
+      { path: 'commercial', select: 'nom prenom email' },
+      { path: 'evaluateur', select: 'nom email' }
+    ]);
+    
+    res.json({
+      message: `Évaluation marquée comme ${statut}`,
+      evaluation
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Récupérer toutes les évaluations avec filtres
+app.get('/api/evaluations', authAdmin, async (req, res) => {
+  try {
+    const { 
+      commercialId, 
+      statut, 
+      expire, 
+      page = 1, 
+      limit = 20 
+    } = req.query;
+    
+    let filter = {};
+    
+    if (commercialId) filter.commercial = commercialId;
+    if (statut) filter.statutEvaluation = statut;
+    if (expire !== undefined) filter.expire = expire === 'true';
+    
+    const skip = (page - 1) * limit;
+    
+    const evaluations = await FormulaireEvaluation.find(filter)
+      .populate('etudiant', 'prenom nomDeFamille email typeFormation')
+      .populate('commercial', 'nom prenom email')
+      .populate('evaluateur', 'nom email')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await FormulaireEvaluation.countDocuments(filter);
+    
+    res.json({
+      evaluations,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - Supprimer une évaluation (seulement si en cours)
+app.delete('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
+  try {
+    const evaluation = await FormulaireEvaluation.findById(req.params.evaluationId);
+    
+    if (!evaluation) {
+      return res.status(404).json({ message: 'Évaluation non trouvée' });
+    }
+    
+    // Ne permettre la suppression que si l'évaluation est en cours
+    if (evaluation.statutEvaluation !== 'en_cours') {
+      return res.status(400).json({ 
+        message: 'Impossible de supprimer une évaluation finalisée' 
+      });
+    }
+    
+    await FormulaireEvaluation.findByIdAndDelete(req.params.evaluationId);
+    
+    res.json({ message: 'Évaluation supprimée avec succès' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ===== ROUTE GET - STATISTIQUES PROFESSEURS =====
 app.get('/api/professeurs/stats/dashboard', authAdmin, async (req, res) => {
   try {
@@ -13113,6 +14063,7 @@ app.get('/api/professeurs/stats/dashboard', authAdmin, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
+
 // ===== ROUTE GET - PROFESSEURS POUR PÉDAGOGIQUES =====
 app.get('/api/pedagogique/professeurs', authPedagogique, async (req, res) => {
   try {

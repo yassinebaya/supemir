@@ -35,9 +35,9 @@ const ListeCoursAdmin = () => {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        const resCours = await fetch('http://195.179.229.230:5000ours', config);
-        const resEtudiants = await fetch('http://195.179.229.230:5000tudiants', config);
-        const resProfs = await fetch('http://195.179.229.230:5000rofesseurs', config);
+        const resCours = await fetch('http://195.179.229.230:5000/api/cours', config);
+        const resEtudiants = await fetch('http://195.179.229.230:5000/api/etudiants', config);
+        const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', config);
 
         if (resCours.ok && resEtudiants.ok && resProfs.ok) {
           const coursData = await resCours.json();
@@ -108,7 +108,7 @@ const ListeCoursAdmin = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://195.179.229.230:5000ours', {
+      const response = await fetch('http://195.179.229.230:5000/api/cours', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ const ListeCoursAdmin = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://195.179.229.230:5000ours/${coursASupprimer._id}`, {
+      const response = await fetch(`http://195.179.229.230:5000/api/cours/${coursASupprimer._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -220,7 +220,7 @@ const ListeCoursAdmin = () => {
   };
 
   const etudiantsDansCours = coursActuel
-    ? etudiants.filter(e => e.cours.includes(coursActuel.nom))
+    ? etudiants.filter(e => e.cours && e.cours.includes(coursActuel.nom))
     : [];
 
   const styles = {
@@ -1015,7 +1015,7 @@ const ListeCoursAdmin = () => {
         {/* Grille des cours filtrés */}
         <div style={styles.coursGrid}>
           {coursFiltres.map((c) => {
-            const nombreEtudiants = etudiants.filter(e => e.cours.includes(c.nom)).length;
+            const nombreEtudiants = etudiants.filter(e => e.cours && e.cours.includes(c.nom)).length;
             const isHovered = hoveredCard === c._id;
             
             return (

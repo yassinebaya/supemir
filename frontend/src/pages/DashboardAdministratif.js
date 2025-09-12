@@ -15,6 +15,7 @@ const handleLogout = () => {
   }
   window.location.href = '/';
 };
+
 const AdminDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
     totalEtudiants: 0,
@@ -37,6 +38,9 @@ const AdminDashboard = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Année scolaire ciblée
+  const ANNEE_SCOLAIRE_CIBLE = '2025/2026';
 
   useEffect(() => {
     fetchDashboardData();
@@ -75,51 +79,69 @@ const AdminDashboard = () => {
       if (!professeursRes.ok) throw new Error(`Erreur professeurs: ${professeursRes.status}`);
 
       // Conversion en JSON
-      const etudiants = await etudiantsRes.json();
+      const etudiantsAll = await etudiantsRes.json();
       const cours = await coursRes.json();
-      const paiements = await paiementsRes.json();
+      const paiementsAll = await paiementsRes.json();
       const evenements = await evenementsRes.json();
-      const presences = await presencesRes.json();
+      const presencesAll = await presencesRes.json();
       const professeurs = await professeursRes.json();
 
-      // Validation des données
-      const etudiantsValid = Array.isArray(etudiants) ? etudiants : [];
+      // Validation et filtrage des données pour l'année 2025/2026
+      const etudiantsAllValid = Array.isArray(etudiantsAll) ? etudiantsAll : [];
+      const etudiants = etudiantsAllValid.filter(e => e.anneeScolaire === ANNEE_SCOLAIRE_CIBLE);
+      
       const coursValid = Array.isArray(cours) ? cours : [];
-      const paiementsValid = Array.isArray(paiements) ? paiements : [];
       const evenementsValid = Array.isArray(evenements) ? evenements : [];
-      const presencesValid = Array.isArray(presences) ? presences : [];
       const professeursValid = Array.isArray(professeurs) ? professeurs : [];
 
-      // Calcul des statistiques
-      const etudiantsActifs = etudiantsValid.filter(e => e.actif === true).length;
-      const etudiantsInactifs = etudiantsValid.length - etudiantsActifs;
+      // Filtrer les paiements pour les étudiants de l'année 2025/2026
+      const paiementsAllValid = Array.isArray(paiementsAll) ? paiementsAll : [];
+      const etudiantIds2025 = etudiants.map(e => e._id);
+      const paiements = paiementsAllValid.filter(p => 
+        p.etudiant && etudiantIds2025.includes(p.etudiant._id || p.etudiant)
+      );
 
-      // Paiements expirés
+      // Filtrer les présences pour les étudiants de l'année 2025/2026
+      const presencesAllValid = Array.isArray(presencesAll) ? presencesAll : [];
+      const presences = presencesAllValid.filter(p => 
+        p.etudiant && etudiantIds2025.includes(p.etudiant._id || p.etudiant)
+      );
+
+      // Calcul des statistiques pour l'année 2025/2026
+      const etudiantsActifs = etudiants.filter(e => e.actif === true).length;
+      const etudiantsInactifs = etudiants.length - etudiantsActifs;
+
+      // Paiements expirés pour l'année 2025/2026
       let paiementsExpiresCount = 0;
       try {
         const paiementsExpRes = await fetch('http://195.179.229.230:5000/api/paiements/exp', { headers });
         if (paiementsExpRes.ok) {
-          const paiementsExpires = await paiementsExpRes.json();
-          paiementsExpiresCount = Array.isArray(paiementsExpires) ? paiementsExpires.length : 0;
+          const paiementsExpiresAll = await paiementsExpRes.json();
+          const paiementsExpires = Array.isArray(paiementsExpiresAll) 
+            ? paiementsExpiresAll.filter(p => 
+                p.etudiant && etudiantIds2025.includes(p.etudiant._id || p.etudiant)
+              ) 
+            : [];
+          paiementsExpiresCount = paiementsExpires.length;
         }
       } catch (err) {
         console.warn('Impossible de récupérer les paiements expirés:', err);
       }
 
       const dashboardStats = {
-        totalEtudiants: etudiantsValid.length,
+        totalEtudiants: etudiants.length,
         etudiantsActifs,
         etudiantsInactifs,
         totalCours: coursValid.length,
-        totalPaiements: paiementsValid.length,
+        totalPaiements: paiements.length,
         paiementsExpires: paiementsExpiresCount,
         totalEvenements: evenementsValid.length,
-        presencesRecentes: presencesValid.length,
+        presencesRecentes: presences.length,
         totalProfesseurs: professeursValid.length
       };
 
       setDashboardData(dashboardStats);
-      prepareChartData(etudiantsValid, coursValid, paiementsValid, presencesValid);
+      prepareChartData(etudiants, coursValid, paiements, presences);
       
     } catch (error) {
       console.error('Erreur lors de la récupération des données:', error);
@@ -130,7 +152,7 @@ const AdminDashboard = () => {
   };
 
   const prepareChartData = (etudiants, cours, paiements, presences) => {
-    // Statistiques par cours
+    // Statistiques par cours pour les étudiants 2025/2026
     const coursStats = cours.map(c => {
       const etudiantsInscrit = etudiants.filter(e => 
         Array.isArray(e.cours) && e.cours.includes(c.nom)
@@ -143,7 +165,7 @@ const AdminDashboard = () => {
       };
     }).filter(c => c.etudiants > 0);
 
-    // Statistiques par genre
+    // Statistiques par genre pour les étudiants 2025/2026
     const hommes = etudiants.filter(e => e.genre === 'Homme').length;
     const femmes = etudiants.filter(e => e.genre === 'Femme').length;
     const genreStats = [
@@ -151,7 +173,7 @@ const AdminDashboard = () => {
       { name: 'Femmes', value: femmes }
     ].filter(g => g.value > 0);
 
-    // Paiements par mois
+    // Paiements par mois pour les étudiants 2025/2026
     const paiementsParMois = [];
     const today = new Date();
     
@@ -169,7 +191,7 @@ const AdminDashboard = () => {
       paiementsParMois.push({ mois: moisNom, paiements: count });
     }
 
-    // Statistiques de présence
+    // Statistiques de présence pour les étudiants 2025/2026
     const presents = presences.filter(p => p.present === true).length;
     const absents = presences.filter(p => p.present === false).length;
     
@@ -364,17 +386,17 @@ const AdminDashboard = () => {
         padding: '24px'
       }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-          {/* En-tête */}      <Sidebar onLogout={handleLogout} />
+          <Sidebar onLogout={handleLogout} />
 
-        
+     
           {/* Cartes de statistiques principales */}
           <div className="stats-grid">
             <StatCard
-              title="Total Étudiants"
+              title={`Total Étudiants ${ANNEE_SCOLAIRE_CIBLE}`}
               value={dashboardData.totalEtudiants}
               icon={Users}
               textColor="#2563eb"
-              subtitle="Inscrits dans la base"
+              subtitle="Inscrits cette année"
             />
             <StatCard
               title="Étudiants Actifs"
@@ -395,7 +417,7 @@ const AdminDashboard = () => {
               value={dashboardData.paiementsExpires}
               icon={AlertTriangle}
               textColor="#dc2626"
-              subtitle="Nécessitent suivi"
+              subtitle="Année 2025/2026"
             />
           </div>
 
@@ -406,7 +428,7 @@ const AdminDashboard = () => {
               value={dashboardData.totalPaiements}
               icon={CreditCard}
               textColor="#d97706"
-              subtitle="Enregistrés"
+              subtitle="Année 2025/2026"
             />
             <StatCard
               title="Événements"
@@ -420,7 +442,7 @@ const AdminDashboard = () => {
               value={dashboardData.etudiantsInactifs}
               icon={UserX}
               textColor="#6b7280"
-              subtitle="Suspendus"
+              subtitle="Année 2025/2026"
             />
             <StatCard
               title="Total Professeurs"
@@ -434,12 +456,12 @@ const AdminDashboard = () => {
           {/* Graphiques principaux */}
           <div className="charts-grid">
             <ChartCard
-              title="Étudiants par Classe"
+              title={`Étudiants par Classe (${ANNEE_SCOLAIRE_CIBLE})`}
               icon={GraduationCap}
               iconColor="#2563eb"
               isEmpty={!chartData.coursStats || chartData.coursStats.length === 0}
               emptyIcon={GraduationCap}
-              emptyText="Aucune classe avec étudiants"
+              emptyText="Aucune classe avec étudiants 2025/2026"
             >
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData.coursStats}>
@@ -453,7 +475,7 @@ const AdminDashboard = () => {
                   />
                   <YAxis fontSize={12} />
                   <Tooltip 
-                    formatter={(value, name) => [value, 'Étudiants inscrits']}
+                    formatter={(value, name) => [value, 'Étudiants 2025/2026']}
                     labelFormatter={(label) => {
                       const cours = chartData.coursStats.find(c => c.nom === label);
                       return cours ? cours.nomComplet : label;
@@ -465,7 +487,7 @@ const AdminDashboard = () => {
             </ChartCard>
 
             <ChartCard
-              title="Évolution Paiements"
+              title={`Évolution Paiements (${ANNEE_SCOLAIRE_CIBLE})`}
               icon={TrendingUp}
               iconColor="#059669"
             >
@@ -474,7 +496,7 @@ const AdminDashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="mois" fontSize={12} />
                   <YAxis fontSize={12} />
-                  <Tooltip formatter={(value) => [value, 'Paiements']} />
+                  <Tooltip formatter={(value) => [value, 'Paiements 2025/2026']} />
                   <Line 
                     type="monotone" 
                     dataKey="paiements" 
@@ -490,12 +512,12 @@ const AdminDashboard = () => {
           {/* Graphiques circulaires */}
           <div className="charts-grid">
             <ChartCard
-              title="Répartition par Genre"
+              title={`Répartition par Genre (${ANNEE_SCOLAIRE_CIBLE})`}
               icon={Users}
               iconColor="#7c3aed"
               isEmpty={!chartData.genreStats || chartData.genreStats.length === 0 || !chartData.genreStats.some(stat => stat.value > 0)}
               emptyIcon={Users}
-              emptyText="Aucun étudiant enregistré"
+              emptyText="Aucun étudiant 2025/2026"
             >
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -519,12 +541,12 @@ const AdminDashboard = () => {
             </ChartCard>
 
             <ChartCard
-              title="Statistiques de Présence"
+              title={`Statistiques de Présence (${ANNEE_SCOLAIRE_CIBLE})`}
               icon={UserCheck}
               iconColor="#059669"
               isEmpty={!chartData.presenceStats || chartData.presenceStats.length === 0 || !chartData.presenceStats.some(stat => stat.value > 0)}
               emptyIcon={UserCheck}
-              emptyText="Aucun enregistrement de présence"
+              emptyText="Aucune présence enregistrée 2025/2026"
             >
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -562,10 +584,10 @@ const AdminDashboard = () => {
                 <AlertTriangle style={{ height: '24px', width: '24px', color: '#dc2626', marginRight: '12px' }} />
                 <div>
                   <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#991b1b', margin: '0 0 4px 0' }}>
-                    ⚠️ Paiements Expirés Détectés
+                    Paiements Expirés Détectés - Année {ANNEE_SCOLAIRE_CIBLE}
                   </h3>
                   <p style={{ color: '#b91c1c', margin: '0' }}>
-                    <strong>{dashboardData.paiementsExpires}</strong> étudiant(s) ont des paiements expirés.
+                    <strong>{dashboardData.paiementsExpires}</strong> étudiant(s) de l'année {ANNEE_SCOLAIRE_CIBLE} ont des paiements expirés.
                   </p>
                 </div>
               </div>
@@ -580,7 +602,7 @@ const AdminDashboard = () => {
             padding: '24px'
           }}>
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '24px' }}>
-              📊 Résumé Statistiques
+              Résumé Statistiques - Année {ANNEE_SCOLAIRE_CIBLE}
             </h3>
             <div className="summary-grid">
               <div style={{

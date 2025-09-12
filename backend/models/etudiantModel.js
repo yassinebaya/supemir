@@ -1,5 +1,4 @@
-﻿
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const etudiantSchema = new mongoose.Schema({
   prenom: {
@@ -174,6 +173,14 @@ const etudiantSchema = new mongoose.Schema({
   typePaiement: String,
   prixTotal: Number,
   pourcentageBourse: Number,
+  
+  // NOUVEAU: Mode de paiement
+  modePaiement: {
+    type: String,
+    enum: ['annuel', 'semestriel', 'trimestriel', 'mensuel'],
+    default: 'mensuel'
+  },
+  
   situation: String,
   nouvelleInscription: {
     type: Boolean,
@@ -507,6 +514,11 @@ etudiantSchema.pre('save', function(next) {
     this.anneeScolaire = this.constructor.getAnneeScolaireActuelle();
   }
   
+  // Si mode annuel, mettre paye = true automatiquement
+  if (this.modePaiement === 'annuel') {
+    this.paye = true;
+  }
+  
   // ===== AUTO-ASSIGNATION DU NIVEAU SELON LE TYPE DE FORMATION =====
   if (this.typeFormation) {
     this.niveau = this.constructor.determinerNiveauAutomatique(this.typeFormation, this.niveau);
@@ -527,6 +539,49 @@ etudiantSchema.pre('save', function(next) {
 });
 
 // Méthodes statiques existantes...
+// Méthode pour obtenir les informations de paiement selon le mode
+etudiantSchema.statics.getInfosPaiement = function(modePaiement, prixTotal) {
+  const modes = {
+    annuel: {
+      nombreTranches: 1,
+      montantParTranche: prixTotal,
+      moisParTranche: 12,
+      description: "Paiement annuel complet"
+    },
+    semestriel: {
+      nombreTranches: 2,
+      montantParTranche: Math.round(prixTotal / 2),
+      moisParTranche: 5,
+      description: "2 tranches semestrielles"
+    },
+    trimestriel: {
+      nombreTranches: 3,
+      montantParTranche: Math.round(prixTotal / 3),
+      moisParTranche: 3,
+      description: "3 tranches trimestrielles"
+    },
+    mensuel: {
+      nombreTranches: 10,
+      montantParTranche: Math.round(prixTotal / 10),
+      moisParTranche: 1,
+      description: "10 tranches mensuelles"
+    }
+  };
+
+  return modes[modePaiement] || modes.annuel;
+};
+
+// Méthode pour vérifier si l'étudiant a terminé ses paiements
+etudiantSchema.methods.verifierPaiementComplet = function(totalPaye) {
+  if (this.modePaiement === 'annuel') {
+    // Pour annuel, utiliser le champ paye existant
+    return this.paye;
+  } else {
+    // Pour les autres modes, vérifier si le total payé >= prix total
+    return totalPaye >= this.prixTotal;
+  }
+};
+
 etudiantSchema.statics.getOptionsParSpecialiteIngenieur = function(specialite) {
   const optionsParSpecialite = {
     'Génie Informatique': [

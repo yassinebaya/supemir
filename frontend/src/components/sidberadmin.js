@@ -81,6 +81,11 @@ const AdministratifSidebar = ({ onLogout }) => {
       path: '/administratif/bulletins',
       label: 'Bulletins',
       icon: FileText
+    },
+    {
+      path: '/administratif/evaluation-etudiants',
+      label: 'Évaluation des Étudiants',
+      icon: ClipboardList
     }
   ];
 
