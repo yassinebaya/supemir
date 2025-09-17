@@ -21,7 +21,8 @@ import {
   Percent,
   Building2,
   UserCheck,
-  Settings
+  Settings,
+  AlertCircle // 🆕 AJOUT
 } from 'lucide-react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
@@ -82,20 +83,22 @@ const ProfilEtudiant = () => {
   // Fonction pour calculer les statistiques de présence
   const getPresenceStats = () => {
     const total = presences.length;
-    const present = presences.filter(p => p.present).length;
-    const absent = total - present;
-    const tauxPresence = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
-    
-    return { total, present, absent, tauxPresence };
+    const present = presences.filter(p => p.present && !p.retard).length;
+    const retard = presences.filter(p => p.retard).length;
+    const absent = presences.filter(p => p.absent).length;
+    const tauxPresence = total > 0 ? (((present + retard) / total) * 100).toFixed(1) : 0;
+    return { total, present, retard, absent, tauxPresence };
   };
 
   // Fonction pour filtrer les présences
   const getFilteredPresences = () => {
     switch (presenceFilter) {
       case 'present':
-        return presences.filter(p => p.present);
+        return presences.filter(p => p.present && !p.retard);
+      case 'retard':
+        return presences.filter(p => p.retard);
       case 'absent':
-        return presences.filter(p => !p.present);
+        return presences.filter(p => p.absent);
       default:
         return presences;
     }
@@ -647,6 +650,7 @@ const ProfilEtudiant = () => {
                   >
                     <option value="all">Tout afficher ({presences.length})</option>
                     <option value="present">Présent ({stats.present})</option>
+                    <option value="retard">En retard ({stats.retard})</option>
                     <option value="absent">Absent ({stats.absent})</option>
                   </select>
                 </div>
@@ -663,6 +667,16 @@ const ProfilEtudiant = () => {
                   <div style={styles.statContent}>
                     <span style={styles.statLabel}>Présences</span>
                     <span style={styles.statValue}>{stats.present}</span>
+                  </div>
+                </div>
+                
+                <div style={styles.statCard}>
+                  <div style={styles.statIcon}>
+                    <AlertCircle size={20} color="#f59e0b" />
+                  </div>
+                  <div style={styles.statContent}>
+                    <span style={styles.statLabel}>Retards</span>
+                    <span style={styles.statValue}>{stats.retard}</span>
                   </div>
                 </div>
                 
@@ -720,6 +734,8 @@ const ProfilEtudiant = () => {
                       ? 'Aucun enregistrement de présence'
                       : presenceFilter === 'present'
                       ? 'Aucune présence trouvée'
+                      : presenceFilter === 'retard'
+                      ? 'Aucun retard trouvé'
                       : 'Aucune absence trouvée'
                     }
                   </h3>
@@ -767,7 +783,12 @@ const ProfilEtudiant = () => {
                           </td>
                           <td style={styles.td}>
                             <div style={styles.presenceStatus}>
-                              {p.present ? (
+                              {p.retard ? (
+                                <>
+                                  <AlertCircle size={16} color="#f59e0b" />
+                                  <span style={styles.retardText}>En retard ({p.retardMinutes || 0}min)</span>
+                                </>
+                              ) : p.present ? (
                                 <>
                                   <CheckCircle size={16} color="#22c55e" />
                                   <span style={styles.presentText}>Présent</span>
@@ -1383,6 +1404,12 @@ const styles = {
 
   absentText: {
     color: '#dc2626',
+    fontWeight: '500',
+    fontSize: '13px'
+  },
+
+  retardText: {
+    color: '#d97706',
     fontWeight: '500',
     fontSize: '13px'
   }

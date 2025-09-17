@@ -13,9 +13,10 @@ import {
   DollarSign,
   TrendingUp,
   BarChart3,
-  Eye
+  Eye,
+  Settings,
+  RefreshCw
 } from 'lucide-react';
-import SidebarProfesseur from '../components/SidebarProf';
 
 const SeancesProfesseur = () => {
   const [seances, setSeances] = useState([]);
@@ -30,13 +31,11 @@ const SeancesProfesseur = () => {
     annee: new Date().getFullYear()
   });
 
-  const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-  const creneaux = [
-    { debut: '08:00', fin: '10:00', label: '8h - 10h' },
-    { debut: '10:00', fin: '12:00', label: '10h - 12h' },
-    { debut: '14:00', fin: '16:00', label: '14h - 16h' },
-    { debut: '16:00', fin: '18:00', label: '16h - 18h' }
-  ];
+  // États pour la gestion des créneaux dynamiques
+  const [creneauxParCours, setCreneauxParCours] = useState({});
+  const [coursUniques, setCoursUniques] = useState([]);
+
+  const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
   const mois = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -54,6 +53,16 @@ const SeancesProfesseur = () => {
     return (minutesFin - minutesDebut) / 60;
   };
 
+  // Fonction pour générer un label de créneau
+  const genererLabel = (debut, fin) => {
+    if (!debut || !fin) return '';
+    const formatTime = (time) => {
+      const [hour, min] = time.split(':');
+      return `${parseInt(hour)}h${min !== '00' ? min : ''}`;
+    };
+    return `${formatTime(debut)} - ${formatTime(fin)}`;
+  };
+
   // Fonction pour obtenir les dates de la semaine
   const getWeekDates = (date) => {
     const start = new Date(date);
@@ -62,7 +71,7 @@ const SeancesProfesseur = () => {
     start.setDate(diff);
     
     const weekDates = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       const currentDate = new Date(start);
       currentDate.setDate(start.getDate() + i);
       weekDates.push(currentDate);
@@ -78,13 +87,45 @@ const SeancesProfesseur = () => {
   useEffect(() => {
     fetchSeances();
     fetchProfesseurInfo();
-  }, []);
+  }, [currentWeek]);
 
   useEffect(() => {
     if (viewMode === 'statistiques') {
       fetchStatistiques();
     }
   }, [viewMode, selectedPeriod]);
+
+  // Analyser les séances pour extraire les créneaux par cours
+  const analyserCreneaux = (seancesData) => {
+    const creneauxMap = {};
+    const coursSet = new Set();
+
+    seancesData.forEach(seance => {
+      const coursNom = seance.cours || seance.coursId?.nom || 'Cours Inconnu';
+      coursSet.add(coursNom);
+
+      if (!creneauxMap[coursNom]) {
+        creneauxMap[coursNom] = new Set();
+      }
+
+      const creneauKey = `${seance.heureDebut}-${seance.heureFin}`;
+      creneauxMap[coursNom].add(creneauKey);
+    });
+
+    // Convertir les Sets en Arrays et trier
+    const creneauxFinal = {};
+    Object.keys(creneauxMap).forEach(cours => {
+      creneauxFinal[cours] = Array.from(creneauxMap[cours])
+        .map(key => {
+          const [debut, fin] = key.split('-');
+          return { debut, fin, label: genererLabel(debut, fin) };
+        })
+        .sort((a, b) => a.debut.localeCompare(b.debut));
+    });
+
+    setCreneauxParCours(creneauxFinal);
+    setCoursUniques(Array.from(coursSet).sort());
+  };
 
   const fetchSeances = async () => {
     try {
@@ -96,7 +137,14 @@ const SeancesProfesseur = () => {
         return;
       }
 
-      const res = await fetch('http://195.179.229.230:5000/api/seances/professeur', {
+      // Récupérer les séances de la semaine
+      const d = weekDates[0];
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const lundiSemaine = `${y}-${m}-${day}`;
+
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/professeur/semaine/${lundiSemaine}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -105,6 +153,19 @@ const SeancesProfesseur = () => {
       if (res.ok) {
         const data = await res.json();
         setSeances(data);
+        analyserCreneaux(data);
+        
+        if (data.length > 0) {
+          setMessage({ 
+            type: 'success', 
+            text: `${data.length} séances chargées pour la semaine` 
+          });
+        } else {
+          setMessage({ 
+            type: 'info', 
+            text: 'Aucune séance programmée cette semaine' 
+          });
+        }
       } else {
         setMessage({ type: 'error', text: 'Erreur lors du chargement des séances' });
       }
@@ -113,6 +174,7 @@ const SeancesProfesseur = () => {
       setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
     } finally {
       setLoading(false);
+      setTimeout(() => setMessage({ type: '', text: '' }), 4000);
     }
   };
 
@@ -153,13 +215,19 @@ const SeancesProfesseur = () => {
     }
   };
 
-  // Organiser les séances par jour et créneau
+  // Organiser les séances par cours, jour et créneau
   const organiserSeances = () => {
     const emploi = {};
     
     seances.forEach(seance => {
+      const coursNom = seance.cours || seance.coursId?.nom || 'Cours Inconnu';
       const key = `${seance.jour}-${seance.heureDebut}-${seance.heureFin}`;
-      emploi[key] = {
+      
+      if (!emploi[coursNom]) {
+        emploi[coursNom] = {};
+      }
+      
+      emploi[coursNom][key] = {
         ...seance,
         dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin),
         montant: professeurInfo && !professeurInfo.estPermanent && professeurInfo.tarifHoraire 
@@ -182,7 +250,7 @@ const SeancesProfesseur = () => {
 
   // Obtenir les statistiques rapides
   const getStatsRapides = () => {
-    const coursUniques = [...new Set(seances.map(s => s.cours).filter(Boolean))];
+    const coursUniques = [...new Set(seances.map(s => s.cours || s.coursId?.nom).filter(Boolean))];
     const matieresUniques = [...new Set(seances.map(s => s.matiere).filter(Boolean))];
     const sallesUniques = [...new Set(seances.map(s => s.salle).filter(Boolean))];
     
@@ -218,7 +286,8 @@ const SeancesProfesseur = () => {
       'mercredi': 'Mercredi',
       'jeudi': 'Jeudi',
       'vendredi': 'Vendredi',
-      'samedi': 'Samedi'
+      'samedi': 'Samedi',
+      'dimanche': 'Dimanche'
     };
     
     const jourActuel = jourMapping[currentDay.toLowerCase()];
@@ -231,7 +300,7 @@ const SeancesProfesseur = () => {
       return seancesAujourdhui[0];
     }
     
-    const ordreDays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const ordreDays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
     const indexActuel = ordreDays.indexOf(jourActuel);
     
     for (let i = indexActuel + 1; i < ordreDays.length; i++) {
@@ -251,7 +320,7 @@ const SeancesProfesseur = () => {
   const downloadSchedule = () => {
     let csvContent = '';
     csvContent += `Emploi du Temps Professeur - ${professeurInfo?.nom || 'Professeur'}\n`;
-    csvContent += `Semaine du ${formatDate(weekDates[0])} au ${formatDate(weekDates[5])}\n\n`;
+    csvContent += `Semaine du ${formatDate(weekDates[0])} au ${formatDate(weekDates[6])}\n\n`;
     
     // Informations du professeur
     if (professeurInfo) {
@@ -273,32 +342,14 @@ const SeancesProfesseur = () => {
     }
     csvContent += `\n`;
     
-    // En-tête du tableau
-    csvContent += `EMPLOI DU TEMPS\n`;
-    csvContent += 'Horaires;';
-    jours.forEach((jour, index) => {
-      csvContent += `${jour} (${formatDate(weekDates[index])});`;
-    });
-    csvContent += '\n';
-
-    // Données du tableau
-    creneaux.forEach(creneau => {
-      csvContent += `${creneau.label};`;
+    // Données par cours
+    Object.keys(emploiOrganise).forEach(coursNom => {
+      csvContent += `COURS: ${coursNom}\n`;
+      csvContent += 'Jour;Horaire;Matière;Salle;Durée;Montant\n';
       
-      jours.forEach(jour => {
-        const key = `${jour}-${creneau.debut}-${creneau.fin}`;
-        const seance = emploiOrganise[key];
-        
-        if (seance) {
-          const coursInfo = seance.cours || 'Cours';
-          const matiereInfo = seance.matiere ? ` (${seance.matiere})` : '';
-          const salleInfo = seance.salle ? ` - Salle: ${seance.salle}` : '';
-          const dureeInfo = ` - ${seance.dureeHeures}h`;
-          const montantInfo = seance.montant > 0 ? ` - ${seance.montant.toFixed(2)} DH` : '';
-          csvContent += `"${coursInfo}${matiereInfo}${salleInfo}${dureeInfo}${montantInfo}";`;
-        } else {
-          csvContent += '";';
-        }
+      Object.entries(emploiOrganise[coursNom]).forEach(([key, seance]) => {
+        const [jour, debut, fin] = key.split('-');
+        csvContent += `${jour};${debut}-${fin};${seance.matiere || ''};${seance.salle || ''};${seance.dureeHeures}h;${seance.montant.toFixed(2)} DH\n`;
       });
       csvContent += '\n';
     });
@@ -471,19 +522,35 @@ const SeancesProfesseur = () => {
       fontWeight: '500',
       transition: 'all 0.2s'
     },
-    tableContainer: {
+    refreshButton: {
+      padding: '8px 16px',
+      backgroundColor: '#6b7280',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      fontSize: '12px'
+    },
+    courseContainer: {
       backgroundColor: '#fff',
       borderRadius: '8px',
       boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      marginBottom: '20px'
     },
-    tableTitle: {
+    courseTitle: {
       backgroundColor: '#f8fafc',
       padding: '15px',
       fontSize: '18px',
       fontWeight: '600',
       color: '#374151',
-      borderBottom: '2px solid #e5e7eb'
+      borderBottom: '2px solid #e5e7eb',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
     },
     table: {
       width: '100%',
@@ -577,6 +644,11 @@ const SeancesProfesseur = () => {
       color: '#dc2626',
       border: '1px solid #fecaca'
     },
+    infoMessage: {
+      backgroundColor: '#dbeafe',
+      color: '#1e40af',
+      border: '1px solid #93c5fd'
+    },
     loading: {
       textAlign: 'center',
       padding: '50px',
@@ -605,7 +677,6 @@ const SeancesProfesseur = () => {
   if (loading) {
     return (
       <div style={styles.container}>
-        <SidebarProfesseur onLogout={handleLogout} />
         <div style={styles.content}>
           <div style={styles.loading}>
             <div>Chargement de votre emploi du temps...</div>
@@ -620,8 +691,6 @@ const SeancesProfesseur = () => {
 
   return (
     <div style={styles.container}>
-      <SidebarProfesseur onLogout={handleLogout} />
-      
       <div style={styles.content}>
         {/* Header */}
         <div style={styles.header}>
@@ -685,7 +754,9 @@ const SeancesProfesseur = () => {
         {message.text && (
           <div style={{
             ...styles.message,
-            ...(message.type === 'error' ? styles.errorMessage : styles.successMessage)
+            ...(message.type === 'error' ? styles.errorMessage : 
+                message.type === 'info' ? styles.infoMessage : 
+                styles.successMessage)
           }}>
             {message.text}
           </div>
@@ -702,7 +773,7 @@ const SeancesProfesseur = () => {
                   Prochaine séance
                 </div>
                 <div style={styles.nextSeanceInfo}>
-                  <strong>{prochaineSeance.cours}</strong> - {prochaineSeance.jour} à {prochaineSeance.heureDebut}
+                  <strong>{prochaineSeance.cours || prochaineSeance.coursId?.nom}</strong> - {prochaineSeance.jour} à {prochaineSeance.heureDebut}
                   {prochaineSeance.matiere && <span> ({prochaineSeance.matiere})</span>}
                   {prochaineSeance.salle && <span> - Salle: {prochaineSeance.salle}</span>}
                   <div style={{ marginTop: '5px', fontSize: '14px', color: '#6b7280' }}>
@@ -769,7 +840,7 @@ const SeancesProfesseur = () => {
                   Semaine précédente
                 </button>
                 <div style={styles.weekInfo}>
-                  Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[5])}
+                  Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[6])}
                 </div>
                 <button 
                   style={styles.weekButton} 
@@ -779,6 +850,13 @@ const SeancesProfesseur = () => {
                 >
                   Semaine suivante
                   <ChevronRight size={16} />
+                </button>
+                <button 
+                  style={styles.refreshButton}
+                  onClick={fetchSeances}
+                >
+                  <RefreshCw size={14} />
+                  Actualiser
                 </button>
               </div>
 
@@ -799,77 +877,105 @@ const SeancesProfesseur = () => {
               </button>
             </div>
 
-            {/* Tableau de l'emploi du temps */}
+            {/* Tableau de l'emploi du temps par cours */}
             {seances.length > 0 ? (
-              <div style={styles.tableContainer}>
-                <div style={styles.tableTitle}>
-                  Mes Cours - Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[5])}
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={styles.headerCell}>Horaires</th>
-                        {jours.map((jour, index) => (
-                          <th key={jour} style={styles.headerCell}>
-                            {jour}<br />
-                            <small>{formatDate(weekDates[index])}</small>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {creneaux.map(creneau => (
-                        <tr key={`${creneau.debut}-${creneau.fin}`}>
-                          <td style={styles.timeCell}>
-                            {creneau.label}
-                          </td>
-                          {jours.map(jour => {
-                            const key = `${jour}-${creneau.debut}-${creneau.fin}`;
-                            const seance = emploiOrganise[key];
-                            
-                            return (
-                              <td key={jour} style={styles.cell}>
-                                {seance ? (
-                                  <div style={styles.seanceCard}>
-                                    <div>
-                                      <div style={styles.coursName}>
-                                        {seance.cours || 'Cours'}
-                                      </div>
-                                      {seance.matiere && (
-                                        <div style={styles.matiereName}>
-                                          <BookOpen size={10} />
-                                          {seance.matiere}
+              <>
+                {coursUniques.map(coursNom => {
+                  const creneauxCours = creneauxParCours[coursNom] || [];
+                  const seancesCours = emploiOrganise[coursNom] || {};
+                  
+                  return (
+                    <div key={coursNom} style={styles.courseContainer}>
+                      <div style={styles.courseTitle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Book size={18} />
+                          {coursNom}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          {Object.keys(seancesCours).length} séance(s) cette semaine
+                        </div>
+                      </div>
+                      
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={styles.table}>
+                          <thead>
+                            <tr>
+                              <th style={styles.headerCell}>Horaires</th>
+                              {jours.map((jour, index) => (
+                                <th key={jour} style={styles.headerCell}>
+                                  {jour}<br />
+                                  <small>{formatDate(weekDates[index])}</small>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {creneauxCours.map(creneau => (
+                              <tr key={`${creneau.debut}-${creneau.fin}`}>
+                                <td style={styles.timeCell}>
+                                  {creneau.label}
+                                </td>
+                                {jours.map(jour => {
+                                  const key = `${jour}-${creneau.debut}-${creneau.fin}`;
+                                  const seance = seancesCours[key];
+                                  
+                                  return (
+                                    <td key={jour} style={styles.cell}>
+                                      {seance ? (
+                                        <div style={styles.seanceCard}>
+                                          <div>
+                                            <div style={styles.coursName}>
+                                              {seance.cours || seance.coursId?.nom || 'Cours'}
+                                            </div>
+                                            {seance.matiere && (
+                                              <div style={styles.matiereName}>
+                                                <BookOpen size={10} />
+                                                {seance.matiere}
+                                              </div>
+                                            )}
+                                            {seance.salle && (
+                                              <div style={styles.salleName}>
+                                                <MapPin size={10} />
+                                                {seance.salle}
+                                              </div>
+                                            )}
+                                            <div style={styles.dureeInfo}>
+                                              <Clock size={10} />
+                                              {seance.dureeHeures}h
+                                            </div>
+                                            {seance.montant > 0 && (
+                                              <div style={styles.montantInfo}>
+                                                <DollarSign size={10} />
+                                                {seance.montant.toFixed(2)} DH
+                                              </div>
+                                            )}
+                                            {seance.typeSeance === 'rattrapage' && (
+                                              <div style={{
+                                                fontSize: '9px',
+                                                backgroundColor: '#fbbf24',
+                                                color: '#92400e',
+                                                padding: '2px 4px',
+                                                borderRadius: '3px',
+                                                marginTop: '2px'
+                                              }}>
+                                                RATTRAPAGE
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
-                                      )}
-                                      {seance.salle && (
-                                        <div style={styles.salleName}>
-                                          <MapPin size={10} />
-                                          {seance.salle}
-                                        </div>
-                                      )}
-                                      <div style={styles.dureeInfo}>
-                                        <Clock size={10} />
-                                        {seance.dureeHeures}h
-                                      </div>
-                                      {seance.montant > 0 && (
-                                        <div style={styles.montantInfo}>
-                                          <DollarSign size={10} />
-                                          {seance.montant.toFixed(2)} DH
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                                      ) : null}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
             ) : (
               <div style={styles.emptyState}>
                 <div style={{ fontSize: '48px', marginBottom: '10px' }}>👨‍🏫</div>
@@ -1022,6 +1128,7 @@ const SeancesProfesseur = () => {
                       <table style={styles.table}>
                         <thead>
                           <tr>
+                            <th style={styles.headerCell}>Date</th>
                             <th style={styles.headerCell}>Jour</th>
                             <th style={styles.headerCell}>Horaire</th>
                             <th style={styles.headerCell}>Cours</th>
@@ -1036,15 +1143,18 @@ const SeancesProfesseur = () => {
                         <tbody>
                           {statistiques.seances.map((seance, index) => (
                             <tr key={index}>
+                              <td style={styles.timeCell}>
+                                {seance.dateSeance ? new Date(seance.dateSeance).toLocaleDateString('fr-FR') : '-'}
+                              </td>
                               <td style={styles.timeCell}>{seance.jour}</td>
                               <td style={styles.timeCell}>{seance.heureDebut} - {seance.heureFin}</td>
-                              <td style={styles.timeCell}>{seance.cours}</td>
+                              <td style={styles.timeCell}>{seance.cours || seance.coursId?.nom}</td>
                               <td style={styles.timeCell}>{seance.matiere || '-'}</td>
                               <td style={styles.timeCell}>{seance.salle || '-'}</td>
-                              <td style={styles.timeCell}>{seance.dureeHeures}h</td>
+                              <td style={styles.timeCell}>{calculerDureeSeance(seance.heureDebut, seance.heureFin)}h</td>
                               {professeurInfo && !professeurInfo.estPermanent && (
                                 <td style={styles.timeCell}>
-                                  {(seance.dureeHeures * professeurInfo.tarifHoraire).toFixed(2)} DH
+                                  {(calculerDureeSeance(seance.heureDebut, seance.heureFin) * professeurInfo.tarifHoraire).toFixed(2)} DH
                                 </td>
                               )}
                             </tr>
@@ -1066,6 +1176,26 @@ const SeancesProfesseur = () => {
             )}
           </>
         )}
+
+        {/* Instructions en bas de page */}
+        <div style={{
+          backgroundColor: '#f8fafc',
+          padding: '15px',
+          borderRadius: '8px',
+          marginTop: '20px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#374151', fontSize: '14px' }}>
+            📋 Informations sur votre emploi du temps
+          </h4>
+          <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.4' }}>
+            • Vos horaires sont définis dynamiquement selon les cours assignés<br/>
+            • Les créneaux s'adaptent automatiquement à votre planning<br/>
+            • Utilisez les statistiques pour analyser votre charge de travail<br/>
+            • Téléchargez votre emploi du temps pour une consultation hors ligne<br/>
+            • Les montants affichés sont calculés selon votre tarif horaire (entrepreneurs uniquement)
+          </div>
+        </div>
       </div>
     </div>
   );

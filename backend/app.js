@@ -8,9 +8,12 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const Commercial = require('./models/commercialModel');
 const Administratif = require('./models/Administratif');
+const PaiementProfesseur = require('./models/PaiementProfesseur');
+const CyclePaiement = require('./models/CyclePaiement');
+
 const FinanceProf = require('./models/financeProfModel');
 const FormulaireEvaluation = require('./models/FormulaireEvaluation');
-
+const PenaliteProfesseur = require('./models/PenaliteProfesseur');
 const Bulletin = require('./models/Bulletin'); // en haut
 const PaiementManager = require('./models/paiementManagerModel');
 const Pedagogique = require('./models/Pedagogique');
@@ -171,6 +174,7 @@ const authCommercial = async (req, res, next) => {
     res.status(401).json({ message: 'Token invalide ou expiré', error: err.message });
   }
 };
+// Stockage pour les professeurs (gardez l'existant)
 const multerDocuments = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = path.join(__dirname, 'uploads/professeurs/documents');
@@ -186,6 +190,56 @@ const multerDocuments = multer.diskStorage({
   }
 });
 
+// NOUVEAU : Stockage séparé pour les étudiants
+const multerEtudiants = multer.diskStorage({
+  destination: function (req, file, cb) {
+    let dir;
+    if (file.fieldname === 'image') {
+      dir = path.join(__dirname, 'uploads');
+    } else {
+      dir = path.join(__dirname, 'documents'); // Documents étudiants dans /documents
+    }
+    
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const extension = path.extname(file.originalname);
+    const nom = `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1E9)}${extension}`;
+    cb(null, nom);
+  }
+});
+
+// Configuration pour les étudiants (utilise le nouveau stockage)
+const uploadEtudiants = multer({
+  storage: multerEtudiants, // ← Changement ici
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Format de fichier non autorisé'));
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 }
+}).fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'documentCin', maxCount: 1 },
+  { name: 'documentBacCommentaire', maxCount: 1 },
+  { name: 'documentReleveNoteBac', maxCount: 1 },
+  { name: 'documentDiplomeCommentaire', maxCount: 1 },
+  { name: 'documentAttestationReussiteCommentaire', maxCount: 1 },
+  { name: 'documentReleveNotesFormationCommentaire', maxCount: 1 },
+  { name: 'documentPasseport', maxCount: 1 },
+  { name: 'documentBacOuAttestationBacCommentaire', maxCount: 1 },
+  { name: 'documentAuthentificationBac', maxCount: 1 },
+  { name: 'documentAuthenticationDiplome', maxCount: 1 },
+  { name: 'documentEngagementCommentaire', maxCount: 1 }
+]);
+// Configuration pour les professeurs (sans .fields() - pour usage dynamique)
 const uploadDocuments = multer({
   storage: multerDocuments,
   fileFilter: (req, file, cb) => {
@@ -198,7 +252,7 @@ const uploadDocuments = multer({
     }
   },
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB max par fichier
+    fileSize: 5 * 1024 * 1024
   }
 });
 
@@ -454,19 +508,7 @@ app.post('/api/admin/logout', (req, res) => {
 
 
 
-
-const uploadMultiple = upload.fields([
-  { name: 'image', maxCount: 1 },
-  { name: 'fichierInscrit', maxCount: 1 },
-  { name: 'originalBac', maxCount: 1 },
-  { name: 'releveNotes', maxCount: 1 },
-  { name: 'copieCni', maxCount: 1 },
-  { name: 'fichierPassport', maxCount: 1 }, // Renommé pour éviter la confusion
-  { name: 'dtsBac2', maxCount: 1 },
-  { name: 'licence', maxCount: 1 }
-]);
-// Route POST pour créer un étudiant
-app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
+app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -478,7 +520,28 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
       typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
       specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
-      modePaiement
+      modePaiement,
+      
+      // NOUVEAUX CHAMPS
+      telephoneResponsable,
+      codeBaccalaureat,
+      
+      // NOUVEAUX CHAMPS PARTNER
+      isPartner,
+      prixTotalPartner,
+      
+      // COMMENTAIRES POUR LES DOCUMENTS
+      commentaireCin,
+      commentaireBacCommentaire,
+      commentaireReleveNoteBac,
+      commentaireDiplomeCommentaire,
+      commentaireAttestationReussiteCommentaire,
+      commentaireReleveNotesFormationCommentaire,
+      commentairePasseport,
+      commentaireBacOuAttestationBacCommentaire,
+      commentaireAuthentificationBac,
+      commentaireAuthenticationDiplome,
+      commentaireEngagementCommentaire
     } = req.body;
 
     // Validation des champs obligatoires
@@ -499,11 +562,21 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
     }
 
-    // CORRECTION: Validation du mode de paiement avec toutes les valeurs
+    // Validation du mode de paiement
     if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
       return res.status(400).json({ 
         message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
       });
+    }
+
+    // NOUVEAU: Validation des champs Partner
+    const isPartnerBool = isPartner === 'true' || isPartner === true;
+    if (isPartnerBool) {
+      if (!prixTotalPartner || parseFloat(prixTotalPartner) <= 0) {
+        return res.status(400).json({ 
+          message: 'Le prix total Partner est obligatoire et doit être supérieur à 0 pour les étudiants partenaires' 
+        });
+      }
     }
 
     // Vérification de l'unicité de l'email
@@ -538,191 +611,67 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       niveauFinal = 4; // Master Pro = toujours niveau 4
     }
 
-    // Validation selon le type de formation
-    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
-        return res.status(400).json({ 
-          message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
-        });
+    // Fonction pour obtenir le chemin des fichiers documents
+    const getDocumentPath = (documentField) => {
+      return req.files && req.files[documentField] && req.files[documentField][0] 
+        ? `/documents/${req.files[documentField][0].filename}` 
+        : '';
+    };
+
+    // Image de profil
+    const imagePath = req.files && req.files['image'] && req.files['image'][0] 
+      ? `/uploads/${req.files['image'][0].filename}` 
+      : '';
+
+    // Traitement des nouveaux documents
+    const documentsData = {
+      cin: {
+        fichier: getDocumentPath('documentCin'),
+        commentaire: commentaireCin || ''
+      },
+      bacCommentaire: {
+        fichier: getDocumentPath('documentBacCommentaire'),
+        commentaire: commentaireBacCommentaire || ''
+      },
+      releveNoteBac: {
+        fichier: getDocumentPath('documentReleveNoteBac'),
+        commentaire: commentaireReleveNoteBac || ''
+      },
+      diplomeCommentaire: {
+        fichier: getDocumentPath('documentDiplomeCommentaire'),
+        commentaire: commentaireDiplomeCommentaire || ''
+      },
+      attestationReussiteCommentaire: {
+        fichier: getDocumentPath('documentAttestationReussiteCommentaire'),
+        commentaire: commentaireAttestationReussiteCommentaire || ''
+      },
+      releveNotesFormationCommentaire: {
+        fichier: getDocumentPath('documentReleveNotesFormationCommentaire'),
+        commentaire: commentaireReleveNotesFormationCommentaire || ''
+      },
+      passeport: {
+        fichier: getDocumentPath('documentPasseport'),
+        commentaire: commentairePasseport || ''
+      },
+      bacOuAttestationBacCommentaire: {
+        fichier: getDocumentPath('documentBacOuAttestationBacCommentaire'),
+        commentaire: commentaireBacOuAttestationBacCommentaire || ''
+      },
+      authentificationBac: {
+        fichier: getDocumentPath('documentAuthentificationBac'),
+        commentaire: commentaireAuthentificationBac || ''
+      },
+      authenticationDiplome: {
+        fichier: getDocumentPath('documentAuthenticationDiplome'),
+        commentaire: commentaireAuthenticationDiplome || ''
+      },
+      engagementCommentaire: {
+        fichier: getDocumentPath('documentEngagementCommentaire'),
+        commentaire: commentaireEngagementCommentaire || ''
       }
+    };
 
-      let cycleCalcule = cycle;
-      if (niveauFinal >= 1 && niveauFinal <= 2) {
-        cycleCalcule = 'Classes Préparatoires Intégrées';
-      } else if (niveauFinal >= 3 && niveauFinal <= 5) {
-        cycleCalcule = 'Cycle Ingénieur';
-      }
-
-      if (niveauFinal >= 1 && niveauFinal <= 2) {
-        if (specialiteIngenieur || optionIngenieur) {
-          return res.status(400).json({ 
-            message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
-          });
-        }
-      }
-
-      if (niveauFinal >= 3 && niveauFinal <= 5) {
-        if (!specialiteIngenieur) {
-          return res.status(400).json({ 
-            message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
-          });
-        }
-        if (niveauFinal === 5 && !optionIngenieur) {
-          return res.status(400).json({ 
-            message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
-          });
-        }
-      }
-
-      if (specialiteIngenieur && optionIngenieur) {
-        const STRUCTURE_OPTIONS_INGENIEUR = {
-          'Génie Informatique': [
-            'Sécurité & Mobilité Informatique',
-            'IA & Science des Données',
-            'Réseaux & Cloud Computing'
-          ],
-          'Génie Mécatronique': [
-            'Génie Mécanique',
-            'Génie Industriel',
-            'Automatisation'
-          ],
-          'Génie Civil': [
-            'Structures & Ouvrages d\'art',
-            'Bâtiment & Efficacité Énergétique',
-            'Géotechnique & Infrastructures'
-          ]
-        };
-
-        if (!STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur] || 
-            !STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur].includes(optionIngenieur)) {
-          return res.status(400).json({ 
-            message: `L'option "${optionIngenieur}" n'est pas disponible pour la spécialité "${specialiteIngenieur}"` 
-          });
-        }
-      }
-
-      if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
-        return res.status(400).json({ 
-          message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
-        });
-      }
-
-    } else if (typeFormationFinal === 'LICENCE_PRO') {
-      if (!specialiteLicencePro) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
-        });
-      }
-
-      if (optionLicencePro) {
-        const OPTIONS_LICENCE_PRO = {
-          'Développement Informatique Full Stack': [
-            'Développement Mobile',
-            'Intelligence Artificielle et Data Analytics',
-            'Développement JAVA JEE',
-            'Développement Gaming et VR'
-          ],
-          'Réseaux et Cybersécurité': [
-            'Administration des Systèmes et Cloud Computing'
-          ]
-        };
-
-        const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteLicencePro];
-        if (!optionsDisponibles || !optionsDisponibles.includes(optionLicencePro)) {
-          return res.status(400).json({ 
-            message: `L'option "${optionLicencePro}" n'est pas disponible pour la spécialité "${specialiteLicencePro}"` 
-          });
-        }
-      }
-
-      if (cycle || specialiteIngenieur || optionIngenieur || specialiteMasterPro || optionMasterPro) {
-        return res.status(400).json({ 
-          message: 'Les champs Cycle Ingénieur et Master Pro ne sont pas disponibles pour LICENCE_PRO' 
-        });
-      }
-
-    } else if (typeFormationFinal === 'MASTER_PRO') {
-      if (!specialiteMasterPro) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour Master Professionnel' 
-        });
-      }
-
-      if (optionMasterPro) {
-        const OPTIONS_MASTER_PRO = {
-          'Cybersécurité et Transformation Digitale': [
-            'Systèmes de communication et Data center',
-            'Management des Systèmes d\'Information'
-          ],
-          'Génie Informatique et Innovation Technologique': [
-            'Génie Logiciel',
-            'Intelligence Artificielle et Data Science'
-          ]
-        };
-
-        const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteMasterPro];
-        if (!optionsDisponibles || !optionsDisponibles.includes(optionMasterPro)) {
-          return res.status(400).json({ 
-            message: `L'option "${optionMasterPro}" n'est pas disponible pour la spécialité "${specialiteMasterPro}"` 
-          });
-        }
-      }
-
-      if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro) {
-        return res.status(400).json({ 
-          message: 'Les champs Cycle Ingénieur et Licence Pro ne sont pas disponibles pour MASTER_PRO' 
-        });
-      }
-
-    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      if (!niveauFinal) {
-        return res.status(400).json({ 
-          message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
-        });
-      }
-      
-      if (niveauFinal >= 3 && !specialite) {
-        return res.status(400).json({ 
-          message: `Une spécialité est obligatoire à partir de la 3ème année pour ${typeFormationFinal}` 
-        });
-      }
-
-      if (niveauFinal === 5 && !option) {
-        return res.status(400).json({ 
-          message: `Une option est obligatoire en 5ème année pour ${typeFormationFinal}` 
-        });
-      }
-
-      if (specialite) {
-        const STRUCTURE_FORMATION = {
-          MASI: {
-            3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-            4: ['Management des affaires et systèmes d\'information'],
-            5: ['Management des affaires et systèmes d\'information']
-          },
-          IRM: {
-            3: ['Développement informatique', 'Réseaux et cybersécurité'],
-            4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
-            5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
-          }
-        };
-
-        const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
-        if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialite)) {
-          return res.status(400).json({ 
-            message: `La spécialité "${specialite}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}` 
-          });
-        }
-      }
-
-      if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
-        return res.status(400).json({ 
-          message: 'Les champs Cycle Ingénieur, Licence Pro et Master Pro ne sont pas disponibles pour les formations MASI/IRM' 
-        });
-      }
-    }
-
-    // Gestion des cours avec limite
+    // Gestion des cours avec limite (garder votre logique existante)
     const MAX_ETUDIANTS = 20;
     let coursArray = [];
 
@@ -797,22 +746,6 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       }
     }
 
-    // Traitement des fichiers
-    const getFilePath = (fileField) => {
-      return req.files && req.files[fileField] && req.files[fileField][0] 
-        ? `/uploads/${req.files[fileField][0].filename}` 
-        : '';
-    };
-
-    const imagePath = getFilePath('image');
-    const fichierInscritPath = getFilePath('fichierInscrit');
-    const originalBacPath = getFilePath('originalBac');
-    const releveNotesPath = getFilePath('releveNotes');
-    const copieCniPath = getFilePath('copieCni');
-    const fichierPassportPath = getFilePath('fichierPassport');
-    const dtsBac2Path = getFilePath('dtsBac2');
-    const licencePath = getFilePath('licence');
-    
     // Hashage du mot de passe
     const hashedPassword = await bcrypt.hash(motDePasse, 10);
 
@@ -840,6 +773,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
     });
 
     const prixTotalNum = toNumber(prixTotal);
+    const prixTotalPartnerNum = isPartnerBool ? toNumber(prixTotalPartner) || 0 : 0;
     const pourcentageBourseNum = toNumber(pourcentageBourse);
     const anneeBacNum = toNumber(anneeBaccalaureat);
     const premiereInscriptionNum = toNumber(premiereAnneeInscription);
@@ -853,17 +787,20 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       req.body.paye = true;
     }
 
-    // Création de l'étudiant
+    // Création de l'étudiant avec les nouveaux champs
     const etudiantData = {
       prenom: prenom.trim(),
       nomDeFamille: nomDeFamille.trim(),
       genre,
       dateNaissance: dateNaissanceFormatted,
       telephone: telephone.trim(),
+      telephoneResponsable: telephoneResponsable?.trim() || '',
       email: email.toLowerCase().trim(),
       motDePasse: hashedPassword,
       cin: cin?.trim() || '',
       passeport: passeport?.trim() || '',
+      codeBaccalaureat: codeBaccalaureat?.trim() || '',
+      documents: documentsData,
       lieuNaissance: lieuNaissance?.trim() || '',
       pays: pays?.trim() || '',
       niveau: niveauFinal,
@@ -887,18 +824,7 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       dateEtReglement: dateEtReglementFormatted,
       cours: coursArray,
       modePaiement: modePaiement || 'semestriel',
-      
-      // Fichiers
       image: imagePath,
-      fichierInscrit: fichierInscritPath,
-      originalBac: originalBacPath,
-      releveNotes: releveNotesPath,
-      copieCni: copieCniPath,
-      passport: fichierPassportPath,
-      dtsBac2: dtsBac2Path,
-      licence: licencePath,
-      
-      // Champs booléens
       actif: req.body.actif,
       paye: req.body.paye,
       handicape: req.body.handicape,
@@ -908,8 +834,11 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
       nouvelleInscription: req.body.nouvelleInscription,
       commercial: commercial || null,
       creeParAdmin: req.adminId,
+      anneeScolaire: anneeScolaire || undefined,
       
-      anneeScolaire: anneeScolaire || undefined
+      // NOUVEAUX CHAMPS PARTNER
+      isPartner: isPartnerBool,
+      prixTotalPartner: prixTotalPartnerNum
     };
 
     // Assignation des champs spécifiques selon le type de formation
@@ -987,9 +916,8 @@ app.post('/api/etudiants', authAdmin, uploadMultiple, async (req, res) => {
     });
   }
 });
-
 // Route PUT pour modifier un étudiant
-app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
+app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -1001,7 +929,26 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
       typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
       specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
-      modePaiement
+      modePaiement,
+      telephoneResponsable,
+      codeBaccalaureat,
+      
+      // NOUVEAUX CHAMPS PARTNER
+      isPartner,
+      prixTotalPartner,
+      
+      // COMMENTAIRES POUR LES DOCUMENTS
+      commentaireCin,
+      commentaireBacCommentaire,
+      commentaireReleveNoteBac,
+      commentaireDiplomeCommentaire,
+      commentaireAttestationReussiteCommentaire,
+      commentaireReleveNotesFormationCommentaire,
+      commentairePasseport,
+      commentaireBacOuAttestationBacCommentaire,
+      commentaireAuthentificationBac,
+      commentaireAuthenticationDiplome,
+      commentaireEngagementCommentaire
     } = req.body;
 
     // Rechercher l'étudiant existant
@@ -1010,318 +957,36 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       return res.status(404).json({ message: 'Étudiant non trouvé' });
     }
 
-    // CORRECTION: Validation du mode de paiement avec toutes les valeurs
+    // Validation du mode de paiement
     if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
       return res.status(400).json({ 
         message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
       });
     }
 
-    // Détecter si c'est une nouvelle année scolaire
-    const estNouvelleAnneeScolaire = anneeScolaire && 
-                                    anneeScolaire.trim() !== '' && 
-                                    anneeScolaire !== etudiantExistant.anneeScolaire;
-
-    if (estNouvelleAnneeScolaire) {
-      // Code pour nouvelle année scolaire (si nécessaire)
-      // ... (code existant pour nouvelle année)
-    }
-
-    // Modification normale
-    const filiereFinale = filiere || etudiantExistant.filiere;
-    let typeFormationFinal = typeFormation || etudiantExistant.typeFormation;
-    
-    if (!typeFormationFinal && filiereFinale) {
-      const mappingFiliere = {
-        'CYCLE_INGENIEUR': 'CYCLE_INGENIEUR',
-        'MASI': 'MASI',
-        'IRM': 'IRM',
-        'LICENCE_PRO': 'LICENCE_PRO',
-        'MASTER_PRO': 'MASTER_PRO'
-      };
-      typeFormationFinal = mappingFiliere[filiereFinale];
-    }
-
-    // Détermination du niveau
-    let niveauFinal;
-    if (niveau !== undefined && niveau !== null && niveau !== '') {
-      niveauFinal = parseInt(niveau);
-    } else {
-      niveauFinal = etudiantExistant.niveau;
-    }
-    
-    // Auto-assignation du niveau pour LP et MP
-    if (typeFormationFinal === 'LICENCE_PRO') {
-      niveauFinal = 3;
-    } else if (typeFormationFinal === 'MASTER_PRO') {
-      niveauFinal = 4;
-    }
-
-    // Validation selon le type de formation
-    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
-        return res.status(400).json({ 
-          message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
-        });
-      }
-
-      if (niveauFinal >= 1 && niveauFinal <= 2) {
-        if (specialiteIngenieur || optionIngenieur) {
+    // NOUVEAU: Validation des champs Partner
+    if (isPartner !== undefined) {
+      const isPartnerBool = isPartner === 'true' || isPartner === true;
+      if (isPartnerBool && prixTotalPartner !== undefined) {
+        if (!prixTotalPartner || parseFloat(prixTotalPartner) <= 0) {
           return res.status(400).json({ 
-            message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
+            message: 'Le prix total Partner est obligatoire et doit être supérieur à 0 pour les étudiants partenaires' 
           });
-        }
-      }
-
-      if (niveauFinal >= 3 && niveauFinal <= 5) {
-        const specialiteAUtiliser = specialiteIngenieur !== undefined 
-          ? specialiteIngenieur 
-          : etudiantExistant.specialiteIngenieur;
-        
-        if (!specialiteAUtiliser) {
-          return res.status(400).json({ 
-            message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
-          });
-        }
-        
-        if (niveauFinal === 5) {
-          const optionAUtiliser = optionIngenieur !== undefined 
-            ? optionIngenieur 
-            : etudiantExistant.optionIngenieur;
-          
-          if (!optionAUtiliser) {
-            return res.status(400).json({ 
-              message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
-            });
-          }
-          
-          const STRUCTURE_OPTIONS_INGENIEUR = {
-            'Génie Informatique': [
-              'Sécurité & Mobilité Informatique',
-              'IA & Science des Données',
-              'Réseaux & Cloud Computing'
-            ],
-            'Génie Mécatronique': [
-              'Génie Mécanique',
-              'Génie Industriel',
-              'Automatisation'
-            ],
-            'Génie Civil': [
-              'Structures & Ouvrages d\'art',
-              'Bâtiment & Efficacité Énergétique',
-              'Géotechnique & Infrastructures'
-            ]
-          };
-
-          const optionsDisponibles = STRUCTURE_OPTIONS_INGENIEUR[specialiteAUtiliser];
-          
-          if (!optionsDisponibles || !optionsDisponibles.includes(optionAUtiliser)) {
-            return res.status(400).json({ 
-              message: `L'option "${optionAUtiliser}" n'est pas disponible pour la spécialité "${specialiteAUtiliser}". Options disponibles: ${optionsDisponibles ? optionsDisponibles.join(', ') : 'aucune'}` 
-            });
-          }
-        }
-      }
-
-      if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
-        return res.status(400).json({ 
-          message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
-        });
-      }
-
-    } else if (typeFormationFinal === 'LICENCE_PRO') {
-      const specialiteSource = specialiteLicencePro || etudiantExistant.specialiteLicencePro;
-      if (!specialiteSource) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
-        });
-      }
-
-      const optionSource = optionLicencePro || etudiantExistant.optionLicencePro;
-      if (optionSource) {
-        const OPTIONS_LICENCE_PRO = {
-          'Développement Informatique Full Stack': [
-            'Développement Mobile',
-            'Intelligence Artificielle et Data Analytics',
-            'Développement JAVA JEE',
-            'Développement Gaming et VR'
-          ],
-          'Réseaux et Cybersécurité': [
-            'Administration des Systèmes et Cloud Computing'
-          ]
-        };
-
-        const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteSource];
-        if (!optionsDisponibles || !optionsDisponibles.includes(optionSource)) {
-          return res.status(400).json({ 
-            message: `L'option "${optionSource}" n'est pas disponible pour cette spécialité` 
-          });
-        }
-      }
-
-    } else if (typeFormationFinal === 'MASTER_PRO') {
-      const specialiteSource = specialiteMasterPro || etudiantExistant.specialiteMasterPro;
-      if (!specialiteSource) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour Master Professionnel' 
-        });
-      }
-
-      const optionSource = optionMasterPro || etudiantExistant.optionMasterPro;
-      if (optionSource) {
-        const OPTIONS_MASTER_PRO = {
-          'Cybersécurité et Transformation Digitale': [
-            'Systèmes de communication et Data center',
-            'Management des Systèmes d\'Information'
-          ],
-          'Génie Informatique et Innovation Technologique': [
-            'Génie Logiciel',
-            'Intelligence Artificielle et Data Science'
-          ]
-        };
-
-        const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteSource];
-        if (!optionsDisponibles || !optionsDisponibles.includes(optionSource)) {
-          return res.status(400).json({ 
-            message: `L'option "${optionSource}" n'est pas disponible pour cette spécialité` 
-          });
-        }
-      }
-
-    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      if (!niveauFinal) {
-        return res.status(400).json({ 
-          message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
-        });
-      }
-      
-      if (niveauFinal >= 3) {
-        const specialiteAUtiliser = specialite !== undefined ? specialite : etudiantExistant.specialite;
-        
-        if (!specialiteAUtiliser || specialiteAUtiliser.trim() === '') {
-          return res.status(400).json({ 
-            message: `Une spécialité est obligatoire à partir de la 3ème année pour ${typeFormationFinal}` 
-          });
-        }
-      }
-
-      if (niveauFinal === 5) {
-        const optionAUtiliser = option !== undefined ? option : etudiantExistant.option;
-        
-        if (!optionAUtiliser || optionAUtiliser.trim() === '') {
-          return res.status(400).json({ 
-            message: `Une option est obligatoire en 5ème année pour ${typeFormationFinal}` 
-          });
-        }
-      }
-
-      if (specialite !== undefined || niveauFinal !== etudiantExistant.niveau) {
-        const specialiteAValider = specialite !== undefined ? specialite : etudiantExistant.specialite;
-        if (specialiteAValider && specialiteAValider.trim() !== '') {
-          const STRUCTURE_FORMATION = {
-            MASI: {
-              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-              4: ['Management des affaires et systèmes d\'information'],
-              5: ['Management des affaires et systèmes d\'information']
-            },
-            IRM: {
-              3: ['Développement informatique', 'Réseaux et cybersécurité'],
-              4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
-              5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
-            }
-          };
-
-          const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
-          
-          if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialiteAValider)) {
-            return res.status(400).json({ 
-              message: `La spécialité "${specialiteAValider}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}. Spécialités disponibles: ${specialitesDisponibles.join(', ')}` 
-            });
-          }
         }
       }
     }
 
-    // Gestion des cours avec limite
-    const MAX_ETUDIANTS = 20;
-    let coursArray = etudiantExistant.cours || [];
+    // Fonction pour obtenir le chemin des nouveaux documents
+    const getDocumentPath = (documentField) => {
+      return req.files && req.files[documentField] && req.files[documentField][0] 
+        ? `/documents/${req.files[documentField][0].filename}` 
+        : undefined;
+    };
 
-    if (cours) {
-      const coursDemandes = Array.isArray(cours) ? cours : [cours];
-      coursArray = [];
-      
-      for (let coursNom of coursDemandes) {
-        const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
-        let nomAvecSuffixe = '';
-        let coursTrouve = false;
-
-        for (let suffix of suffixes) {
-          nomAvecSuffixe = coursNom + suffix;
-
-          let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
-          if (!coursExiste) {
-            const coursOriginal = await Cours.findOne({ nom: coursNom });
-            let professeurs = [];
-            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-              professeurs = coursOriginal.professeur;
-            } else {
-              const prof = await Professeur.findOne({ cours: coursNom });
-              if (prof) professeurs = [prof.nom];
-            }
-            const nouveauCours = new Cours({
-              nom: nomAvecSuffixe,
-              professeur: professeurs,
-              creePar: req.adminId
-            });
-            await nouveauCours.save();
-            for (const nomProf of professeurs) {
-              await Professeur.updateOne(
-                { nom: nomProf },
-                { $addToSet: { cours: nomAvecSuffixe } }
-              );
-            }
-            coursExiste = nouveauCours;
-          }
-
-          // Compter en excluant l'étudiant actuel
-          const count = await Etudiant.countDocuments({ 
-            cours: nomAvecSuffixe,
-            _id: { $ne: req.params.id }
-          });
-          if (count < MAX_ETUDIANTS) {
-            coursArray.push(nomAvecSuffixe);
-            coursTrouve = true;
-            break;
-          }
-        }
-
-        if (!coursTrouve) {
-          const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
-          const nomNouveau = `${coursNom}${nextSuffix}`;
-          const coursOriginal = await Cours.findOne({ nom: coursNom });
-          let professeurs = [];
-          if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-            professeurs = coursOriginal.professeur;
-          } else {
-            const prof = await Professeur.findOne({ cours: coursNom });
-            if (prof) professeurs = [prof.nom];
-          }
-          const nouveauCours = new Cours({
-            nom: nomNouveau,
-            professeur: professeurs,
-            creePar: req.adminId
-          });
-          await nouveauCours.save();
-          for (const nomProf of professeurs) {
-            await Professeur.updateOne(
-              { nom: nomProf },
-              { $addToSet: { cours: nomNouveau } }
-            );
-          }
-          coursArray.push(nomNouveau);
-        }
-      }
-    }
+    // Image de profil
+    const imagePath = req.files && req.files['image'] && req.files['image'][0] 
+      ? `/uploads/${req.files['image'][0].filename}` 
+      : undefined;
 
     // Fonctions utilitaires
     const toDate = (val) => {
@@ -1337,20 +1002,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     };
 
     const toBool = (val) => val === 'true' || val === true;
-
-    // Validations des champs obligatoires
-    if (prenom !== undefined && !prenom.trim()) {
-      return res.status(400).json({ message: 'Le prénom est obligatoire' });
-    }
-    if (nomDeFamille !== undefined && !nomDeFamille.trim()) {
-      return res.status(400).json({ message: 'Le nom de famille est obligatoire' });
-    }
-    if (telephone !== undefined && !telephone.trim()) {
-      return res.status(400).json({ message: 'Le téléphone est obligatoire' });
-    }
-    if (email !== undefined && !email.trim()) {
-      return res.status(400).json({ message: 'L\'email est obligatoire' });
-    }
 
     // Validation de l'email si fourni
     if (email && email !== etudiantExistant.email) {
@@ -1372,34 +1023,12 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     if (codeEtudiant && codeEtudiant !== etudiantExistant.codeEtudiant) {
       const codeExiste = await Etudiant.findOne({ 
         codeEtudiant: codeEtudiant.trim(),
-        _id: { $ne: req.params.id }
+        _id: { $ne: req.params.id } 
       });
       if (codeExiste) {
-        return res.status(400).json({ message: 'Code étudiant déjà utilisé' });
+        return res.status(400).json({ message: 'Code étudiant déjà utilisé par un autre étudiant' });
       }
     }
-
-    // Validation du pourcentage de bourse
-    const pourcentageBourseNum = toNumber(pourcentageBourse);
-    if (pourcentageBourseNum && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
-      return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
-    }
-
-    // Traitement des fichiers uploadés
-    const getFilePath = (fileField) => {
-      return req.files && req.files[fileField] && req.files[fileField][0] 
-        ? `/uploads/${req.files[fileField][0].filename}` 
-        : undefined;
-    };
-
-    const imagePath = getFilePath('image');
-    const fichierInscritPath = getFilePath('fichierInscrit');
-    const originalBacPath = getFilePath('originalBac');
-    const releveNotesPath = getFilePath('releveNotes');
-    const copieCniPath = getFilePath('copieCni');
-    const fichierPassportPath = getFilePath('fichierPassport');
-    const dtsBac2Path = getFilePath('dtsBac2');
-    const licencePath = getFilePath('licence');
 
     // Créer l'objet de modifications
     const modifications = {};
@@ -1410,46 +1039,60 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     if (genre !== undefined) modifications.genre = genre;
     if (dateNaissance !== undefined) modifications.dateNaissance = toDate(dateNaissance);
     if (telephone !== undefined) modifications.telephone = telephone.trim();
+    if (telephoneResponsable !== undefined) modifications.telephoneResponsable = telephoneResponsable?.trim() || '';
     if (email !== undefined) modifications.email = email.toLowerCase().trim();
-    if (cours !== undefined) modifications.cours = coursArray;
-    if (actif !== undefined) modifications.actif = toBool(actif);
     if (cin !== undefined) modifications.cin = cin.trim();
     if (passeport !== undefined) modifications.passeport = passeport.trim();
+    if (codeBaccalaureat !== undefined) modifications.codeBaccalaureat = codeBaccalaureat?.trim() || '';
     if (lieuNaissance !== undefined) modifications.lieuNaissance = lieuNaissance.trim();
     if (pays !== undefined) modifications.pays = pays.trim();
-    
-    // Toujours assigner le niveau final calculé
-    modifications.niveau = niveauFinal;
-    
+    if (niveau !== undefined) modifications.niveau = toNumber(niveau);
     if (niveauFormation !== undefined) modifications.niveauFormation = niveauFormation.trim();
     if (filiere !== undefined) modifications.filiere = filiere.trim();
-    modifications.typeFormation = typeFormationFinal;
-    if (typeDiplome !== undefined) modifications.typeDiplome = typeDiplome.trim();
-    if (diplomeAcces !== undefined) modifications.diplomeAcces = diplomeAcces.trim();
-    if (specialiteDiplomeAcces !== undefined) modifications.specialiteDiplomeAcces = specialiteDiplomeAcces.trim();
-    if (mention !== undefined) modifications.mention = mention.trim();
-    if (lieuObtentionDiplome !== undefined) modifications.lieuObtentionDiplome = lieuObtentionDiplome.trim();
-    if (serieBaccalaureat !== undefined) modifications.serieBaccalaureat = serieBaccalaureat.trim();
-    if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
-    if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
-    if (sourceInscription !== undefined) modifications.sourceInscription = sourceInscription.trim();
-    if (typePaiement !== undefined) modifications.typePaiement = typePaiement.trim();
-    if (prixTotal !== undefined) modifications.prixTotal = toNumber(prixTotal);
-    if (pourcentageBourse !== undefined) modifications.pourcentageBourse = toNumber(pourcentageBourse);
-    if (situation !== undefined) modifications.situation = situation.trim();
-    if (nouvelleInscription !== undefined) modifications.nouvelleInscription = toBool(nouvelleInscription);
+    if (typeFormation !== undefined) modifications.typeFormation = typeFormation;
+    if (modePaiement !== undefined) modifications.modePaiement = modePaiement;
+    if (anneeScolaire !== undefined) modifications.anneeScolaire = anneeScolaire;
+    if (actif !== undefined) modifications.actif = toBool(actif);
     if (paye !== undefined) modifications.paye = toBool(paye);
     if (handicape !== undefined) modifications.handicape = toBool(handicape);
     if (resident !== undefined) modifications.resident = toBool(resident);
     if (fonctionnaire !== undefined) modifications.fonctionnaire = toBool(fonctionnaire);
     if (mobilite !== undefined) modifications.mobilite = toBool(mobilite);
-    if (codeEtudiant !== undefined) modifications.codeEtudiant = codeEtudiant.trim();
+    if (nouvelleInscription !== undefined) modifications.nouvelleInscription = toBool(nouvelleInscription);
+    if (commercial !== undefined) modifications.commercial = commercial || null;
+    if (codeEtudiant !== undefined) modifications.codeEtudiant = codeEtudiant?.trim() || '';
     if (dateEtReglement !== undefined) modifications.dateEtReglement = toDate(dateEtReglement);
-    if (commercial !== undefined) {
-      modifications.commercial = (commercial === null || commercial === '' || commercial === 'null') ? null : commercial;
-    }
-    if (anneeScolaire !== undefined) modifications.anneeScolaire = anneeScolaire;
-    if (modePaiement !== undefined) modifications.modePaiement = modePaiement;
+    if (prixTotal !== undefined) modifications.prixTotal = toNumber(prixTotal);
+    if (pourcentageBourse !== undefined) modifications.pourcentageBourse = toNumber(pourcentageBourse);
+    if (situation !== undefined) modifications.situation = situation?.trim() || '';
+    if (sourceInscription !== undefined) modifications.sourceInscription = sourceInscription?.trim() || '';
+    if (typePaiement !== undefined) modifications.typePaiement = typePaiement?.trim() || '';
+    if (typeDiplome !== undefined) modifications.typeDiplome = typeDiplome?.trim() || '';
+    if (diplomeAcces !== undefined) modifications.diplomeAcces = diplomeAcces?.trim() || '';
+    if (specialiteDiplomeAcces !== undefined) modifications.specialiteDiplomeAcces = specialiteDiplomeAcces?.trim() || '';
+    if (mention !== undefined) modifications.mention = mention?.trim() || '';
+    if (lieuObtentionDiplome !== undefined) modifications.lieuObtentionDiplome = lieuObtentionDiplome?.trim() || '';
+    if (serieBaccalaureat !== undefined) modifications.serieBaccalaureat = serieBaccalaureat?.trim() || '';
+    if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
+    if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
+    
+    // NOUVEAUX CHAMPS PARTNER
+    if (isPartner !== undefined) modifications.isPartner = toBool(isPartner);
+    if (prixTotalPartner !== undefined) modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
+    
+    // Champs spécifiques selon le type de formation
+    if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
+    if (option !== undefined) modifications.option = option?.trim() || '';
+    if (cycle !== undefined) modifications.cycle = cycle;
+    if (specialiteIngenieur !== undefined) modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
+    if (optionIngenieur !== undefined) modifications.optionIngenieur = optionIngenieur?.trim() || undefined;
+    if (specialiteLicencePro !== undefined) modifications.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
+    if (optionLicencePro !== undefined) modifications.optionLicencePro = optionLicencePro?.trim() || undefined;
+    if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
+    if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
+    
+    // Image de profil
+    if (imagePath !== undefined) modifications.image = imagePath;
 
     // Validation du mot de passe si fourni
     if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
@@ -1460,86 +1103,49 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
       modifications.motDePasse = hashedPassword;
     }
 
+    // Validation du pourcentage de bourse
+    if (modifications.pourcentageBourse !== undefined && modifications.pourcentageBourse !== null) {
+      if (modifications.pourcentageBourse < 0 || modifications.pourcentageBourse > 100) {
+        return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
+      }
+    }
+
     // Logique automatique pour le mode de paiement annuel
     if (modePaiement === 'annuel' && paye === undefined) {
       modifications.paye = true;
     }
 
-    // Assignation des champs spécifiques selon le type de formation
-    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
-      modifications.cycle = cycleCalcule;
-      
-      if (specialiteIngenieur !== undefined) {
-        modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
-        
-        // Si on change de spécialité, on efface l'option pour éviter l'incompatibilité
-        if (specialiteIngenieur !== etudiantExistant.specialiteIngenieur) {
-          modifications.optionIngenieur = undefined;
-        }
-      }
-      
-      if (optionIngenieur !== undefined) {
-        modifications.optionIngenieur = optionIngenieur?.trim() || undefined;
-      }
-      
-      // Nettoyer les autres champs
-      modifications.specialite = '';
-      modifications.option = '';
-      modifications.specialiteLicencePro = undefined;
-      modifications.optionLicencePro = undefined;
-      modifications.specialiteMasterPro = undefined;
-      modifications.optionMasterPro = undefined;
-      
-    } else if (typeFormationFinal === 'LICENCE_PRO') {
-      if (specialiteLicencePro !== undefined) modifications.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
-      if (optionLicencePro !== undefined) modifications.optionLicencePro = optionLicencePro?.trim() || undefined;
-      modifications.cycle = undefined;
-      modifications.specialiteIngenieur = undefined;
-      modifications.optionIngenieur = undefined;
-      modifications.specialiteMasterPro = undefined;
-      modifications.optionMasterPro = undefined;
-      modifications.specialite = '';
-      modifications.option = '';
-      
-    } else if (typeFormationFinal === 'MASTER_PRO') {
-      if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
-      if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
-      modifications.cycle = undefined;
-      modifications.specialiteIngenieur = undefined;
-      modifications.optionIngenieur = undefined;
-      modifications.specialiteLicencePro = undefined;
-      modifications.optionLicencePro = undefined;
-      modifications.specialite = '';
-      modifications.option = '';
-      
-    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
-      if (option !== undefined) modifications.option = option?.trim() || '';
-      
-      // Nettoyer les autres champs
-      modifications.cycle = undefined;
-      modifications.specialiteIngenieur = undefined;
-      modifications.optionIngenieur = undefined;
-      modifications.specialiteLicencePro = undefined;
-      modifications.optionLicencePro = undefined;
-      modifications.specialiteMasterPro = undefined;
-      modifications.optionMasterPro = undefined;
-    }
+    // Mise à jour des documents (seulement si de nouveaux fichiers ou commentaires sont fournis)
+    const documentsExistants = etudiantExistant.documents || {};
+    const nouveauxDocuments = {};
 
-    // Traitement des fichiers uploadés
-    if (imagePath !== undefined) modifications.image = imagePath;
-    if (fichierInscritPath !== undefined) modifications.fichierInscrit = fichierInscritPath;
-    if (originalBacPath !== undefined) modifications.originalBac = originalBacPath;
-    if (releveNotesPath !== undefined) modifications.releveNotes = releveNotesPath;
-    if (copieCniPath !== undefined) modifications.copieCni = copieCniPath;
-    if (fichierPassportPath !== undefined) modifications.passport = fichierPassportPath;
-    if (dtsBac2Path !== undefined) modifications.dtsBac2 = dtsBac2Path;
-    if (licencePath !== undefined) modifications.licence = licencePath;
+    // Types de documents avec leurs commentaires
+    const typesDocuments = [
+      { key: 'cin', fileField: 'documentCin', commentField: 'commentaireCin' },
+      { key: 'bacCommentaire', fileField: 'documentBacCommentaire', commentField: 'commentaireBacCommentaire' },
+      { key: 'releveNoteBac', fileField: 'documentReleveNoteBac', commentField: 'commentaireReleveNoteBac' },
+      { key: 'diplomeCommentaire', fileField: 'documentDiplomeCommentaire', commentField: 'commentaireDiplomeCommentaire' },
+      { key: 'attestationReussiteCommentaire', fileField: 'documentAttestationReussiteCommentaire', commentField: 'commentaireAttestationReussiteCommentaire' },
+      { key: 'releveNotesFormationCommentaire', fileField: 'documentReleveNotesFormationCommentaire', commentField: 'commentaireReleveNotesFormationCommentaire' },
+      { key: 'passeport', fileField: 'documentPasseport', commentField: 'commentairePasseport' },
+      { key: 'bacOuAttestationBacCommentaire', fileField: 'documentBacOuAttestationBacCommentaire', commentField: 'commentaireBacOuAttestationBacCommentaire' },
+      { key: 'authentificationBac', fileField: 'documentAuthentificationBac', commentField: 'commentaireAuthentificationBac' },
+      { key: 'authenticationDiplome', fileField: 'documentAuthenticationDiplome', commentField: 'commentaireAuthenticationDiplome' },
+      { key: 'engagementCommentaire', fileField: 'documentEngagementCommentaire', commentField: 'commentaireEngagementCommentaire' }
+    ];
 
-    // Ajouter les informations de modification
-    modifications.updatedAt = new Date();
-    modifications.modifiePar = req.adminId;
+    typesDocuments.forEach(type => {
+      const documentExistant = documentsExistants[type.key] || {};
+      const nouveauFichier = getDocumentPath(type.fileField);
+      const nouveauCommentaire = req.body[type.commentField];
+
+      nouveauxDocuments[type.key] = {
+        fichier: nouveauFichier !== undefined ? nouveauFichier : documentExistant.fichier || '',
+        commentaire: nouveauCommentaire !== undefined ? nouveauCommentaire : documentExistant.commentaire || ''
+      };
+    });
+
+    modifications.documents = nouveauxDocuments;
 
     // Mise à jour du document existant
     const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
@@ -1561,8 +1167,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
 
     res.status(200).json({
       message: 'Étudiant mis à jour avec succès',
-      data: etudiantResponse,
-      isNewSchoolYear: false
+      data: etudiantResponse
     });
 
   } catch (err) {
@@ -1588,8 +1193,268 @@ app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
     });
   }
 });
-// ===== ROUTE POUR OBTENIR LES INFORMATIONS DE FORMATION (POUR LE FRONTEND) =====
+// Route pour obtenir les statistiques des étudiants Partners
+app.get('/api/stats/partners', authAdmin, async (req, res) => {
+  try {
+    // Obtenir les statistiques avec la méthode du schéma
+    const stats = await Etudiant.getStatsPartners();
+    
+    res.json({
+      success: true,
+      data: stats
+    });
 
+  } catch (err) {
+    console.error('Erreur lors de la récupération des stats partners:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur',
+      error: err.message
+    });
+  }
+});
+
+// Route alternative plus détaillée pour les statistiques
+app.get('/api/stats/partners/detailed', authAdmin, async (req, res) => {
+  try {
+    // Statistiques détaillées
+    const partnersDetail = await Etudiant.find({ isPartner: true })
+      .select('prenom nomDeFamille prixTotalPartner dateInscription')
+      .lean();
+
+    const normalDetail = await Etudiant.find({ isPartner: false })
+      .select('prenom nomDeFamille prixTotal dateInscription')
+      .lean();
+
+    // Calculs
+    const partnersCount = partnersDetail.length;
+    const normalCount = normalDetail.length;
+    const partnersRevenue = partnersDetail.reduce((sum, etudiant) => sum + (etudiant.prixTotalPartner || 0), 0);
+    const normalRevenue = normalDetail.reduce((sum, etudiant) => sum + (etudiant.prixTotal || 0), 0);
+    const totalRevenue = partnersRevenue + normalRevenue;
+
+    res.json({
+      success: true,
+      data: {
+        partners: {
+          nombre: partnersCount,
+          chiffreAffaire: partnersRevenue,
+          pourcentageRevenue: totalRevenue > 0 ? ((partnersRevenue / totalRevenue) * 100).toFixed(2) : 0,
+          etudiants: partnersDetail
+        },
+        normal: {
+          nombre: normalCount,
+          chiffreAffaire: normalRevenue,
+          pourcentageRevenue: totalRevenue > 0 ? ((normalRevenue / totalRevenue) * 100).toFixed(2) : 0,
+          etudiants: normalDetail
+        },
+        total: {
+          nombre: partnersCount + normalCount,
+          chiffreAffaire: totalRevenue
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error('Erreur lors de la récupération des stats détaillées partners:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur',
+      error: err.message
+    });
+  }
+});
+
+// Route pour obtenir les types de documents disponibles
+app.get('/api/documents/types', authAdmin, (req, res) => {
+  try {
+    const typesDocuments = Etudiant.getTypesDocuments();
+    res.status(200).json(typesDocuments);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des types de documents:', err);
+    res.status(500).json({ message: 'Erreur interne du serveur' });
+  }
+});
+
+// Route pour obtenir le statut des documents d'un étudiant
+app.get('/api/etudiants/:id/documents/status', authAdmin, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findById(req.params.id);
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    const statusDocuments = etudiant.getStatusDocuments();
+    res.status(200).json(statusDocuments);
+  } catch (err) {
+    console.error('Erreur lors de la récupération du statut des documents:', err);
+    res.status(500).json({ message: 'Erreur interne du serveur' });
+  }
+});
+
+// Route pour ajouter/modifier un document spécifique
+app.post('/api/etudiants/:id/documents/:typeDocument', authAdmin, uploadEtudiants, async (req, res) => {
+  try {
+    const { id, typeDocument } = req.params;
+    const { commentaire } = req.body;
+
+    const etudiant = await Etudiant.findById(id);
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    // Vérifier si le type de document est valide
+    const typesValides = Etudiant.getTypesDocuments().map(t => t.key);
+    if (!typesValides.includes(typeDocument)) {
+      return res.status(400).json({ message: 'Type de document invalide' });
+    }
+
+    // Obtenir le fichier uploadé
+    const documentField = `document${typeDocument.charAt(0).toUpperCase() + typeDocument.slice(1)}`;
+    const nouveauFichier = req.files && req.files[documentField] && req.files[documentField][0] 
+      ? `/documents/${req.files[documentField][0].filename}` 
+      : undefined;
+
+    // Si aucun fichier ni commentaire fourni
+    if (!nouveauFichier && !commentaire) {
+      return res.status(400).json({ message: 'Aucun fichier ou commentaire fourni' });
+    }
+
+    // Mettre à jour le document
+    const documentExistant = etudiant.documents?.[typeDocument] || {};
+    
+    if (!etudiant.documents) {
+      etudiant.documents = {};
+    }
+    
+    etudiant.documents[typeDocument] = {
+      fichier: nouveauFichier || documentExistant.fichier || '',
+      commentaire: commentaire !== undefined ? commentaire : documentExistant.commentaire || ''
+    };
+
+    await etudiant.save();
+
+    res.status(200).json({
+      message: 'Document mis à jour avec succès',
+      document: etudiant.documents[typeDocument]
+    });
+
+  } catch (err) {
+    console.error('Erreur lors de la mise à jour du document:', err);
+    res.status(500).json({ message: 'Erreur interne du serveur', error: err.message });
+  }
+});
+
+// Route pour supprimer un document spécifique
+app.delete('/api/etudiants/:id/documents/:typeDocument', authAdmin, async (req, res) => {
+  try {
+    const { id, typeDocument } = req.params;
+
+    const etudiant = await Etudiant.findById(id);
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    // Vérifier si le type de document est valide
+    const typesValides = Etudiant.getTypesDocuments().map(t => t.key);
+    if (!typesValides.includes(typeDocument)) {
+      return res.status(400).json({ message: 'Type de document invalide' });
+    }
+
+    // Supprimer le document
+    if (etudiant.documents && etudiant.documents[typeDocument]) {
+      etudiant.documents[typeDocument] = {
+        fichier: '',
+        commentaire: ''
+      };
+      await etudiant.save();
+    }
+
+    res.status(200).json({ message: 'Document supprimé avec succès' });
+
+  } catch (err) {
+    console.error('Erreur lors de la suppression du document:', err);
+    res.status(500).json({ message: 'Erreur interne du serveur', error: err.message });
+  }
+});
+
+// Route pour télécharger un document
+app.get('/api/etudiants/:id/documents/:typeDocument/download', authAdmin, async (req, res) => {
+  try {
+    const { id, typeDocument } = req.params;
+
+    const etudiant = await Etudiant.findById(id);
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    const document = etudiant.documents?.[typeDocument];
+    if (!document || !document.fichier) {
+      return res.status(404).json({ message: 'Document non trouvé' });
+    }
+
+    // Construire le chemin vers le fichier - CORRECTION ICI
+    const filePath = path.join(__dirname, 'public', document.fichier);
+    
+    // Vérifier si le fichier existe
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'Fichier non trouvé sur le serveur' });
+    }
+
+    // NOUVEAU: Obtenir l'extension et le nom original du fichier
+    const originalFilename = path.basename(document.fichier);
+    const ext = path.extname(document.fichier).toLowerCase();
+    
+    // NOUVEAU: Définir le type MIME correct selon l'extension
+    const mimeTypes = {
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.txt': 'text/plain',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.xls': 'application/vnd.ms-excel'
+    };
+
+    const mimeType = mimeTypes[ext] || 'application/octet-stream';
+    
+    // NOUVEAU: Définir les headers appropriés
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${originalFilename}"`);
+    
+    // Télécharger le fichier avec le bon nom et type
+    res.download(filePath, originalFilename, (err) => {
+      if (err) {
+        console.error('Erreur lors du téléchargement:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Erreur lors du téléchargement' });
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error('Erreur lors du téléchargement du document:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Erreur interne du serveur', error: err.message });
+    }
+  }
+});
+// ===== ROUTE POUR OBTENIR LES INFORMATIONS DE FORMATION (POUR LE FRONTEND) =====
+// Helper pour ajouter la traçabilité aux séances
+const addTraceabilityToSeance = (seanceData, userInfo, actionType) => {
+  return {
+    ...seanceData,
+    lastActionById: userInfo.id,
+    lastActionByName: userInfo.nom,
+    lastActionByEmail: userInfo.email,
+    lastActionByRole: userInfo.role,
+    lastActionType: actionType,
+    lastActionAt: new Date()
+  };
+};
 // Ajoutez cette route pour que le frontend puisse récupérer les informations sans envoyer le niveau
 app.get('/api/formations/info', authAdmin, (req, res) => {
   try {
@@ -1864,7 +1729,7 @@ app.put('/api/professeur/profil', authProfesseur, async (req, res) => {
   }
 });
 // ===== NOUVELLE ROUTE PUT - DUPLICATION ÉTUDIANT =====
-app.put('/api/etudiants/:id', authAdmin, uploadMultiple, async (req, res) => {
+app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -2665,10 +2530,7 @@ app.post('/api/qr-session/complete', authProfesseur, async (req, res) => {
   }
 });
 
-app.get('/api/professeur/presences', authProfesseur, async (req, res) => {
-  const data = await Presence.find({ creePar: req.professeurId }).populate('etudiant', 'nomComplet');
-  res.json(data);
-});
+
 app.get('/api/presences', authAdminOrPaiementManager, async (req, res) => {
   try {
     const data = await Presence.find().populate('etudiant', 'nomComplet');
@@ -2698,10 +2560,11 @@ app.get('/api/professeur/etudiants', authProfesseur, async (req, res) => {
 });
 
 // 📁 routes/professeur.js أو ضمن app.js إذا كل شيء في ملف واحد
+// Remove both routes and replace with this single corrected one
 app.get('/api/professeur/presences', authProfesseur, async (req, res) => {
   try {
     const data = await Presence.find({ creePar: req.professeurId })
-      .populate('etudiant', 'nomComplet telephone')
+      .populate('etudiant', 'prenom nomDeFamille telephone')
       .sort({ dateSession: -1 });
 
     res.json(data);
@@ -2739,37 +2602,341 @@ app.get('/api/professeur/mes-cours', authProfesseur, async (req, res) => {
 
 app.post('/api/presences', authProfesseur, async (req, res) => {
   try {
-    const { etudiant, cours, dateSession, present, remarque, heure, periode } = req.body;
+    const { 
+      etudiant, cours, seanceId, dateSession, present, absent, retard,
+      retardMinutes, remarque, heure, periode, matiere, nomProfesseur
+    } = req.body;
 
-    // ✅ تحقق أن هذا الأستاذ يدرّس هذا الكورس
-    const prof = await Professeur.findById(req.professeurId);
-    if (!prof.cours.includes(cours)) {
-      return res.status(403).json({ message: '❌ Vous ne pouvez pas marquer la présence pour ce cours.' });
+    console.log('=== DÉBOGAGE CRÉATION PRÉSENCE ===');
+    console.log('etudiant:', etudiant);
+    console.log('cours:', cours);
+    console.log('seanceId:', seanceId);
+    console.log('dateSession:', dateSession);
+    console.log('matiere reçue:', matiere);
+
+    // Validations de base
+    if (!etudiant || !cours || !dateSession) {
+      return res.status(400).json({ 
+        message: 'Champs requis manquants' 
+      });
     }
 
-    // ✅ إنشاء كائن présence جديد مع الوقت والفترة
+    // Validation seanceId obligatoire pour éviter les conflits
+    if (!seanceId) {
+      return res.status(400).json({ 
+        message: 'seanceId est requis pour identifier la séance spécifique' 
+      });
+    }
+
+    // Récupérer professeur avec ses cours enseignés
+    const prof = await Professeur.findById(req.professeurId).lean();
+    if (!prof) {
+      return res.status(404).json({ 
+        message: 'Professeur non trouvé' 
+      });
+    }
+
+    // Vérification des permissions (ancienne et nouvelle méthode)
+    const aAcces = prof.cours.includes(cours) || 
+                   (prof.coursEnseignes && prof.coursEnseignes.some(c => c.nomCours === cours));
+    
+    if (!aAcces) {
+      return res.status(403).json({ 
+        message: 'Vous ne pouvez pas marquer la présence pour ce cours.' 
+      });
+    }
+
+    // Déterminer les statuts
+    let presentStatus = present || false;
+    let absentStatus = absent || false;
+    let retardStatus = retard || false;
+    let retardMinutesValue = retardStatus ? (parseInt(retardMinutes) || 0) : 0;
+
+    // Déterminer la matière avec priorité aux données reçues
+    let matiereFinale = 'Matière non spécifiée';
+    
+    // Priorité 1: Matière explicitement fournie dans la requête
+    if (matiere && matiere.trim() !== '' && matiere !== 'Séance manuelle') {
+      matiereFinale = matiere;
+      console.log('✅ Matière utilisée depuis requête:', matiereFinale);
+    }
+    // Priorité 2: Si on a un seanceId, récupérer la matière de la séance
+    else if (seanceId) {
+      try {
+        const seanceDoc = await Seance.findById(seanceId).lean();
+        if (seanceDoc && seanceDoc.matiere && seanceDoc.matiere.trim() !== '') {
+          matiereFinale = seanceDoc.matiere;
+          console.log('✅ Matière trouvée dans la séance:', matiereFinale);
+        } else {
+          // Fallback sur le professeur
+          const coursEnseigneProfesseur = prof.coursEnseignes && 
+            prof.coursEnseignes.find(c => c.nomCours === cours);
+          
+          if (coursEnseigneProfesseur && coursEnseigneProfesseur.matiere) {
+            matiereFinale = coursEnseigneProfesseur.matiere;
+            console.log('✅ Matière trouvée via prof.coursEnseignes:', matiereFinale);
+          } else if (prof.matiere) {
+            matiereFinale = prof.matiere;
+            console.log('✅ Matière trouvée via prof.matiere:', matiereFinale);
+          } else {
+            matiereFinale = cours; // Utiliser le nom du cours
+            console.log('⚠️ Fallback sur nom du cours:', matiereFinale);
+          }
+        }
+      } catch (seanceError) {
+        console.warn('Erreur récupération séance:', seanceError.message);
+        matiereFinale = prof.matiere || cours;
+      }
+    }
+    // Priorité 3: Utiliser la matière du professeur
+    else {
+      const coursEnseigneProfesseur = prof.coursEnseignes && 
+        prof.coursEnseignes.find(c => c.nomCours === cours);
+      
+      if (coursEnseigneProfesseur && coursEnseigneProfesseur.matiere) {
+        matiereFinale = coursEnseigneProfesseur.matiere;
+        console.log('✅ Matière prof coursEnseignes:', matiereFinale);
+      } else if (prof.matiere) {
+        matiereFinale = prof.matiere;
+        console.log('✅ Matière prof générale:', matiereFinale);
+      } else {
+        matiereFinale = cours;
+        console.log('⚠️ Dernier fallback sur cours:', matiereFinale);
+      }
+    }
+    
+    console.log('Matière finale utilisée:', matiereFinale);
+
+    // CORRECTION PRINCIPALE: Chercher par etudiant + seanceId au lieu de etudiant + cours + date
+    const existingPresence = await Presence.findOne({
+      etudiant: etudiant,
+      seanceId: seanceId
+    });
+
+    console.log('Présence existante trouvée:', existingPresence ? 'OUI' : 'NON');
+    if (existingPresence) {
+      console.log('ID présence existante:', existingPresence._id);
+    }
+
+    if (existingPresence) {
+      // Mise à jour de la présence existante pour cette séance spécifique
+      existingPresence.present = presentStatus;
+      existingPresence.absent = absentStatus;
+      existingPresence.retard = retardStatus;
+      existingPresence.retardMinutes = retardMinutesValue;
+      existingPresence.remarque = remarque || '';
+      existingPresence.matiere = matiereFinale;
+      existingPresence.heure = heure || '';
+      existingPresence.periode = periode || 'matin';
+      existingPresence.nomProfesseur = nomProfesseur || prof.nom;
+      
+      await existingPresence.save();
+      
+      console.log('✅ Présence mise à jour pour seanceId:', seanceId);
+      console.log('Matière mise à jour:', matiereFinale);
+      
+      return res.status(200).json({
+        message: 'Présence mise à jour',
+        presence: existingPresence
+      });
+    }
+
+    // Création d'une nouvelle présence
     const presence = new Presence({
-      etudiant,
-      cours,
+      etudiant, 
+      cours, 
+      seanceId: seanceId,
       dateSession: new Date(dateSession),
-      present,
-      remarque,
-      heure,    // 🆕 وقت الحضور بصيغة "08:30"
-      periode,  // 🆕 'matin' أو 'soir'
-      creePar: req.professeurId,
-         matiere: prof.matiere,           // ✅ المادة تلقائياً من حساب الأستاذ
-      nomProfesseur: prof.nom   
+      present: presentStatus, 
+      absent: absentStatus, 
+      retard: retardStatus,
+      retardMinutes: retardMinutesValue,
+      remarque: remarque || '', 
+      heure: heure || '', 
+      periode: periode || 'matin',
+      matiere: matiereFinale,
+      nomProfesseur: nomProfesseur || prof.nom,
+      creePar: req.professeurId
     });
 
     await presence.save();
-    res.status(201).json(presence);
+    
+    console.log('✅ Nouvelle présence créée pour seanceId:', seanceId);
+    console.log('Matière enregistrée:', matiereFinale);
+    console.log('==================================');
+    
+    res.status(201).json({
+      message: 'Présence enregistrée avec succès',
+      presence
+    });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Erreur création présence:', err);
+    
+    // Gérer l'erreur de duplication d'index unique
+    if (err.code === 11000) {
+      return res.status(409).json({ 
+        message: 'Présence déjà enregistrée pour cet étudiant et cette séance',
+        error: 'Duplicate entry'
+      });
+    }
+    
+    res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
+// ✅ Route pour enregistrer plusieurs présences en une fois (bulk)
+app.post('/api/presences/bulk', authProfesseur, async (req, res) => {
+  try {
+    const { presences } = req.body;
 
+    if (!presences || !Array.isArray(presences)) {
+      return res.status(400).json({
+        message: '❌ Format invalide: "presences" doit être un tableau'
+      });
+    }
+
+    const prof = await Professeur.findById(req.professeurId);
+    if (!prof) {
+      return res.status(404).json({ message: '❌ Professeur non trouvé.' });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (let i = 0; i < presences.length; i++) {
+      try {
+        const presenceData = presences[i];
+        const { 
+          etudiant, 
+          cours, 
+          seanceId,
+          dateSession, 
+          statut, // 'present', 'absent', 'retard'
+          retardMinutes,
+          remarque, 
+          heure, 
+          periode,
+          matiere,
+          nomProfesseur
+        } = presenceData;
+
+        // Validation
+        if (!etudiant || !cours || !dateSession || !statut) {
+          errors.push({
+            index: i,
+            error: 'Champs requis manquants'
+          });
+          continue;
+        }
+
+        // Vérifier le cours
+        if (!prof.cours.includes(cours)) {
+          errors.push({
+            index: i,
+            error: 'Cours non autorisé pour ce professeur'
+          });
+          continue;
+        }
+
+        // Définir les statuts
+        const present = statut === 'present';
+        const absent = statut === 'absent';
+        const retard = statut === 'retard';
+        const retardMinutesValue = retard ? (parseInt(retardMinutes) || 0) : 0;
+
+        // Validation retard
+        if (retard && retardMinutesValue <= 0) {
+          errors.push({
+            index: i,
+            error: 'Temps de retard invalide'
+          });
+          continue;
+        }
+
+        // Vérifier si existe déjà
+        const existingPresence = await Presence.findOne({
+          etudiant,
+          cours,
+          dateSession: new Date(dateSession)
+        });
+
+        if (existingPresence) {
+          // Mise à jour
+          existingPresence.present = present;
+          existingPresence.absent = absent;
+          existingPresence.retard = retard;
+          existingPresence.retardMinutes = retardMinutesValue;
+          existingPresence.remarque = remarque || '';
+          existingPresence.heure = heure || '';
+          existingPresence.periode = periode || 'matin';
+          existingPresence.seanceId = seanceId || null;
+          existingPresence.matiere = matiere || prof.matiere || '';
+          existingPresence.nomProfesseur = nomProfesseur || prof.nom || '';
+          existingPresence.modifiePar = req.professeurId;
+          existingPresence.dateModification = new Date();
+
+          await existingPresence.save();
+          results.push({
+            index: i,
+            action: 'updated',
+            presence: existingPresence
+          });
+        } else {
+          // Création
+          const newPresence = new Presence({
+            etudiant,
+            cours,
+            seanceId: seanceId || null,
+            dateSession: new Date(dateSession),
+            present,
+            absent,
+            retard,
+            retardMinutes: retardMinutesValue,
+            remarque: remarque || '',
+            heure: heure || '',
+            periode: periode || 'matin',
+            matiere: matiere || prof.matiere || '',
+            nomProfesseur: nomProfesseur || prof.nom || '',
+            creePar: req.professeurId,
+            dateCreation: new Date()
+          });
+
+          await newPresence.save();
+          results.push({
+            index: i,
+            action: 'created',
+            presence: newPresence
+          });
+        }
+
+      } catch (itemError) {
+        errors.push({
+          index: i,
+          error: itemError.message
+        });
+      }
+    }
+
+    res.status(200).json({
+      message: `✅ Traitement terminé: ${results.length} succès, ${errors.length} erreurs`,
+      results,
+      errors,
+      summary: {
+        total: presences.length,
+        success: results.length,
+        failed: errors.length
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Erreur lors de l\'enregistrement en lot:', err);
+    res.status(500).json({ 
+      message: '❌ Erreur serveur lors de l\'enregistrement en lot',
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Erreur interne'
+    });
+  }
+});
 // Ajoutez ces routes à votre app.js après les routes existantes
 
 // ✅ Route pour récupérer toutes les notifications
@@ -2955,6 +3122,353 @@ app.get('/api/professeur/documents', authProfesseur, async (req, res) => {
     });
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ===== BACKEND CORRIGÉ POUR INCLURE DIMANCHE =====
+
+// Route pour récupérer le profil du professeur connecté
+app.get('/api/professeurs/mon-profil', authProfesseur, async (req, res) => {
+  try {
+    const professeur = await Professeur.findById(req.professeurId)
+      .select('nom email estPermanent tarifHoraire actif cours coursEnseignes matiere');
+    
+    if (!professeur) {
+      return res.status(404).json({ message: 'Professeur non trouvé' });
+    }
+
+    res.json({
+      _id: professeur._id,
+      nom: professeur.nom,
+      email: professeur.email,
+      estPermanent: professeur.estPermanent,
+      tarifHoraire: professeur.tarifHoraire,
+      actif: professeur.actif,
+      cours: professeur.cours,
+      coursEnseignes: professeur.coursEnseignes,
+      matiere: professeur.matiere
+    });
+
+  } catch (err) {
+    console.error('Erreur récupération profil professeur:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Modification de votre route existante pour supporter le paramètre semaine
+app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
+  try {
+    const { semaine } = req.query; // Format: YYYY-MM-DD (lundi de la semaine)
+    
+    let dateFilter = {};
+    if (semaine) {
+      const lundiSemaine = new Date(semaine);
+      // CORRECTION : 6 jours pour aller jusqu'au dimanche (Lundi + 6 = Dimanche)
+      const dimancheSemaine = new Date(lundiSemaine.getTime() + 6 * 24 * 60 * 60 * 1000);
+      dimancheSemaine.setHours(23, 59, 59, 999);
+      
+      dateFilter = {
+        dateSeance: {
+          $gte: lundiSemaine,
+          $lte: dimancheSemaine
+        }
+      };
+    }
+    
+    const seances = await Seance.find({
+      professeur: req.professeurId,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      actif: true,
+      ...dateFilter
+    })
+    .populate('professeur', 'nom estPermanent tarifHoraire')
+    .populate('coursId', 'nom') // Populate le cours si coursId existe
+    .sort({ dateSeance: 1, heureDebut: 1 });
+    
+    // Ajouter les calculs à chaque séance
+    const seancesAvecCalculs = await Promise.all(
+      seances.map(async (seance) => {
+        const calculs = await seance.calculerDureeEtMontant();
+        return {
+          ...seance.toObject(),
+          dureeHeures: calculs.dureeHeures,
+          montant: calculs.montant
+        };
+      })
+    );
+    
+    res.json(seancesAvecCalculs);
+  } catch (err) {
+    console.error('Erreur récupération séances professeur:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Fonction utilitaire corrigée pour inclure dimanche
+function calculerStatistiquesProfesseur(seances, professeur) {
+  const stats = {
+    totalSeances: seances.length,
+    totalHeures: 0,
+    coursUniques: 0,
+    moyenneHeuresParJour: 0,
+    totalAPayer: 0,
+    repartitionJours: {}
+  };
+
+  // CORRECTION : Inclure le dimanche
+  const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  jours.forEach(jour => {
+    stats.repartitionJours[jour] = 0;
+  });
+
+  // Calculer les statistiques
+  const coursSet = new Set();
+  seances.forEach(seance => {
+    // Durée de la séance
+    const duree = calculerDureeSeance(seance.heureDebut, seance.heureFin);
+    stats.totalHeures += duree;
+    
+    // Répartition par jour
+    if (stats.repartitionJours[seance.jour] !== undefined) {
+      stats.repartitionJours[seance.jour] += duree;
+    }
+    
+    // Cours unique
+    if (seance.cours) {
+      coursSet.add(seance.cours);
+    }
+    
+    // Montant à payer (entrepreneurs uniquement)
+    if (!professeur.estPermanent && professeur.tarifHoraire) {
+      stats.totalAPayer += duree * professeur.tarifHoraire;
+    }
+  });
+
+  stats.coursUniques = coursSet.size;
+  stats.totalHeures = Math.round(stats.totalHeures * 100) / 100;
+  stats.totalAPayer = Math.round(stats.totalAPayer * 100) / 100;
+  
+  // Moyenne par jour (sur les jours travaillés)
+  const joursTravaills = Object.values(stats.repartitionJours).filter(h => h > 0).length;
+  stats.moyenneHeuresParJour = joursTravaills > 0 
+    ? Math.round((stats.totalHeures / joursTravaills) * 100) / 100 
+    : 0;
+
+  return stats;
+}
+
+function calculerDureeSeance(heureDebut, heureFin) {
+  const [heureD, minuteD] = heureDebut.split(':').map(Number);
+  const [heureF, minuteF] = heureFin.split(':').map(Number);
+  
+  const minutesDebut = heureD * 60 + minuteD;
+  const minutesFin = heureF * 60 + minuteF;
+  
+  return (minutesFin - minutesDebut) / 60;
+}
+
+// Votre route de rapport existante (pas de modification nécessaire car elle utilise déjà les bonnes données)
+app.get('/api/professeurs/mon-rapport', authProfesseur, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+    
+    const professeur = await Professeur.findById(req.professeurId);
+    if (!professeur) {
+      return res.status(404).json({ message: 'Professeur non trouvé' });
+    }
+
+    // Construire le filtre de date
+    let dateFilter = {};
+    if (mois && annee) {
+      const startDate = new Date(annee, mois - 1, 1);
+      const endDate = new Date(annee, mois, 0, 23, 59, 59);
+      dateFilter = {
+        dateSeance: { // CHANGÉ : utiliser dateSeance au lieu de createdAt
+          $gte: startDate,
+          $lte: endDate
+        }
+      };
+    } else if (annee) {
+      const startDate = new Date(annee, 0, 1);
+      const endDate = new Date(annee, 11, 31, 23, 59, 59);
+      dateFilter = {
+        dateSeance: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      };
+    } else {
+      // Par défaut, mois actuel
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      dateFilter = {
+        dateSeance: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      };
+    }
+
+    const seances = await Seance.find({
+      professeur: req.professeurId,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      actif: true,
+      ...dateFilter
+    })
+    .populate('coursId', 'nom')
+    .sort({ dateSeance: 1, heureDebut: 1 });
+
+    const statistiques = calculerStatistiquesProfesseur(seances, professeur);
+
+    res.json({
+      professeur: {
+        nom: professeur.nom,
+        email: professeur.email,
+        estPermanent: professeur.estPermanent,
+        tarifHoraire: professeur.tarifHoraire
+      },
+      periode: {
+        mois: mois ? parseInt(mois) : null,
+        annee: annee ? parseInt(annee) : null
+      },
+      statistiques,
+      seances: seances.map(seance => ({
+        jour: seance.jour,
+        heureDebut: seance.heureDebut,
+        heureFin: seance.heureFin,
+        cours: seance.cours || seance.coursId?.nom,
+        coursId: seance.coursId,
+        matiere: seance.matiere,
+        salle: seance.salle,
+        dateSeance: seance.dateSeance,
+        typeSeance: seance.typeSeance,
+        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin)
+      }))
+    });
+
+  } catch (err) {
+    console.error('Erreur rapport professeur:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});app.get('/api/seances/professeur/semaine/:lundiSemaine', authProfesseur, async (req, res) => {
+  try {
+    const { lundiSemaine } = req.params; // Format: YYYY-MM-DD
+    
+    const dateLundi = new Date(lundiSemaine);
+    const dateDimanche = new Date(dateLundi.getTime() + 6 * 24 * 60 * 60 * 1000);
+    dateDimanche.setHours(23, 59, 59, 999);
+
+    console.log(`Recherche séances professeur ${req.professeurId} pour semaine ${lundiSemaine}`);
+
+    const seances = await Seance.find({
+      professeur: req.professeurId,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      dateSeance: {
+        $gte: dateLundi,
+        $lte: dateDimanche
+      },
+      actif: true
+    })
+    .populate('professeur', 'nom estPermanent tarifHoraire')
+    .populate('coursId', 'nom')
+    .sort({ dateSeance: 1, heureDebut: 1 });
+
+    // Ajouter les calculs
+    const seancesAvecCalculs = await Promise.all(
+      seances.map(async (seance) => {
+        const calculs = await seance.calculerDureeEtMontant();
+        return {
+          ...seance.toObject(),
+          dureeHeures: calculs.dureeHeures,
+          montant: calculs.montant
+        };
+      })
+    );
+
+    console.log(`${seancesAvecCalculs.length} séances trouvées pour la semaine`);
+    res.json(seancesAvecCalculs);
+
+  } catch (err) {
+    console.error('Erreur récupération séances semaine:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// ===== FONCTION UTILITAIRE POUR CALCULS STATISTIQUES =====
+
+function calculerStatistiquesProfesseur(seances, professeur) {
+  const stats = {
+    totalSeances: seances.length,
+    totalHeures: 0,
+    coursUniques: 0,
+    moyenneHeuresParJour: 0,
+    totalAPayer: 0,
+    repartitionJours: {}
+  };
+
+  // Initialiser la répartition par jour
+  const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  jours.forEach(jour => {
+    stats.repartitionJours[jour] = 0;
+  });
+
+  // Calculer les statistiques
+  const coursSet = new Set();
+  seances.forEach(seance => {
+    // Durée de la séance
+    const duree = calculerDureeSeance(seance.heureDebut, seance.heureFin);
+    stats.totalHeures += duree;
+    
+    // Répartition par jour
+    if (stats.repartitionJours[seance.jour] !== undefined) {
+      stats.repartitionJours[seance.jour] += duree;
+    }
+    
+    // Cours unique
+    if (seance.cours) {
+      coursSet.add(seance.cours);
+    }
+    
+    // Montant à payer (entrepreneurs uniquement)
+    if (!professeur.estPermanent && professeur.tarifHoraire) {
+      stats.totalAPayer += duree * professeur.tarifHoraire;
+    }
+  });
+
+  stats.coursUniques = coursSet.size;
+  stats.totalHeures = Math.round(stats.totalHeures * 100) / 100;
+  stats.totalAPayer = Math.round(stats.totalAPayer * 100) / 100;
+  
+  // Moyenne par jour (sur les jours travaillés)
+  const joursTravaills = Object.values(stats.repartitionJours).filter(h => h > 0).length;
+  stats.moyenneHeuresParJour = joursTravaills > 0 
+    ? Math.round((stats.totalHeures / joursTravaills) * 100) / 100 
+    : 0;
+
+  return stats;
+}
+
+function calculerDureeSeance(heureDebut, heureFin) {
+  const [heureD, minuteD] = heureDebut.split(':').map(Number);
+  const [heureF, minuteF] = heureFin.split(':').map(Number);
+  
+  const minutesDebut = heureD * 60 + minuteD;
+  const minutesFin = heureF * 60 + minuteF;
+  
+  return (minutesFin - minutesDebut) / 60;
+}
 
 
 
@@ -3581,379 +4095,1927 @@ app.get('/api/notifications/deleted', authAdminOrPaiementManager, (req, res) => 
   }
 });
 
-app.get('/api/professeurs/:id/rapport', authAdminOrPedagogique, async (req, res) => {
+// APIs de gestion des paiements - À ajouter dans votre fichier routes
+
+// 1. API pour créer/récupérer un paiement
+app.post('/api/finance/paiements/creer-ou-recuperer', authAdmin, async (req, res) => {
   try {
-    const professeurId = req.params.id;
-    const { mois, annee } = req.query;
-    
+    const { professeurId, mois, annee } = req.body;
+
+    if (!professeurId || !mois || !annee) {
+      return res.status(400).json({ error: 'Professeur, mois et année requis' });
+    }
+
+    // Vérifier que le professeur existe
     const professeur = await Professeur.findById(professeurId);
     if (!professeur) {
-      return res.status(404).json({ message: 'Professeur non trouvé' });
+      return res.status(404).json({ error: 'Professeur non trouvé' });
     }
 
-    // ✅ MODIFICATION: Construire le filtre avec dateSeance
-    let dateFilter = {
-      typeSeance: { $in: ['reelle', 'exception'] }, // ✅ EXCLURE les rattrapages
-      actif: true
-    };
-    
-    if (mois && annee) {
-      const startDate = new Date(annee, mois - 1, 1);
-      const endDate = new Date(annee, mois, 0, 23, 59, 59);
-      dateFilter.dateSeance = { // ✅ Utiliser dateSeance
-        $gte: startDate,
-        $lte: endDate
-      };
-    } else if (annee) {
-      const startDate = new Date(annee, 0, 1);
-      const endDate = new Date(annee, 11, 31, 23, 59, 59);
-      dateFilter.dateSeance = { // ✅ Utiliser dateSeance
-        $gte: startDate,
-        $lte: endDate
-      };
+    if (professeur.estPermanent) {
+      return res.status(400).json({ error: 'Les paiements ne concernent que les entrepreneurs' });
     }
 
-    // Récupérer les séances du professeur (sans rattrapages)
+    // Vérifier si un paiement existe déjà
+    let paiement = await PaiementProfesseur.findOne({
+      professeur: professeurId,
+      mois: parseInt(mois),
+      annee: parseInt(annee)
+    }).populate('professeur').populate('valideePar').populate('payePar');
+
+    if (paiement) {
+      return res.json({
+        message: 'Paiement existant récupéré',
+        paiement
+      });
+    }
+
+    // Créer un nouveau paiement basé sur les séances du mois
+    const dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
+    const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
+
+    // Récupérer les séances du mois
     const seances = await Seance.find({
       professeur: professeurId,
-      ...dateFilter
-    }).sort({ dateSeance: 1, heureDebut: 1 }); // ✅ Trier par dateSeance
+      dateSeance: { $gte: dateDebut, $lte: dateFin },
+      actif: true,
+      typeSeance: { $ne: 'rattrapage' }
+    }).populate('coursId', 'nom').lean();
 
-    const statistiques = calculerStatistiquesProfesseur(seances, professeur);
+    if (seances.length === 0) {
+      return res.status(400).json({ error: 'Aucune séance trouvée pour cette période' });
+    }
 
-    res.json({
-      professeur: {
-        _id: professeur._id,
-        nom: professeur.nom,
-        email: professeur.email,
-        estPermanent: professeur.estPermanent,
-        tarifHoraire: professeur.tarifHoraire
-      },
-      periode: {
-        mois: mois ? parseInt(mois) : null,
-        annee: annee ? parseInt(annee) : null
-      },
-      statistiques,
-      seances: seances.map(seance => ({
-        _id: seance._id,
-        jour: seance.jour,
-        heureDebut: seance.heureDebut,
-        heureFin: seance.heureFin,
-        cours: seance.cours,
-        matiere: seance.matiere,
-        salle: seance.salle,
-        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin),
-        dateSeance: seance.dateSeance, // ✅ Ajouter la vraie date
-        typeSeance: seance.typeSeance // ✅ Ajouter le type pour info
-      })),
-      note: "Séances en rattrapage exclues des statistiques" // ✅ Indicateur
+    // Calculer les montants
+    let montantBrut = 0;
+    const seancesIncluses = [];
+
+    for (const seance of seances) {
+      const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+      const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+      
+      const montantSeance = dureeHeures * (professeur.tarifHoraire || 0);
+      montantBrut += montantSeance;
+
+      // Résoudre le nom du cours
+      let nomCours = 'Cours non spécifié';
+      if (seance.coursId && seance.coursId.nom) {
+        nomCours = seance.coursId.nom;
+      } else if (seance.cours) {
+        nomCours = seance.cours;
+      }
+
+      seancesIncluses.push({
+        seanceId: seance._id,
+        cours: nomCours,
+        date: seance.dateSeance,
+        heures: Math.round(dureeHeures * 100) / 100,
+        montant: Math.round(montantSeance * 100) / 100
+      });
+    }
+
+    // Vérifier s'il y a des pénalités/ajustements
+    let ajustements = 0;
+    const penalitesAppliquees = [];
+    
+    const penalite = await PenaliteProfesseur.findOne({
+      professeur: professeurId,
+      mois: parseInt(mois),
+      annee: parseInt(annee),
+      actif: true
     });
 
-  } catch (err) {
-    console.error('Erreur rapport professeur:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+    if (penalite) {
+      ajustements = montantBrut - penalite.montantAjuste;
+      penalitesAppliquees.push({
+        penaliteId: penalite._id,
+        motif: penalite.motif,
+        montant: ajustements
+      });
+    }
+
+    // Créer le nouveau paiement
+    const nouveauPaiement = new PaiementProfesseur({
+      professeur: professeurId,
+      mois: parseInt(mois),
+      annee: parseInt(annee),
+      montantBrut: Math.round(montantBrut * 100) / 100,
+      ajustements: Math.round(ajustements * 100) / 100,
+      montantNet: Math.round((montantBrut - ajustements) * 100) / 100,
+      seancesIncluses,
+      penalitesAppliquees,
+      creeParAdmin: req.adminId
+    });
+
+    await nouveauPaiement.save();
+    
+    // Populate les références pour la réponse
+    await nouveauPaiement.populate('professeur');
+    await nouveauPaiement.populate('creeParAdmin', 'nom email');
+
+    res.json({
+      message: 'Nouveau paiement créé avec succès',
+      paiement: nouveauPaiement
+    });
+
+  } catch (error) {
+    console.error('Erreur création/récupération paiement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-// Route pour obtenir tous les rapports mensuels (CORRIGÉE)
-app.get('/api/professeurs/rapports/mensuel', authAdminOrPedagogique, async (req, res) => {
+// 2. API pour valider un paiement
+app.post('/api/finance/paiements/valider', authAdmin, async (req, res) => {
   try {
-    const { mois, annee } = req.query;
-    
-    if (!mois || !annee) {
-      return res.status(400).json({ 
-        message: 'Mois et année sont requis (ex: ?mois=1&annee=2025)' 
-      });
+    const { paiementId, notes } = req.body;
+
+    const paiement = await PaiementProfesseur.findById(paiementId);
+    if (!paiement) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
     }
 
-    const startDate = new Date(annee, mois - 1, 1);
-    const endDate = new Date(annee, mois, 0, 23, 59, 59);
-
-    // Récupérer tous les professeurs actifs
-    const professeurs = await Professeur.find({ actif: true });
-    
-    const rapports = [];
-
-    for (const professeur of professeurs) {
-      // ✅ MODIFICATION: Utiliser dateSeance et exclure les rattrapages
-      const seances = await Seance.find({
-        professeur: professeur._id,
-        dateSeance: { // ✅ Utiliser dateSeance au lieu de createdAt
-          $gte: startDate,
-          $lte: endDate
-        },
-        typeSeance: { $in: ['reelle', 'exception'] }, // ✅ EXCLURE les rattrapages
-        actif: true
-      });
-
-      const statistiques = calculerStatistiquesProfesseur(seances, professeur);
-      
-      rapports.push({
-        professeur: {
-          _id: professeur._id,
-          nom: professeur.nom,
-          email: professeur.email,
-          estPermanent: professeur.estPermanent,
-          tarifHoraire: professeur.tarifHoraire
-        },
-        statistiques,
-        nombreSeances: seances.length
-      });
+    if (paiement.statut === 'valide' || paiement.statut === 'paye') {
+      return res.status(400).json({ error: 'Ce paiement est déjà validé ou payé' });
     }
 
-    // Trier par total payé
-    rapports.sort((a, b) => {
-      if (!a.professeur.estPermanent && b.professeur.estPermanent) return -1;
-      if (a.professeur.estPermanent && !b.professeur.estPermanent) return 1;
-      return b.statistiques.totalAPayer - a.statistiques.totalAPayer;
-    });
-
-    const totauxGeneraux = {
-      totalProfesseurs: rapports.length,
-      totalHeures: rapports.reduce((sum, r) => sum + r.statistiques.totalHeures, 0),
-      totalPermanents: rapports.filter(r => r.professeur.estPermanent).length,
-      totalEntrepreneurs: rapports.filter(r => !r.professeur.estPermanent).length,
-      totalAPayer: rapports.reduce((sum, r) => sum + r.statistiques.totalAPayer, 0),
-      totalSeances: rapports.reduce((sum, r) => sum + r.nombreSeances, 0)
-    };
+    // Valider le paiement
+    paiement.valider(req.adminId);
+    if (notes) {
+      paiement.notes = notes;
+    }
+    
+    await paiement.save();
+    await paiement.populate('professeur');
+    await paiement.populate('valideePar', 'nom email');
 
     res.json({
+      message: 'Paiement validé avec succès',
+      paiement
+    });
+
+  } catch (error) {
+    console.error('Erreur validation paiement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 3. API pour marquer un paiement comme payé
+app.post('/api/finance/paiements/marquer-paye', authAdmin, async (req, res) => {
+  try {
+    const { paiementId, methodePaiement, referencePaiement, notes } = req.body;
+
+    if (!methodePaiement) {
+      return res.status(400).json({ error: 'Méthode de paiement requise' });
+    }
+
+    const paiement = await PaiementProfesseur.findById(paiementId);
+    if (!paiement) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    if (paiement.statut !== 'valide') {
+      return res.status(400).json({ error: 'Le paiement doit être validé avant d\'être marqué comme payé' });
+    }
+
+    // Marquer comme payé
+    paiement.marquerPaye(req.adminId, methodePaiement, referencePaiement || '');
+    if (notes) {
+      paiement.notes += (paiement.notes ? '\n' : '') + `Paiement: ${notes}`;
+    }
+    
+    await paiement.save();
+    await paiement.populate('professeur');
+    await paiement.populate('payePar', 'nom email');
+
+    res.json({
+      message: 'Paiement marqué comme payé avec succès',
+      paiement
+    });
+
+  } catch (error) {
+    console.error('Erreur marquage paiement payé:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 4. API pour annuler un paiement
+app.post('/api/finance/paiements/annuler', authAdmin, async (req, res) => {
+  try {
+    const { paiementId, motifAnnulation } = req.body;
+
+    const paiement = await PaiementProfesseur.findById(paiementId);
+    if (!paiement) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    if (paiement.statut === 'paye') {
+      return res.status(400).json({ error: 'Impossible d\'annuler un paiement déjà effectué' });
+    }
+
+    paiement.statut = 'annule';
+    paiement.notes += (paiement.notes ? '\n' : '') + `Annulé le ${new Date().toLocaleDateString('fr-FR')}: ${motifAnnulation || 'Aucun motif spécifié'}`;
+    
+    await paiement.save();
+    await paiement.populate('professeur');
+
+    res.json({
+      message: 'Paiement annulé avec succès',
+      paiement
+    });
+
+  } catch (error) {
+    console.error('Erreur annulation paiement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 5. API pour récupérer l'historique des paiements d'un professeur
+app.get('/api/finance/paiements/historique/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+    const { limit = 12 } = req.query;
+
+    const paiements = await PaiementProfesseur.find({
+      professeur: professeurId,
+      actif: true
+    })
+    .populate('professeur', 'nom email')
+    .populate('valideePar', 'nom email')
+    .populate('payePar', 'nom email')
+    .sort({ annee: -1, mois: -1 })
+    .limit(parseInt(limit))
+    .lean();
+
+    res.json({
+      paiements,
+      total: paiements.length
+    });
+
+  } catch (error) {
+    console.error('Erreur historique paiements:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 6. API pour récupérer tous les paiements en attente
+app.get('/api/finance/paiements/en-attente', authAdmin, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+
+    let filter = {
+      statut: 'en_attente',
+      actif: true
+    };
+
+    if (mois && annee) {
+      filter.mois = parseInt(mois);
+      filter.annee = parseInt(annee);
+    }
+
+    const paiements = await PaiementProfesseur.find(filter)
+      .populate('professeur', 'nom email tarifHoraire')
+      .populate('creeParAdmin', 'nom email')
+      .sort({ annee: -1, mois: -1, createdAt: -1 })
+      .lean();
+
+    res.json({
+      paiements,
+      total: paiements.length
+    });
+
+  } catch (error) {
+    console.error('Erreur paiements en attente:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 7. API pour les statistiques de paiements
+app.get('/api/finance/paiements/statistiques', authAdmin, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+
+    let matchFilter = { actif: true };
+    if (mois && annee) {
+      matchFilter.mois = parseInt(mois);
+      matchFilter.annee = parseInt(annee);
+    }
+
+    const stats = await PaiementProfesseur.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: '$statut',
+          count: { $sum: 1 },
+          totalMontant: { $sum: '$montantNet' }
+        }
+      }
+    ]);
+
+    const statistiques = {
+      enAttente: { count: 0, montant: 0 },
+      valide: { count: 0, montant: 0 },
+      paye: { count: 0, montant: 0 },
+      annule: { count: 0, montant: 0 }
+    };
+
+    stats.forEach(stat => {
+      if (statistiques[stat._id]) {
+        statistiques[stat._id] = {
+          count: stat.count,
+          montant: Math.round(stat.totalMontant * 100) / 100
+        };
+      }
+    });
+
+    res.json({ statistiques });
+
+  } catch (error) {
+    console.error('Erreur statistiques paiements:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+
+
+
+
+// API pour rapport individuel mensuel - Correction pour les noms de cours
+app.get('/api/professeurs/:id/rapport', authAdmin, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+    const professeurId = req.params.id;
+
+    if (!mois || !annee) {
+      return res.status(400).json({ error: 'Mois et année requis' });
+    }
+
+    const professeur = await Professeur.findById(professeurId);
+    if (!professeur) {
+      return res.status(404).json({ error: 'Professeur non trouvé' });
+    }
+
+    const dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
+    const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
+
+    // ✅ CORRECTION: Récupérer les séances avec populate du cours
+    const seances = await Seance.find({
+      professeur: professeurId,
+      dateSeance: { $gte: dateDebut, $lte: dateFin },
+      actif: true,
+      typeSeance: { $ne: 'rattrapage' }
+    })
+    .populate('coursId', 'nom') // ✅ AJOUT: Populate le cours
+    .lean();
+
+    const seancesAvecNoms = [];
+    const statistiques = {
+      totalHeures: 0,
+      totalSeances: seances.length,
+      totalAPayer: 0,
+      tarifHoraire: professeur.tarifHoraire || 0,
+      coursUniques: new Set(),
+      matieresUniques: new Set()
+    };
+
+    for (const seance of seances) {
+      // ✅ CORRECTION: Résoudre le nom du cours comme dans l'API mensuelle
+      let nomCours = 'Cours non spécifié';
+      
+      if (seance.coursId && seance.coursId.nom) {
+        nomCours = seance.coursId.nom;
+      } else if (seance.cours && !seance.cours.match(/^[0-9a-fA-F]{24}$/)) {
+        nomCours = seance.cours;
+      } else if (seance.cours) {
+        try {
+          const coursDoc = await mongoose.model('Cours').findById(seance.cours);
+          if (coursDoc) {
+            nomCours = coursDoc.nom;
+          }
+        } catch (err) {
+          console.warn('Erreur recherche cours par ID:', err.message);
+        }
+      }
+
+      // Calculer la durée
+      const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+      const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+
+      seancesAvecNoms.push({
+        ...seance,
+        cours: nomCours, // ✅ Nom résolu
+        dureeHeures: Math.round(dureeHeures * 100) / 100
+      });
+
+      // Mettre à jour les statistiques
+      statistiques.totalHeures += dureeHeures;
+      statistiques.coursUniques.add(nomCours);
+      if (seance.matiere) {
+        statistiques.matieresUniques.add(seance.matiere);
+      }
+
+      // Calculer montant pour entrepreneurs
+      if (!professeur.estPermanent && professeur.tarifHoraire) {
+        statistiques.totalAPayer += dureeHeures * professeur.tarifHoraire;
+      }
+    }
+
+    // Finaliser les statistiques
+    statistiques.totalHeures = Math.round(statistiques.totalHeures * 100) / 100;
+    statistiques.totalAPayer = Math.round(statistiques.totalAPayer * 100) / 100;
+    statistiques.coursUniques = statistiques.coursUniques.size;
+    statistiques.matieresUniques = statistiques.matieresUniques.size;
+
+    res.json({
+      professeur,
+      seances: seancesAvecNoms, // ✅ Séances avec noms de cours corrects
+      statistiques,
       periode: {
         mois: parseInt(mois),
         annee: parseInt(annee),
-        nomMois: obtenirNomMois(parseInt(mois))
-      },
-      totauxGeneraux,
-      rapports,
-      note: "Séances en rattrapage exclues des statistiques" // ✅ Indicateur
+        nomMois: [
+          'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ][parseInt(mois) - 1]
+      }
     });
 
-  } catch (err) {
-    console.error('Erreur rapports mensuels:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  } catch (error) {
+    console.error('Erreur rapport individuel:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-// Route pour obtenir le rapport annuel d'un professeur (CORRIGÉE)
-app.get('/api/professeurs/:id/rapport/annuel', authAdminOrPedagogique, async (req, res) => {
+// API pour rapport annuel - Correction pour les noms de cours
+app.get('/api/professeurs/:id/rapport/annuel', authAdmin, async (req, res) => {
   try {
-    const professeurId = req.params.id;
     const { annee } = req.query;
-    
+    const professeurId = req.params.id;
+
     if (!annee) {
-      return res.status(400).json({ message: 'Année requise (ex: ?annee=2025)' });
+      return res.status(400).json({ error: 'Année requise' });
     }
 
     const professeur = await Professeur.findById(professeurId);
     if (!professeur) {
-      return res.status(404).json({ message: 'Professeur non trouvé' });
+      return res.status(404).json({ error: 'Professeur non trouvé' });
     }
 
     const rapportsMensuels = [];
-    let totauxAnnuels = {
+    const totauxAnnuels = {
       totalHeures: 0,
       totalSeances: 0,
       totalAPayer: 0
     };
 
-    // Générer le rapport pour chaque mois
+    // Générer rapport pour chaque mois
     for (let mois = 1; mois <= 12; mois++) {
-      const startDate = new Date(annee, mois - 1, 1);
-      const endDate = new Date(annee, mois, 0, 23, 59, 59);
+      const dateDebut = new Date(parseInt(annee), mois - 1, 1);
+      const dateFin = new Date(parseInt(annee), mois, 0, 23, 59, 59);
 
-      // ✅ MODIFICATION: Utiliser dateSeance et exclure rattrapages
+      // ✅ CORRECTION: Même logique avec populate
       const seances = await Seance.find({
         professeur: professeurId,
-        dateSeance: { // ✅ Utiliser dateSeance
-          $gte: startDate,
-          $lte: endDate
-        },
-        typeSeance: { $in: ['reelle', 'exception'] }, // ✅ EXCLURE rattrapages
-        actif: true
-      });
+        dateSeance: { $gte: dateDebut, $lte: dateFin },
+        actif: true,
+        typeSeance: { $ne: 'rattrapage' }
+      })
+      .populate('coursId', 'nom')
+      .lean();
 
-      const statistiques = calculerStatistiquesProfesseur(seances, professeur);
-      
-      rapportsMensuels.push({
-        mois,
-        nomMois: obtenirNomMois(mois),
-        statistiques,
-        nombreSeances: seances.length
-      });
+      if (seances.length > 0) {
+        let totalHeuresMois = 0;
+        let totalAPayerMois = 0;
 
-      totauxAnnuels.totalHeures += statistiques.totalHeures;
-      totauxAnnuels.totalSeances += seances.length;
-      totauxAnnuels.totalAPayer += statistiques.totalAPayer;
+        for (const seance of seances) {
+          // Résoudre le nom du cours
+          let nomCours = 'Cours non spécifié';
+          
+          if (seance.coursId && seance.coursId.nom) {
+            nomCours = seance.coursId.nom;
+          } else if (seance.cours && !seance.cours.match(/^[0-9a-fA-F]{24}$/)) {
+            nomCours = seance.cours;
+          } else if (seance.cours) {
+            try {
+              const coursDoc = await mongoose.model('Cours').findById(seance.cours);
+              if (coursDoc) {
+                nomCours = coursDoc.nom;
+              }
+            } catch (err) {
+              console.warn('Erreur recherche cours par ID:', err.message);
+            }
+          }
+
+          // Calculer durée
+          const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+          const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+          const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+
+          totalHeuresMois += dureeHeures;
+
+          if (!professeur.estPermanent && professeur.tarifHoraire) {
+            totalAPayerMois += dureeHeures * professeur.tarifHoraire;
+          }
+        }
+
+        const rapportMois = {
+          mois,
+          nomMois: [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+          ][mois - 1],
+          nombreSeances: seances.length,
+          statistiques: {
+            totalHeures: Math.round(totalHeuresMois * 100) / 100,
+            totalAPayer: Math.round(totalAPayerMois * 100) / 100,
+            tarifHoraire: professeur.tarifHoraire || 0
+          }
+        };
+
+        rapportsMensuels.push(rapportMois);
+
+        // Ajouter aux totaux annuels
+        totauxAnnuels.totalHeures += totalHeuresMois;
+        totauxAnnuels.totalSeances += seances.length;
+        totauxAnnuels.totalAPayer += totalAPayerMois;
+      }
     }
 
+    // Finaliser les totaux
+    totauxAnnuels.totalHeures = Math.round(totauxAnnuels.totalHeures * 100) / 100;
+    totauxAnnuels.totalAPayer = Math.round(totauxAnnuels.totalAPayer * 100) / 100;
+
     res.json({
-      professeur: {
-        _id: professeur._id,
-        nom: professeur.nom,
-        email: professeur.email,
-        estPermanent: professeur.estPermanent,
-        tarifHoraire: professeur.tarifHoraire
-      },
+      professeur,
       annee: parseInt(annee),
-      totauxAnnuels,
       rapportsMensuels,
-      note: "Séances en rattrapage exclues des statistiques annuelles" // ✅ Indicateur
+      totauxAnnuels
     });
 
-  } catch (err) {
-    console.error('Erreur rapport annuel:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  } catch (error) {
+    console.error('Erreur rapport annuel:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-// Nouvelle route pour voir les rattrapages d'un professeur
-app.get('/api/professeurs/:id/rattrapages', authAdminOrPedagogique, async (req, res) => {
+
+// API pour les rattrapages - Correction pour les noms de cours
+app.get('/api/professeurs/:id/rattrapages', authAdmin, async (req, res) => {
   try {
-    const professeurId = req.params.id;
     const { mois, annee } = req.query;
-    
+    const professeurId = req.params.id;
+
     const professeur = await Professeur.findById(professeurId);
     if (!professeur) {
-      return res.status(404).json({ message: 'Professeur non trouvé' });
+      return res.status(404).json({ error: 'Professeur non trouvé' });
     }
 
-    let dateFilter = {
-      professeur: professeurId,
-      typeSeance: 'rattrapage', // ✅ SEULEMENT les rattrapages
-      actif: true
-    };
-    
+    let dateDebut, dateFin;
+
     if (mois && annee) {
-      const startDate = new Date(annee, mois - 1, 1);
-      const endDate = new Date(annee, mois, 0, 23, 59, 59);
-      dateFilter.dateSeance = { $gte: startDate, $lte: endDate };
+      // Mode mensuel
+      dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
+      dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
     } else if (annee) {
-      const startDate = new Date(annee, 0, 1);
-      const endDate = new Date(annee, 11, 31, 23, 59, 59);
-      dateFilter.dateSeance = { $gte: startDate, $lte: endDate };
+      // Mode annuel
+      dateDebut = new Date(parseInt(annee), 0, 1);
+      dateFin = new Date(parseInt(annee), 11, 31, 23, 59, 59);
+    } else {
+      return res.status(400).json({ error: 'Mois et année ou année requis' });
     }
-    
-    const rattrapages = await Seance.find(dateFilter)
-      .sort({ dateSeance: 1, heureDebut: 1 });
 
+    // ✅ CORRECTION: Récupérer les rattrapages avec populate
+    const rattrapages = await Seance.find({
+      professeur: professeurId,
+      dateSeance: { $gte: dateDebut, $lte: dateFin },
+      typeSeance: 'rattrapage',
+      actif: true
+    })
+    .populate('coursId', 'nom')
+    .lean();
+
+    const rattrapagesAvecNoms = [];
     let totalHeuresRattrapage = 0;
-    const rattrapagesAvecDuree = rattrapages.map(seance => {
-      const dureeHeures = calculerDureeSeance(seance.heureDebut, seance.heureFin);
-      totalHeuresRattrapage += dureeHeures;
+
+    for (const rattrapage of rattrapages) {
+      // ✅ CORRECTION: Résoudre le nom du cours
+      let nomCours = 'Cours non spécifié';
       
-      return {
-        _id: seance._id,
-        jour: seance.jour,
-        heureDebut: seance.heureDebut,
-        heureFin: seance.heureFin,
-        cours: seance.cours,
-        matiere: seance.matiere,
-        salle: seance.salle,
-        dateSeance: seance.dateSeance,
-        dureeHeures: dureeHeures,
-        notes: seance.notes
-      };
-    });
-    
+      if (rattrapage.coursId && rattrapage.coursId.nom) {
+        nomCours = rattrapage.coursId.nom;
+      } else if (rattrapage.cours && !rattrapage.cours.match(/^[0-9a-fA-F]{24}$/)) {
+        nomCours = rattrapage.cours;
+      } else if (rattrapage.cours) {
+        try {
+          const coursDoc = await mongoose.model('Cours').findById(rattrapage.cours);
+          if (coursDoc) {
+            nomCours = coursDoc.nom;
+          }
+        } catch (err) {
+          console.warn('Erreur recherche cours par ID:', err.message);
+        }
+      }
+
+      // Calculer durée
+      const [heureD, minuteD] = rattrapage.heureDebut.split(':').map(Number);
+      const [heureF, minuteF] = rattrapage.heureFin.split(':').map(Number);
+      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+
+      rattrapagesAvecNoms.push({
+        ...rattrapage,
+        cours: nomCours, // ✅ Nom résolu
+        dureeHeures: Math.round(dureeHeures * 100) / 100
+      });
+
+      totalHeuresRattrapage += dureeHeures;
+    }
+
     res.json({
-      professeur: {
-        _id: professeur._id,
-        nom: professeur.nom,
-        email: professeur.email
-      },
-      periode: {
-        mois: mois ? parseInt(mois) : null,
-        annee: annee ? parseInt(annee) : null
-      },
+      professeur,
+      rattrapages: rattrapagesAvecNoms, // ✅ Rattrapages avec noms corrects
       statistiquesRattrapages: {
         totalRattrapages: rattrapages.length,
         totalHeuresRattrapage: Math.round(totalHeuresRattrapage * 100) / 100
       },
-      rattrapages: rattrapagesAvecDuree
+      periode: mois ? {
+        mois: parseInt(mois),
+        annee: parseInt(annee),
+        nomMois: [
+          'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ][parseInt(mois) - 1]
+      } : {
+        annee: parseInt(annee)
+      }
     });
 
-  } catch (err) {
-    console.error('Erreur rattrapages:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  } catch (error) {
+    console.error('Erreur rattrapages:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-// Route pour que le professeur voie ses propres statistiques
-app.get('/api/professeurs/mon-rapport', authProfesseur, async (req, res) => {
+
+// 2. API POUR APPLIQUER UNE PÉNALITÉ
+app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
+  try {
+    const { professeurId, mois, annee, type, valeur, motif, appliquePour } = req.body;
+
+    // Validations
+    if (!professeurId || !mois || !annee || !type || valeur === undefined || !motif) {
+      return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
+    }
+
+    if (!['pourcentage', 'montant_fixe'].includes(type)) {
+      return res.status(400).json({ error: 'Type de pénalité invalide' });
+    }
+
+    if (type === 'pourcentage' && (valeur < -100 || valeur > 100)) {
+      return res.status(400).json({ error: 'Le pourcentage doit être entre -100 et 100' });
+    }
+
+    // Vérifier que le professeur existe
+    const professeur = await Professeur.findById(professeurId);
+    if (!professeur) {
+      return res.status(404).json({ error: 'Professeur non trouvé' });
+    }
+
+    if (professeur.estPermanent) {
+      return res.status(400).json({ error: 'Les pénalités ne s\'appliquent qu\'aux entrepreneurs' });
+    }
+
+    // Calculer le montant original pour ce mois
+    const dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
+    const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
+
+    const seances = await Seance.find({
+      professeur: professeurId,
+      dateSeance: { $gte: dateDebut, $lte: dateFin },
+      actif: true,
+      typeSeance: { $ne: 'rattrapage' }
+    });
+
+    let montantOriginal = 0;
+    for (const seance of seances) {
+      const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+      const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+      
+      if (professeur.tarifHoraire) {
+        montantOriginal += dureeHeures * professeur.tarifHoraire;
+      }
+    }
+
+    if (montantOriginal === 0) {
+      return res.status(400).json({ error: 'Aucune activité trouvée pour ce professeur ce mois-ci' });
+    }
+
+    // Calculer l'ajustement
+    let ajustement = 0;
+    if (type === 'pourcentage') {
+      ajustement = (montantOriginal * parseFloat(valeur)) / 100;
+    } else {
+      ajustement = parseFloat(valeur);
+    }
+
+    const montantAjuste = montantOriginal - ajustement;
+
+    // Vérifier s'il existe déjà une pénalité pour cette période
+    const penaliteExistante = await PenaliteProfesseur.findOne({
+      professeur: professeurId,
+      mois: parseInt(mois),
+      annee: parseInt(annee)
+    });
+
+    if (penaliteExistante) {
+      // Mettre à jour la pénalité existante
+      penaliteExistante.type = type;
+      penaliteExistante.valeur = parseFloat(valeur);
+      penaliteExistante.montantOriginal = Math.round(montantOriginal * 100) / 100;
+      penaliteExistante.montantAjuste = Math.round(montantAjuste * 100) / 100;
+      penaliteExistante.motif = motif;
+      penaliteExistante.appliquePour = appliquePour;
+      penaliteExistante.appliquePar = req.adminId;
+      penaliteExistante.dateApplication = new Date();
+      
+      await penaliteExistante.save();
+      
+      res.json({
+        message: 'Pénalité mise à jour avec succès',
+        penalite: penaliteExistante,
+        montantOriginal: Math.round(montantOriginal * 100) / 100,
+        ajustement: Math.round(ajustement * 100) / 100,
+        nouveauMontant: Math.round(montantAjuste * 100) / 100
+      });
+    } else {
+      // Créer une nouvelle pénalité
+      const nouvellePenalite = new PenaliteProfesseur({
+        professeur: professeurId,
+        mois: parseInt(mois),
+        annee: parseInt(annee),
+        type,
+        valeur: parseFloat(valeur),
+        montantOriginal: Math.round(montantOriginal * 100) / 100,
+        montantAjuste: Math.round(montantAjuste * 100) / 100,
+        motif,
+        appliquePour,
+        appliquePar: req.adminId
+      });
+
+      await nouvellePenalite.save();
+
+      res.json({
+        message: 'Pénalité appliquée avec succès',
+        penalite: nouvellePenalite,
+        montantOriginal: Math.round(montantOriginal * 100) / 100,
+        ajustement: Math.round(ajustement * 100) / 100,
+        nouveauMontant: Math.round(montantAjuste * 100) / 100
+      });
+    }
+
+  } catch (error) {
+    console.error('Erreur application pénalité:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// CORRECTION pour votre app.js/server.js - SANS les méthodes de schéma
+
+// 1. API CORRIGÉE pour récupération des rapports financiers
+app.get('/api/professeurs/rapports/mensuel', authAdmin, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     
-    const professeur = await Professeur.findById(req.professeurId);
-    if (!professeur) {
-      return res.status(404).json({ message: 'Professeur non trouvé' });
+    if (!mois || !annee) {
+      return res.status(400).json({ error: 'Mois et année requis' });
     }
 
-    // Construire le filtre de date
-    let dateFilter = {};
-    if (mois && annee) {
-      const startDate = new Date(annee, mois - 1, 1);
-      const endDate = new Date(annee, mois, 0, 23, 59, 59);
-      dateFilter = {
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate
+    // Récupérer tous les professeurs entrepreneurs
+    const professeurs = await Professeur.find({ 
+      estPermanent: false, 
+      actif: true 
+    }).lean();
+
+    const rapports = [];
+
+    // Pour chaque professeur, récupérer son cycle EN COURS uniquement
+    for (const professeur of professeurs) {
+      try {
+        // Récupérer le cycle en cours
+        const cycleEnCours = await CyclePaiement.findOne({
+          professeur: professeur._id,
+          statut: 'en_cours',
+          actif: true
+        });
+        
+        if (!cycleEnCours) {
+          continue; // Pas de cycle en cours
         }
-      };
-    } else if (annee) {
-      const startDate = new Date(annee, 0, 1);
-      const endDate = new Date(annee, 11, 31, 23, 59, 59);
-      dateFilter = {
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate
+
+        // Récupérer UNIQUEMENT les séances non payées
+        const seancesNonPayees = await Seance.find({
+          professeur: professeur._id,
+          actif: true,
+          payee: { $ne: true }, // Séances pas encore payées
+          typeSeance: { $ne: 'rattrapage' }
+        }).populate('coursId', 'nom').lean();
+
+        if (seancesNonPayees.length === 0) {
+          continue; // Pas de séances non payées
         }
-      };
-    } else {
-      // Par défaut, mois actuel
-      const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      dateFilter = {
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate
+
+        // Calculer le montant brut des séances non payées
+        let montantBrut = 0;
+        let totalHeures = 0;
+        const seancesIncluses = [];
+
+        for (const seance of seancesNonPayees) {
+          const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+          const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+          const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+          
+          const montantSeance = dureeHeures * (professeur.tarifHoraire || 0);
+          montantBrut += montantSeance;
+          totalHeures += dureeHeures;
+
+          // Résoudre le nom du cours
+          let nomCours = 'Cours non spécifié';
+          if (seance.coursId && seance.coursId.nom) {
+            nomCours = seance.coursId.nom;
+          } else if (seance.cours) {
+            nomCours = seance.cours;
+          }
+          
+          seancesIncluses.push({
+            seanceId: seance._id,
+            cours: nomCours,
+            date: seance.dateSeance,
+            heures: Math.round(dureeHeures * 100) / 100,
+            montant: Math.round(montantSeance * 100) / 100
+          });
         }
-      };
+
+        // Récupérer UNIQUEMENT les pénalités actives
+        const penalitesActives = await PenaliteProfesseur.find({
+          professeur: professeur._id,
+          actif: true,
+          $or: [
+            { 
+              appliquePour: 'mois_actuel',
+              mois: parseInt(mois),
+              annee: parseInt(annee)
+            },
+            { appliquePour: 'permanent' }
+          ]
+        }).lean();
+
+        // Calculer les ajustements
+        let totalAjustements = 0;
+        let penaliteInfo = null;
+
+        for (const penalite of penalitesActives) {
+          let ajustement = 0;
+          if (penalite.type === 'pourcentage') {
+            ajustement = (montantBrut * penalite.valeur) / 100;
+          } else {
+            ajustement = penalite.valeur;
+          }
+          
+          totalAjustements += ajustement;
+          
+          if (!penaliteInfo) {
+            penaliteInfo = {
+              type: penalite.type,
+              valeur: penalite.valeur,
+              motif: penalite.motif,
+              dateApplication: penalite.dateApplication
+            };
+          }
+        }
+
+        // Mettre à jour le cycle avec les nouvelles données
+        await CyclePaiement.findByIdAndUpdate(cycleEnCours._id, {
+          montantBrut: Math.round(montantBrut * 100) / 100,
+          ajustements: Math.round(totalAjustements * 100) / 100,
+          montantNet: Math.round((montantBrut - totalAjustements) * 100) / 100,
+          seancesIncluses: seancesIncluses,
+          updatedAt: new Date()
+        });
+
+        // Construire le rapport
+        const rapport = {
+          professeur: {
+            _id: professeur._id,
+            nom: professeur.nom,
+            email: professeur.email,
+            estPermanent: false,
+            tarifHoraire: professeur.tarifHoraire
+          },
+          seances: [],
+          statistiques: {
+            totalHeures: Math.round(totalHeures * 100) / 100,
+            totalSeances: seancesNonPayees.length,
+            totalAPayerOriginal: Math.round(montantBrut * 100) / 100,
+            totalAPayer: Math.round((montantBrut - totalAjustements) * 100) / 100,
+            penaliteAppliquee: Math.round(totalAjustements * 100) / 100,
+            tarifHoraire: professeur.tarifHoraire || 0,
+            coursUniques: new Set(seancesIncluses.map(s => s.cours)).size,
+            matieresUniques: 1,
+            
+            // Informations du cycle
+            cycleId: cycleEnCours._id,
+            numeroCycle: cycleEnCours.numeroCycle,
+            statutCycle: cycleEnCours.statut,
+            dateValidationFinance: cycleEnCours.dateValidationFinance,
+            datePaiementAdmin: cycleEnCours.datePaiementAdmin
+          },
+          penaliteInfo
+        };
+
+        rapports.push(rapport);
+
+      } catch (profError) {
+        console.error(`Erreur pour professeur ${professeur._id}:`, profError);
+        continue;
+      }
     }
-
-    const seances = await Seance.find({
-      professeur: req.professeurId,
-      ...dateFilter
-    }).sort({ jour: 1, heureDebut: 1 });
-
-    const statistiques = calculerStatistiquesProfesseur(seances, professeur);
 
     res.json({
-      professeur: {
-        nom: professeur.nom,
-        email: professeur.email,
-        estPermanent: professeur.estPermanent,
-        tarifHoraire: professeur.tarifHoraire
-      },
+      rapports,
       periode: {
-        mois: mois ? parseInt(mois) : null,
-        annee: annee ? parseInt(annee) : null
+        mois: parseInt(mois),
+        annee: parseInt(annee),
+        nomMois: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'][parseInt(mois) - 1]
       },
-      statistiques,
-      seances: seances.map(seance => ({
-        jour: seance.jour,
-        heureDebut: seance.heureDebut,
-        heureFin: seance.heureFin,
-        cours: seance.cours,
-        matiere: seance.matiere,
-        salle: seance.salle,
-        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin)
-      }))
+      totalProfesseurs: rapports.length
     });
 
-  } catch (err) {
-    console.error('Erreur rapport professeur:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  } catch (error) {
+    console.error('Erreur rapports mensuels:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+
+// 2. API CORRIGÉE pour validation par Finance
+app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
+  try {
+    if (req.userType !== 'finance_prof') {
+      return res.status(403).json({ error: 'Accès réservé au service Finance' });
+    }
+
+    const { professeurId, notes } = req.body;
+
+    if (!professeurId) {
+      return res.status(400).json({ error: 'ID du professeur requis' });
+    }
+
+    // Trouver le cycle en cours pour ce professeur
+    let cycle = await CyclePaiement.findOne({
+      professeur: professeurId,
+      statut: 'en_cours',
+      actif: true
+    });
+    
+    if (!cycle) {
+      // Créer un nouveau cycle s'il n'y en a pas
+      const dernierCycle = await CyclePaiement.findOne({
+        professeur: professeurId
+      }).sort({ numeroCycle: -1 });
+      
+      const nouveauNumero = dernierCycle ? dernierCycle.numeroCycle + 1 : 1;
+      
+      cycle = new CyclePaiement({
+        professeur: professeurId,
+        numeroCycle: nouveauNumero,
+        dateDebut: new Date(),
+        creeParAdmin: req.adminId
+      });
+      
+      await cycle.save();
+    }
+
+    // Recalculer le cycle avant validation
+    const seancesNonPayees = await Seance.find({
+      professeur: professeurId,
+      actif: true,
+      payee: { $ne: true },
+      typeSeance: { $ne: 'rattrapage' }
+    });
+
+    let montantBrut = 0;
+    for (const seance of seancesNonPayees) {
+      const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+      const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+      
+      const professeur = await Professeur.findById(professeurId);
+      if (professeur && professeur.tarifHoraire) {
+        montantBrut += dureeHeures * professeur.tarifHoraire;
+      }
+    }
+
+    // Mettre à jour le montant du cycle
+    cycle.montantBrut = Math.round(montantBrut * 100) / 100;
+    cycle.montantNet = Math.round(montantBrut * 100) / 100;
+
+    if (cycle.montantNet <= 0) {
+      return res.status(400).json({ 
+        error: 'Impossible de valider un cycle avec un montant négatif ou nul' 
+      });
+    }
+
+    // Valider le cycle
+    cycle.statut = 'valide_finance';
+    cycle.valideParFinance = req.adminId;
+    cycle.dateValidationFinance = new Date();
+    cycle.notesFinance = notes || '';
+    
+    await cycle.save();
+
+    await cycle.populate('professeur', 'nom email tarifHoraire');
+
+    res.json({
+      message: 'Cycle validé par Finance',
+      cycle: cycle
+    });
+
+  } catch (error) {
+    console.error('Erreur validation Finance:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 3. API CORRIGÉE pour paiement par Admin
+app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
+  try {
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    }
+
+    const { cycleId, methodePaiement, referencePaiement, notes } = req.body;
+
+    if (!cycleId || !methodePaiement) {
+      return res.status(400).json({ error: 'ID du cycle et méthode de paiement requis' });
+    }
+
+    const cycle = await CyclePaiement.findById(cycleId).populate('professeur');
+    if (!cycle) {
+      return res.status(404).json({ error: 'Cycle non trouvé' });
+    }
+
+    if (cycle.statut !== 'valide_finance') {
+      return res.status(400).json({ error: 'Ce cycle doit être validé par Finance avant le paiement' });
+    }
+
+    // 1. Marquer le cycle comme payé
+    cycle.statut = 'paye_admin';
+    cycle.payeParAdmin = req.adminId;
+    cycle.datePaiementAdmin = new Date();
+    cycle.methodePaiement = methodePaiement;
+    cycle.referencePaiement = referencePaiement || '';
+    cycle.notesAdmin = notes || '';
+    cycle.dateFin = new Date();
+    
+    await cycle.save();
+
+    // 2. Marquer toutes les séances comme payées
+    const seanceIds = cycle.seancesIncluses.map(s => s.seanceId);
+    
+    await Seance.updateMany(
+      { _id: { $in: seanceIds } },
+      { 
+        payee: true,
+        statutPaiement: 'paye_admin',
+        datePaiement: new Date(),
+        cyclePaiementId: cycle._id
+      }
+    );
+
+    // 3. IMPORTANT: Désactiver les pénalités "mois_actuel"
+    await PenaliteProfesseur.updateMany(
+      {
+        professeur: cycle.professeur._id,
+        appliquePour: 'mois_actuel',
+        actif: true
+      },
+      {
+        actif: false,
+        dateDesactivation: new Date(),
+        motifDesactivation: 'Cycle payé'
+      }
+    );
+
+    // 4. Créer automatiquement le nouveau cycle
+    const dernierCycle = await CyclePaiement.findOne({
+      professeur: cycle.professeur._id
+    }).sort({ numeroCycle: -1 });
+    
+    const nouveauNumero = dernierCycle ? dernierCycle.numeroCycle + 1 : 1;
+    
+    const nouveauCycle = new CyclePaiement({
+      professeur: cycle.professeur._id,
+      numeroCycle: nouveauNumero,
+      dateDebut: new Date(),
+      creeParAdmin: req.adminId
+    });
+    
+    await nouveauCycle.save();
+    
+    console.log(`✅ Cycle ${cycle.numeroCycle} payé pour ${cycle.professeur.nom}, nouveau cycle ${nouveauCycle.numeroCycle} créé`);
+
+    res.json({
+      message: 'Paiement effectué avec succès',
+      cyclePayé: {
+        id: cycle._id,
+        numero: cycle.numeroCycle,
+        montant: cycle.montantNet,
+        professeur: cycle.professeur.nom
+      },
+      nouveauCycle: {
+        id: nouveauCycle._id,
+        numero: nouveauCycle.numeroCycle,
+        dateDebut: nouveauCycle.dateDebut
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur paiement Admin:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 4. API utilitaire pour créer un cycle manquant
+app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+
+    // Vérifier s'il y a déjà un cycle en cours
+    let cycleEnCours = await CyclePaiement.findOne({
+      professeur: professeurId,
+      statut: 'en_cours',
+      actif: true
+    });
+    
+    if (cycleEnCours) {
+      return res.json({
+        message: 'Un cycle en cours existe déjà',
+        cycle: cycleEnCours
+      });
+    }
+
+    // Créer un nouveau cycle
+    const dernierCycle = await CyclePaiement.findOne({
+      professeur: professeurId
+    }).sort({ numeroCycle: -1 });
+    
+    const nouveauNumero = dernierCycle ? dernierCycle.numeroCycle + 1 : 1;
+    
+    const nouveauCycle = new CyclePaiement({
+      professeur: professeurId,
+      numeroCycle: nouveauNumero,
+      dateDebut: new Date(),
+      creeParAdmin: req.adminId
+    });
+    
+    await nouveauCycle.save();
+    await nouveauCycle.populate('professeur', 'nom email');
+
+    res.json({
+      message: 'Nouveau cycle créé avec succès',
+      cycle: nouveauCycle
+    });
+
+  } catch (error) {
+    console.error('Erreur création cycle manquant:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 5. API de diagnostic pour vérifier l'état des cycles
+app.get('/api/admin/cycles/diagnostic/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+
+    const tousLesCycles = await CyclePaiement.find({
+      professeur: professeurId,
+      actif: true
+    }).sort({ numeroCycle: 1 }).lean();
+
+    const cycleEnCours = await CyclePaiement.findOne({
+      professeur: professeurId,
+      statut: 'en_cours',
+      actif: true
+    });
+    
+    const seancesNonPayees = await Seance.countDocuments({
+      professeur: professeurId,
+      actif: true,
+      payee: { $ne: true }
+    });
+
+    const diagnostic = {
+      professeurId,
+      totalCycles: tousLesCycles.length,
+      cycleEnCoursExiste: !!cycleEnCours,
+      cycleEnCours: cycleEnCours ? {
+        id: cycleEnCours._id,
+        numero: cycleEnCours.numeroCycle,
+        statut: cycleEnCours.statut,
+        montantNet: cycleEnCours.montantNet
+      } : null,
+      seancesNonPayees,
+      derniersCycles: tousLesCycles.map(c => ({
+        numero: c.numeroCycle,
+        statut: c.statut,
+        montantNet: c.montantNet,
+        dateCreation: c.createdAt
+      }))
+    };
+
+    res.json({ diagnostic });
+
+  } catch (error) {
+    console.error('Erreur diagnostic cycles:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+
+// SOLUTION SIMPLE : Utiliser directement les cycles payés pour l'historique
+
+// 1. API pour historique d'un professeur (utilise les cycles existants)
+app.get('/api/professeurs/:id/historique-paiements', authAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 10, annee } = req.query;
+    
+    // Construire le filtre pour les cycles payés
+    const filtre = { 
+      professeur: id, 
+      statut: 'paye_admin',  // Seulement les cycles payés
+      actif: true 
+    };
+    
+    if (annee) {
+      const debutAnnee = new Date(`${annee}-01-01`);
+      const finAnnee = new Date(`${annee}-12-31`);
+      filtre.datePaiementAdmin = { $gte: debutAnnee, $lte: finAnnee };
+    }
+    
+    // Récupérer les cycles payés avec pagination
+    const cyclesPayes = await CyclePaiement.find(filtre)
+      .populate('professeur', 'nom email tarifHoraire')
+      .populate('valideParFinance', 'nom email')
+      .populate('payeParAdmin', 'nom email')
+      .sort({ datePaiementAdmin: -1, numeroCycle: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+    
+    const total = await CyclePaiement.countDocuments(filtre);
+    
+    // Transformer les données pour l'affichage
+    const historiques = cyclesPayes.map(cycle => ({
+      _id: cycle._id,
+      professeur: cycle.professeur,
+      numeroCycle: cycle.numeroCycle,
+      periodeDebut: cycle.dateDebut,
+      periodeFin: cycle.dateFin,
+      nombreSeances: cycle.seancesIncluses ? cycle.seancesIncluses.length : 0,
+      totalHeures: cycle.seancesIncluses ? 
+        cycle.seancesIncluses.reduce((acc, s) => acc + (s.heures || 0), 0) : 0,
+      tarifHoraire: cycle.professeur?.tarifHoraire || 0,
+      montantBrut: cycle.montantBrut || 0,
+      totalAjustements: cycle.ajustements || 0,
+      montantNet: cycle.montantNet || 0,
+      methodePaiement: cycle.methodePaiement,
+      referencePaiement: cycle.referencePaiement,
+      datePaiement: cycle.datePaiementAdmin,
+      valideParFinance: cycle.valideParFinance,
+      dateValidationFinance: cycle.dateValidationFinance,
+      payeParAdmin: cycle.payeParAdmin,
+      notesFinance: cycle.notesFinance,
+      notesAdmin: cycle.notesAdmin,
+      seancesPayees: cycle.seancesIncluses || [],
+      ajustementsAppliques: cycle.penalitesAppliquees || []
+    }));
+    
+    // Calculer les statistiques
+    const statistiques = {
+      totalPaiements: historiques.length,
+      totalMontantBrut: historiques.reduce((acc, h) => acc + h.montantBrut, 0),
+      totalAjustements: historiques.reduce((acc, h) => acc + h.totalAjustements, 0),
+      totalMontantNet: historiques.reduce((acc, h) => acc + h.montantNet, 0),
+      totalHeures: historiques.reduce((acc, h) => acc + h.totalHeures, 0),
+      totalSeances: historiques.reduce((acc, h) => acc + h.nombreSeances, 0)
+    };
+    
+    res.json({
+      historiques,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      statistiques
+    });
+    
+  } catch (error) {
+    console.error('Erreur historique paiements:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 2. API pour historique global (tous professeurs)
+app.get('/api/admin/historique-paiements-global', authAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, annee, mois, professeurId } = req.query;
+    
+    // Construire le filtre
+    const filtre = { 
+      statut: 'paye_admin',  // Seulement les cycles payés
+      actif: true 
+    };
+    
+    if (professeurId) {
+      filtre.professeur = professeurId;
+    }
+    
+    if (annee) {
+      const debutAnnee = new Date(`${annee}-01-01`);
+      const finAnnee = new Date(`${annee}-12-31`);
+      filtre.datePaiementAdmin = { $gte: debutAnnee, $lte: finAnnee };
+    }
+    
+    if (mois && annee) {
+      const debut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
+      const fin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
+      filtre.datePaiementAdmin = { $gte: debut, $lte: fin };
+    }
+    
+    // Récupérer les cycles payés
+    const cyclesPayes = await CyclePaiement.find(filtre)
+      .populate('professeur', 'nom email tarifHoraire estPermanent')
+      .populate('valideParFinance', 'nom email')
+      .populate('payeParAdmin', 'nom email')
+      .sort({ datePaiementAdmin: -1, numeroCycle: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+    
+    const total = await CyclePaiement.countDocuments(filtre);
+    
+    // Transformer les données
+    const historiques = cyclesPayes.map(cycle => ({
+      _id: cycle._id,
+      professeur: cycle.professeur,
+      numeroCycle: cycle.numeroCycle,
+      periodeDebut: cycle.dateDebut,
+      periodeFin: cycle.dateFin,
+      nombreSeances: cycle.seancesIncluses ? cycle.seancesIncluses.length : 0,
+      totalHeures: cycle.seancesIncluses ? 
+        cycle.seancesIncluses.reduce((acc, s) => acc + (s.heures || 0), 0) : 0,
+      tarifHoraire: cycle.professeur?.tarifHoraire || 0,
+      montantBrut: cycle.montantBrut || 0,
+      totalAjustements: cycle.ajustements || 0,
+      montantNet: cycle.montantNet || 0,
+      methodePaiement: cycle.methodePaiement,
+      referencePaiement: cycle.referencePaiement,
+      datePaiement: cycle.datePaiementAdmin,
+      valideParFinance: cycle.valideParFinance,
+      dateValidationFinance: cycle.dateValidationFinance,
+      payeParAdmin: cycle.payeParAdmin,
+      notesFinance: cycle.notesFinance,
+      notesAdmin: cycle.notesAdmin,
+      seancesPayees: cycle.seancesIncluses || [],
+      ajustementsAppliques: cycle.penalitesAppliquees || []
+    }));
+    
+    // Statistiques globales
+    const stats = {
+      totalPaiements: historiques.length,
+      totalMontantBrut: historiques.reduce((acc, h) => acc + h.montantBrut, 0),
+      totalAjustements: historiques.reduce((acc, h) => acc + h.totalAjustements, 0),
+      totalMontantNet: historiques.reduce((acc, h) => acc + h.montantNet, 0),
+      totalHeures: historiques.reduce((acc, h) => acc + h.totalHeures, 0),
+      totalSeances: historiques.reduce((acc, h) => acc + h.nombreSeances, 0),
+      nombreProfesseurs: [...new Set(historiques.map(h => h.professeur._id))].length
+    };
+    
+    res.json({
+      historiques,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      statistiques: stats
+    });
+    
+  } catch (error) {
+    console.error('Erreur historique global:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 3. API pour détail d'un paiement
+app.get('/api/admin/historique-paiements/:id/detail', authAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const cycle = await CyclePaiement.findById(id)
+      .populate('professeur', 'nom email tarifHoraire estPermanent')
+      .populate('valideParFinance', 'nom email')
+      .populate('payeParAdmin', 'nom email')
+      .lean();
+    
+    if (!cycle || cycle.statut !== 'paye_admin') {
+      return res.status(404).json({ error: 'Historique de paiement non trouvé' });
+    }
+    
+    // Transformer en format historique
+    const historique = {
+      _id: cycle._id,
+      professeur: cycle.professeur,
+      numeroCycle: cycle.numeroCycle,
+      periodeDebut: cycle.dateDebut,
+      periodeFin: cycle.dateFin,
+      nombreSeances: cycle.seancesIncluses ? cycle.seancesIncluses.length : 0,
+      totalHeures: cycle.seancesIncluses ? 
+        cycle.seancesIncluses.reduce((acc, s) => acc + (s.heures || 0), 0) : 0,
+      tarifHoraire: cycle.professeur?.tarifHoraire || 0,
+      montantBrut: cycle.montantBrut || 0,
+      totalAjustements: cycle.ajustements || 0,
+      montantNet: cycle.montantNet || 0,
+      methodePaiement: cycle.methodePaiement,
+      referencePaiement: cycle.referencePaiement,
+      datePaiement: cycle.datePaiementAdmin,
+      valideParFinance: cycle.valideParFinance,
+      dateValidationFinance: cycle.dateValidationFinance,
+      payeParAdmin: cycle.payeParAdmin,
+      notesFinance: cycle.notesFinance,
+      notesAdmin: cycle.notesAdmin,
+      seancesPayees: cycle.seancesIncluses || [],
+      ajustementsAppliques: cycle.penalitesAppliquees || []
+    };
+    
+    res.json({ historique });
+    
+  } catch (error) {
+    console.error('Erreur détail historique:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 4. API pour créer des données de test (optionnel - pour tester)
+app.post('/api/admin/test-paiement/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+    
+    // Vérifier s'il y a un cycle en cours
+    let cycle = await CyclePaiement.findOne({
+      professeur: professeurId,
+      statut: 'en_cours',
+      actif: true
+    });
+    
+    if (!cycle) {
+      // Créer un cycle de test
+      const dernierCycle = await CyclePaiement.findOne({
+        professeur: professeurId
+      }).sort({ numeroCycle: -1 });
+      
+      const nouveauNumero = dernierCycle ? dernierCycle.numeroCycle + 1 : 1;
+      
+      cycle = new CyclePaiement({
+        professeur: professeurId,
+        numeroCycle: nouveauNumero,
+        dateDebut: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Il y a 30 jours
+        montantBrut: 1500,
+        ajustements: 100,
+        montantNet: 1400,
+        seancesIncluses: [
+          {
+            seanceId: new mongoose.Types.ObjectId(),
+            cours: 'Cours Test',
+            date: new Date(),
+            heures: 3,
+            montant: 750
+          },
+          {
+            seanceId: new mongoose.Types.ObjectId(),
+            cours: 'Cours Test 2',
+            date: new Date(),
+            heures: 3,
+            montant: 750
+          }
+        ],
+        creeParAdmin: req.adminId
+      });
+      
+      await cycle.save();
+    }
+    
+    // Simuler la validation et le paiement
+    cycle.statut = 'paye_admin';
+    cycle.valideParFinance = req.adminId;
+    cycle.dateValidationFinance = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // Il y a 2 jours
+    cycle.payeParAdmin = req.adminId;
+    cycle.datePaiementAdmin = new Date();
+    cycle.methodePaiement = 'virement';
+    cycle.referencePaiement = 'TEST-' + Date.now();
+    cycle.notesFinance = 'Test de validation';
+    cycle.notesAdmin = 'Test de paiement';
+    cycle.dateFin = new Date();
+    
+    await cycle.save();
+    
+    res.json({
+      message: 'Cycle de test créé et payé',
+      cycle: cycle
+    });
+    
+  } catch (error) {
+    console.error('Erreur test paiement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/professeur/rapports/mensuel', authAdmin, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+    
+    if (!mois || !annee) {
+      return res.status(400).json({ error: 'Mois et année requis' });
+    }
+
+    const dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
+    const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
+
+    // 1. Récupérer les séances
+    const seances = await Seance.find({
+      dateSeance: { $gte: dateDebut, $lte: dateFin },
+      actif: true,
+      typeSeance: { $ne: 'rattrapage' }
+    })
+    .populate('professeur', 'nom email estPermanent tarifHoraire')
+    .populate('coursId', 'nom')
+    .lean();
+
+    // 2. ⚠️ CRUCIAL : Récupérer les pénalités
+    const penalites = await PenaliteProfesseur.find({
+      mois: parseInt(mois),
+      annee: parseInt(annee),
+      actif: true
+    }).lean();
+
+    console.log(`🎯 PÉNALITÉS TROUVÉES: ${penalites.length}`);
+
+    // 3. Créer un map des pénalités
+    const penalitesMap = new Map();
+    penalites.forEach(penalite => {
+      penalitesMap.set(penalite.professeur.toString(), penalite);
+      console.log(`Pénalité: ${penalite.professeur} - ${penalite.motif}`);
+    });
+
+    // 4. Grouper par professeur (votre logique existante)
+    const rapportsMap = new Map();
+    
+    for (const seance of seances) {
+      if (!seance.professeur) continue;
+      const profId = seance.professeur._id.toString();
+      
+      if (!rapportsMap.has(profId)) {
+        rapportsMap.set(profId, {
+          professeur: seance.professeur,
+          seances: [],
+          statistiques: {
+            totalHeures: 0,
+            totalSeances: 0,
+            totalAPayer: 0,
+            totalAPayerOriginal: 0,
+            penaliteAppliquee: 0,
+            tarifHoraire: seance.professeur.tarifHoraire || 0,
+            coursUniques: new Set(),
+            matieresUniques: new Set()
+          },
+          penaliteInfo: null
+        });
+      }
+
+      const rapport = rapportsMap.get(profId);
+      
+      // Calculer durée et montant
+      const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+      const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+
+      rapport.statistiques.totalHeures += dureeHeures;
+      rapport.statistiques.totalSeances += 1;
+
+      if (!seance.professeur.estPermanent && seance.professeur.tarifHoraire) {
+        const montantSeance = dureeHeures * seance.professeur.tarifHoraire;
+        rapport.statistiques.totalAPayerOriginal += montantSeance;
+      }
+    }
+
+    // 5. ⚠️ CRUCIAL : Appliquer les pénalités
+    const rapports = Array.from(rapportsMap.values()).map(rapport => {
+      const profId = rapport.professeur._id.toString();
+      const penalite = penalitesMap.get(profId);
+      
+      if (penalite && !rapport.professeur.estPermanent) {
+        console.log(`✅ Application pénalité pour ${rapport.professeur.nom}`);
+        
+        rapport.statistiques.penaliteAppliquee = rapport.statistiques.totalAPayerOriginal - penalite.montantAjuste;
+        rapport.statistiques.totalAPayer = penalite.montantAjuste;
+        rapport.penaliteInfo = {
+          type: penalite.type,
+          valeur: penalite.valeur,
+          motif: penalite.motif,
+          dateApplication: penalite.dateApplication
+        };
+      } else {
+        rapport.statistiques.totalAPayer = rapport.statistiques.totalAPayerOriginal;
+        rapport.statistiques.penaliteAppliquee = 0;
+      }
+
+      return {
+        ...rapport,
+        nombreSeances: rapport.seances.length,
+        statistiques: {
+          ...rapport.statistiques,
+          totalHeures: Math.round(rapport.statistiques.totalHeures * 100) / 100,
+          totalAPayerOriginal: Math.round(rapport.statistiques.totalAPayerOriginal * 100) / 100,
+          totalAPayer: Math.round(rapport.statistiques.totalAPayer * 100) / 100,
+          penaliteAppliquee: Math.round(rapport.statistiques.penaliteAppliquee * 100) / 100,
+          coursUniques: rapport.statistiques.coursUniques.size,
+          matieresUniques: rapport.statistiques.matieresUniques.size
+        }
+      };
+    });
+
+    res.json({
+      rapports,
+      periode: {
+        mois: parseInt(mois),
+        annee: parseInt(annee),
+        nomMois: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'][parseInt(mois) - 1]
+      },
+      totalProfesseurs: rapports.length
+    });
+
+  } catch (error) {
+    console.error('Erreur rapports mensuels:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+// 2. CORRIGER l'API de validation par Finance
+app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
+  try {
+    if (req.userType !== 'finance_prof') {
+      return res.status(403).json({ error: 'Accès réservé au service Finance' });
+    }
+
+    const { professeurId, notes } = req.body;
+
+    if (!professeurId) {
+      return res.status(400).json({ error: 'ID du professeur requis' });
+    }
+
+    // Trouver le cycle en cours pour ce professeur
+    let cycle = await CyclePaiement.getCycleEnCours(professeurId);
+    
+    if (!cycle) {
+      // Créer un nouveau cycle s'il n'y en a pas
+      cycle = await CyclePaiement.creerNouveauCycle(professeurId, req.userId);
+    }
+
+    // Calculer les montants avant validation
+    await CyclePaiement.calculerCycle(professeurId, cycle._id);
+    cycle = await CyclePaiement.findById(cycle._id);
+
+    if (cycle.montantNet <= 0) {
+      return res.status(400).json({ 
+        error: 'Impossible de valider un cycle avec un montant négatif ou nul' 
+      });
+    }
+
+    // Valider le cycle
+    cycle.validerParFinance(req.userId, notes || '');
+    await cycle.save();
+
+    await cycle.populate('professeur', 'nom email tarifHoraire');
+
+    res.json({
+      message: 'Cycle validé par Finance',
+      cycle: cycle
+    });
+
+  } catch (error) {
+    console.error('Erreur validation Finance:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 3. CORRIGER l'API de paiement par Admin - AVEC CRÉATION AUTOMATIQUE DU NOUVEAU CYCLE
+app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
+  try {
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    }
+
+    const { cycleId, methodePaiement, referencePaiement, notes } = req.body;
+
+    if (!cycleId || !methodePaiement) {
+      return res.status(400).json({ error: 'ID du cycle et méthode de paiement requis' });
+    }
+
+    const cycle = await CyclePaiement.findById(cycleId).populate('professeur');
+    if (!cycle) {
+      return res.status(404).json({ error: 'Cycle non trouvé' });
+    }
+
+    if (cycle.statut !== 'valide_finance') {
+      return res.status(400).json({ error: 'Ce cycle doit être validé par Finance avant le paiement' });
+    }
+
+    // 1. Marquer le cycle comme payé
+    cycle.payerParAdmin(req.adminId, methodePaiement, referencePaiement || '', notes || '');
+    await cycle.save();
+
+    // 2. IMPORTANT: Marquer toutes les séances incluses comme payées
+    const seanceIds = cycle.seancesIncluses.map(s => s.seanceId);
+    
+    await Seance.updateMany(
+      { _id: { $in: seanceIds } },
+      { 
+        payee: true,
+        statutPaiement: 'paye_admin',
+        datePaiement: new Date(),
+        cyclePaiementId: cycle._id
+      }
+    );
+
+    // 3. CRÉER AUTOMATIQUEMENT LE NOUVEAU CYCLE - CORRECTION CRITIQUE
+    const nouveauCycle = await CyclePaiement.creerNouveauCycle(cycle.professeur._id, req.adminId);
+    
+    console.log(`✅ Cycle ${cycle.numeroCycle} payé pour ${cycle.professeur.nom}, nouveau cycle ${nouveauCycle.numeroCycle} créé`);
+
+    res.json({
+      message: 'Paiement effectué avec succès',
+      cyclePayé: {
+        id: cycle._id,
+        numero: cycle.numeroCycle,
+        montant: cycle.montantNet,
+        professeur: cycle.professeur.nom
+      },
+      nouveauCycle: {
+        id: nouveauCycle._id,
+        numero: nouveauCycle.numeroCycle,
+        dateDebut: nouveauCycle.dateDebut
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur paiement Admin:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 4. API pour forcer la création d'un cycle manquant (utilitaire de débogage)
+app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+
+    // Vérifier s'il y a déjà un cycle en cours
+    let cycleEnCours = await CyclePaiement.getCycleEnCours(professeurId);
+    
+    if (cycleEnCours) {
+      return res.json({
+        message: 'Un cycle en cours existe déjà',
+        cycle: cycleEnCours
+      });
+    }
+
+    // Créer un nouveau cycle
+    const nouveauCycle = await CyclePaiement.creerNouveauCycle(professeurId, req.adminId);
+    
+    await nouveauCycle.populate('professeur', 'nom email');
+
+    res.json({
+      message: 'Nouveau cycle créé avec succès',
+      cycle: nouveauCycle
+    });
+
+  } catch (error) {
+    console.error('Erreur création cycle manquant:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 5. API de diagnostic pour vérifier l'état des cycles d'un professeur
+app.get('/api/admin/cycles/diagnostic/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+
+    const tousLesCycles = await CyclePaiement.find({
+      professeur: professeurId,
+      actif: true
+    }).sort({ numeroCycle: 1 }).lean();
+
+    const cycleEnCours = await CyclePaiement.getCycleEnCours(professeurId);
+    
+    const seancesNonPayees = await Seance.countDocuments({
+      professeur: professeurId,
+      actif: true,
+      payee: { $ne: true }
+    });
+
+    const diagnostic = {
+      professeurId,
+      totalCycles: tousLesCycles.length,
+      cycleEnCoursExiste: !!cycleEnCours,
+      cycleEnCours: cycleEnCours ? {
+        id: cycleEnCours._id,
+        numero: cycleEnCours.numeroCycle,
+        statut: cycleEnCours.statut,
+        montantNet: cycleEnCours.montantNet
+      } : null,
+      seancesNonPayees,
+      derniersCycles: tousLesCycles.map(c => ({
+        numero: c.numeroCycle,
+        statut: c.statut,
+        montantNet: c.montantNet,
+        dateCreation: c.createdAt
+      }))
+    };
+
+    res.json({ diagnostic });
+
+  } catch (error) {
+    console.error('Erreur diagnostic cycles:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ASSUREZ-VOUS aussi que le modèle PenaliteProfesseur est bien importé en haut du fichier :
+// const PenaliteProfesseur = require('./models/PenaliteProfesseur');
+
+// 4. API POUR RÉCUPÉRER L'HISTORIQUE DES PÉNALITÉS
+app.get('/api/finance/penalites/historique/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+    
+    const penalites = await PenaliteProfesseur.find({
+      professeur: professeurId,
+      actif: true
+    })
+    .populate('appliquePar', 'nom email')
+    .sort({ dateApplication: -1 })
+    .lean();
+
+    res.json({
+      professeurId,
+      penalites,
+      total: penalites.length
+    });
+
+  } catch (error) {
+    console.error('Erreur historique pénalités:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 5. API POUR SUPPRIMER/DÉSACTIVER UNE PÉNALITÉ
+app.delete('/api/finance/penalites/:penaliteId', authAdmin, async (req, res) => {
+  try {
+    const { penaliteId } = req.params;
+    
+    const penalite = await PenaliteProfesseur.findById(penaliteId);
+    if (!penalite) {
+      return res.status(404).json({ error: 'Pénalité non trouvée' });
+    }
+
+    // Désactiver au lieu de supprimer (pour garder l'historique)
+    penalite.actif = false;
+    await penalite.save();
+
+    res.json({
+      message: 'Pénalité supprimée avec succès',
+      penalite
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression pénalité:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+
 
 // ===== FONCTIONS UTILITAIRES =====
 
@@ -4308,41 +6370,7 @@ const genererSeancesAutomatique = async () => {
 
 
 // Route pour modifier une séance - CORRIGÉE
-app.put('/api/seances/:id', authAdmin, async (req, res) => {
-  try {
-    // ✅ AJOUT: Inclure matiere et salle dans la destructuration
-    const { jour, heureDebut, heureFin, cours, professeur, matiere, salle } = req.body;
 
-    // ✅ Récupérer le nom du cours à partir de l'ID
-    const coursDoc = await Cours.findById(cours);
-    if (!coursDoc) {
-      return res.status(404).json({ message: 'Cours non trouvé' });
-    }
-
-    const seance = await Seance.findByIdAndUpdate(
-      req.params.id,
-      {
-        jour,
-        heureDebut,
-        heureFin,
-        cours: coursDoc.nom, // ✅ Utiliser le nom du cours
-        professeur,
-        matiere: matiere || '', // ✅ IMPORTANT: Inclure la matière
-        salle: salle || '' // ✅ IMPORTANT: Inclure la salle
-      },
-      { new: true }
-    );
-
-    if (!seance) {
-      return res.status(404).json({ message: 'Séance non trouvée' });
-    }
-
-    res.json({ message: 'Séance modifiée avec succès', seance });
-  } catch (err) {
-    console.error('Erreur modification séance:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
-  }
-});
 
 // Route pour récupérer toutes les séances (pour admin) - INCHANGÉE
 app.get('/api/seances', authAdmin, async (req, res) => {
@@ -4358,21 +6386,7 @@ app.get('/api/seances', authAdmin, async (req, res) => {
 });
 
 // Route pour récupérer les séances pour les étudiants - MODIFIÉE
-app.get('/api/seances/etudiant', authEtudiant, async (req, res) => {
-  try {
-    const etudiant = await Etudiant.findById(req.etudiantId);
-    const coursNoms = etudiant.cours; // Array de strings comme ['france', 'ji']
 
-    // ✅ Chercher les séances par nom de cours au lieu d'ID
-    const seances = await Seance.find({ cours: { $in: coursNoms } })
-      .populate('professeur', 'nom')
-      .sort({ jour: 1, heureDebut: 1 });
-
-    res.json(seances);
-  } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
-  }
-});
 // إضافة هذا Route في ملف routes الخاص بك
 app.get('/api/professeurs/periodes-disponibles', authAdmin, async (req, res) => {
   try {
@@ -4483,24 +6497,7 @@ app.get('/api/seances/semaine/:lundiSemaine', authAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/seances/:id - Version corrigée
-app.delete('/api/seances/:id', authAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const doc = await Seance.findById(id);
-    if (!doc) {
-      return res.status(404).json({ ok: false, message: 'Séance introuvable' });
-    }
 
-    // SUPPRESSION AUTORISÉE pour tous les types
-    await doc.deleteOne();
-    return res.json({ ok: true, deletedId: id });
-    
-  } catch (err) {
-    console.error('Erreur suppression:', err);
-    return res.status(500).json({ ok: false, error: err.message });
-  }
-});
 
 
 
@@ -4526,56 +6523,7 @@ app.delete('/api/seances/exception/by-slot', authAdmin, async (req, res) => {
 
 // Remplacer la route POST /api/seances/exception dans votre backend
 
-app.post('/api/seances/exception', authAdmin, async (req, res) => {
-  try {
-    const { cours, professeur, matiere, salle, dateSeance, jour, heureDebut, heureFin } = req.body;
 
-    // ✅ CORRECTION : Ajouter la validation de dateSeance
-    if (!dateSeance) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'La date de séance est obligatoire' 
-      });
-    }
-
-    // mfتاح التفرد: cours + dateSeance + heureDebut + heureFin + typeSeance='exception'
-    const q = { 
-      cours,
-      dateSeance: new Date(dateSeance), // ✅ IMPORTANT : Convertir en Date
-      heureDebut,
-      heureFin,
-      typeSeance: 'exception'
-    };
-
-    const update = {
-      cours,
-      professeur,
-      matiere,
-      salle,
-      jour,
-      dateSeance: new Date(dateSeance), // ✅ IMPORTANT : Ajouter dateSeance
-      typeSeance: 'exception',
-      actif: true
-    };
-
-    const doc = await Seance.findOneAndUpdate(q, { $set: update }, { new: true, upsert: true })
-      .populate('professeur', 'nom email estPermanent tarifHoraire');
-
-    console.log('✅ Séance exception créée/mise à jour:', {
-      cours,
-      dateSeance: new Date(dateSeance),
-      professeur: doc.professeur?.nom,
-      matiere,
-      salle
-    });
-
-    return res.json({ ok: true, seance: doc });
-
-  } catch (err) {
-    console.error('❌ Erreur exception:', err);
-    return res.status(500).json({ ok: false, error: err.message });
-  }
-});
 
 // Ajouter cette route dans votre backend (app.js)
 
@@ -5146,105 +7094,6 @@ app.get('/api/pedagogique/seances/semaines-avec-seances', authPedagogique, async
   }
 });
 
-// Route pour les statistiques de rattrapages
-app.get('/api/pedagogique/rattrapages/statistiques', authPedagogique, async (req, res) => {
-  try {
-    // Construire le filtre selon les permissions
-    let coursFilter = {};
-    if (req.user.role !== 'pedagogique_general' && req.user.role !== 'admin') {
-      const coursFiliere = await Cours.find({ filiere: req.user.filiere }).select('nom');
-      const nomsCoursFiliere = coursFiliere.map(c => c.nom);
-      coursFilter = { cours: { $in: nomsCoursFiliere } };
-    }
-
-    const statistiques = await Seance.aggregate([
-      {
-        $match: {
-          ...coursFilter,
-          dateSeance: { $exists: true },
-          professeur: { $exists: true }
-        }
-      },
-      {
-        $lookup: {
-          from: 'professeurs',
-          localField: 'professeur',
-          foreignField: '_id',
-          as: 'profInfo'
-        }
-      },
-      {
-        $unwind: '$profInfo'
-      },
-      {
-        $group: {
-          _id: '$professeur',
-          nomProfesseur: { $first: '$profInfo.nom' },
-          totalSeances: { $sum: 1 },
-          seancesNormales: {
-            $sum: {
-              $cond: [
-                { $ne: ['$typeSeance', 'rattrapage'] },
-                1,
-                0
-              ]
-            }
-          },
-          seancesRattrapage: {
-            $sum: {
-              $cond: [
-                { $eq: ['$typeSeance', 'rattrapage'] },
-                1,
-                0
-              ]
-            }
-          },
-          detailsRattrapages: {
-            $push: {
-              $cond: [
-                { $eq: ['$typeSeance', 'rattrapage'] },
-                {
-                  cours: '$cours',
-                  matiere: '$matiere',
-                  dateSeance: '$dateSeance',
-                  jour: '$jour',
-                  heureDebut: '$heureDebut',
-                  heureFin: '$heureFin',
-                  salle: '$salle',
-                  notes: '$notes'
-                },
-                null
-              ]
-            }
-          }
-        }
-      },
-      {
-        $addFields: {
-          detailsRattrapages: {
-            $filter: {
-              input: '$detailsRattrapages',
-              cond: { $ne: ['$this', null] }
-            }
-          }
-        }
-      },
-      {
-        $sort: { seancesRattrapage: -1, nomProfesseur: 1 }
-      }
-    ]);
-
-    res.json({
-      success: true,
-      statistiques,
-      filiere: req.user.filiere || 'TOUTES',
-      generePar: req.user.nom
-    });
-  } catch (error) {
-    console.error('Erreur statistiques rattrapages:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Route pour obtenir les semaines disponibles (optionnel)
 app.get('/api/seances/semaines-disponibles', authAdmin, async (req, res) => {
@@ -9092,7 +10941,7 @@ app.get('/api/commercial/etudiants', authCommercial, async (req, res) => {
 
 // PUT - Modifier un étudiant du commercial
 // ===== ROUTE POST - CRÉATION D'ÉTUDIANT PAR COMMERCIAL =====
-app.post('/api/commercial/etudiants', authCommercial, uploadMultiple, async (req, res) => {
+app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -9626,111 +11475,812 @@ app.post('/api/commercial/etudiants', authCommercial, uploadMultiple, async (req
 
 
 
+const addUserInfo = (data, userInfo, action) => {
+  console.log('=== DEBUG addUserInfo ===');
+  console.log('userInfo reçu:', userInfo);
+  console.log('userInfo type:', typeof userInfo);
+  console.log('userInfo existe:', !!userInfo);
+  
+  if (!userInfo) {
+    console.log('ERREUR: userInfo est undefined ou null');
+    return {
+      ...data,
+      lastActionByName: 'Erreur utilisateur',
+      lastActionByEmail: 'erreur@system.com',
+      lastActionByRole: 'admin',
+      lastActionType: action,
+      lastActionAt: new Date()
+    };
+  }
 
+  console.log('Propriétés userInfo:', Object.keys(userInfo));
+  console.log('userInfo.nom:', userInfo.nom);
+  console.log('userInfo.email:', userInfo.email);
+  console.log('userInfo.role:', userInfo.role);
 
+  const result = {
+    ...data,
+    lastActionById: userInfo.id,
+    lastActionByName: userInfo.nom,
+    lastActionByEmail: userInfo.email,
+    lastActionByRole: userInfo.role,
+    lastActionType: action,
+    lastActionAt: new Date()
+  };
 
-// ===== ROUTES PÉDAGOGIQUES CORRIGÉES - VERSION FINALE =====
-// REMPLACEZ VOS ROUTES ACTUELLES PAR CELLES-CI
+  console.log('Résultat addUserInfo:', {
+    lastActionByName: result.lastActionByName,
+    lastActionByEmail: result.lastActionByEmail,
+    lastActionByRole: result.lastActionByRole
+  });
+  console.log('========================');
 
-// 1. Route pour obtenir les étudiants
-
-
-
-
-
-// Route pour marquer une séance en rattrapage
-app.put('/api/pedagogique/seances/:id/rattrapage', authPedagogique, async (req, res) => {
+  return result;
+};
+// Route historique général
+// Corrigez les deux routes d'historique :
+// Route historique général - AVEC DEBUG COMPLET
+app.get('/api/seances/historique', authAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.id;
-    
-    console.log(`📝 Tentative marquage rattrapage: ${id} par user: ${userId}`);
-    
-    // Vérifier que la séance existe
-    const seance = await Seance.findById(id);
-    if (!seance) {
-      console.log(`❌ Séance non trouvée: ${id}`);
-      return res.status(404).json({ error: 'Séance non trouvée' });
-    }
-    
-    console.log(`✅ Séance trouvée: ${seance.cours} - ${seance.jour} ${seance.heureDebut}`);
-    
-    // Vérifier permissions pour pédagogique spécifique
-    if (req.user.filiere !== 'GENERAL') {
-      const etudiants = await Etudiant.find({ 
-        filiere: req.user.filiere,
-        actif: true,
-        cours: seance.cours
+    console.log('=== DEBUG HISTORIQUE GÉNÉRAL ===');
+    console.log('Début récupération historique...');
+
+    const seances = await Seance.find({})
+.select('cours coursId professeur matiere salle dateSeance jour heureDebut heureFin lastActionById lastActionByName lastActionByEmail lastActionByRole lastActionType lastActionAt createdAt updatedAt typeSeance actif')
+      .populate('professeur', 'nom')
+      .populate('coursId', 'nom')
+      .sort({ lastActionAt: -1, createdAt: -1 })
+      .limit(50);
+
+    console.log(`Total séances trouvées: ${seances.length}`);
+
+    // DEBUG: Afficher les 5 premières séances avec détails complets
+    console.log('=== TOP 5 SÉANCES ===');
+    seances.slice(0, 5).forEach((seance, index) => {
+      console.log(`Séance ${index + 1}:`, {
+        _id: seance._id,
+        cours: seance.cours,
+        lastActionByName: seance.lastActionByName,
+        lastActionByEmail: seance.lastActionByEmail,
+        lastActionByRole: seance.lastActionByRole,
+        lastActionType: seance.lastActionType,
+        lastActionAt: seance.lastActionAt,
+        createdAt: seance.createdAt,
+        updatedAt: seance.updatedAt
+      });
+    });
+    console.log('========================');
+
+    const historique = seances.map(seance => {
+      let nomCours = 'Cours non défini';
+      if (seance.coursId && seance.coursId.nom) {
+        nomCours = seance.coursId.nom;
+      } else if (seance.cours) {
+        nomCours = seance.cours;
+      }
+
+      console.log(`Mapping séance ${seance._id}:`, {
+        lastActionByName_original: seance.lastActionByName,
+        lastActionByName_final: seance.lastActionByName || 'Système automatique'
       });
 
-      if (etudiants.length === 0) {
-        console.log(`🚫 Permission refusée - Filière: ${req.user.filiere}, Cours: ${seance.cours}`);
-        return res.status(403).json({
-          error: `Vous n'avez pas l'autorisation de modifier cette séance`
-        });
-      }
-    }
-    
-    // Marquer comme rattrapage
-    seance.typeSeance = 'rattrapage';
-    seance.modifieParPedagogique = userId;
-    seance.notes = `Marquée en rattrapage le ${new Date().toLocaleString('fr-FR')} par ${req.user.nom || 'Pédagogique'}`;
-    
-    await seance.save();
-    
-    console.log(`✅ Séance marquée en rattrapage: ${id}`);
-    
-    res.json({ 
-      ok: true, 
-      message: 'Séance marquée en rattrapage',
-      seance 
+      return {
+        id: seance._id,
+        cours: nomCours,
+        professeur: seance.professeur?.nom,
+        matiere: seance.matiere,
+        salle: seance.salle,
+        dateSeance: seance.dateSeance,
+        jour: seance.jour,
+        heureDebut: seance.heureDebut,
+        heureFin: seance.heureFin,
+        derniereAction: {
+          utilisateur: seance.lastActionByName || 'Système automatique',
+          email: seance.lastActionByEmail || 'system@auto.com',
+          role: seance.lastActionByRole || 'admin',
+          action: seance.lastActionType || 'creation',
+          date: seance.lastActionAt || seance.createdAt
+        },
+        dateCreation: seance.createdAt,
+        derniereMiseAJour: seance.updatedAt,
+        typeSeance: seance.typeSeance,
+        actif: seance.actif
+      };
     });
-    
-  } catch (error) {
-    console.error('❌ Erreur marquer rattrapage:', error);
-    res.status(500).json({ error: 'Erreur serveur lors du marquage rattrapage' });
+
+    console.log('=== PREMIÈRE SÉANCE MAPPÉE ===');
+    if (historique.length > 0) {
+      console.log('Première séance retournée:', {
+        id: historique[0].id,
+        utilisateur: historique[0].derniereAction.utilisateur,
+        email: historique[0].derniereAction.email,
+        role: historique[0].derniereAction.role
+      });
+    }
+    console.log('===============================');
+
+    res.json(historique);
+  } catch (err) {
+    console.error('Erreur historique:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Route pour obtenir les statistiques de rattrapages (VERSION AMÉLIORÉE)
-app.get('/api/pedagogique/rattrapages/statistiques', authPedagogique, async (req, res) => {
+// Route historique spécifique - AVEC DEBUG COMPLET
+app.get('/api/seances/historique/:id', authAdmin, async (req, res) => {
+  try {
+    console.log('=== DEBUG HISTORIQUE SPÉCIFIQUE ===');
+    console.log('ID recherché:', req.params.id);
+
+    const seance = await Seance.findById(req.params.id)
+.select('cours coursId professeur matiere salle dateSeance jour heureDebut heureFin lastActionById lastActionByName lastActionByEmail lastActionByRole lastActionType lastActionAt createdAt updatedAt typeSeance actif')
+      .populate('professeur', 'nom')
+      .populate('coursId', 'nom');
+
+    if (!seance) {
+      console.log('SÉANCE NON TROUVÉE');
+      return res.status(404).json({ error: 'Séance non trouvée' });
+    }
+
+    console.log('SÉANCE TROUVÉE - DONNÉES BRUTES:', {
+      _id: seance._id,
+      lastActionByName: seance.lastActionByName,
+      lastActionByEmail: seance.lastActionByEmail,
+      lastActionByRole: seance.lastActionByRole,
+      lastActionType: seance.lastActionType,
+      lastActionAt: seance.lastActionAt,
+      createdAt: seance.createdAt,
+      updatedAt: seance.updatedAt
+    });
+
+    let nomCours = 'Cours non défini';
+    if (seance.coursId && seance.coursId.nom) {
+      nomCours = seance.coursId.nom;
+    } else if (seance.cours) {
+      nomCours = seance.cours;
+    }
+
+    const utilisateurFinal = seance.lastActionByName || 'Système automatique';
+    console.log('UTILISATEUR FINAL CALCULÉ:', utilisateurFinal);
+
+    const historique = [{
+      id: seance._id,
+      cours: nomCours,
+      professeur: seance.professeur?.nom,
+      matiere: seance.matiere,
+      salle: seance.salle,
+      dateSeance: seance.dateSeance,
+      jour: seance.jour,
+      heureDebut: seance.heureDebut,
+      heureFin: seance.heureFin,
+      derniereAction: {
+        utilisateur: utilisateurFinal,
+        email: seance.lastActionByEmail || 'system@auto.com',
+        role: seance.lastActionByRole || 'admin',
+        action: seance.lastActionType || 'creation',
+        date: seance.lastActionAt || seance.createdAt
+      },
+      dateCreation: seance.createdAt,
+      derniereMiseAJour: seance.updatedAt,
+      typeSeance: seance.typeSeance,
+      actif: seance.actif
+    }];
+
+    console.log('HISTORIQUE FINAL RETOURNÉ:', {
+      utilisateur: historique[0].derniereAction.utilisateur,
+      email: historique[0].derniereAction.email,
+      role: historique[0].derniereAction.role
+    });
+    console.log('===================================');
+
+    res.json(historique);
+  } catch (err) {
+    console.error('Erreur historique spécifique:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+// Route POST - Création avec traçabilité
+app.post('/api/seances/exception', authAdmin, async (req, res) => {
+  console.log('=== DEBUG TRAÇABILITÉ COMPLET ===');
+  console.log('req.userInfo:', JSON.stringify(req.userInfo, null, 2));
+  
+  try {
+    const { cours, professeur, matiere, salle, dateSeance, jour, heureDebut, heureFin } = req.body;
+
+    if (!dateSeance) {
+      return res.status(400).json({ ok: false, error: 'La date de séance est obligatoire' });
+    }
+
+    const q = { 
+      cours,
+      dateSeance: new Date(dateSeance),
+      heureDebut,
+      heureFin,
+      typeSeance: 'exception'
+    };
+
+    const update = addUserInfo({
+      cours,
+      coursId: cours,
+      professeur,
+      matiere,
+      salle,
+      jour,
+      dateSeance: new Date(dateSeance),
+      typeSeance: 'exception',
+      actif: true
+    }, req.userInfo, 'creation');
+
+    console.log('UPDATE OBJECT COMPLET:', JSON.stringify(update, null, 2));
+
+    const doc = await Seance.findOneAndUpdate(q, { $set: update }, { new: true, upsert: true });
+
+    console.log('DOCUMENT APRÈS SAUVEGARDE:', {
+      _id: doc._id,
+      lastActionByName: doc.lastActionByName,
+      lastActionByEmail: doc.lastActionByEmail,
+      lastActionByRole: doc.lastActionByRole,
+      lastActionType: doc.lastActionType,
+      lastActionAt: doc.lastActionAt
+    });
+
+    // Vérifier immédiatement en base
+    const verification = await Seance.findById(doc._id);
+    console.log('VÉRIFICATION IMMÉDIATE BDD:', {
+      lastActionByName: verification.lastActionByName,
+      lastActionByEmail: verification.lastActionByEmail,
+      lastActionByRole: verification.lastActionByRole
+    });
+
+    return res.json({ ok: true, seance: doc });
+
+  } catch (err) {
+    console.error('Erreur exception:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+app.put('/api/seances/:id', authAdmin, async (req, res) => {
+  console.log('=== DEBUG MODIFICATION SÉANCE ===');
+  console.log('ID séance:', req.params.id);
+  console.log('req.userInfo:', JSON.stringify(req.userInfo, null, 2));
+  console.log('Body reçu:', JSON.stringify(req.body, null, 2));
+
+  try {
+    const { id } = req.params;
+    const { 
+      cours, 
+      professeur, 
+      matiere, 
+      salle, 
+      dateSeance, 
+      jour, 
+      heureDebut, 
+      heureFin,
+      actif,
+      notes 
+    } = req.body;
+
+    // Validation de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('ERREUR: ID invalide');
+      return res.status(400).json({ ok: false, error: 'ID de séance invalide' });
+    }
+
+    // Vérifier que la séance existe
+    const seanceExistante = await Seance.findById(id);
+    if (!seanceExistante) {
+      console.log('ERREUR: Séance non trouvée');
+      return res.status(404).json({ ok: false, error: 'Séance non trouvée' });
+    }
+
+    console.log('SÉANCE EXISTANTE TROUVÉE:', seanceExistante._id);
+
+    // Validation des champs obligatoires
+    if (!professeur) {
+      return res.status(400).json({ ok: false, error: 'Le professeur est obligatoire' });
+    }
+
+    if (!matiere) {
+      return res.status(400).json({ ok: false, error: 'La matière est obligatoire' });
+    }
+
+    // Vérifier que le professeur existe
+    const professeurDoc = await Professeur.findById(professeur);
+    if (!professeurDoc) {
+      return res.status(400).json({ ok: false, error: 'Professeur non trouvé' });
+    }
+
+    // Construire l'objet de mise à jour AVEC votre fonction addUserInfo
+    const updateFields = {
+      professeur,
+      matiere,
+      salle: salle || '',
+      actif: actif !== undefined ? actif : true,
+      notes: notes || ''
+    };
+
+    // Ajouter les champs optionnels s'ils sont fournis
+    if (cours) updateFields.cours = cours;
+    if (dateSeance) updateFields.dateSeance = new Date(dateSeance);
+    if (jour) updateFields.jour = jour;
+    if (heureDebut) updateFields.heureDebut = heureDebut;
+    if (heureFin) updateFields.heureFin = heureFin;
+
+    // Gérer le coursId si un cours est fourni
+    if (cours) {
+      const coursDoc = await Cours.findOne({ 
+        $or: [
+          { _id: mongoose.Types.ObjectId.isValid(cours) ? cours : null },
+          { nom: cours }
+        ]
+      });
+      
+      if (coursDoc) {
+        updateFields.coursId = coursDoc._id;
+        updateFields.cours = coursDoc.nom;
+      } else {
+        updateFields.cours = cours;
+        updateFields.coursId = null;
+      }
+    }
+
+    // UTILISER VOTRE FONCTION addUserInfo pour la traçabilité
+    const updateData = addUserInfo(updateFields, req.userInfo, 'modification');
+
+    console.log('UPDATE DATA COMPLET:', JSON.stringify(updateData, null, 2));
+
+    // Mettre à jour la séance
+    const seanceMiseAJour = await Seance.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    )
+    .populate('professeur', 'nom email estPermanent tarifHoraire')
+    .populate('coursId', 'nom');
+
+    console.log('SÉANCE APRÈS MISE À JOUR:', {
+      _id: seanceMiseAJour._id,
+      lastActionByName: seanceMiseAJour.lastActionByName,
+      lastActionByEmail: seanceMiseAJour.lastActionByEmail,
+      lastActionByRole: seanceMiseAJour.lastActionByRole,
+      lastActionType: seanceMiseAJour.lastActionType,
+      lastActionAt: seanceMiseAJour.lastActionAt
+    });
+
+    // Vérification immédiate en base
+    const verification = await Seance.findById(id);
+    console.log('VÉRIFICATION IMMÉDIATE BDD:', {
+      lastActionByName: verification.lastActionByName,
+      lastActionByEmail: verification.lastActionByEmail,
+      lastActionByRole: verification.lastActionByRole
+    });
+
+    console.log(`Séance ${id} mise à jour par:`, req.userInfo.nom, '(', req.userInfo.role, ')');
+
+    // Calculer la durée et le montant si nécessaire
+    let calculs = null;
+    if (seanceMiseAJour.calculerDureeEtMontant) {
+      calculs = await seanceMiseAJour.calculerDureeEtMontant();
+    }
+
+    // Retourner la réponse dans votre format
+    const response = {
+      ...seanceMiseAJour.toObject(),
+      ...(calculs && { dureeHeures: calculs.dureeHeures, montant: calculs.montant })
+    };
+
+    console.log('=================================');
+
+    res.json({
+      ok: true,
+      message: 'Séance mise à jour avec succès',
+      seance: response
+    });
+
+  } catch (err) {
+    console.error('ERREUR mise à jour séance:', err);
+    
+    // Gestion des erreurs de validation Mongoose
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        ok: false,
+        error: 'Erreur de validation', 
+        details: errors 
+      });
+    }
+
+    // Erreur de cast (mauvais ObjectId)
+    if (err.name === 'CastError') {
+      return res.status(400).json({ 
+        ok: false,
+        error: 'Format d\'ID invalide' 
+      });
+    }
+
+    res.status(500).json({ 
+      ok: false,
+      error: 'Erreur serveur lors de la mise à jour',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
+});
+
+
+// Route DELETE - Suppression avec traçabilité
+app.delete('/api/seances/:id', authAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const seance = await Seance.findById(id);
+    
+    if (!seance) {
+      return res.status(404).json({ ok: false, message: 'Séance introuvable' });
+    }
+
+    const updateData = addUserInfo({
+      actif: false
+    }, req.userInfo, 'suppression');
+
+    await Seance.findByIdAndUpdate(id, updateData);
+
+    console.log('Séance supprimée par:', req.userInfo.nom, '(', req.userInfo.role, ')');
+    return res.json({ ok: true, deletedId: id, message: 'Séance supprimée avec succès' });
+    
+  } catch (err) {
+    console.error('Erreur suppression:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// REMPLACEZ par cette route simple :
+app.put('/api/seances/exception/:id', authAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      cours, 
+      professeur, 
+      matiere, 
+      salle, 
+      dateSeance, 
+      jour, 
+      heureDebut, 
+      heureFin 
+    } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ ok: false, error: 'ID de séance invalide' });
+    }
+
+    const seanceExistante = await Seance.findById(id);
+    if (!seanceExistante) {
+      return res.status(404).json({ ok: false, error: 'Séance non trouvée' });
+    }
+
+    // Utiliser votre pattern addUserInfo
+    const updateFields = {
+      professeur,
+      matiere,
+      salle: salle || ''
+    };
+
+    const updateData = addUserInfo(updateFields, req.userInfo, 'modification');
+
+    const seanceMiseAJour = await Seance.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate('professeur', 'nom').populate('coursId', 'nom');
+
+    return res.json({
+      ok: true,
+      message: 'Exception mise à jour avec succès',
+      seance: seanceMiseAJour
+    });
+
+  } catch (err) {
+    console.error('Erreur modification exception:', err);
+    res.status(500).json({ 
+      ok: false,
+      error: 'Erreur serveur lors de la modification de l\'exception' 
+    });
+  }
+});
+
+
+
+
+app.delete('/api/seances/:id', authAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const seance = await Seance.findById(id);
+    
+    if (!seance) {
+      return res.status(404).json({ ok: false, message: 'Séance introuvable' });
+    }
+
+    const updateData = addUserInfo({
+      actif: false // IMPORTANT : Marquer comme inactif
+    }, req.userInfo, 'suppression');
+
+    // NOUVEAU : Utiliser $set pour s'assurer de la mise à jour
+    const updatedSeance = await Seance.findByIdAndUpdate(
+      id, 
+      { $set: updateData }, 
+      { new: true }
+    );
+
+    console.log('Séance supprimée par:', req.userInfo.nom, '(', req.userInfo.role, ')');
+    console.log('Séance après suppression - actif:', updatedSeance.actif); // Debug
+
+    return res.json({ 
+      ok: true, 
+      deletedId: id, 
+      message: 'Séance supprimée avec succès',
+      seance: updatedSeance 
+    });
+    
+  } catch (err) {
+    console.error('Erreur suppression:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+app.get('/api/seances/etudiant', authEtudiant, async (req, res) => {
+  try {
+    const { semaine } = req.query;
+    const etudiant = await Etudiant.findById(req.etudiantId);
+    const coursNoms = etudiant.cours;
+
+    // Trouver les IDs des cours correspondants
+    const coursObjects = await Cours.find({ nom: { $in: coursNoms } });
+    const coursIds = coursObjects.map(c => c._id.toString());
+
+    console.log('DEBUG - Cours étudiant:', coursNoms);
+    console.log('DEBUG - IDs cours trouvés:', coursIds);
+
+    let dateFilter = {};
+    if (semaine) {
+      const lundiSemaine = new Date(semaine);
+      const dimancheSemaine = new Date(lundiSemaine.getTime() + 6 * 24 * 60 * 60 * 1000);
+      dimancheSemaine.setHours(23, 59, 59, 999);
+      
+      dateFilter = {
+        dateSeance: {
+          $gte: lundiSemaine,
+          $lte: dimancheSemaine
+        }
+      };
+      console.log('DEBUG - Filtre de date:', dateFilter);
+    }
+
+    const seances = await Seance.find({ 
+      $or: [
+        { cours: { $in: coursNoms } },
+        { cours: { $in: coursIds } },
+        { coursId: { $in: coursIds } }
+      ],
+      actif: true,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      ...dateFilter
+    })
+    .populate('professeur', 'nom')
+    .populate('coursId', 'nom')
+    .sort({ dateSeance: 1, heureDebut: 1 });
+
+    // Correction et normalisation des séances
+    const seancesCorrigees = seances.map(seance => {
+      const seanceObj = seance.toObject();
+      
+      // S'assurer que actif est true par défaut
+      if (seanceObj.actif === undefined || seanceObj.actif === null) {
+        seanceObj.actif = true;
+      }
+      
+      // Normaliser le typeSeance
+      if (!seanceObj.typeSeance) {
+        seanceObj.typeSeance = 'reelle';
+      }
+      
+      // Corriger le nom du cours
+      if (seanceObj.coursId && seanceObj.coursId.nom) {
+        seanceObj.cours = seanceObj.coursId.nom;
+      } else if (coursIds.includes(seanceObj.cours)) {
+        const coursCorrespondant = coursObjects.find(c => c._id.toString() === seanceObj.cours);
+        if (coursCorrespondant) {
+          seanceObj.cours = coursCorrespondant.nom;
+        }
+      }
+      
+      // Calculer le jour de la semaine en français
+      if (seanceObj.dateSeance) {
+        const joursSemaine = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+        seanceObj.jour = joursSemaine[new Date(seanceObj.dateSeance).getDay()];
+      }
+      
+      return seanceObj;
+    });
+
+    console.log('DEBUG - Séances trouvées et corrigées:', seancesCorrigees.length);
+    seancesCorrigees.forEach((seance, index) => {
+      console.log(`${index + 1}. Cours: "${seance.cours}", Jour: ${seance.jour}, Actif: ${seance.actif}, Type: ${seance.typeSeance}, Heure: ${seance.heureDebut}-${seance.heureFin}`);
+    });
+
+    res.json(seancesCorrigees);
+  } catch (err) {
+    console.error('Erreur séances étudiant:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+app.put('/api/pedagogique/seances/:id/rattrapage', authAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('Tentative rattrapage:', id, 'par:', req.userInfo.nom);
+
+    const seance = await Seance.findById(id);
+    if (!seance) {
+      return res.status(404).json({ error: 'Séance non trouvée' });
+    }
+
+    // Vos vérifications de permissions existantes...
+    // (garder votre code de permissions)
+
+    const updateData = addUserInfo({
+      typeSeance: 'rattrapage',
+      actif: true, // IMPORTANT : Les rattrapages restent actifs
+      modifieParPedagogique: req.userInfo.id,
+      notes: `Rattrapage le ${new Date().toLocaleString('fr-FR')} par ${req.userInfo.nom}`
+    }, req.userInfo, 'rattrapage');
+
+    const updatedSeance = await Seance.findByIdAndUpdate(
+      id, 
+      { $set: updateData }, 
+      { new: true }
+    );
+
+    console.log('Rattrapage marqué par:', req.userInfo.nom, '(', req.userInfo.role, ')');
+    console.log('Séance après rattrapage - typeSeance:', updatedSeance.typeSeance); // Debug
+    
+    res.json({ 
+      ok: true, 
+      message: 'Séance marquée en rattrapage', 
+      seance: updatedSeance 
+    });
+
+  } catch (error) {
+    console.error('Erreur rattrapage:', error);
+    res.status(500).json({ error: 'Erreur serveur lors du marquage rattrapage' });
+  }
+});
+// Route pour les statistiques de rattrapages - VERSION CORRIGÉE AVEC PERMISSIONS
+app.get('/api/pedagogique/rattrapages/statistiques', authAdmin, async (req, res) => {
   try {
     const userId = req.user.id;
+    const userType = req.userType; // 'admin', 'finance_prof', 'pedagogique'
     
-    const userInfo = await Pedagogique.findById(userId);
-    if (!userInfo) {
-      return res.status(404).json({ error: 'Utilisateur pédagogique non trouvé' });
-    }
+    console.log(`📊 Calcul statistiques rattrapages pour user: ${userId}, type: ${userType}`);
     
+    let userInfo = null;
     let pipeline = [];
     
-    // Filtrer par filière si pas pédagogique général
-    if (userInfo.filiere !== 'GENERAL') {
-      const etudiants = await Etudiant.find({ 
-        filiere: userInfo.filiere,
-        actif: true 
-      });
+    // DÉTERMINER LE TYPE D'UTILISATEUR ET SES PERMISSIONS
+    if (userType === 'admin' || userType === 'finance_prof') {
+      console.log(`👑 Utilisateur ${userType} - Accès à tous les rattrapages`);
+      // Admin et Finance_prof voient TOUT
+      userInfo = { nom: 'Administrateur', filiere: 'TOUTES' };
+    } else {
+      // Pédagogique - Récupérer ses informations
+      userInfo = await Pedagogique.findById(userId);
+      if (!userInfo) {
+        return res.status(404).json({ error: 'Utilisateur pédagogique non trouvé' });
+      }
       
-      const coursDeFiliere = new Set();
-      etudiants.forEach(etudiant => {
-        if (etudiant.cours && Array.isArray(etudiant.cours)) {
-          etudiant.cours.forEach(coursNom => {
-            coursDeFiliere.add(coursNom);
+      console.log(`👤 Pédagogique: ${userInfo.nom}, filière: ${userInfo.filiere}`);
+      
+      // Si pédagogique général, voir tout
+      if (userInfo.filiere !== 'GENERAL') {
+        console.log(`🎯 Filtre pour filière spécifique: ${userInfo.filiere}`);
+        
+        // Récupérer les cours de la filière du pédagogique
+        const coursDeFiliere = await Cours.find({ filiere: userInfo.filiere }).select('_id nom');
+        let idsCoursFiliere = coursDeFiliere.map(c => c._id);
+        
+        console.log(`📚 Cours de la filière trouvés (${coursDeFiliere.length}):`, 
+          coursDeFiliere.map(c => ({ id: c._id.toString(), nom: c.nom })));
+        
+        // Si pas de cours avec filiere explicite, chercher par les étudiants
+        if (idsCoursFiliere.length === 0) {
+          console.log(`⚠️ Recherche via les étudiants de ${userInfo.filiere}...`);
+          
+          const etudiantsFiliere = await Etudiant.find({ 
+            filiere: userInfo.filiere,
+            actif: true 
+          }).select('cours');
+          
+          const nomsCoursEtudiants = [...new Set(etudiantsFiliere.flatMap(e => e.cours || []))];
+          console.log(`🎓 Cours des étudiants ${userInfo.filiere}:`, nomsCoursEtudiants);
+          
+          // Convertir les noms en ObjectId
+          const coursParNomsEtudiants = await Cours.find({
+            nom: { $in: nomsCoursEtudiants }
+          }).select('_id nom');
+          
+          idsCoursFiliere.push(...coursParNomsEtudiants.map(c => c._id));
+          console.log(`📚 ObjectId des cours étudiants (${coursParNomsEtudiants.length}):`, 
+            coursParNomsEtudiants.map(c => ({ id: c._id.toString(), nom: c.nom })));
+        }
+        
+        if (idsCoursFiliere.length > 0) {
+          // Créer les conditions pour STRING et ObjectId
+          const coursStringIds = idsCoursFiliere.map(id => id.toString());
+          
+          pipeline.push({
+            $match: {
+              $or: [
+                { cours: { $in: idsCoursFiliere } },  // Pour les ObjectId
+                { cours: { $in: coursStringIds } },   // Pour les strings
+                { coursId: { $in: idsCoursFiliere } } // Pour coursId aussi
+              ]
+            }
           });
+          
+          console.log(`🔍 Filtre appliqué pour ${userInfo.filiere} avec ${idsCoursFiliere.length} cours`);
         }
-      });
-      
-      const coursArray = Array.from(coursDeFiliere);
-      
-      pipeline.push({
+      } else {
+        console.log(`📊 Pédagogique général - Accès à toutes les filières`);
+      }
+    }
+    
+    // PIPELINE PRINCIPAL - Filtrer les séances actives
+    pipeline.push(
+      {
         $match: {
-          cours: { $in: coursArray }
+          $or: [
+            { actif: { $ne: false } },
+            { actif: { $exists: false } }
+          ]
         }
+      }
+    );
+    
+    // Vérifier qu'on a des données
+    const totalSeances = await Seance.countDocuments({
+      $and: pipeline.map(stage => stage.$match)
+    });
+    
+    console.log(`📈 Total séances trouvées: ${totalSeances}`);
+    
+    if (totalSeances === 0) {
+      return res.json({ 
+        ok: true, 
+        statistiques: [], 
+        filiere: userInfo.filiere,
+        userType: userType,
+        totalProfesseurs: 0,
+        totalRattrapages: 0,
+        totalSeances: 0,
+        message: userType === 'admin' || userType === 'finance_prof' ? 
+          'Aucune séance trouvée dans le système' : 
+          `Aucune séance trouvée pour ${userInfo.filiere === 'GENERAL' ? 'toutes les filières' : 'la filière ' + userInfo.filiere}`
       });
     }
     
-    // Pipeline amélioré avec plus de détails
-    pipeline.push(
+    // PIPELINE COMPLET POUR LES STATISTIQUES
+    const fullPipeline = [
+      ...pipeline,
+      
+      // Ajouter un champ de debug
+      {
+        $addFields: {
+          debug_professeur: { $toString: "$professeur" },
+          debug_cours: { $toString: "$cours" },
+          debug_typeSeance: { $ifNull: ["$typeSeance", "normale"] },
+          debug_actif: { $ifNull: ["$actif", true] }
+        }
+      },
+      
+      // Lookup pour récupérer les infos du professeur
       {
         $lookup: {
           from: 'professeurs',
@@ -9739,21 +12289,65 @@ app.get('/api/pedagogique/rattrapages/statistiques', authPedagogique, async (req
           as: 'prof'
         }
       },
-      { $unwind: '$prof' },
+      { 
+        $unwind: {
+          path: '$prof',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      
+      // Lookup pour récupérer les infos du cours
+      {
+        $lookup: {
+          from: 'cours',
+          localField: 'cours',
+          foreignField: '_id',
+          as: 'coursInfo'
+        }
+      },
+      {
+        $addFields: {
+          nomCours: {
+            $cond: [
+              { $eq: [{ $type: '$coursInfo' }, 'array'] },
+              {
+                $cond: [
+                  { $eq: [{ $size: '$coursInfo' }, 0] },
+                  { $toString: '$cours' },
+                  { $arrayElemAt: ['$coursInfo.nom', 0] }
+                ]
+              },
+              { $toString: '$cours' }
+            ]
+          },
+          nomProfesseurDebug: { $ifNull: ['$prof.nom', 'Professeur inconnu'] }
+        }
+      },
+      
+      // Grouper par professeur avec comptage détaillé
       {
         $group: {
           _id: '$professeur',
-          nomProfesseur: { $first: '$prof.nom' },
+          nomProfesseur: { $first: { $ifNull: ['$prof.nom', 'Professeur inconnu'] } },
+          
+          // Compteurs principaux
           totalSeances: { $sum: 1 },
+          
           seancesNormales: {
             $sum: {
               $cond: [
-                { $in: ['$typeSeance', ['reelle', 'exception']] },
+                { 
+                  $and: [
+                    { $ne: ['$typeSeance', 'rattrapage'] },
+                    { $ne: ['$actif', false] }
+                  ]
+                },
                 1,
                 0
               ]
             }
           },
+          
           seancesRattrapage: {
             $sum: {
               $cond: [
@@ -9763,20 +12357,39 @@ app.get('/api/pedagogique/rattrapages/statistiques', authPedagogique, async (req
               ]
             }
           },
-          // NOUVEAU : Détails des rattrapages
+          
+          seancesAnnulees: {
+            $sum: {
+              $cond: [
+                { $eq: ['$actif', false] },
+                1,
+                0
+              ]
+            }
+          },
+          
+          // Détails des cours enseignés (pour validation)
+          coursEnseignes: { $addToSet: '$nomCours' },
+          
+          // Détails des rattrapages avec informations complètes
           detailsRattrapages: {
             $push: {
               $cond: [
                 { $eq: ['$typeSeance', 'rattrapage'] },
                 {
-                  cours: '$cours',
+                  seanceId: '$_id',
+                  cours: '$nomCours',
                   matiere: '$matiere',
                   salle: '$salle',
                   jour: '$jour',
                   heureDebut: '$heureDebut',
                   heureFin: '$heureFin',
                   dateSeance: '$dateSeance',
-                  notes: '$notes'
+                  notes: '$notes',
+                  marqueParNom: '$lastActionByName',
+                  marqueParRole: '$lastActionByRole',
+                  marqueParEmail: '$lastActionByEmail',
+                  dateRattrapage: '$lastActionAt'
                 },
                 null
               ]
@@ -9784,6 +12397,8 @@ app.get('/api/pedagogique/rattrapages/statistiques', authPedagogique, async (req
           }
         }
       },
+      
+      // Nettoyer les détails et ajouter les calculs
       {
         $addFields: {
           detailsRattrapages: {
@@ -9791,41 +12406,398 @@ app.get('/api/pedagogique/rattrapages/statistiques', authPedagogique, async (req
               input: '$detailsRattrapages',
               cond: { $ne: ['$$this', null] }
             }
+          },
+          tauxPresence: {
+            $cond: [
+              { $eq: ['$totalSeances', 0] },
+              0,
+              { 
+                $round: [
+                  { 
+                    $multiply: [
+                      { $divide: ['$seancesNormales', '$totalSeances'] }, 
+                      100
+                    ]
+                  }, 
+                  1
+                ]
+              }
+            ]
+          },
+          // Ajouter le pourcentage de rattrapages
+          pourcentageRattrapages: {
+            $cond: [
+              { $eq: ['$totalSeances', 0] },
+              0,
+              { 
+                $round: [
+                  { 
+                    $multiply: [
+                      { $divide: ['$seancesRattrapage', '$totalSeances'] }, 
+                      100
+                    ]
+                  }, 
+                  1
+                ]
+              }
+            ]
           }
         }
       },
-      { $sort: { seancesRattrapage: -1, nomProfesseur: 1 } }
-    );
+      
+      // Trier par nombre de rattrapages décroissant, puis par nom
+      { 
+        $sort: { 
+          seancesRattrapage: -1, 
+          seancesAnnulees: -1,
+          nomProfesseur: 1 
+        } 
+      }
+    ];
+    
+    console.log(`🔄 Exécution du pipeline d'agrégation avec ${fullPipeline.length} étapes...`);
+    
+    const stats = await Seance.aggregate(fullPipeline);
+    
+    console.log(`📊 Statistiques calculées: ${stats.length} professeurs`);
+    
+    // Log détaillé des premiers résultats
+    if (stats.length > 0) {
+      console.log('🔍 Premiers résultats:', stats.slice(0, 3).map(s => ({
+        professeur: s.nomProfesseur,
+        total: s.totalSeances,
+        normales: s.seancesNormales,
+        rattrapages: s.seancesRattrapage,
+        annulees: s.seancesAnnulees || 0,
+        cours: s.coursEnseignes
+      })));
+    }
+    
+    // Calculer les totaux globaux
+    const totaux = stats.reduce((acc, s) => ({
+      totalSeances: acc.totalSeances + s.totalSeances,
+      totalNormales: acc.totalNormales + s.seancesNormales,
+      totalRattrapages: acc.totalRattrapages + s.seancesRattrapage,
+      totalAnnulees: acc.totalAnnulees + (s.seancesAnnulees || 0)
+    }), { totalSeances: 0, totalNormales: 0, totalRattrapages: 0, totalAnnulees: 0 });
+    
+    console.log(`📈 Totaux calculés:`, totaux);
+    
+    res.json({ 
+      ok: true, 
+      statistiques: stats, 
+      filiere: userInfo.filiere,
+      userType: userType,
+      userNom: userInfo.nom,
+      totalProfesseurs: stats.length,
+      totalRattrapages: totaux.totalRattrapages,
+      totalSeances: totaux.totalSeances,
+      totalSeancesNormales: totaux.totalNormales,
+      totalSeancesAnnulees: totaux.totalAnnulees,
+      tauxGlobalPresence: totaux.totalSeances > 0 ? 
+        Math.round((totaux.totalNormales / totaux.totalSeances) * 100) : 0,
+      tauxGlobalRattrapages: totaux.totalSeances > 0 ? 
+        Math.round((totaux.totalRattrapages / totaux.totalSeances) * 100) : 0,
+      message: stats.length === 0 ? 
+        'Aucune statistique disponible' : 
+        `${stats.length} professeur(s) avec séances programmées`,
+      scope: userType === 'admin' || userType === 'finance_prof' ? 
+        'Toutes les filières et professeurs' :
+        userInfo.filiere === 'GENERAL' ? 
+          'Toutes les filières (pédagogique général)' : 
+          `Filière ${userInfo.filiere} uniquement`
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur stats rattrapages:', error);
+    res.status(500).json({ 
+      error: 'Erreur serveur lors du calcul des statistiques',
+      details: error.message 
+    });
+  }
+});
+
+// Route spécifique pour Admin et Finance_prof - Toutes les statistiques
+app.get('/api/admin/rattrapages/statistiques', authAdmin, async (req, res) => {
+  try {
+    // Vérifier que l'utilisateur a les bonnes permissions
+    if (req.userType !== 'admin' && req.userType !== 'finance_prof') {
+      return res.status(403).json({ 
+        error: 'Accès réservé aux administrateurs et responsables finance/professeur' 
+      });
+    }
+    
+    console.log(`👑 Admin/Finance_prof ${req.user.id} - Statistiques complètes`);
+    
+    const pipeline = [
+      // Inclure toutes les séances actives
+      {
+        $match: {
+          $or: [
+            { actif: { $ne: false } },
+            { actif: { $exists: false } }
+          ]
+        }
+      },
+      
+      // Lookup professeur
+      {
+        $lookup: {
+          from: 'professeurs',
+          localField: 'professeur',
+          foreignField: '_id',
+          as: 'prof'
+        }
+      },
+      { 
+        $unwind: {
+          path: '$prof',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      
+      // Lookup cours
+      {
+        $lookup: {
+          from: 'cours',
+          localField: 'cours',
+          foreignField: '_id',
+          as: 'coursInfo'
+        }
+      },
+      {
+        $addFields: {
+          nomCours: {
+            $cond: [
+              { $eq: [{ $type: '$coursInfo' }, 'array'] },
+              {
+                $cond: [
+                  { $eq: [{ $size: '$coursInfo' }, 0] },
+                  { $toString: '$cours' },
+                  { $arrayElemAt: ['$coursInfo.nom', 0] }
+                ]
+              },
+              { $toString: '$cours' }
+            ]
+          }
+        }
+      },
+      
+      // Grouper par professeur
+      {
+        $group: {
+          _id: '$professeur',
+          nomProfesseur: { $first: { $ifNull: ['$prof.nom', 'Professeur inconnu'] } },
+          emailProfesseur: { $first: '$prof.email' },
+          typeProfesseur: { $first: { $cond: ['$prof.estPermanent', 'Permanent', 'Entrepreneur'] } },
+          
+          totalSeances: { $sum: 1 },
+          
+          seancesNormales: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $ne: ['$typeSeance', 'rattrapage'] },
+                    { $ne: ['$actif', false] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          
+          seancesRattrapage: {
+            $sum: {
+              $cond: [
+                { $eq: ['$typeSeance', 'rattrapage'] },
+                1,
+                0
+              ]
+            }
+          },
+          
+          seancesAnnulees: {
+            $sum: {
+              $cond: [
+                { $eq: ['$actif', false] },
+                1,
+                0
+              ]
+            }
+          },
+          
+          coursEnseignes: { $addToSet: '$nomCours' },
+          filieresConcernees: { $addToSet: '$coursInfo.filiere' },
+          
+          detailsRattrapages: {
+            $push: {
+              $cond: [
+                { $eq: ['$typeSeance', 'rattrapage'] },
+                {
+                  seanceId: '$_id',
+                  cours: '$nomCours',
+                  matiere: '$matiere',
+                  salle: '$salle',
+                  jour: '$jour',
+                  heureDebut: '$heureDebut',
+                  heureFin: '$heureFin',
+                  dateSeance: '$dateSeance',
+                  marqueParNom: '$lastActionByName',
+                  marqueParRole: '$lastActionByRole',
+                  dateRattrapage: '$lastActionAt'
+                },
+                null
+              ]
+            }
+          }
+        }
+      },
+      
+      // Nettoyer et calculer
+      {
+        $addFields: {
+          detailsRattrapages: {
+            $filter: {
+              input: '$detailsRattrapages',
+              cond: { $ne: ['$$this', null] }
+            }
+          },
+          tauxPresence: {
+            $cond: [
+              { $eq: ['$totalSeances', 0] },
+              0,
+              { 
+                $round: [
+                  { 
+                    $multiply: [
+                      { $divide: ['$seancesNormales', '$totalSeances'] }, 
+                      100
+                    ]
+                  }, 
+                  1
+                ]
+              }
+            ]
+          },
+          pourcentageRattrapages: {
+            $cond: [
+              { $eq: ['$totalSeances', 0] },
+              0,
+              { 
+                $round: [
+                  { 
+                    $multiply: [
+                      { $divide: ['$seancesRattrapage', '$totalSeances'] }, 
+                      100
+                    ]
+                  }, 
+                  1
+                ]
+              }
+            ]
+          }
+        }
+      },
+      
+      // Trier par nombre de rattrapages (les plus problématiques en premier)
+      { 
+        $sort: { 
+          seancesRattrapage: -1,
+          seancesAnnulees: -1,
+          nomProfesseur: 1 
+        } 
+      }
+    ];
     
     const stats = await Seance.aggregate(pipeline);
     
-    console.log(`Stats calculées avec détails: ${stats.length} professeurs`);
+    // Calculer les totaux
+    const totaux = stats.reduce((acc, s) => ({
+      totalSeances: acc.totalSeances + s.totalSeances,
+      totalNormales: acc.totalNormales + s.seancesNormales,
+      totalRattrapages: acc.totalRattrapages + s.seancesRattrapage,
+      totalAnnulees: acc.totalAnnulees + (s.seancesAnnulees || 0)
+    }), { totalSeances: 0, totalNormales: 0, totalRattrapages: 0, totalAnnulees: 0 });
     
-    res.json({ ok: true, statistiques: stats, filiere: userInfo.filiere });
+    // Statistiques par filière
+    const statsParFiliere = await Seance.aggregate([
+      {
+        $match: {
+          $or: [
+            { actif: { $ne: false } },
+            { actif: { $exists: false } }
+          ]
+        }
+      },
+      {
+        $lookup: {
+          from: 'cours',
+          localField: 'cours',
+          foreignField: '_id',
+          as: 'coursInfo'
+        }
+      },
+      {
+        $unwind: {
+          path: '$coursInfo',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $group: {
+          _id: '$coursInfo.filiere',
+          totalSeances: { $sum: 1 },
+          seancesRattrapage: {
+            $sum: {
+              $cond: [
+                { $eq: ['$typeSeance', 'rattrapage'] },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $sort: { seancesRattrapage: -1 }
+      }
+    ]);
+    
+    console.log(`📊 Admin - ${stats.length} professeurs analysés, ${totaux.totalRattrapages} rattrapages`);
+    
+    res.json({
+      ok: true,
+      statistiques: stats,
+      statsParFiliere: statsParFiliere,
+      userType: req.userType,
+      totalProfesseurs: stats.length,
+      totaux: totaux,
+      tauxGlobalPresence: totaux.totalSeances > 0 ? 
+        Math.round((totaux.totalNormales / totaux.totalSeances) * 100) : 0,
+      tauxGlobalRattrapages: totaux.totalSeances > 0 ? 
+        Math.round((totaux.totalRattrapages / totaux.totalSeances) * 100) : 0,
+      scope: 'Vue administrative complète - Toutes filières',
+      professeursPlusRattrapages: stats.filter(s => s.seancesRattrapage > 0).length,
+      professeursSansRattrapages: stats.filter(s => s.seancesRattrapage === 0).length
+    });
     
   } catch (error) {
-    console.error('Erreur stats rattrapages:', error);
-    res.status(500).json({ error: 'Erreur serveur lors du calcul des statistiques' });
+    console.error('❌ Erreur stats admin:', error);
+    res.status(500).json({ 
+      error: 'Erreur serveur lors du calcul des statistiques administrateur',
+      details: error.message 
+    });
   }
 });
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL =====
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL (avec logique de copie) =====
-app.put('/api/commercial/etudiants/:id', authCommercial, uploadMultiple, async (req, res) => {
+app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -11044,6 +14016,33 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadMultiple, async (
     });
   }
 });
+app.get('/api/seances/periodes-disponibles', authAdmin, async (req, res) => {
+  try {
+    // Récupérer toutes les dates distinctes des séances
+    const dates = await Seance.distinct('dateSeance', { actif: true });
+    
+    const annees = [...new Set(dates.map(date => new Date(date).getFullYear()))].sort();
+    const moisParAnnee = {};
+    
+    annees.forEach(annee => {
+      const moisDeCetteAnnee = [...new Set(
+        dates
+          .filter(date => new Date(date).getFullYear() === annee)
+          .map(date => new Date(date).getMonth() + 1)
+      )].sort();
+      
+      moisParAnnee[annee] = moisDeCetteAnnee;
+    });
+
+    res.json({
+      annees,
+      moisParAnnee
+    });
+  } catch (error) {
+    console.error('Erreur périodes disponibles:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 app.get('/api/comercial/stats', authCommercial, async (req, res) => {
   try {
     const { anneeScolaire, personnel } = req.query;
@@ -11889,6 +14888,339 @@ app.get('/api/admin/profile', authAdmin, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// 1. API pour que FINANCE valide un cycle (Étape 1)
+app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
+  try {
+    // Vérifier que c'est un utilisateur Finance
+    if (req.userType !== 'finance_prof') {
+      return res.status(403).json({ error: 'Accès réservé aux utilisateurs Finance' });
+    }
+
+    const { professeurId, notes } = req.body;
+
+    if (!professeurId) {
+      return res.status(400).json({ error: 'ID du professeur requis' });
+    }
+
+    // Trouver ou créer le cycle en cours
+    let cycle = await CyclePaiement.getCycleEnCours(professeurId);
+    
+    if (!cycle) {
+      // Créer un nouveau cycle si aucun n'existe
+      cycle = await CyclePaiement.creerNouveauCycle(professeurId, req.adminId);
+    }
+
+    // Calculer les montants du cycle
+    cycle = await CyclePaiement.calculerCycle(professeurId, cycle._id);
+
+    if (cycle.montantNet <= 0) {
+      return res.status(400).json({ error: 'Aucun montant à payer pour ce cycle' });
+    }
+
+    // Valider par Finance
+    cycle.validerParFinance(req.adminId, notes || '');
+    await cycle.save();
+
+    // Populate pour la réponse
+    await cycle.populate('professeur', 'nom email tarifHoraire');
+    await cycle.populate('valideParFinance', 'nom email');
+
+    res.json({
+      message: 'Cycle validé par Finance avec succès',
+      cycle
+    });
+
+  } catch (error) {
+    console.error('Erreur validation Finance:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 2. API pour récupérer les cycles validés par Finance (pour Admin)
+app.get('/api/admin/cycles/valides-finance', authAdmin, async (req, res) => {
+  try {
+    // Vérifier que c'est un admin
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    }
+
+    const cycles = await CyclePaiement.find({
+      statut: 'valide_finance',
+      actif: true
+    })
+    .populate('professeur', 'nom email tarifHoraire')
+    .populate('valideParFinance', 'nom email')
+    .sort({ dateValidationFinance: -1 })
+    .lean();
+
+    res.json({
+      cycles,
+      total: cycles.length
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération cycles validés:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 3. API pour qu'ADMIN paie un cycle (Étape 2)
+app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
+  try {
+    // Vérifier que c'est un admin
+    if (req.userType !== 'admin') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    }
+
+    const { cycleId, methodePaiement, referencePaiement, notes } = req.body;
+
+    if (!cycleId || !methodePaiement) {
+      return res.status(400).json({ error: 'ID du cycle et méthode de paiement requis' });
+    }
+
+    const cycle = await CyclePaiement.findById(cycleId);
+    if (!cycle) {
+      return res.status(404).json({ error: 'Cycle non trouvé' });
+    }
+
+    if (cycle.statut !== 'valide_finance') {
+      return res.status(400).json({ error: 'Ce cycle doit être validé par Finance avant le paiement' });
+    }
+
+    // Marquer le cycle comme payé
+    cycle.payerParAdmin(req.adminId, methodePaiement, referencePaiement || '', notes || '');
+    await cycle.save();
+
+    // IMPORTANT: Marquer toutes les séances incluses comme payées
+    const Seance = mongoose.model('Seance');
+    const seanceIds = cycle.seancesIncluses.map(s => s.seanceId);
+    
+    await Seance.updateMany(
+      { _id: { $in: seanceIds } },
+      { 
+        payee: true,
+        datePaiement: new Date(),
+        cyclePaiementId: cycle._id
+      }
+    );
+
+    // Créer automatiquement le nouveau cycle pour ce professeur
+    const nouveauCycle = await CyclePaiement.creerNouveauCycle(cycle.professeur, req.adminId);
+
+    // Populate pour la réponse
+    await cycle.populate('professeur', 'nom email');
+    await cycle.populate('payeParAdmin', 'nom email');
+
+    res.json({
+      message: 'Paiement effectué avec succès',
+      cyclePayé: cycle,
+      nouveauCycle: {
+        id: nouveauCycle._id,
+        numero: nouveauCycle.numeroCycle,
+        dateDebut: nouveauCycle.dateDebut
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur paiement Admin:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 4. API pour récupérer les détails d'un cycle spécifique
+app.get('/api/cycles/:cycleId', authAdmin, async (req, res) => {
+  try {
+    const { cycleId } = req.params;
+
+    const cycle = await CyclePaiement.findById(cycleId)
+      .populate('professeur', 'nom email tarifHoraire')
+      .populate('valideParFinance', 'nom email')
+      .populate('payeParAdmin', 'nom email')
+      .lean();
+
+    if (!cycle) {
+      return res.status(404).json({ error: 'Cycle non trouvé' });
+    }
+
+    res.json({ cycle });
+
+  } catch (error) {
+    console.error('Erreur récupération cycle:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 5. API pour récupérer le cycle en cours d'un professeur
+app.get('/api/cycles/professeur/:professeurId/en-cours', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+
+    let cycle = await CyclePaiement.getCycleEnCours(professeurId);
+    
+    if (!cycle) {
+      // Créer un nouveau cycle si aucun n'existe
+      cycle = await CyclePaiement.creerNouveauCycle(professeurId, req.adminId);
+    }
+
+    // Calculer les montants actuels
+    cycle = await CyclePaiement.calculerCycle(professeurId, cycle._id);
+
+    await cycle.populate('professeur', 'nom email tarifHoraire');
+
+    res.json({ cycle });
+
+  } catch (error) {
+    console.error('Erreur récupération cycle en cours:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 6. API pour l'historique des cycles d'un professeur
+app.get('/api/cycles/professeur/:professeurId/historique', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+    const { limit = 10 } = req.query;
+
+    const cycles = await CyclePaiement.find({
+      professeur: professeurId,
+      actif: true
+    })
+    .populate('valideParFinance', 'nom email')
+    .populate('payeParAdmin', 'nom email')
+    .sort({ numeroCycle: -1 })
+    .limit(parseInt(limit))
+    .lean();
+
+    res.json({
+      cycles,
+      total: cycles.length
+    });
+
+  } catch (error) {
+    console.error('Erreur historique cycles:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 7. API pour annuler un cycle (avant paiement)
+app.post('/api/cycles/:cycleId/annuler', authAdmin, async (req, res) => {
+  try {
+    const { cycleId } = req.params;
+    const { motif } = req.body;
+
+    const cycle = await CyclePaiement.findById(cycleId);
+    if (!cycle) {
+      return res.status(404).json({ error: 'Cycle non trouvé' });
+    }
+
+    if (cycle.statut === 'paye_admin') {
+      return res.status(400).json({ error: 'Impossible d\'annuler un cycle déjà payé' });
+    }
+
+    // Remettre le cycle en cours
+    cycle.statut = 'en_cours';
+    cycle.valideParFinance = null;
+    cycle.dateValidationFinance = null;
+    cycle.notesFinance += (cycle.notesFinance ? '\n' : '') + `Annulé le ${new Date().toLocaleDateString('fr-FR')}: ${motif || 'Aucun motif'}`;
+    
+    await cycle.save();
+
+    res.json({
+      message: 'Cycle annulé avec succès',
+      cycle
+    });
+
+  } catch (error) {
+    console.error('Erreur annulation cycle:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 8. API pour les statistiques des cycles
+app.get('/api/cycles/statistiques', authAdmin, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+
+    let matchFilter = { actif: true };
+    if (mois && annee) {
+      const dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
+      const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
+      matchFilter.createdAt = { $gte: dateDebut, $lte: dateFin };
+    }
+
+    const stats = await CyclePaiement.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: '$statut',
+          count: { $sum: 1 },
+          totalMontant: { $sum: '$montantNet' }
+        }
+      }
+    ]);
+
+    const statistiques = {
+      en_cours: { count: 0, montant: 0 },
+      valide_finance: { count: 0, montant: 0 },
+      paye_admin: { count: 0, montant: 0 },
+      archive: { count: 0, montant: 0 }
+    };
+
+    stats.forEach(stat => {
+      if (statistiques[stat._id]) {
+        statistiques[stat._id] = {
+          count: stat.count,
+          montant: Math.round(stat.totalMontant * 100) / 100
+        };
+      }
+    });
+
+    res.json({ statistiques });
+
+  } catch (error) {
+    console.error('Erreur statistiques cycles:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 9. API pour récupérer tous les cycles à différents statuts (dashboard)
+app.get('/api/cycles/dashboard', authAdmin, async (req, res) => {
+  try {
+    const { statut } = req.query;
+
+    let matchFilter = { actif: true };
+    if (statut) {
+      matchFilter.statut = statut;
+    }
+
+    const cycles = await CyclePaiement.find(matchFilter)
+      .populate('professeur', 'nom email')
+      .populate('valideParFinance', 'nom email')
+      .populate('payeParAdmin', 'nom email')
+      .sort({ updatedAt: -1 })
+      .limit(50)
+      .lean();
+
+    // Grouper par statut pour le dashboard
+    const cyclesParStatut = {
+      en_cours: cycles.filter(c => c.statut === 'en_cours'),
+      valide_finance: cycles.filter(c => c.statut === 'valide_finance'),
+      paye_admin: cycles.filter(c => c.statut === 'paye_admin'),
+      archive: cycles.filter(c => c.statut === 'archive')
+    };
+
+    res.json({
+      cyclesParStatut,
+      totalCycles: cycles.length
+    });
+
+  } catch (error) {
+    console.error('Erreur dashboard cycles:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 
 app.put('/api/admin/profile', authAdmin, async (req, res) => {
   try {
@@ -14395,6 +17727,317 @@ typeDeCree: {
 */
 
 // ===== MISE À JOUR DE LA ROUTE POST PROFESSEUR POUR PÉDAGOGIQUES =====
+
+// API pour invalider un paiement - À ajouter dans votre fichier routes
+
+// 8. API pour invalider un paiement validé
+app.post('/api/finance/paiements/invalider', authAdmin, async (req, res) => {
+  try {
+    const { professeurId, mois, annee, motifInvalidation } = req.body;
+
+    if (!professeurId || !mois || !annee) {
+      return res.status(400).json({ error: 'Professeur, mois et année requis' });
+    }
+
+    // Trouver le paiement existant
+    const paiement = await PaiementProfesseur.findOne({
+      professeur: professeurId,
+      mois: parseInt(mois),
+      annee: parseInt(annee)
+    });
+
+    if (!paiement) {
+      return res.status(404).json({ error: 'Paiement non trouvé' });
+    }
+
+    if (paiement.statut === 'paye') {
+      return res.status(400).json({ 
+        error: 'Impossible d\'invalider un paiement déjà effectué. Veuillez d\'abord annuler le paiement.' 
+      });
+    }
+
+    if (paiement.statut === 'en_attente') {
+      return res.status(400).json({ error: 'Ce paiement n\'est pas encore validé' });
+    }
+
+    // Invalider le paiement
+    paiement.statut = 'en_attente';
+    paiement.valideePar = null;
+    paiement.dateValidation = null;
+    
+    // Ajouter une note d'invalidation
+    const noteInvalidation = `Invalidé le ${new Date().toLocaleDateString('fr-FR')} par ${req.userInfo?.displayName || 'Admin'}`;
+    if (motifInvalidation) {
+      paiement.notes += (paiement.notes ? '\n' : '') + `${noteInvalidation}: ${motifInvalidation}`;
+    } else {
+      paiement.notes += (paiement.notes ? '\n' : '') + noteInvalidation;
+    }
+    
+    await paiement.save();
+    await paiement.populate('professeur');
+
+    res.json({
+      message: 'Paiement invalidé avec succès',
+      paiement
+    });
+
+  } catch (error) {
+    console.error('Erreur invalidation paiement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 9. API pour récupérer le statut des paiements pour le rapport mensuel
+app.get('/api/finance/paiements/statuts-mensuels', authAdmin, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+
+    if (!mois || !annee) {
+      return res.status(400).json({ error: 'Mois et année requis' });
+    }
+
+    // Récupérer tous les paiements pour la période
+    const paiements = await PaiementProfesseur.find({
+      mois: parseInt(mois),
+      annee: parseInt(annee),
+      actif: true
+    })
+    .populate('professeur', 'nom email')
+    .select('professeur statut montantNet dateValidation datePaiement')
+    .lean();
+
+    // Créer un map des statuts par professeur
+    const statutsMap = new Map();
+    paiements.forEach(paiement => {
+      if (paiement.professeur) {
+        statutsMap.set(paiement.professeur._id.toString(), {
+          statut: paiement.statut,
+          montantNet: paiement.montantNet,
+          dateValidation: paiement.dateValidation,
+          datePaiement: paiement.datePaiement,
+          paiementValide: paiement.statut === 'valide' || paiement.statut === 'paye'
+        });
+      }
+    });
+
+    res.json({ statutsMap: Object.fromEntries(statutsMap) });
+
+  } catch (error) {
+    console.error('Erreur statuts mensuels:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// 10. API pour créer automatiquement les paiements du mois suivant
+app.post('/api/finance/paiements/generer-mois-suivant', authAdmin, async (req, res) => {
+  try {
+    const { moisActuel, anneeActuelle } = req.body;
+
+    if (!moisActuel || !anneeActuelle) {
+      return res.status(400).json({ error: 'Mois et année actuels requis' });
+    }
+
+    // Calculer le mois suivant
+    let moisSuivant = parseInt(moisActuel) + 1;
+    let anneeSuivante = parseInt(anneeActuelle);
+    
+    if (moisSuivant > 12) {
+      moisSuivant = 1;
+      anneeSuivante += 1;
+    }
+
+    // Vérifier si des paiements existent déjà pour le mois suivant
+    const paiementsExistants = await PaiementProfesseur.find({
+      mois: moisSuivant,
+      annee: anneeSuivante,
+      actif: true
+    });
+
+    if (paiementsExistants.length > 0) {
+      return res.json({
+        message: `${paiementsExistants.length} paiements existent déjà pour ${moisSuivant}/${anneeSuivante}`,
+        paiementsExistants: paiementsExistants.length
+      });
+    }
+
+    // Récupérer les entrepreneurs actifs
+    const entrepreneursActifs = await Professeur.find({
+      estPermanent: false,
+      actif: true
+    }).select('_id nom email tarifHoraire');
+
+    if (entrepreneursActifs.length === 0) {
+      return res.json({
+        message: 'Aucun entrepreneur actif trouvé',
+        nouveauxPaiements: 0
+      });
+    }
+
+    // Calculer les dates pour le mois suivant
+    const dateDebut = new Date(anneeSuivante, moisSuivant - 1, 1);
+    const dateFin = new Date(anneeSuivante, moisSuivant, 0, 23, 59, 59);
+
+    let nouveauxPaiements = 0;
+    const resultats = [];
+
+    for (const entrepreneur of entrepreneursActifs) {
+      // Récupérer les séances pour le mois suivant
+      const seances = await Seance.find({
+        professeur: entrepreneur._id,
+        dateSeance: { $gte: dateDebut, $lte: dateFin },
+        actif: true,
+        typeSeance: { $ne: 'rattrapage' }
+      }).populate('coursId', 'nom').lean();
+
+      if (seances.length > 0) {
+        // Calculer les montants
+        let montantBrut = 0;
+        const seancesIncluses = [];
+
+        for (const seance of seances) {
+          const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+          const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+          const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+          
+          const montantSeance = dureeHeures * (entrepreneur.tarifHoraire || 0);
+          montantBrut += montantSeance;
+
+          // Résoudre le nom du cours
+          let nomCours = 'Cours non spécifié';
+          if (seance.coursId && seance.coursId.nom) {
+            nomCours = seance.coursId.nom;
+          } else if (seance.cours) {
+            nomCours = seance.cours;
+          }
+
+          seancesIncluses.push({
+            seanceId: seance._id,
+            cours: nomCours,
+            date: seance.dateSeance,
+            heures: Math.round(dureeHeures * 100) / 100,
+            montant: Math.round(montantSeance * 100) / 100
+          });
+        }
+
+        // Vérifier s'il y a des pénalités permanentes à appliquer
+        let ajustements = 0;
+        const penalitesAppliquees = [];
+        
+        const penalitePermanente = await PenaliteProfesseur.findOne({
+          professeur: entrepreneur._id,
+          appliquePour: 'permanent',
+          actif: true
+        });
+
+        if (penalitePermanente) {
+          if (penalitePermanente.type === 'pourcentage') {
+            ajustements = (montantBrut * penalitePermanente.valeur) / 100;
+          } else {
+            ajustements = penalitePermanente.valeur;
+          }
+
+          penalitesAppliquees.push({
+            penaliteId: penalitePermanente._id,
+            motif: `${penalitePermanente.motif} (Pénalité permanente)`,
+            montant: ajustements
+          });
+        }
+
+        // Créer le nouveau paiement
+        const nouveauPaiement = new PaiementProfesseur({
+          professeur: entrepreneur._id,
+          mois: moisSuivant,
+          annee: anneeSuivante,
+          montantBrut: Math.round(montantBrut * 100) / 100,
+          ajustements: Math.round(ajustements * 100) / 100,
+          montantNet: Math.round((montantBrut - ajustements) * 100) / 100,
+          seancesIncluses,
+          penalitesAppliquees,
+          creeParAdmin: req.adminId,
+          notes: 'Généré automatiquement pour le nouveau cycle de paiement'
+        });
+
+        await nouveauPaiement.save();
+        nouveauxPaiements++;
+
+        resultats.push({
+          professeur: entrepreneur.nom,
+          montantNet: nouveauPaiement.montantNet,
+          nombreSeances: seances.length
+        });
+      }
+    }
+
+    res.json({
+      message: `${nouveauxPaiements} nouveaux paiements créés pour ${moisSuivant}/${anneeSuivante}`,
+      nouveauxPaiements,
+      periode: {
+        mois: moisSuivant,
+        annee: anneeSuivante
+      },
+      resultats
+    });
+
+  } catch (error) {
+    console.error('Erreur génération mois suivant:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+app.post('/api/finance/paiements/creer-ou-recuperer', authAdmin, async (req, res) => {
+  try {
+    const { professeurId, mois, annee } = req.body;
+
+    if (!professeurId || !mois || !annee) {
+      return res.status(400).json({ error: 'Professeur, mois et année requis' });
+    }
+
+    // Vérifier que le professeur existe
+    const professeur = await Professeur.findById(professeurId);
+    if (!professeur) {
+      return res.status(404).json({ error: 'Professeur non trouvé' });
+    }
+
+    // Pour l'instant, on retourne juste une confirmation
+    // Plus tard, vous pourrez implémenter la logique complète du modèle PaiementProfesseur
+    res.json({
+      message: 'Données de paiement préparées',
+      professeur: professeur,
+      periode: { mois: parseInt(mois), annee: parseInt(annee) }
+    });
+
+  } catch (error) {
+    console.error('Erreur création paiement:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+// Dans votre fichier de routes backend, ajoutez cette API :
+app.get('/api/finance/penalites/professeur/:professeurId', authAdmin, async (req, res) => {
+  try {
+    const { professeurId } = req.params;
+    const { mois, annee } = req.query;
+
+    if (!mois || !annee) {
+      return res.status(400).json({ error: 'Mois et année requis' });
+    }
+
+    const penalite = await PenaliteProfesseur.findOne({
+      professeur: professeurId,
+      mois: parseInt(mois),
+      annee: parseInt(annee),
+      actif: true
+    }).populate('appliquePar', 'nom email');
+
+    if (penalite) {
+      res.json({ penalite });
+    } else {
+      res.json({ penalite: null });
+    }
+
+  } catch (error) {
+    console.error('Erreur récupération pénalité:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
 app.post('/api/pedagogique/professeurs', 
   authPedagogique, 
   uploadDocuments.fields([
@@ -14755,7 +18398,382 @@ app.delete('/api/professeurs/:id/cours/:coursIndex', authAdminOrPedagogique, asy
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
+app.get('/api/etudiant/presences', authEtudiant, async (req, res) => {
+  try {
+    const presences = await Presence.find({
+      etudiant: req.etudiantId,
+      present: true,
+      retard: false  // Exclure les retards
+    })
+    .populate('etudiant', 'nomComplet prenom nomDeFamille')
+    .sort({ dateSession: -1 });
 
+    res.json(presences);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des présences:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+app.get('/api/etudiant/absences', authEtudiant, async (req, res) => {
+  try {
+    const absences = await Presence.find({
+      etudiant: req.etudiantId,
+      absent: true
+    })
+    .populate('etudiant', 'nomComplet prenom nomDeFamille')
+    .sort({ dateSession: -1 });
+
+    res.json(absences);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des absences:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+app.get('/api/etudiant/retards', authEtudiant, async (req, res) => {
+  try {
+    // Récupérer les présences où l'étudiant est en retard
+    const retards = await Presence.find({
+      etudiant: req.etudiantId,
+      retard: true
+    })
+    .populate('etudiant', 'nomComplet prenom nomDeFamille')
+    .sort({ dateSession: -1 }); // Tri par date décroissante
+
+    res.json(retards);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des retards:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/seances/actuelle', authProfesseur, async (req, res) => {
+  try {
+    console.log('Recherche de la prochaine séance pour professeur:', req.professeurId);
+    
+    const maintenant = new Date();
+    const dateAujourdhui = new Date();
+    dateAujourdhui.setHours(0, 0, 0, 0);
+    
+    // Récupérer avec populate complet du professeur
+    const seancesAujourdhui = await Seance.find({
+      professeur: req.professeurId,
+      dateSeance: {
+        $gte: dateAujourdhui,
+        $lt: new Date(dateAujourdhui.getTime() + 24 * 60 * 60 * 1000)
+      },
+      actif: true
+    })
+    .populate('professeur', 'nom prenom matiere coursEnseignes')
+    .populate('coursId', 'nom')
+    .sort({ heureDebut: 1 })
+    .lean();
+
+    console.log(`Séances trouvées aujourd'hui: ${seancesAujourdhui.length}`);
+    
+    if (seancesAujourdhui.length === 0) {
+      return res.status(404).json({
+        error: 'Aucune séance programmée aujourd\'hui'
+      });
+    }
+
+    // Chercher la première séance SANS présences
+    let prochainerSeance = null;
+    
+    for (const seance of seancesAujourdhui) {
+      const presencesCount = await Presence.countDocuments({
+        seanceId: seance._id
+      });
+      
+      console.log(`Séance ${seance.cours} (${seance.heureDebut}-${seance.heureFin}): ${presencesCount} présences`);
+      
+      // Si cette séance n'a pas de présences, c'est celle qu'on veut
+      if (presencesCount === 0) {
+        prochainerSeance = seance;
+        console.log('✅ Séance trouvée sans présences:', seance.heureDebut + '-' + seance.heureFin);
+        break;
+      }
+    }
+    
+    // ✅ CORRECTION: Si aucune séance sans présences, retourner 404
+    if (!prochainerSeance) {
+      console.log('❌ Toutes les séances du jour ont déjà des présences enregistrées');
+      return res.status(404).json({
+        error: 'Toutes les séances du jour sont terminées',
+        message: 'Aucune séance en attente de présences pour aujourd\'hui'
+      });
+    }
+    
+    // Déterminer le nom du cours correctement
+    let nomCours = 'Cours non spécifié';
+    
+    if (prochainerSeance.coursId && prochainerSeance.coursId.nom) {
+      nomCours = prochainerSeance.coursId.nom;
+      console.log('✅ Nom du cours trouvé via coursId:', nomCours);
+    } else if (prochainerSeance.cours && !prochainerSeance.cours.match(/^[0-9a-fA-F]{24}$/)) {
+      nomCours = prochainerSeance.cours;
+      console.log('✅ Nom du cours trouvé directement:', nomCours);
+    } else if (prochainerSeance.cours) {
+      try {
+        const Cours = mongoose.model('Cours');
+        const coursDoc = await Cours.findById(prochainerSeance.cours);
+        if (coursDoc) {
+          nomCours = coursDoc.nom;
+          console.log('✅ Nom du cours trouvé par recherche ID:', nomCours);
+        }
+      } catch (err) {
+        console.warn('Erreur recherche cours par ID:', err.message);
+      }
+    }
+    
+    // Déterminer la matière
+    let matiereNom = 'Matière non spécifiée';
+    
+    console.log('=== DÉBOGAGE MATIÈRE ===');
+    console.log('Séance matiere:', prochainerSeance.matiere);
+    console.log('Professeur:', prochainerSeance.professeur);
+    console.log('Nom cours déterminé:', nomCours);
+    
+    if (prochainerSeance.matiere && prochainerSeance.matiere.trim() !== '') {
+      matiereNom = prochainerSeance.matiere;
+      console.log('✅ Matière trouvée dans séance:', matiereNom);
+    } else if (prochainerSeance.professeur && prochainerSeance.professeur.coursEnseignes) {
+      const coursProfesseur = prochainerSeance.professeur.coursEnseignes.find(
+        c => c.nomCours === nomCours
+      );
+      if (coursProfesseur && coursProfesseur.matiere) {
+        matiereNom = coursProfesseur.matiere;
+        console.log('✅ Matière trouvée via coursEnseignes:', matiereNom);
+      }
+    } else if (prochainerSeance.professeur && prochainerSeance.professeur.matiere) {
+      matiereNom = prochainerSeance.professeur.matiere;
+      console.log('✅ Matière trouvée via professeur.matiere:', matiereNom);
+    } else if (nomCours) {
+      matiereNom = nomCours;
+      console.log('⚠️ Utilisation du nom du cours comme matière:', matiereNom);
+    }
+    
+    console.log('Matière finale déterminée:', matiereNom);
+    
+    const seanceComplete = {
+      _id: prochainerSeance._id,
+      cours: nomCours,
+      dateSeance: prochainerSeance.dateSeance,
+      heureDebut: prochainerSeance.heureDebut,
+      heureFin: prochainerSeance.heureFin,
+      matiere: matiereNom,
+      professeur: prochainerSeance.professeur,
+      nomProfesseur: prochainerSeance.professeur ? 
+        `${prochainerSeance.professeur.prenom || ''} ${prochainerSeance.professeur.nom || ''}`.trim() :
+        'Professeur non spécifié',
+      salle: prochainerSeance.salle || 'Salle non spécifiée',
+      type: 'Séance programmée',
+      periode: prochainerSeance.heureDebut ? 
+        (parseInt(prochainerSeance.heureDebut.split(':')[0]) < 12 ? 'Matin' : 'Soir') : 
+        'Non définie'
+    };
+    
+    console.log('=== SÉANCE RETOURNÉE ===');
+    console.log('Cours:', seanceComplete.cours);
+    console.log('Matière:', seanceComplete.matiere);
+    console.log('Heure:', seanceComplete.heureDebut + '-' + seanceComplete.heureFin);
+    console.log('========================');
+    
+    res.json(seanceComplete);
+    
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la séance actuelle:', error);
+    res.status(500).json({ 
+      error: 'Erreur serveur',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+app.post('/api/presences', authProfesseur, async (req, res) => {
+  try {
+    const { 
+      etudiant, cours, seanceId, dateSession, present, absent, retard,
+      retardMinutes, remarque, heure, periode, matiere, nomProfesseur
+    } = req.body;
+
+    console.log('=== DÉBOGAGE CRÉATION PRÉSENCE ===');
+    console.log('matiere reçue:', matiere);
+    console.log('seanceId:', seanceId);
+    console.log('cours:', cours);
+
+    // Validations de base
+    if (!etudiant || !cours || !dateSession) {
+      return res.status(400).json({ 
+        message: 'Champs requis manquants' 
+      });
+    }
+
+    // Récupérer professeur avec ses cours enseignés
+    const prof = await Professeur.findById(req.professeurId).lean();
+    if (!prof) {
+      return res.status(404).json({ 
+        message: 'Professeur non trouvé' 
+      });
+    }
+
+    // Vérification des permissions (ancienne et nouvelle méthode)
+    const aAcces = prof.cours.includes(cours) || 
+                   (prof.coursEnseignes && prof.coursEnseignes.some(c => c.nomCours === cours));
+    
+    if (!aAcces) {
+      return res.status(403).json({ 
+        message: 'Vous ne pouvez pas marquer la présence pour ce cours.' 
+      });
+    }
+
+    // Déterminer les statuts
+    let presentStatus = present || false;
+    let absentStatus = absent || false;
+    let retardStatus = retard || false;
+    let retardMinutesValue = retardStatus ? (parseInt(retardMinutes) || 0) : 0;
+
+    // ✅ CORRECTION: Déterminer la matière avec priorité aux données reçues
+    let matiereFinale = 'Matière non spécifiée';
+    
+    // Priorité 1: Matière explicitement fournie dans la requête
+    if (matiere && matiere.trim() !== '' && matiere !== 'Séance manuelle') {
+      matiereFinale = matiere;
+      console.log('✅ Matière utilisée depuis requête:', matiereFinale);
+    }
+    // Priorité 2: Si on a un seanceId, récupérer la matière de la séance
+    else if (seanceId) {
+      try {
+        const seanceDoc = await Seance.findById(seanceId).lean();
+        if (seanceDoc && seanceDoc.matiere && seanceDoc.matiere.trim() !== '') {
+          matiereFinale = seanceDoc.matiere;
+          console.log('✅ Matière trouvée dans la séance:', matiereFinale);
+        } else {
+          // Fallback sur le professeur
+          const coursEnseigneProfesseur = prof.coursEnseignes && 
+            prof.coursEnseignes.find(c => c.nomCours === cours);
+          
+          if (coursEnseigneProfesseur && coursEnseigneProfesseur.matiere) {
+            matiereFinale = coursEnseigneProfesseur.matiere;
+            console.log('✅ Matière trouvée via prof.coursEnseignes:', matiereFinale);
+          } else if (prof.matiere) {
+            matiereFinale = prof.matiere;
+            console.log('✅ Matière trouvée via prof.matiere:', matiereFinale);
+          } else {
+            matiereFinale = cours; // Utiliser le nom du cours
+            console.log('⚠️ Fallback sur nom du cours:', matiereFinale);
+          }
+        }
+      } catch (seanceError) {
+        console.warn('Erreur récupération séance:', seanceError.message);
+        matiereFinale = prof.matiere || cours;
+      }
+    }
+    // Priorité 3: Utiliser la matière du professeur
+    else {
+      const coursEnseigneProfesseur = prof.coursEnseignes && 
+        prof.coursEnseignes.find(c => c.nomCours === cours);
+      
+      if (coursEnseigneProfesseur && coursEnseigneProfesseur.matiere) {
+        matiereFinale = coursEnseigneProfesseur.matiere;
+        console.log('✅ Matière prof coursEnseignes:', matiereFinale);
+      } else if (prof.matiere) {
+        matiereFinale = prof.matiere;
+        console.log('✅ Matière prof générale:', matiereFinale);
+      } else {
+        matiereFinale = cours;
+        console.log('⚠️ Dernier fallback sur cours:', matiereFinale);
+      }
+    }
+    
+    console.log('Matière finale utilisée:', matiereFinale);
+
+    // Vérifier si présence existe déjà
+    const existingPresence = await Presence.findOne({
+      etudiant, cours, dateSession: new Date(dateSession)
+    });
+
+    if (existingPresence) {
+      // Mise à jour
+      existingPresence.present = presentStatus;
+      existingPresence.absent = absentStatus;
+      existingPresence.retard = retardStatus;
+      existingPresence.retardMinutes = retardMinutesValue;
+      existingPresence.remarque = remarque || '';
+      existingPresence.matiere = matiereFinale;
+      
+      await existingPresence.save();
+      
+      console.log('✅ Présence mise à jour avec matière:', matiereFinale);
+      
+      return res.status(200).json({
+        message: 'Présence mise à jour',
+        presence: existingPresence
+      });
+    }
+
+    // Création nouvelle présence
+    const presence = new Presence({
+      etudiant, 
+      cours, 
+      seanceId: seanceId || null,
+      dateSession: new Date(dateSession),
+      present: presentStatus, 
+      absent: absentStatus, 
+      retard: retardStatus,
+      retardMinutes: retardMinutesValue,
+      remarque: remarque || '', 
+      heure: heure || '', 
+      periode: periode || 'matin',
+      matiere: matiereFinale, // ✅ Matière correctement déterminée
+      nomProfesseur: nomProfesseur || prof.nom,
+      creePar: req.professeurId
+    });
+
+    await presence.save();
+    
+    console.log('✅ Nouvelle présence créée avec matière:', matiereFinale);
+    console.log('==================================');
+    
+    res.status(201).json({
+      message: 'Présence enregistrée avec succès',
+      presence
+    });
+
+  } catch (err) {
+    console.error('Erreur création présence:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+app.get('/api/seances/:seanceId/etudiants', authProfesseur, async (req, res) => {
+  try {
+    const seance = await Seance.findById(req.params.seanceId);
+    if (!seance) {
+      return res.status(404).json({ message: 'Séance non trouvée' });
+    }
+    
+    // Récupérer les étudiants qui ont ce cours
+    const etudiants = await Etudiant.find({ 
+      cours: { $in: [seance.cours] },
+      actif: { $ne: false }
+    }).select('nomComplet email cours');
+    
+    res.json(etudiants);
+  } catch (err) {
+    console.error('❌ Erreur récupération étudiants:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/professeur/profil', authProfesseur, async (req, res) => {
+  try {
+    const professeur = await Professeur.findById(req.professeurId).select('-motDePasse');
+    if (!professeur) return res.status(404).json({ message: 'Professeur introuvable' });
+    res.json(professeur);
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
 // Exposer le dossier pour servir les documents
 app.use('/uploads/professeurs/documents', express.static('uploads/professeurs/documents'));
 // Lancer le serveur

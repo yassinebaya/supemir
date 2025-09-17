@@ -1,0 +1,99 @@
+/* Styles pour le système Partner */
+
+/* Badges de type pour le tableau */
+.type-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: inline-block;
+  text-align: center;
+}
+
+.type-badge.partner {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+}
+
+.type-badge.normal {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  border: 1px solid #ce93d8;
+}
+
+/* Badges de type pour les cartes */
+.type-badge-card {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.type-badge-card.partner {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.type-badge-card.normal {
+  background-color: #f0f0f0;
+  color: #424242;
+  border: 1px solid #bdbdbd;
+}
+
+/* Colonne type dans le tableau */
+.type-colonne {
+  text-align: center;
+  padding: 8px;
+  min-width: 90px;
+}
+
+/* Section Partner dans les formulaires */
+.form-section h4 {
+  margin-bottom: 15px;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+/* Styles pour les checkbox groupes */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin: 0;
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+/* Responsive pour les badges */
+@media (max-width: 768px) {
+  .type-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+  
+  .type-badge-card {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  
+  .type-colonne {
+    min-width: 70px;
+    padding: 4px;
+  }
+}

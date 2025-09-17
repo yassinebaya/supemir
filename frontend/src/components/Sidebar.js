@@ -4,6 +4,7 @@ import {
   GraduationCap,
   Wallet,
   Clock,
+  DollarSign,
   Briefcase,
   Users,
   AlertTriangle,
@@ -20,6 +21,7 @@ import {
   Home,
   FileText,
   User,
+  CheckCircle,
   Shield,
   QrCode,
   Newspaper
@@ -81,6 +83,11 @@ const Sidebar = ({ onLogout }) => {
       path: '/admin/revenus-mensuels',
       label: 'Revenus Mensuels',
       icon: BarChart3
+    },
+    {
+      path: '/admin/dashboard-partners',
+      label: 'Dashboard Partenaires',
+      icon: Home
     },
     {
       path: '/update-profil',
@@ -171,6 +178,12 @@ const Sidebar = ({ onLogout }) => {
       path: '/admin/administratifs',
       label: 'Administratifs',
       icon: Users
+    },
+
+    {
+      path: '/admin/validation-paiement',
+      label: 'Validation Paiement',
+      icon: CheckCircle
     }
 
   ];
@@ -181,6 +194,12 @@ const Sidebar = ({ onLogout }) => {
       path: '/pedagogique',
       label: 'Dashboard',
       icon: Home
+    },
+
+    {
+      path: '/pedagogique/etudiants',
+      label: 'Étudiants',
+      icon: Users
     },
     {
       path: '/pedagogique/professeurs',
@@ -206,7 +225,25 @@ const Sidebar = ({ onLogout }) => {
       path: '/finance/listeprofesseurs',
       label: 'Liste Professeurs',
       icon: Users
+    },
+    {
+      path: '/finance/emploi',
+      label: 'Emploi',
+      icon: Calendar
+    },
+    
+    {
+      path: '/finance/gestion',
+      label: 'Gestion Financière',
+      icon: DollarSign
     }
+    ,
+    {
+      path: '/finance/historique-paiements',
+      label: 'Historique Paiements',
+      icon: Clock
+    }
+
   ];
 
   // Sélectionner les items de navigation selon le rôle

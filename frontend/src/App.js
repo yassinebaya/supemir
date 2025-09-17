@@ -35,6 +35,7 @@ import EtudiantLiveCours from './pages/EtudiantLiveCours';
 import LiveCoursEtudiant from './pages/LiveCoursEtudiant';
 import ProfLiveCours from './pages/ProfLiveCours';
 import ProfileProfesseur from './pages/ProfileProfesseur';
+import PedagogiqueEtudiants from './pages/PedagogiqueEtudiants';
 
 import MessageProf from './pages/MessageProf';
 import MessageEtudiant from './pages/MessageEtudiant';
@@ -77,7 +78,13 @@ import RapportsFinanceProfs from './pages/RapportsFinanceProfs';
 import ListeProfesseursfinance from './pages/ListeProfesseursfinance';
 import RevenusMensuels from './pages/RevenusMensuels';
 import EvaluationEtudiants from './pages/EvaluationEtudiants';
-
+import Financeseance from './pages/Financeseance';
+import GestionFinanciere from './pages/GestionFinanciere';
+import PageValidationPaiement from './pages/PageValidationPaiement';
+import ValidationPaiement from './pages/ValidationPaiement';
+import HistoriquePaiements from './pages/HistoriquePaiements';
+import DashboardPartners
+ from './pages/DashboardPartners';
 
 
    function AppContent() {
@@ -181,21 +188,25 @@ import EvaluationEtudiants from './pages/EvaluationEtudiants';
 <Route path="/etudiant/seances" element={<SeancesEtudiant />} />
 <Route path="/professeur/seances" element={<SeancesProfesseur />} />
 <Route path="/admin/rapports-professeurs" element={<RapportsProfesseurs />} />  
-<Route path="/admin/rapports-professeurs" element={<RapportsProfesseurs />} />  
 <Route path="/admin/emploi-creation" element={<EmploiCreation />} />  
 
+<Route path="/finance/emploi" element={<Financeseance />} />  
+<Route path="/finance/gestion" element={<GestionFinanciere />} />
 
 <Route path="/administratif/evaluation-etudiants" element={<EvaluationEtudiants />} />
 <Route path="/admin/revenus-mensuels" element={<RevenusMensuels />} />
 <Route path="/commercial" element={<Commercial />} />
 
+
+<Route path="/pedagogique/etudiants" element={<PedagogiqueEtudiants />} />
 <Route path="/professeur/AjouterBulletin" element={<ProfAjouterBulletin />} />
+<Route path="/finance/validation-paiement" element={<PageValidationPaiement />} />
 
-
+<Route path="/admin/validation-paiement" element={<ValidationPaiement />} />
 <Route path="/professeur/profil" element={<ProfesseurProfil />} />
 <Route path="/pedagogique" element={<PedagogiqueDashboard />} />
-
-<Route path="/manager/ListePaiement" element={<ListePaiementsmanager />} /> 
+<Route path="/finance/historique-paiements" element={<HistoriquePaiements />} />
+<Route path="/manager/ListePaiement" element={<ListePaiementsmanager />} />
 
 <Route path="/paiement-manager" element={<Dashboardmanager />} /> 
 <Route path="/etudiant/profil" element={<EtudiantProfil />} />
@@ -242,7 +253,7 @@ import EvaluationEtudiants from './pages/EvaluationEtudiants';
         <Route path="/finance/listeprofesseurs" element={<ListeProfesseursfinance />} />
 
         <Route path="/pedagogique/professeurs" element={<PedagogiePageprof />} />
-
+        <Route path="/admin/dashboard-partners" element={<DashboardPartners />} />
 
         <Route path="/pedagogique/emploi-pedagogique" element={<EmploiPedagogique />} />
         <Route path="/admin/paiements-exp" element={<PaiementsExpadmin />} />

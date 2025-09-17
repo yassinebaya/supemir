@@ -19,15 +19,7 @@ const RapportsProfesseurs = () => {
   const [rapportIndividuel, setRapportIndividuel] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('tous'); // 'tous', 'permanent', 'entrepreneur'
-  
-  // Nouveaux états pour la gestion des périodes
-  const [loadingPeriodes, setLoadingPeriodes] = useState(false);
-  const [periodesDisponibles, setPeriodesDisponibles] = useState({
-    annees: [],
-    moisParAnnee: {},
-    loaded: false
-  });
+  const [filterType, setFilterType] = useState('tous');
 
   // États pour les rattrapages
   const [showRattrapages, setShowRattrapages] = useState(false);
@@ -41,75 +33,11 @@ const RapportsProfesseurs = () => {
 
   useEffect(() => {
     fetchProfesseurs();
-    fetchPeriodesDisponibles();
     if (viewMode === 'mensuel') {
       fetchRapportsMensuels();
     }
   }, [selectedPeriod, viewMode]);
 
-  // Fonction pour récupérer les périodes disponibles
-  const fetchPeriodesDisponibles = async () => {
-    try {
-      setLoadingPeriodes(true);
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const res = await fetch('http://195.179.229.230:5000/api/seances/periodes-disponibles', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        setPeriodesDisponibles({
-          annees: data.annees || [],
-          moisParAnnee: data.moisParAnnee || {},
-          loaded: true
-        });
-      } else {
-        // Fallback avec années par défaut
-        const currentYear = new Date().getFullYear();
-        setPeriodesDisponibles({
-          annees: [currentYear - 1, currentYear, currentYear + 1],
-          moisParAnnee: {},
-          loaded: true
-        });
-      }
-    } catch (err) {
-      console.error('Erreur chargement périodes:', err);
-      // Fallback avec années par défaut
-      const currentYear = new Date().getFullYear();
-      setPeriodesDisponibles({
-        annees: [currentYear - 1, currentYear, currentYear + 1],
-        moisParAnnee: {},
-        loaded: true
-      });
-    } finally {
-      setLoadingPeriodes(false);
-    }
-  };
-
-  // Fonction pour obtenir les mois disponibles pour une année
-  const getMoisDisponiblesPourAnnee = (annee) => {
-    const moisDisponibles = periodesDisponibles.moisParAnnee[annee] || [];
-    return moisDisponibles.length > 0 ? moisDisponibles : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-  };
-
-  // Fonction pour gérer le changement d'année
-  const handleAnneeChange = (nouvelleAnnee) => {
-    const annee = parseInt(nouvelleAnnee);
-    const moisDisponibles = getMoisDisponiblesPourAnnee(annee);
-    const moisActuel = selectedPeriod.mois;
-    
-    // Si le mois actuel n'est pas disponible pour cette année, prendre le premier mois disponible
-    const nouveauMois = moisDisponibles.includes(moisActuel) ? moisActuel : moisDisponibles[0] || 1;
-    
-    setSelectedPeriod({
-      annee: annee,
-      mois: nouveauMois
-    });
-  };
-
-  // Fonction utilitaire pour vérifier les données
   const safeCalculate = (data, field, defaultValue = 0) => {
     if (!data || typeof data[field] !== 'number') return defaultValue;
     return data[field];
@@ -161,7 +89,7 @@ const RapportsProfesseurs = () => {
       }
 
       const res = await fetch(
-        `http://195.179.229.230:5000/api/professeurs/rapports/mensuel?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`,
+        `http://195.179.229.230:5000/api/professeur/rapports/mensuel?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -300,7 +228,6 @@ const RapportsProfesseurs = () => {
     }
   };
 
-  // Fonction de calcul sécurisée des totaux
   const calculateTotals = (rapports) => {
     if (!Array.isArray(rapports) || rapports.length === 0) {
       return { totalHeures: 0, totalAPayer: 0, totalSeances: 0 };
@@ -317,7 +244,6 @@ const RapportsProfesseurs = () => {
     }, { totalHeures: 0, totalAPayer: 0, totalSeances: 0 });
   };
 
-  // Filtrage et recherche
   const filteredRapports = rapports.filter(rapport => {
     if (!rapport || !rapport.professeur) return false;
     
@@ -413,7 +339,6 @@ const RapportsProfesseurs = () => {
     }
     content += `\n`;
     
-    // Détail des séances
     if (rapportIndividuel.seances && Array.isArray(rapportIndividuel.seances)) {
       content += `DETAIL DES SEANCES\n`;
       content += `Jour;Heure Début;Heure Fin;Cours;Matière;Salle;Durée\n`;
@@ -443,32 +368,28 @@ const RapportsProfesseurs = () => {
   const styles = {
     container: {
       padding: '20px',
-      maxWidth: '1400px',
+      maxWidth: '1800px',
       margin: '0 auto',
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
-
-      fontFamily: 'Arial, sans-serif'
+      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #0ea5e9 100%)',
+      fontFamily: 'Arial, sans-serif',
+      minHeight: '100vh'
     },
     header: {
       backgroundColor: '#fff',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      marginBottom: '20px',
-      textAlign: 'center'
-    },
-    headerContent: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      width: '100%'
+      padding: '25px',
+      borderRadius: '12px',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      marginBottom: '25px',
+      textAlign: 'center',
+      border: '3px solid #0ea5e9'
     },
     controls: {
       backgroundColor: '#fff',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      marginBottom: '20px'
+      padding: '25px',
+      borderRadius: '12px',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      marginBottom: '25px',
+      border: '2px solid #38bdf8'
     },
     controlRow: {
       display: 'flex',
@@ -479,57 +400,44 @@ const RapportsProfesseurs = () => {
     },
     searchRow: {
       display: 'flex',
-      gap: '10px',
+      gap: '15px',
       alignItems: 'center',
       marginTop: '15px',
       flexWrap: 'wrap'
     },
     select: {
-      padding: '8px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
+      padding: '10px 15px',
+      border: '2px solid #38bdf8',
+      borderRadius: '8px',
       fontSize: '14px',
-      minWidth: '150px'
+      minWidth: '150px',
+      backgroundColor: '#f8fafc'
     },
     input: {
-      padding: '8px 12px',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
+      padding: '10px 15px',
+      border: '2px solid #38bdf8',
+      borderRadius: '8px',
       fontSize: '14px',
-      minWidth: '200px'
+      minWidth: '200px',
+      backgroundColor: '#f8fafc'
     },
     button: {
-      padding: '8px 16px',
-      backgroundColor: '#3b82f6',
+      padding: '10px 20px',
+      backgroundColor: '#0ea5e9',
       color: 'white',
       border: 'none',
-      borderRadius: '6px',
+      borderRadius: '8px',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
-      gap: '6px',
+      gap: '8px',
       fontSize: '14px',
-      fontWeight: '500',
-      transition: 'all 0.2s'
-    },
-    buttonLogout: {
-      padding: '8px 16px',
-      backgroundColor: '#dc2626',
-      color: 'white',
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '500',
-      transition: 'all 0.2s',
-      marginLeft: 'auto'
+      fontWeight: '600',
+      transition: 'all 0.3s'
     },
     buttonDisabled: {
-      backgroundColor: '#9ca3af',
+      backgroundColor: '#d1d5db',
       cursor: 'not-allowed'
-    },
-    buttonSuccess: {
-      backgroundColor: '#10b981'
     },
     buttonWarning: {
       backgroundColor: '#f59e0b'
@@ -540,20 +448,21 @@ const RapportsProfesseurs = () => {
     statsContainer: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '15px',
-      marginBottom: '20px'
+      gap: '20px',
+      marginBottom: '25px'
     },
     statCard: {
       backgroundColor: '#fff',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      textAlign: 'center'
+      padding: '25px',
+      borderRadius: '12px',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      textAlign: 'center',
+      border: '2px solid #38bdf8'
     },
     statNumber: {
       fontSize: '2rem',
       fontWeight: 'bold',
-      color: '#3b82f6'
+      color: '#0ea5e9'
     },
     statLabel: {
       fontSize: '0.9rem',
@@ -565,86 +474,92 @@ const RapportsProfesseurs = () => {
       borderCollapse: 'collapse',
       fontSize: '14px',
       backgroundColor: '#fff',
-      borderRadius: '8px',
+      borderRadius: '12px',
       overflow: 'hidden',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      border: '2px solid #38bdf8'
     },
     th: {
-      backgroundColor: '#f8fafc',
-      padding: '12px',
+      backgroundColor: '#f0f9ff',
+      padding: '15px 12px',
       textAlign: 'left',
-      fontWeight: '600',
-      color: '#374151',
-      borderBottom: '2px solid #e5e7eb'
+      fontWeight: '700',
+      color: '#0c4a6e',
+      borderBottom: '3px solid #0ea5e9',
+      fontSize: '13px'
     },
     td: {
-      padding: '12px',
-      borderBottom: '1px solid #e5e7eb'
+      padding: '15px 12px',
+      borderBottom: '1px solid #e2e8f0'
     },
     entrepreneurTag: {
       backgroundColor: '#fef3c7',
       color: '#92400e',
-      padding: '2px 8px',
-      borderRadius: '12px',
+      padding: '4px 12px',
+      borderRadius: '20px',
       fontSize: '12px',
-      fontWeight: '500'
+      fontWeight: '600'
     },
     permanentTag: {
       backgroundColor: '#d1fae5',
       color: '#065f46',
-      padding: '2px 8px',
-      borderRadius: '12px',
+      padding: '4px 12px',
+      borderRadius: '20px',
       fontSize: '12px',
-      fontWeight: '500'
+      fontWeight: '600'
     },
     message: {
-      padding: '12px 16px',
-      borderRadius: '6px',
-      marginBottom: '20px',
+      padding: '15px 20px',
+      borderRadius: '8px',
+      marginBottom: '25px',
       textAlign: 'center',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '8px'
+      gap: '10px',
+      fontWeight: '500'
     },
     successMessage: {
-      backgroundColor: '#dcfce7',
-      color: '#166534',
-      border: '1px solid #bbf7d0'
+      backgroundColor: '#d1fae5',
+      color: '#065f46',
+      border: '2px solid #10b981'
     },
     errorMessage: {
       backgroundColor: '#fef2f2',
       color: '#dc2626',
-      border: '1px solid #fecaca'
+      border: '2px solid #ef4444'
     },
     warningMessage: {
       backgroundColor: '#fef3c7',
       color: '#92400e',
-      border: '1px solid #fbbf24'
+      border: '2px solid #f59e0b'
     },
     infoMessage: {
       backgroundColor: '#e0f2fe',
       color: '#0891b2',
-      border: '1px solid #67e8f9'
+      border: '2px solid #67e8f9'
     },
     emptyState: {
       textAlign: 'center',
-      padding: '60px 20px',
-      color: '#6b7280'
+      padding: '80px 20px',
+      color: '#6b7280',
+      backgroundColor: '#fff',
+      borderRadius: '12px',
+      border: '2px solid #38bdf8'
     },
     emptyIcon: {
-      fontSize: '48px',
-      marginBottom: '16px'
+      fontSize: '64px',
+      marginBottom: '20px'
     },
     emptyTitle: {
-      fontSize: '18px',
+      fontSize: '20px',
       fontWeight: '600',
-      marginBottom: '8px',
+      marginBottom: '10px',
       color: '#374151'
     },
     emptyText: {
-      fontSize: '14px',
-      lineHeight: '1.5'
+      fontSize: '15px',
+      lineHeight: '1.6'
     }
   };
 
@@ -652,17 +567,18 @@ const RapportsProfesseurs = () => {
 
   return (
     <div style={styles.container}>
-            <Sidebar onLogout={handleLogout} />
+      <Sidebar onLogout={handleLogout} />
 
       <div style={styles.header}>
-        <div style={{...styles.headerContent, justifyContent: 'center', display: 'flex', alignItems: 'center'}}>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#1f2937' }}>
-            Rapports et Statistiques Professeurs
-          </h1>
-        </div>
+        <h1 style={{ margin: 0, fontSize: '2.2rem', color: '#0c4a6e' }}>
+          Rapports Professeurs
+        </h1>
+        <p style={{ margin: '10px 0 0 0', color: '#6b7280', fontSize: '16px' }}>
+          Consultation et analyse des activités des professeurs
+        </p>
       </div>
 
-      {/* Contrôles */}
+      {/* Contrôles simplifiés */}
       <div style={styles.controls}>
         <div style={styles.controlRow}>
           <select
@@ -674,67 +590,38 @@ const RapportsProfesseurs = () => {
               setSelectedProfesseur('');
             }}
           >
-            <option value="mensuel">Rapport Mensuel Global</option>
+            <option value="mensuel">Rapport Mensuel</option>
             <option value="individuel">Rapport Individuel</option>
-            <option value="annuel">Rapport Annuel Individuel</option>
+            <option value="annuel">Rapport Annuel</option>
           </select>
 
           <select
-            style={{
-              ...styles.select,
-              ...(loadingPeriodes ? styles.buttonDisabled : {})
-            }}
+            style={styles.select}
             value={selectedPeriod.mois}
             onChange={(e) => setSelectedPeriod(prev => ({ ...prev, mois: parseInt(e.target.value) }))}
-            disabled={viewMode === 'annuel' || loadingPeriodes || !periodesDisponibles.loaded}
+            disabled={viewMode === 'annuel'}
           >
             {viewMode === 'annuel' ? (
               <option value="">Toute l'année</option>
-            ) : loadingPeriodes ? (
-              <option value="">Chargement des mois...</option>
             ) : (
-              getMoisDisponiblesPourAnnee(selectedPeriod.annee).length > 0 ? (
-                getMoisDisponiblesPourAnnee(selectedPeriod.annee).map(moisNum => (
-                  <option key={moisNum} value={moisNum}>
-                    {mois[moisNum - 1]}
-                  </option>
-                ))
-              ) : (
-                // Fallback si aucun mois disponible pour cette année
-                mois.map((m, index) => (
-                  <option key={index} value={index + 1} disabled>
-                    {m} (aucune donnée)
-                  </option>
-                ))
-              )
+              mois.map((m, index) => (
+                <option key={index} value={index + 1}>
+                  {m}
+                </option>
+              ))
             )}
           </select>
 
           <select
-            style={{
-              ...styles.select,
-              ...(loadingPeriodes ? styles.buttonDisabled : {})
-            }}
+            style={styles.select}
             value={selectedPeriod.annee}
-            onChange={(e) => handleAnneeChange(e.target.value)}
-            disabled={loadingPeriodes || !periodesDisponibles.loaded}
+            onChange={(e) => setSelectedPeriod(prev => ({ ...prev, annee: parseInt(e.target.value) }))}
           >
-            {loadingPeriodes ? (
-              <option value="">Chargement des années...</option>
-            ) : periodesDisponibles.loaded && periodesDisponibles.annees.length > 0 ? (
-              // Utilisation des années DYNAMIQUES de la base de données
-              periodesDisponibles.annees.map(year => {
-                const moisCount = getMoisDisponiblesPourAnnee(year).length;
-                return (
-                  <option key={year} value={year}>
-                    {year} {moisCount > 0 ? `(${moisCount} mois avec données)` : '(aucune donnée)'}
-                  </option>
-                );
-              })
-            ) : (
-              // Fallback seulement si aucune donnée dynamique n'est disponible
-              <option value="" disabled>Aucune année avec données trouvée</option>
-            )}
+            {[2023, 2024, 2025, 2026].map(year => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
           </select>
 
           {(viewMode === 'individuel' || viewMode === 'annuel') && (
@@ -782,7 +669,7 @@ const RapportsProfesseurs = () => {
           </button>
         </div>
 
-        {/* Recherche et filtrage pour mode mensuel */}
+        {/* Recherche pour mode mensuel */}
         {viewMode === 'mensuel' && (
           <div style={styles.searchRow}>
             <input
@@ -811,33 +698,6 @@ const RapportsProfesseurs = () => {
                 Effacer filtres
               </button>
             )}
-            
-            <button
-              style={{ 
-                ...styles.button, 
-                ...styles.buttonSuccess, 
-                fontSize: '12px', 
-                padding: '6px 12px',
-                ...(loadingPeriodes ? styles.buttonDisabled : {})
-              }}
-              onClick={fetchPeriodesDisponibles}
-              disabled={loadingPeriodes}
-            >
-              {loadingPeriodes ? 'Actualisation...' : 'Actualiser périodes'}
-            </button>
-
-            {periodesDisponibles.loaded && (
-              <div style={{ 
-                fontSize: '12px', 
-                color: '#6b7280', 
-                padding: '6px 12px',
-                backgroundColor: '#f8fafc',
-                borderRadius: '4px',
-                border: '1px solid #e5e7eb'
-              }}>
-                {periodesDisponibles.annees.length} années • {Object.values(periodesDisponibles.moisParAnnee).flat().length} mois avec données
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -862,7 +722,7 @@ const RapportsProfesseurs = () => {
         </div>
       )}
 
-      {/* Mode Mensuel Global */}
+      {/* Mode Mensuel */}
       {viewMode === 'mensuel' && !loading && (
         <>
           {filteredRapports.length > 0 ? (
@@ -871,40 +731,25 @@ const RapportsProfesseurs = () => {
               <div style={styles.statsContainer}>
                 <div style={styles.statCard}>
                   <div style={styles.statNumber}>{filteredRapports.length}</div>
-                  <div style={styles.statLabel}>
-                    Professeurs {searchTerm || filterType !== 'tous' ? 'Filtrés' : 'Actifs'}
-                  </div>
+                  <div style={styles.statLabel}>Professeurs Actifs</div>
                 </div>
                 <div style={styles.statCard}>
-                  <div style={styles.statNumber}>
-                    {totaux.totalHeures.toFixed(1)}h
-                  </div>
-                  <div style={styles.statLabel}>
-                    Total Heures
-                    <div style={{ fontSize: '10px', color: '#6b7280', fontStyle: 'italic' }}>
-                      (rattrapages exclus)
-                    </div>
-                  </div>
+                  <div style={styles.statNumber}>{totaux.totalHeures.toFixed(1)}h</div>
+                  <div style={styles.statLabel}>Total Heures</div>
                 </div>
                 <div style={styles.statCard}>
                   <div style={styles.statNumber}>
                     {filteredRapports.filter(r => r.professeur && !r.professeur.estPermanent).length}
                   </div>
-                  <div style={styles.statLabel}>
-                    Entrepreneurs
-                  </div>
+                  <div style={styles.statLabel}>Entrepreneurs</div>
                 </div>
                 <div style={styles.statCard}>
-                  <div style={styles.statNumber}>
-                    {totaux.totalAPayer.toFixed(2)} DH
-                  </div>
-                  <div style={styles.statLabel}>
-                    Total à Payer
-                  </div>
+                  <div style={styles.statNumber}>{totaux.totalAPayer.toFixed(2)} DH</div>
+                  <div style={styles.statLabel}>Total à Payer</div>
                 </div>
               </div>
 
-              {/* Tableau des rapports */}
+              {/* Tableau simplifié */}
               <div style={{ overflowX: 'auto' }}>
                 <table style={styles.table}>
                   <thead>
@@ -959,7 +804,7 @@ const RapportsProfesseurs = () => {
                                   fetchRapportIndividuel(rapport.professeur._id);
                                 }}
                               >
-                                Détails
+                                Voir Détails
                               </button>
                               <button
                                 style={{ 
@@ -989,23 +834,16 @@ const RapportsProfesseurs = () => {
           ) : (
             <div style={styles.emptyState}>
               <div style={styles.emptyIcon}>📊</div>
-              <div style={styles.emptyTitle}>
-                {rapports.length === 0 ? 'Aucun rapport disponible' : 'Aucun résultat trouvé'}
-              </div>
+              <div style={styles.emptyTitle}>Aucun rapport disponible</div>
               <div style={styles.emptyText}>
-                {rapports.length === 0 
-                  ? `Aucune activité trouvée pour ${mois[selectedPeriod.mois - 1]} ${selectedPeriod.annee}. Vérifiez que les professeurs ont des séances programmées.`
-                  : `Aucun professeur ne correspond aux critères de recherche "${searchTerm}" et filtre "${filterType}".`
-                }
+                Aucune activité trouvée pour {mois[selectedPeriod.mois - 1]} {selectedPeriod.annee}.
               </div>
-              {rapports.length === 0 && (
-                <button
-                  style={{ ...styles.button, marginTop: '16px' }}
-                  onClick={fetchRapportsMensuels}
-                >
-                  Actualiser
-                </button>
-              )}
+              <button
+                style={{ ...styles.button, marginTop: '16px' }}
+                onClick={fetchRapportsMensuels}
+              >
+                Actualiser
+              </button>
             </div>
           )}
         </>
@@ -1018,7 +856,7 @@ const RapportsProfesseurs = () => {
             <>
               {/* Informations du professeur */}
               <div style={{ ...styles.statCard, marginBottom: '20px' }}>
-                <h3 style={{ margin: '0 0 10px 0', color: '#374151' }}>
+                <h3 style={{ margin: '0 0 10px 0', color: '#0c4a6e' }}>
                   {rapportIndividuel.professeur.nom}
                 </h3>
                 <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center' }}>
@@ -1031,54 +869,16 @@ const RapportsProfesseurs = () => {
                 </div>
               </div>
 
-              {/* Note sur les rattrapages exclus */}
-              <div style={{
-                backgroundColor: '#fef3c7',
-                border: '1px solid #fbbf24',
-                borderRadius: '6px',
-                padding: '12px',
-                marginBottom: '20px',
-                fontSize: '13px',
-                color: '#92400e'
-              }}>
-                <strong>Note :</strong> Les séances marquées en "rattrapage" sont exclues de ces statistiques. 
-                Seules les séances effectivement données sont comptabilisées.
-                {selectedProfesseur && (
-                  <button
-                    style={{
-                      marginLeft: '10px',
-                      fontSize: '11px',
-                      padding: '4px 8px',
-                      backgroundColor: '#f59e0b',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      fetchRattrapagesProfesseur(selectedProfesseur);
-                      setShowRattrapages(true);
-                    }}
-                  >
-                    Voir les rattrapages
-                  </button>
-                )}
-              </div>
-
-              {/* Statistiques individuelles */}
+              {/* Statistiques */}
               {viewMode === 'individuel' ? (
                 <div style={styles.statsContainer}>
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'totalHeures')}h</div>
-                    <div style={styles.statLabel}>
-                      Total Heures
-                    </div>
+                    <div style={styles.statLabel}>Total Heures</div>
                   </div>
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'totalSeances')}</div>
-                    <div style={styles.statLabel}>
-                      Séances
-                    </div>
+                    <div style={styles.statLabel}>Séances</div>
                   </div>
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'coursUniques')}</div>
@@ -1087,77 +887,52 @@ const RapportsProfesseurs = () => {
                   {!rapportIndividuel.professeur.estPermanent && (
                     <div style={styles.statCard}>
                       <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'totalAPayer').toFixed(2)} DH</div>
-                      <div style={styles.statLabel}>
-                        Total à Payer
-                      </div>
+                      <div style={styles.statLabel}>Total à Payer</div>
                     </div>
                   )}
                 </div>
               ) : (
-                // Mode annuel - affichage mensuel
+                // Mode annuel
                 <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Évolution Mensuelle {rapportIndividuel.annee}</h4>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#0c4a6e' }}>Évolution Mensuelle {rapportIndividuel.annee}</h4>
                   {rapportIndividuel.rapportsMensuels && Array.isArray(rapportIndividuel.rapportsMensuels) ? (
-                    <>
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={styles.table}>
-                          <thead>
-                            <tr>
-                              <th style={styles.th}>Mois</th>
-                              <th style={styles.th}>Heures</th>
-                              <th style={styles.th}>Séances</th>
-                              {!rapportIndividuel.professeur.estPermanent && <th style={styles.th}>Montant</th>}
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={styles.th}>Mois</th>
+                            <th style={styles.th}>Heures</th>
+                            <th style={styles.th}>Séances</th>
+                            {!rapportIndividuel.professeur.estPermanent && <th style={styles.th}>Montant</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rapportIndividuel.rapportsMensuels.map(rapport => (
+                            <tr key={rapport.mois}>
+                              <td style={styles.td}>{rapport.nomMois}</td>
+                              <td style={styles.td}>{safeCalculate(rapport.statistiques, 'totalHeures')}h</td>
+                              <td style={styles.td}>{safeCalculate(rapport, 'nombreSeances')}</td>
+                              {!rapportIndividuel.professeur.estPermanent && (
+                                <td style={styles.td}>{safeCalculate(rapport.statistiques, 'totalAPayer').toFixed(2)} DH</td>
+                              )}
                             </tr>
-                          </thead>
-                          <tbody>
-                            {rapportIndividuel.rapportsMensuels.map(rapport => (
-                              <tr key={rapport.mois}>
-                                <td style={styles.td}>{rapport.nomMois}</td>
-                                <td style={styles.td}>{safeCalculate(rapport.statistiques, 'totalHeures')}h</td>
-                                <td style={styles.td}>{safeCalculate(rapport, 'nombreSeances')}</td>
-                                {!rapportIndividuel.professeur.estPermanent && (
-                                  <td style={styles.td}>{safeCalculate(rapport.statistiques, 'totalAPayer').toFixed(2)} DH</td>
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      
-                      {/* Totaux annuels */}
-                      {rapportIndividuel.totauxAnnuels && (
-                        <div style={{ ...styles.statsContainer, marginTop: '20px' }}>
-                          <div style={styles.statCard}>
-                            <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.totauxAnnuels, 'totalHeures')}h</div>
-                            <div style={styles.statLabel}>Total Annuel Heures</div>
-                          </div>
-                          <div style={styles.statCard}>
-                            <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.totauxAnnuels, 'totalSeances')}</div>
-                            <div style={styles.statLabel}>Total Annuel Séances</div>
-                          </div>
-                          {!rapportIndividuel.professeur.estPermanent && (
-                            <div style={styles.statCard}>
-                              <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.totauxAnnuels, 'totalAPayer').toFixed(2)} DH</div>
-                              <div style={styles.statLabel}>Total Annuel à Payer</div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : (
                     <div style={styles.emptyState}>
                       <div style={styles.emptyIcon}>📅</div>
                       <div style={styles.emptyTitle}>Aucune donnée mensuelle</div>
-                      <div style={styles.emptyText}>Les données mensuelles ne sont pas disponibles pour cette année.</div>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Détail des séances (pour mode individuel mensuel) */}
+              {/* Détail des séances */}
               {viewMode === 'individuel' && rapportIndividuel.seances && Array.isArray(rapportIndividuel.seances) && rapportIndividuel.seances.length > 0 && (
                 <div style={{ marginTop: '30px' }}>
-                  <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>Détail des Séances</h4>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#0c4a6e' }}>Détail des Séances</h4>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={styles.table}>
                       <thead>
@@ -1193,8 +968,6 @@ const RapportsProfesseurs = () => {
               <div style={styles.emptyTitle}>Aucune donnée disponible</div>
               <div style={styles.emptyText}>
                 Ce professeur n'a aucune activité enregistrée pour cette période.
-                <br />
-                Vérifiez que des séances ont été programmées et générées.
               </div>
               <button
                 style={{ ...styles.button, marginTop: '16px' }}
@@ -1245,7 +1018,6 @@ const RapportsProfesseurs = () => {
               <div>Chargement des rattrapages...</div>
             ) : rattrapagesData ? (
               <>
-                {/* Statistiques des rattrapages */}
                 <div style={{
                   backgroundColor: '#fee2e2',
                   border: '1px solid #fecaca',
@@ -1269,18 +1041,14 @@ const RapportsProfesseurs = () => {
                   </div>
                 </div>
 
-                {/* Liste des rattrapages */}
                 {rattrapagesData.rattrapages && rattrapagesData.rattrapages.length > 0 ? (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={styles.table}>
                       <thead>
                         <tr>
                           <th style={{ ...styles.th, backgroundColor: '#fee2e2', color: '#991b1b' }}>Date</th>
-                          <th style={{ ...styles.th, backgroundColor: '#fee2e2', color: '#991b1b' }}>Jour</th>
                           <th style={{ ...styles.th, backgroundColor: '#fee2e2', color: '#991b1b' }}>Horaire</th>
                           <th style={{ ...styles.th, backgroundColor: '#fee2e2', color: '#991b1b' }}>Cours</th>
-                          <th style={{ ...styles.th, backgroundColor: '#fee2e2', color: '#991b1b' }}>Matière</th>
-                          <th style={{ ...styles.th, backgroundColor: '#fee2e2', color: '#991b1b' }}>Salle</th>
                           <th style={{ ...styles.th, backgroundColor: '#fee2e2', color: '#991b1b' }}>Durée</th>
                         </tr>
                       </thead>
@@ -1290,13 +1058,10 @@ const RapportsProfesseurs = () => {
                             <td style={styles.td}>
                               {new Date(rattrapage.dateSeance).toLocaleDateString('fr-FR')}
                             </td>
-                            <td style={styles.td}>{rattrapage.jour}</td>
                             <td style={styles.td}>
                               {rattrapage.heureDebut} - {rattrapage.heureFin}
                             </td>
                             <td style={styles.td}>{rattrapage.cours}</td>
-                            <td style={styles.td}>{rattrapage.matiere || '-'}</td>
-                            <td style={styles.td}>{rattrapage.salle || '-'}</td>
                             <td style={styles.td}>
                               <strong style={{ color: '#dc2626' }}>{rattrapage.dureeHeures}h</strong>
                             </td>
@@ -1304,20 +1069,6 @@ const RapportsProfesseurs = () => {
                         ))}
                       </tbody>
                     </table>
-
-                    {/* Note explicative */}
-                    <div style={{
-                      marginTop: '15px',
-                      padding: '10px',
-                      backgroundColor: '#fef3c7',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      color: '#92400e'
-                    }}>
-                      <strong>Ces séances sont marquées comme "à rattraper"</strong> et ne sont pas comptabilisées 
-                      dans les statistiques de performance du professeur. Elles représentent des cours non effectués 
-                      qui nécessitent une reprogrammation.
-                    </div>
                   </div>
                 ) : (
                   <div style={{ textAlign: 'center', padding: '40px', color: '#10b981' }}>
@@ -1326,7 +1077,7 @@ const RapportsProfesseurs = () => {
                       Aucun rattrapage
                     </div>
                     <div>
-                      Ce professeur n'a aucune séance en attente de rattrapage pour cette période.
+                      Ce professeur n'a aucune séance en attente de rattrapage.
                     </div>
                   </div>
                 )}

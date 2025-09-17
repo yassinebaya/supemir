@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import { 
   User, 
   CheckCircle, 
@@ -323,6 +324,79 @@ const EvaluationEtudiants = () => {
     incomplet: etudiantsFiltres.filter(e => e.evaluationExistante?.statutEvaluation === 'incomplet').length,
     enCours: etudiantsFiltres.filter(e => e.evaluationExistante?.statutEvaluation === 'en_cours').length,
     pasEvaluation: etudiantsFiltres.filter(e => !e.evaluationExistante).length
+  };
+
+  const exportToExcel = () => {
+    // Préparer les données pour l'export
+    const dataToExport = etudiantsFiltres.map((etudiant) => {
+      const evaluation = etudiant.evaluationExistante;
+      let documentsValides = 0;
+      let totalDocuments = 0;
+      if (evaluation && evaluation.documents) {
+        documentsConfig.forEach(doc => {
+          totalDocuments++;
+          if (evaluation.documents[doc.key]?.valide) {
+            documentsValides++;
+          }
+        });
+      }
+      return {
+        'Code Étudiant': etudiant.codeEtudiant || '',
+        'Prénom': etudiant.prenom || '',
+        'Nom de Famille': etudiant.nomDeFamille || '',
+        'Email': etudiant.email || '',
+        'Téléphone': etudiant.telephone || '',
+        'Type Formation': etudiant.typeFormation || '',
+        'Niveau': etudiant.niveau || '',
+        'Année Scolaire': etudiant.anneeScolaire || '',
+        'Commercial': etudiant.commercial ? `${etudiant.commercial.nom} ${etudiant.commercial.prenom}` : '',
+        'Statut Évaluation': evaluation ? 
+          (evaluation.statutEvaluation === 'complet' ? 'Complet' :
+           evaluation.statutEvaluation === 'incomplet' ? 'Incomplet' :
+           evaluation.statutEvaluation === 'en_cours' ? 'En cours' : 'Inconnu') : 
+          'Pas d\'évaluation',
+        'Score Documents': evaluation ? `${documentsValides}/${totalDocuments}` : '0/0',
+        'Date Évaluation': evaluation ? new Date(evaluation.dateEvaluation).toLocaleDateString('fr-FR') : '',
+        'Date Finalisation': evaluation && evaluation.dateFinalisation ? 
+          new Date(evaluation.dateFinalisation).toLocaleDateString('fr-FR') : '',
+        'Commentaire Général': evaluation?.commentaireGeneral || '',
+        'Photo': evaluation?.documents?.photo?.valide ? 'Valide' : 'Non valide',
+        'Photo - Commentaire': evaluation?.documents?.photo?.commentaire || '',
+        'CIN': evaluation?.documents?.cin?.valide ? 'Valide' : 'Non valide',
+        'CIN - Commentaire': evaluation?.documents?.cin?.commentaire || '',
+        'Passeport': evaluation?.documents?.passeport?.valide ? 'Valide' : 'Non valide',
+        'Passeport - Commentaire': evaluation?.documents?.passeport?.commentaire || '',
+        'Baccalauréat': evaluation?.documents?.bac?.valide ? 'Valide' : 'Non valide',
+        'Baccalauréat - Commentaire': evaluation?.documents?.bac?.commentaire || '',
+        'Relevé de notes': evaluation?.documents?.releveNote?.valide ? 'Valide' : 'Non valide',
+        'Relevé de notes - Commentaire': evaluation?.documents?.releveNote?.commentaire || '',
+        'Diplôme': evaluation?.documents?.diplome?.valide ? 'Valide' : 'Non valide',
+        'Diplôme - Commentaire': evaluation?.documents?.diplome?.commentaire || '',
+        'Attestation de réussite': evaluation?.documents?.attestationReussite?.valide ? 'Valide' : 'Non valide',
+        'Attestation de réussite - Commentaire': evaluation?.documents?.attestationReussite?.commentaire || '',
+        'Relevé de notes 1': evaluation?.documents?.releveNote1?.valide ? 'Valide' : 'Non valide',
+        'Relevé de notes 1 - Commentaire': evaluation?.documents?.releveNote1?.commentaire || '',
+        'Relevé de notes 2': evaluation?.documents?.releveNote2?.valide ? 'Valide' : 'Non valide',
+        'Relevé de notes 2 - Commentaire': evaluation?.documents?.releveNote2?.commentaire || '',
+        'Relevé de notes 3': evaluation?.documents?.releveNote3?.valide ? 'Valide' : 'Non valide',
+        'Relevé de notes 3 - Commentaire': evaluation?.documents?.releveNote3?.commentaire || '',
+        '1ère Master/Ingénieur': evaluation?.documents?.premiereMasterIngenieur?.valide ? 'Valide' : 'Non valide',
+        '1ère Master/Ingénieur - Commentaire': evaluation?.documents?.premiereMasterIngenieur?.commentaire || '',
+        '2ème Master/Ingénieur': evaluation?.documents?.deuxiemeMasterIngenieur?.valide ? 'Valide' : 'Non valide',
+        '2ème Master/Ingénieur - Commentaire': evaluation?.documents?.deuxiemeMasterIngenieur?.commentaire || ''
+      };
+    });
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const colWidths = [
+      { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, ...Array(24).fill({ wch: 15 })
+    ];
+    worksheet['!cols'] = colWidths;
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Évaluations Étudiants');
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const fileName = `evaluation_etudiants_2025-2026_${dateStr}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
   };
 
   if (loading) {
@@ -719,6 +793,41 @@ const EvaluationEtudiants = () => {
                 <option value="pas_evaluation">Pas d'évaluation</option>
               </select>
             </div>
+
+            {/* Nouveau bouton d'export Excel */}
+            <button
+              onClick={exportToExcel}
+              disabled={etudiantsFiltres.length === 0}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                backgroundColor: etudiantsFiltres.length === 0 ? '#9ca3af' : '#059669',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: etudiantsFiltres.length === 0 ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseOver={(e) => {
+                if (etudiantsFiltres.length > 0) {
+                  e.target.style.backgroundColor = '#047857';
+                }
+              }}
+              onMouseOut={(e) => {
+                if (etudiantsFiltres.length > 0) {
+                  e.target.style.backgroundColor = '#059669';
+                }
+              }}
+              title={etudiantsFiltres.length === 0 ? 'Aucune donnée à exporter' : 'Exporter vers Excel'}
+            >
+              <FileText size={16} />
+              Exporter Excel
+            </button>
 
             <div style={{
               display: 'flex',

@@ -46,6 +46,35 @@ const seanceSchema = new mongoose.Schema({
     enum: ['template', 'reelle', 'exception', 'rattrapage'],
     default: 'reelle'
   },
+
+  // Traçabilité des actions
+  lastActionById: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Admin', 
+    default: null 
+  },
+  lastActionByName: { 
+    type: String, 
+    default: 'Système automatique' 
+  },
+  lastActionByEmail: { 
+    type: String, 
+    default: 'system@auto.com' 
+  },
+  lastActionByRole: { 
+    type: String, 
+    enum: ['admin','finance_prof','pedagogique','administratif'], 
+    default: 'admin' 
+  },
+  lastActionType: { 
+    type: String, 
+    enum: ['creation','modification','suppression','rattrapage'], 
+    default: 'creation' 
+  },
+  lastActionAt: { 
+    type: Date, 
+    default: Date.now 
+  },
   
   // Pour les séances réelles : date exacte
   dateSeance: {
@@ -92,7 +121,42 @@ const seanceSchema = new mongoose.Schema({
   notes: {
     type: String,
     default: ''
+  },
+
+  // ===== NOUVEAUX CHAMPS POUR LE SYSTÈME DE CYCLES DE PAIEMENT =====
+  
+  // Statut de paiement de la séance
+  payee: {
+    type: Boolean,
+    default: false // false = pas encore payée, true = payée
+  },
+  
+  // Date à laquelle la séance a été payée
+  datePaiement: {
+    type: Date,
+    default: null
+  },
+  
+  // Référence au cycle de paiement qui contient cette séance
+  cyclePaiementId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CyclePaiement',
+    default: null
+  },
+  
+  // Numéro de séquence pour ordonner les séances
+  numeroSequence: {
+    type: Number,
+    default: 0
+  },
+
+  // Statut spécifique de la séance dans le processus de paiement
+  statutPaiement: {
+    type: String,
+    enum: ['en_attente', 'en_cycle', 'valide_finance', 'paye_admin'],
+    default: 'en_attente'
   }
+
 }, { timestamps: true });
 
 // ===== MÉTHODES STATIQUES POUR GÉNÉRATION AUTOMATIQUE =====
@@ -210,7 +274,10 @@ seanceSchema.statics.genererSeancesSemaine = async function(dateLundi) {
         professeur: template.professeur._id,
         matiere: template.matiere,
         salle: template.salle,
-        actif: true
+        actif: true,
+        // Nouveaux champs pour le système de cycles
+        payee: false,
+        statutPaiement: 'en_attente'
       });
       
       await nouvelleSeance.save();
@@ -259,6 +326,119 @@ seanceSchema.statics.synchroniserCours = async function() {
     console.error('❌ Erreur synchronisation:', error);
     throw error;
   }
+};
+
+// ===== NOUVELLES MÉTHODES POUR LE SYSTÈME DE CYCLES =====
+
+// Méthode pour marquer une séance comme payée
+seanceSchema.methods.marquerCommePaye = function(cycleId) {
+  this.payee = true;
+  this.datePaiement = new Date();
+  this.cyclePaiementId = cycleId;
+  this.statutPaiement = 'paye_admin';
+};
+
+// Méthode pour changer le statut de paiement
+seanceSchema.methods.changerStatutPaiement = function(nouveauStatut) {
+  this.statutPaiement = nouveauStatut;
+  
+  // Mettre à jour les champs associés selon le statut
+  switch (nouveauStatut) {
+    case 'en_cycle':
+      // Séance incluse dans un cycle mais pas encore validée
+      break;
+    case 'valide_finance':
+      // Cycle validé par Finance
+      break;
+    case 'paye_admin':
+      // Paiement effectué par Admin
+      this.payee = true;
+      this.datePaiement = new Date();
+      break;
+    default:
+      // en_attente ou autre
+      break;
+  }
+};
+
+// MÉTHODE STATIQUE : Récupérer les séances non payées d'un professeur
+seanceSchema.statics.getSeancesNonPayees = async function(professeurId) {
+  return await this.find({
+    professeur: professeurId,
+    actif: true,
+    payee: { $ne: true }, // Séances pas encore payées
+    typeSeance: { $ne: 'rattrapage' }
+  }).populate('coursId', 'nom').sort({ dateSeance: 1 });
+};
+
+// MÉTHODE STATIQUE : Récupérer les séances d'un cycle payé
+seanceSchema.statics.getSeancesCyclePayé = async function(cycleId) {
+  return await this.find({
+    cyclePaiementId: cycleId,
+    payee: true
+  }).populate('coursId', 'nom').sort({ dateSeance: 1 });
+};
+
+// MÉTHODE STATIQUE : Calculer le montant total des séances non payées
+seanceSchema.statics.calculerMontantNonPaye = async function(professeurId) {
+  const seances = await this.getSeancesNonPayees(professeurId);
+  const professeur = await mongoose.model('Professeur').findById(professeurId);
+  
+  if (!professeur || !seances.length) return 0;
+  
+  let montantTotal = 0;
+  
+  for (const seance of seances) {
+    const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+    const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+    const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+    
+    montantTotal += dureeHeures * (professeur.tarifHoraire || 0);
+  }
+  
+  return Math.round(montantTotal * 100) / 100;
+};
+
+// MÉTHODE STATIQUE : Marquer plusieurs séances comme payées
+seanceSchema.statics.marquerSeancesPayees = async function(seanceIds, cycleId) {
+  const result = await this.updateMany(
+    { _id: { $in: seanceIds } },
+    { 
+      payee: true,
+      datePaiement: new Date(),
+      cyclePaiementId: cycleId,
+      statutPaiement: 'paye_admin'
+    }
+  );
+  
+  return result;
+};
+
+// MÉTHODE STATIQUE : Récupérer les séances par statut de paiement
+seanceSchema.statics.getSeancesParStatut = async function(professeurId, statut) {
+  return await this.find({
+    professeur: professeurId,
+    statutPaiement: statut,
+    actif: true
+  }).populate('coursId', 'nom').sort({ dateSeance: 1 });
+};
+
+// API SIMPLE pour migration des données existantes
+// À exécuter UNE SEULE FOIS pour marquer toutes les séances existantes comme "non payées"
+seanceSchema.statics.migrerSeancesExistantes = async function() {
+  const result = await this.updateMany(
+    { payee: { $exists: false } }, // Séances qui n'ont pas encore le champ payee
+    { 
+      payee: false, 
+      datePaiement: null,
+      cyclePaiementId: null,
+      numeroSequence: 0,
+      statutPaiement: 'en_attente'
+    }
+  );
+  
+  console.log(`Migration: ${result.modifiedCount} séances mises à jour`);
+  return result;
 };
 
 // Calculer automatiquement les heures et montants
@@ -312,6 +492,12 @@ seanceSchema.pre('save', async function(next) {
     }
   }
   
+  // Initialiser les nouveaux champs si nécessaire
+  if (this.isNew && typeof this.payee === 'undefined') {
+    this.payee = false;
+    this.statutPaiement = 'en_attente';
+  }
+  
   next();
 });
 
@@ -321,4 +507,11 @@ seanceSchema.index({ typeSeance: 1, actif: 1 });
 seanceSchema.index({ professeur: 1, dateSeance: 1 });
 seanceSchema.index({ coursId: 1, typeSeance: 1 });
 
+// Index pour le système de cycles de paiement
+seanceSchema.index({ professeur: 1, payee: 1 });
+seanceSchema.index({ cyclePaiementId: 1 });
+seanceSchema.index({ payee: 1, actif: 1 });
+seanceSchema.index({ professeur: 1, statutPaiement: 1 });
+
+seanceSchema.set('strict', false);
 module.exports = mongoose.model('Seance', seanceSchema);

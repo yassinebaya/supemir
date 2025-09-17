@@ -16,7 +16,7 @@ import {
 import Sidebar from '../components/Sidebar';
 import HistoriqueModal from '../components/HistoriqueModal';
 
-const EmploiConsultation = () => {
+const Financeseance = () => {
   const [jours] = useState(['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']);
   
   // Remplacer la gestion des créneaux par cours
@@ -158,28 +158,19 @@ const EmploiConsultation = () => {
     fetchSeancesReelles();
   };
 
-  // Version spécifique pour AdminAjouterSeance qui génère les créneaux manquants
+  // Version spécifique pour FinanceSeance qui génère les créneaux manquants
   const analyserCreneaux = (seancesData) => {
     const creneauxParCoursMap = {};
     
     seancesData.forEach(seance => {
-      // Utiliser l'ID du cours plutôt que le nom pour la cohérence
-      let coursId = seance.coursId || seance.cours;
+      const coursNom = seance.cours || seance.coursId?.nom || 'Cours Inconnu';
       
-      // Si on a un nom de cours, essayer de trouver l'ID correspondant
-      if (typeof coursId === 'string' && !coursId.match(/^[0-9a-fA-F]{24}$/)) {
-        const coursObj = coursList.find(c => c.nom === coursId);
-        if (coursObj) {
-          coursId = coursObj._id;
-        }
-      }
-      
-      if (!creneauxParCoursMap[coursId]) {
-        creneauxParCoursMap[coursId] = new Set();
+      if (!creneauxParCoursMap[coursNom]) {
+        creneauxParCoursMap[coursNom] = new Set();
       }
       
       const creneauKey = `${seance.heureDebut}-${seance.heureFin}`;
-      creneauxParCoursMap[coursId].add(creneauKey);
+      creneauxParCoursMap[coursNom].add(creneauKey);
     });
 
     // Charger les créneaux existants
@@ -197,9 +188,9 @@ const EmploiConsultation = () => {
     // Générer les créneaux finaux
     const creneauxFinal = { ...existingCreneaux };
     
-    Object.keys(creneauxParCoursMap).forEach(coursId => {
-      if (!creneauxFinal[coursId] || creneauxFinal[coursId].length === 0) {
-        creneauxFinal[coursId] = Array.from(creneauxParCoursMap[coursId])
+    Object.keys(creneauxParCoursMap).forEach(cours => {
+      if (!creneauxFinal[cours] || creneauxFinal[cours].length === 0) {
+        creneauxFinal[cours] = Array.from(creneauxParCoursMap[cours])
           .map((key, index) => {
             const [debut, fin] = key.split('-');
             return { 
@@ -211,8 +202,7 @@ const EmploiConsultation = () => {
           })
           .sort((a, b) => a.debut.localeCompare(b.debut));
         
-        const coursNom = coursList.find(c => c._id === coursId)?.nom || coursId;
-        console.log(`✅ Créneaux auto-générés pour ${coursNom}:`, creneauxFinal[coursId]);
+        console.log(`✅ Créneaux auto-générés pour ${cours}:`, creneauxFinal[cours]);
       }
     });
 
@@ -1431,6 +1421,27 @@ const EmploiConsultation = () => {
                                       fontSize: '10px',
                                       padding: '3px 6px',
                                       borderRadius: '3px',
+                                      border: '1px solid #dc2626',
+                                      background: '#dc2626',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '3px'
+                                    }}
+                                    onClick={() => deleteSeance(coursId, jour, creneau, seanceData)}
+                                    title="Supprimer cette séance"
+                                  >
+                                    <Trash2 size={8} />
+                                    Supprimer
+                                  </button>
+
+                                  <button
+                                    style={{
+                                      fontSize: '10px',
+                                      padding: '3px 6px',
+                                      borderRadius: '3px',
                                       border: '1px solid #6b7280',
                                       background: '#6b7280',
                                       color: 'white',
@@ -1448,27 +1459,6 @@ const EmploiConsultation = () => {
                                   >
                                     <Clock size={8} />
                                     Historique
-                                  </button>
-
-                                  <button
-                                    style={{
-                                      fontSize: '10px',
-                                      padding: '3px 6px',
-                                      borderRadius: '3px',
-                                      border: '1px solid #dc2626',
-                                      background: '#dc2626',
-                                      color: 'white',
-                                      cursor: 'pointer',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: '3px'
-                                    }}
-                                    onClick={() => deleteSeance(coursId, jour, creneau, seanceData)}
-                                    title="Supprimer cette séance"
-                                  >
-                                    <Trash2 size={8} />
-                                    Supprimer
                                   </button>
 
                                   <button
@@ -1926,4 +1916,4 @@ const EmploiConsultation = () => {
   );
 };
 
-export default EmploiConsultation;
+export default Financeseance;

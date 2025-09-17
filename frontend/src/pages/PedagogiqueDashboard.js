@@ -3,62 +3,36 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
-import Sidebar from '../components/Sidebar'; // ✅ استيراد صحيح
-
+import Sidebar from '../components/Sidebar';
 import {
-  Users, GraduationCap, CreditCard, TrendingUp, Award, UserCheck,
-  Calendar, Target, BarChart3, PieChart as PieChartIcon,
-  Activity, Globe, MapPin, Clock, BookOpen, Eye, Filter, LogOut,
-  RefreshCw, ChevronDown, ChevronUp, AlertTriangle, User, Phone,
-  IdCard, FileText, Shield, CheckCircle, XCircle, Building, 
-  CalendarIcon, Star, X, AlertCircle, Search, Mail, Percent,
-  Edit, Trash2, Download, Upload, Settings, Home, Info, Layers,
-  ChevronRight, UserX, CheckSquare, UserCog
+  Users, GraduationCap, TrendingUp, Award, 
+  BarChart3, PieChart as PieChartIcon, RefreshCw, 
+  ChevronDown, ChevronUp, Home, Calendar, BookOpen,
+  Filter, Search, X
 } from 'lucide-react';
- const handleLogout = () => {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-  };
-// Update COLORS to include more variety while keeping simple
-const COLORS = ['#3b82f6', '#10b981', '#6b7280', '#1d4ed8', '#059669', '#4b5563'];
+
+const COLORS = ['#3b82f6', '#10b981', '#6b7280', '#1d4ed8', '#059669', '#4b5563', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const PedagogiqueDashboard = () => {
   const [etudiants, setEtudiants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cours, setCours] = useState([]);
   const [professeurs, setProfesseurs] = useState([]);
-  const [coursDetailles, setCoursDetailles] = useState([]);
   const [stats, setStats] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState(null);
+  const [headerVisible, setHeaderVisible] = useState(true);
   
-  // MODIFIER l'état initial du filtre année scolaire
+  // Filtres complets pour le dashboard
+  const [searchTerm, setSearchTerm] = useState('');
   const [filtreAnneeScolaire, setFiltreAnneeScolaire] = useState('2025/2026');
   const [filtreNiveau, setFiltreNiveau] = useState('tous');
   const [filtreSpecialite, setFiltreSpecialite] = useState('toutes');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const [selectedAnalysis, setSelectedAnalysis] = useState(null);
-  const [modalData, setModalData] = useState([]);
-  const [showDetailModal, setShowDetailModal] = useState(false);
 
-  // Pour la liste des étudiants
-  const [searchTermStudents, setSearchTermStudents] = useState('');
-  const [filtreGenreStudents, setFiltreGenreStudents] = useState('tous');
-  const [filtreStatutStudents, setFiltreStatutStudents] = useState('tous');
-
-  // Pour les professeurs
-  const [searchTermProfs, setSearchTermProfs] = useState('');
-  const [filtreMatiereProfs, setFiltreMatiereProfs] = useState('toutes');
-  const [filtreCoursProfs, setFiltreCoursProfs] = useState('tous');
-
-  // Pour le modal de détails
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showStudentModal, setShowStudentModal] = useState(false);
-
-  // Ajouter le filtre par cours pour les étudiants
-  const [filtreCoursStudents, setFiltreCoursStudents] = useState('tous');
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  };
 
   useEffect(() => {
     fetchData();
@@ -74,7 +48,7 @@ const PedagogiqueDashboard = () => {
           nom: payload.nom,
           filiere: payload.filiere,
           role: payload.role,
-          estGeneral: payload.filiere === 'GENERAL' // Ajout pour détecter le mode général
+          estGeneral: payload.filiere === 'GENERAL'
         });
       }
     } catch (error) {
@@ -93,8 +67,7 @@ const PedagogiqueDashboard = () => {
         throw new Error('Token d\'authentification manquant');
       }
 
-      // Utilisation des routes spécifiques au pédagogique
-      const [etudiantsRes, coursRes, professeursRes, statsRes, coursDetaillesRes] = await Promise.all([
+      const [etudiantsRes, coursRes, professeursRes, statsRes] = await Promise.all([
         fetch('http://195.179.229.230:5000/api/pedagogique/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -106,78 +79,49 @@ const PedagogiqueDashboard = () => {
         }),
         fetch('http://195.179.229.230:5000/api/pedagogique/dashboard-stats', {
           headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/cours-detailles', {
-          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
-      // Vérification des réponses
-      if (!etudiantsRes.ok) {
-        const errorData = await etudiantsRes.json();
-        throw new Error(`Erreur étudiants: ${errorData.message || etudiantsRes.statusText}`);
-      }
-      
-      if (!coursRes.ok) {
-        const errorData = await coursRes.json();
-        throw new Error(`Erreur cours: ${errorData.message || coursRes.statusText}`);
+      if (!etudiantsRes.ok || !coursRes.ok || !professeursRes.ok || !statsRes.ok) {
+        throw new Error('Erreur lors du chargement des données');
       }
 
-      if (!professeursRes.ok) {
-        const errorData = await professeursRes.json();
-        throw new Error(`Erreur professeurs: ${errorData.message || professeursRes.statusText}`);
-      }
-
-      if (!statsRes.ok) {
-        const errorData = await statsRes.json();
-        throw new Error(`Erreur statistiques: ${errorData.message || statsRes.statusText}`);
-      }
-
-      if (!coursDetaillesRes.ok) {
-        const errorData = await coursDetaillesRes.json();
-        throw new Error(`Erreur cours détaillés: ${errorData.message || coursDetaillesRes.statusText}`);
-      }
-
-      const [etudiantsData, coursData, professeursData, statsData, coursDetaillesData] = await Promise.all([
+      const [etudiantsData, coursData, professeursData, statsData] = await Promise.all([
         etudiantsRes.json(),
         coursRes.json(),
         professeursRes.json(),
-        statsRes.json(),
-        coursDetaillesRes.json()
+        statsRes.json()
       ]);
-
-      console.log('Données chargées (pédagogique):', {
-        etudiants: etudiantsData.length,
-        cours: coursData.length,
-        professeurs: professeursData.length,
-        coursDetailles: coursDetaillesData.length,
-        filiere: statsData.filiere
-      });
 
       setEtudiants(etudiantsData);
       setCours(coursData);
       setProfesseurs(professeursData);
-      setCoursDetailles(coursDetaillesData);
       setStats(statsData);
       
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
       setError(err.message);
-      setEtudiants([]);
-      setCours([]);
-      setProfesseurs([]);
-      setCoursDetailles([]);
-      setStats(null);
     } finally {
       setLoading(false);
     }
   };
 
-  // Filtres améliorés
+  // Filtrage avec tous les filtres
   const getFilteredEtudiants = () => {
     let filtered = [...etudiants];
 
-    // Filtre par année scolaire (corrigé)
+    // Filtre par recherche textuelle
+    if (searchTerm.trim() !== '') {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(e => 
+        (e.nom && e.nom.toLowerCase().includes(search)) ||
+        (e.prenom && e.prenom.toLowerCase().includes(search)) ||
+        (e.filiere && e.filiere.toLowerCase().includes(search)) ||
+        (e.cin && e.cin.toLowerCase().includes(search))
+      );
+    }
+
+    // Filtre par année scolaire
     if (filtreAnneeScolaire !== 'toutes') {
       filtered = filtered.filter(e => e.anneeScolaire === filtreAnneeScolaire);
     }
@@ -197,141 +141,19 @@ const PedagogiqueDashboard = () => {
       );
     }
 
-    // Recherche textuelle
-    if (searchTerm.trim() !== '') {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(e => 
-        (e.nom && e.nom.toLowerCase().includes(search)) ||
-        (e.prenom && e.prenom.toLowerCase().includes(search)) ||
-        (e.cin && e.cin.toLowerCase().includes(search)) ||
-        (e.telephone && e.telephone.includes(search)) ||
-        (e.email && e.email.toLowerCase().includes(search))
-      );
-    }
-
-    return filtered;
-  };
-
-  // Fonction pour filtrer les étudiants
-  const getFilteredStudents = () => {
-    let filtered = getFilteredEtudiants(); // Utilise déjà vos filtres existants
-
-    // Filtre par recherche spécifique aux étudiants
-    if (searchTermStudents.trim() !== '') {
-      const search = searchTermStudents.toLowerCase();
-      filtered = filtered.filter(e => 
-        (e.nom && e.nom.toLowerCase().includes(search)) ||
-        (e.prenom && e.prenom.toLowerCase().includes(search)) ||
-        (e.cin && e.cin.toLowerCase().includes(search)) ||
-        (e.codeEtudiant && e.codeEtudiant.toLowerCase().includes(search))
-      );
-    }
-
-    // Filtre par genre
-    if (filtreGenreStudents !== 'tous') {
-      filtered = filtered.filter(e => e.genre === filtreGenreStudents);
-    }
-
-    // Filtre par statut
-    if (filtreStatutStudents !== 'tous') {
-      if (filtreStatutStudents === 'actifs') {
-        filtered = filtered.filter(e => e.actif);
-      } else if (filtreStatutStudents === 'inactifs') {
-        filtered = filtered.filter(e => !e.actif);
-      } else if (filtreStatutStudents === 'payes') {
-        filtered = filtered.filter(e => e.paye);
-      } else if (filtreStatutStudents === 'non-payes') {
-        filtered = filtered.filter(e => !e.paye);
-      }
-    }
-
-    // NOUVEAU : Filtre par cours
-    if (filtreCoursStudents !== 'tous') {
-      filtered = filtered.filter(e => 
-        e.cours && Array.isArray(e.cours) && e.cours.includes(filtreCoursStudents)
-      );
-    }
-
-    return filtered;
-  };
-
-  // Fonction pour filtrer les professeurs
-  const getFilteredProfesseurs = () => {
-    let filtered = [...professeurs];
-
-    if (searchTermProfs.trim() !== '') {
-      const search = searchTermProfs.toLowerCase();
-      filtered = filtered.filter(p => 
-        (p.nom && p.nom.toLowerCase().includes(search)) ||
-        (p.email && p.email.toLowerCase().includes(search)) ||
-        (p.telephone && p.telephone.includes(search)) ||
-        (p.matiere && p.matiere.toLowerCase().includes(search))
-      );
-    }
-
-    if (filtreMatiereProfs !== 'toutes') {
-      filtered = filtered.filter(p => p.matiere === filtreMatiereProfs);
-    }
-
-    // NOUVEAU : Filtre par cours
-    if (filtreCoursProfs !== 'tous') {
-      filtered = filtered.filter(p => {
-        // Vérifier dans coursEnseignes
-        if (p.coursEnseignes && Array.isArray(p.coursEnseignes)) {
-          return p.coursEnseignes.some(enseignement => 
-            enseignement.nomCours === filtreCoursProfs
-          );
-        }
-        // Vérifier dans cours (ancien système)
-        if (p.cours && Array.isArray(p.cours)) {
-          return p.cours.includes(filtreCoursProfs);
-        }
-        return false;
-      });
-    }
-
     return filtered;
   };
 
   const etudiantsFiltres = getFilteredEtudiants();
 
-  // Fonction pour formater la date
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('fr-FR');
+  // Statistiques basées sur les données filtrées
+  const statsGeneralesFiltered = {
+    totalEtudiants: etudiantsFiltres.length,
+    etudiantsActifs: etudiantsFiltres.filter(e => e.actif).length,
+    nouveauxEtudiants: etudiantsFiltres.filter(e => e.nouvelleInscription).length,
   };
 
-  // Fonction pour calculer l'âge
-  const calculerAge = (dateNaissance) => {
-    if (!dateNaissance) return 'N/A';
-    const today = new Date();
-    const birthDate = new Date(dateNaissance);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  // Fonction pour voir les détails d'un étudiant
-  const handleView = (etudiant) => {
-    setSelectedAnalysis({ 
-      type: 'Détails Étudiant', 
-      title: `${etudiant.prenom} ${etudiant.nomDeFamille}`,
-      data: { etudiants: [etudiant] }
-    });
-    setModalData([etudiant]);
-    setShowDetailModal(true);
-  };
-
-  // Fonction pour gérer les clics sur "Voir"
-  const handleViewStudent = (etudiant) => {
-    setSelectedStudent(etudiant);
-    setShowStudentModal(true);
-  };
-
-  // Analyse par type de formation
+  // Analyse par type de formation basée sur les données filtrées
   const analyseParTypeFormation = () => {
     const types = {
       'FI': { label: 'Formation Initiale', etudiants: [], color: '#2563eb' },
@@ -356,82 +178,9 @@ const PedagogiqueDashboard = () => {
       type: key,
       label: data.label,
       color: data.color,
-      total: data.etudiants.length,
-      payes: data.etudiants.filter(e => e.paye).length,
-      ca: data.etudiants.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0),
-      tauxPaiement: data.etudiants.length > 0 ? (data.etudiants.filter(e => e.paye).length / data.etudiants.length * 100).toFixed(1) : 0
+      total: data.etudiants.length
     }));
   };
-
-  // Now we can safely declare these variables that depend on the functions above
-  const etudiantsFiltered = getFilteredStudents();
-  const professeursFiltered = getFilteredProfesseurs();
-  const formationTypesData = analyseParTypeFormation();
-
-  // Analyse des professeurs par filière
-  const analyseProfesseurs = () => {
-    const filieresProfs = {};
-    
-    etudiants.forEach(e => {
-      const filiere = e.filiere || 'Non définie';
-      if (!filieresProfs[filiere]) {
-        filieresProfs[filiere] = {
-          filiere,
-          professeurs: new Set(),
-          etudiants: 0,
-          typeFormations: new Set()
-        };
-      }
-      
-      filieresProfs[filiere].etudiants++;
-      if (e.professeur) filieresProfs[filiere].professeurs.add(e.professeur);
-      
-      // Déterminer le type de formation
-      const niveau = (e.niveauFormation || '').toLowerCase();
-      const cycle = (e.cycle || '').toLowerCase();
-      const isExecutive = niveau.includes('executive') || cycle.includes('executive');
-      const isTA = niveau.includes('ta') || niveau.includes('alterne') || cycle.includes('ta') || cycle.includes('alterne');
-      
-      if (isTA) {
-        filieresProfs[filiere].typeFormations.add('TA (Temps Alterné)');
-      } else if (isExecutive) {
-        filieresProfs[filiere].typeFormations.add('Executive');
-      } else {
-        filieresProfs[filiere].typeFormations.add('FI (Formation Initiale)');
-      }
-    });
-    
-    return Object.values(filieresProfs).map(f => ({
-      ...f,
-      professeurs: Array.from(f.professeurs),
-      typeFormations: Array.from(f.typeFormations),
-      nbProfesseurs: f.professeurs.size
-    })).sort((a, b) => b.etudiants - a.etudiants);
-  };
-
-  // Calculs statistiques basés sur les données filtrées
-  const statsGeneralesFiltered = {
-    totalEtudiants: etudiantsFiltres.length,
-    etudiantsActifs: etudiantsFiltres.filter(e => e.actif).length,
-    etudiantsPayes: etudiantsFiltres.filter(e => e.paye).length,
-    chiffreAffaireTotal: etudiantsFiltres.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0),
-    chiffreAffairePaye: etudiantsFiltres.filter(e => e.paye).reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0),
-    moyennePrixFormation: etudiantsFiltres.length > 0 ?etudiantsFiltres.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0) / etudiantsFiltres.length : 0,
-    tauxPaiement: etudiantsFiltres.length > 0 ? (etudiantsFiltres.filter(e => e.paye).length / etudiantsFiltres.length * 100) : 0,
-    nouveauxEtudiants: etudiantsFiltres.filter(e => e.nouvelleInscription).length,
-  };
-
-  // Statistiques globales (non filtrées) pour l'en-tête
-  const statsGenerales = stats ? {
-    totalEtudiants: stats.totalEtudiants,
-    etudiantsActifs: stats.etudiantsActifs,
-    etudiantsPayes: stats.etudiantsPayes,
-    chiffreAffaireTotal: stats.chiffreAffaireTotal,
-    chiffreAffairePaye: stats.chiffreAffairePaye,
-    moyennePrixFormation: stats.moyennePrixFormation,
-    tauxPaiement: stats.tauxPaiement,
-    nouveauxEtudiants: stats.nouveauxEtudiants,
-  } : statsGeneralesFiltered;
 
   // Analyse par niveau basée sur les données filtrées
   const analyseParNiveau = () => {
@@ -440,17 +189,14 @@ const PedagogiqueDashboard = () => {
     etudiantsFiltres.forEach(e => {
       const niveau = e.niveau || 'Non défini';
       if (!niveauxStats[niveau]) {
-        niveauxStats[niveau] = { total: 0, payes: 0, ca: 0 };
+        niveauxStats[niveau] = { total: 0 };
       }
       niveauxStats[niveau].total += 1;
-      if (e.paye) niveauxStats[niveau].payes += 1;
-      niveauxStats[niveau].ca += parseFloat(e.prixTotal) || 0;
     });
 
     return Object.entries(niveauxStats).map(([niveau, data]) => ({
       niveau: `Niveau ${niveau}`,
-      ...data,
-      tauxReussite: data.total > 0 ? ((data.payes / data.total) * 100).toFixed(1) : 0
+      ...data
     })).sort((a, b) => {
       const niveauA = parseInt(a.niveau.replace('Niveau ', '')) || 0;
       const niveauB = parseInt(b.niveau.replace('Niveau ', '')) || 0;
@@ -485,21 +231,16 @@ const PedagogiqueDashboard = () => {
           typeFormation,
           specialite,
           specialiteComplete: specialite,
-          total: 0, 
-          payes: 0, 
-          ca: 0 
+          total: 0
         };
       }
       
       specialitesStats[cleUnique].total += 1;
-      if (e.paye) specialitesStats[cleUnique].payes += 1;
-      specialitesStats[cleUnique].ca += parseFloat(e.prixTotal) || 0;
     });
 
     return Object.values(specialitesStats).map(data => ({
       ...data,
-      specialite: data.specialite.length > 40 ? data.specialite.substring(0, 40) + '...' : data.specialite,
-      tauxReussite: data.total > 0 ? ((data.payes / data.total) * 100).toFixed(1) : 0
+      specialite: data.specialite.length > 40 ? data.specialite.substring(0, 40) + '...' : data.specialite
     })).sort((a, b) => {
       // Trier d'abord par typeFormation, puis par total
       if (a.typeFormation !== b.typeFormation) {
@@ -516,70 +257,55 @@ const PedagogiqueDashboard = () => {
     etudiantsFiltres.forEach(e => {
       const annee = e.anneeScolaire || 'Non définie';
       if (!anneesStats[annee]) {
-        anneesStats[annee] = { total: 0, payes: 0, ca: 0 };
+        anneesStats[annee] = { total: 0 };
       }
       anneesStats[annee].total += 1;
-      if (e.paye) anneesStats[annee].payes += 1;
-      anneesStats[annee].ca += parseFloat(e.prixTotal) || 0;
     });
 
     return Object.entries(anneesStats).map(([annee, data]) => ({
       annee,
-      ...data,
-      tauxReussite: data.total > 0 ? ((data.payes / data.total) * 100).toFixed(1) : 0
+      ...data
     })).sort((a, b) => b.annee.localeCompare(a.annee));
   };
 
-  // Analyse des cours avec relation professeur-étudiant
-  const analyseCoursAvecProfesseurs = () => {
-    return coursDetailles.map(cours => {
-      // Trouver les étudiants de ce cours selon les filtres appliqués
-      const etudiantsDuCours = etudiantsFiltres.filter(e => 
-        e.cours && Array.isArray(e.cours) && e.cours.includes(cours.nom)
-      );
+  // Analyse par filière (pour vue générale)
+  const analyseParFiliere = () => {
+    const filieres = {};
+    
+    etudiantsFiltres.forEach(e => {
+      const filiere = e.filiere || 'Non définie';
+      if (!filieres[filiere]) {
+        filieres[filiere] = { total: 0 };
+      }
+      filieres[filiere].total += 1;
+    });
 
-      return {
-        ...cours,
-        etudiantsFiltres: etudiantsDuCours.length,
-        etudiantsPayesFiltres: etudiantsDuCours.filter(e => e.paye).length,
-        caFiltre: etudiantsDuCours.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0)
-      };
-    }).filter(cours => cours.etudiantsFiltres > 0); // Ne montrer que les cours avec des étudiants
+    return Object.entries(filieres).map(([filiere, data]) => ({
+      filiere,
+      ...data
+    })).sort((a, b) => b.total - a.total);
   };
 
+  const formationTypesData = analyseParTypeFormation();
   const niveauxData = analyseParNiveau();
   const specialitesData = analyseParSpecialite();
   const anneesData = analyseParAnneeScolaire();
-  const coursAvecProfs = analyseCoursAvecProfesseurs();
-  const professeursParsFiliere = analyseProfesseurs();
+  const filieresData = analyseParFiliere();
 
-  // Obtenir les valeurs uniques pour les filtres (basées sur toutes les données, pas filtrées)
+  // Obtenir les valeurs uniques pour les filtres
   const anneesDisponibles = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))].sort((a, b) => b.localeCompare(a));
   const niveauxDisponibles = [...new Set(etudiants.map(e => e.niveau).filter(n => n !== undefined))].sort((a, b) => a - b);
   const specialitesDisponibles = [...new Set(etudiants.map(e => {
     return e.specialiteIngenieur || e.specialiteLicencePro || e.specialiteMasterPro || e.specialite;
   }).filter(Boolean))];
-  const genresDisponibles = [...new Set(etudiants.map(e => e.genre).filter(Boolean))];
-  const matieresDisponibles = [...new Set(professeurs.map(p => p.matiere).filter(Boolean))];
-  
-  // NOUVEAU : Obtenir les cours disponibles séparément pour étudiants et professeurs
-  const coursDisponiblesEtudiants = [...new Set(
-    etudiants.flatMap(e => e.cours || [])
-  )].filter(Boolean).sort();
 
-  const coursDisponiblesProfesseurs = [...new Set([
-    // Cours des professeurs (nouveau système)
-    ...professeurs.flatMap(p => 
-      p.coursEnseignes ? p.coursEnseignes.map(ens => ens.nomCours) : []
-    ),
-    // Cours des professeurs (ancien système)
-    ...professeurs.flatMap(p => p.cours || [])
-  ])].filter(Boolean).sort();
-
-  // Log de débogage pour vérifier les cours
-  console.log('Cours disponibles étudiants:', coursDisponiblesEtudiants);
-  console.log('Cours disponibles professeurs:', coursDisponiblesProfesseurs);
-  console.log('Exemple étudiant cours:', etudiants[0]?.cours);
+  // Fonction pour réinitialiser les filtres
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFiltreAnneeScolaire(anneesDisponibles[0] || 'toutes');
+    setFiltreNiveau('tous');
+    setFiltreSpecialite('toutes');
+  };
 
   const formatMoney = (amount) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -589,79 +315,33 @@ const PedagogiqueDashboard = () => {
     }).format(amount).replace('MAD', 'DH');
   };
 
-  const resetFilters = () => {
-    const anneesDisponibles = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))].sort((a, b) => b.localeCompare(a));
-    const defaultYear = initializeDefaultYear(anneesDisponibles);
-    
-    setFiltreAnneeScolaire(defaultYear);
-    setFiltreNiveau('tous');
-    setFiltreSpecialite('toutes');
-    setSearchTerm('');
-  };
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Chargement des données...</p>
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-  };
-
-  // AJOUTER cette fonction pour initialiser l'année par défaut
-  const initializeDefaultYear = (anneesDisponibles) => {
-    // Vérifier si 2025/2026 existe dans les données
-    if (anneesDisponibles.includes('2025/2026')) {
-      return '2025/2026';
-    }
-    // Sinon, prendre l'année la plus récente
-    if (anneesDisponibles.length > 0) {
-      return anneesDisponibles[0]; // Les années sont déjà triées par ordre décroissant
-    }
-    // Si aucune donnée, revenir à 'toutes'
-    return 'toutes';
-  };
-
-  // AJOUTER cette fonction pour obtenir l'année scolaire actuelle de manière intelligente
-  const getDefaultAcademicYear = () => {
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1; // getMonth() retourne 0-11
-    
-    // Si nous sommes entre septembre et décembre, l'année scolaire commence cette année
-    // Si nous sommes entre janvier et août, l'année scolaire a commencé l'année précédente
-    const startYear = currentMonth >= 9 ? currentYear : currentYear - 1;
-    const endYear = startYear + 1;
-    
-    return `${startYear}/${endYear}`;
-  };
-
-  useEffect(() => {
-    fetchData();
-    getUserInfo();
-  }, []);
-
-  // AJOUTER ce nouvel useEffect pour initialiser le filtre après le chargement des données
-  useEffect(() => {
-    if (etudiants.length > 0) {
-      const anneesDisponibles = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))].sort((a, b) => b.localeCompare(a));
-      const currentFilter = filtreAnneeScolaire;
-      
-      // Si le filtre actuel n'existe pas dans les données disponibles
-      if (currentFilter !== 'toutes' && !anneesDisponibles.includes(currentFilter)) {
-        const defaultYear = initializeDefaultYear(anneesDisponibles);
-        setFiltreAnneeScolaire(defaultYear);
-      }
-    }
-  }, [etudiants, filtreAnneeScolaire]);
-
-  // ...existing code for getUserInfo and fetchData...
-
-  // ...existing code for filtered functions and stats...
-
-  // ...existing code until the select element...
+  if (error) {
+    return (
+      <div className="error-container">
+        <h2>Erreur</h2>
+        <p>{error}</p>
+        <button onClick={fetchData} className="retry-btn">
+          <RefreshCw size={16} />
+          Réessayer
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="enhanced-dashboard">
+    <div className="dashboard">
       <Sidebar onLogout={handleLogout} />
 
-      {/* Bouton pour masquer/afficher le header */}
+      {/* Bouton toggle header */}
       <button 
         className="header-toggle-btn"
         onClick={() => setHeaderVisible(!headerVisible)}
@@ -670,33 +350,39 @@ const PedagogiqueDashboard = () => {
         {headerVisible ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
       </button>
 
-      {/* Header simplifié */}
+      {/* Header */}
       {headerVisible && (
-        <header className="simple-header">
+        <header className="dashboard-header">
           <div className="header-container">
             <h1>Dashboard Pédagogique - {userInfo?.filiere === 'GENERAL' ? 'GÉNÉRAL' : userInfo?.filiere || stats?.filiere}</h1>
             <div className="header-stats">
-              <span>{statsGenerales.totalEtudiants} étudiants</span>
+              <span>{statsGeneralesFiltered.totalEtudiants} étudiants</span>
               <span>{cours.length} cours</span>
               <span>{professeurs.length} professeurs</span>
-              <span>{formatMoney(statsGenerales.chiffreAffaireTotal)}</span>
-              <span>{statsGenerales.tauxPaiement.toFixed(1)}% payé</span>
             </div>
             
-            {/* Filtres simplifiés */}
-            <div className="simple-filters">
-              <input
-                type="text"
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="simple-search"
-              />
+            {/* Filtres complets */}
+            <div className="dashboard-filters">
+              <div className="search-container">
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="dashboard-search"
+                />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="clear-search">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
               
               <select 
                 value={filtreAnneeScolaire} 
                 onChange={(e) => setFiltreAnneeScolaire(e.target.value)} 
-                className="simple-select"
+                className="dashboard-select"
               >
                 <option value="toutes">Toutes les années</option>
                 {anneesDisponibles.map(annee => (
@@ -707,7 +393,7 @@ const PedagogiqueDashboard = () => {
               <select 
                 value={filtreNiveau} 
                 onChange={(e) => setFiltreNiveau(e.target.value)} 
-                className="simple-select"
+                className="dashboard-select"
               >
                 <option value="tous">Tous niveaux</option>
                 {niveauxDisponibles.map(niveau => (
@@ -715,303 +401,205 @@ const PedagogiqueDashboard = () => {
                 ))}
               </select>
 
-              <button onClick={resetFilters} className="simple-btn">
-                Réinitialiser
+              <select 
+                value={filtreSpecialite} 
+                onChange={(e) => setFiltreSpecialite(e.target.value)} 
+                className="dashboard-select"
+              >
+                <option value="toutes">Toutes spécialités</option>
+                {specialitesDisponibles.map(specialite => (
+                  <option key={specialite} value={specialite}>
+                    {specialite.length > 30 ? specialite.substring(0, 30) + '...' : specialite}
+                  </option>
+                ))}
+              </select>
+
+              <button onClick={resetFilters} className="dashboard-reset-btn">
+                <RefreshCw size={16} />
+                Reset
               </button>
             </div>
 
-            {/* Indicateur simple */}
+            {/* Indicateur de filtrage */}
             {(filtreAnneeScolaire !== 'toutes' || filtreNiveau !== 'tous' || filtreSpecialite !== 'toutes' || searchTerm) && (
-              <div className="simple-indicator">
-                {etudiantsFiltres.length} résultats trouvés
+              <div className="filter-indicator">
+                Données filtrées - {statsGeneralesFiltered.totalEtudiants} résultats trouvés
               </div>
             )}
           </div>
         </header>
       )}
 
-      {/* Navigation simplifiée */}
-      <div className="simple-tabs">
-        <button 
-          className={`simple-tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          Vue d'ensemble
-        </button>
-        <button 
-          className={`simple-tab-btn ${activeTab === 'niveaux' ? 'active' : ''}`}
-          onClick={() => setActiveTab('niveaux')}
-        >
-          Par Niveau
-        </button>
-        <button 
-          className={`simple-tab-btn ${activeTab === 'specialites' ? 'active' : ''}`}
-          onClick={() => setActiveTab('specialites')}
-        >
-          Par Spécialité
-        </button>
-        <button 
-          className={`simple-tab-btn ${activeTab === 'annees' ? 'active' : ''}`}
-          onClick={() => setActiveTab('annees')}
-        >
-          Par Année
-        </button>
-        <button 
-          className={`simple-tab-btn ${activeTab === 'cours-profs' ? 'active' : ''}`}
-          onClick={() => setActiveTab('cours-profs')}
-        >
-          Cours & Professeurs
-        </button>
-        <button 
-          className={`simple-tab-btn ${activeTab === 'students' ? 'active' : ''}`}
-          onClick={() => setActiveTab('students')}
-        >
-          Étudiants
-        </button>
-        <button 
-          className={`simple-tab-btn ${activeTab === 'professors' ? 'active' : ''}`}
-          onClick={() => setActiveTab('professors')}
-        >
-          Professeurs
-        </button>
-      </div>
-
-      <div className="simple-container">
-        {/* Statistiques simplifiées */}
-        <div className="simple-stats-grid">
-          <div className="simple-stat-card">
-            <h3>{statsGeneralesFiltered.totalEtudiants}</h3>
-            <p>Étudiants</p>
+      <div className="dashboard-content">
+        {/* Statistiques principales */}
+        <div className="stats-grid">
+          <div className="stat-card blue">
+            <div className="stat-icon">
+              <Users size={24} />
+            </div>
+            <div className="stat-content">
+              <h3>{statsGeneralesFiltered.totalEtudiants}</h3>
+              <p>Total Étudiants</p>
+              <span className="stat-detail">Dont {statsGeneralesFiltered.etudiantsActifs} actifs</span>
+            </div>
           </div>
 
-          <div className="simple-stat-card">
-            <h3>{formatMoney(statsGeneralesFiltered.chiffreAffaireTotal)}</h3>
-            <p>Chiffre d'affaires</p>
+          <div className="stat-card green">
+            <div className="stat-icon">
+              <GraduationCap size={24} />
+            </div>
+            <div className="stat-content">
+              <h3>{cours.length}</h3>
+              <p>Cours</p>
+              <span className="stat-detail">Disponibles</span>
+            </div>
           </div>
 
-          <div className="simple-stat-card">
-            <h3>{statsGeneralesFiltered.tauxPaiement.toFixed(1)}%</h3>
-            <p>Taux de paiement</p>
+          <div className="stat-card orange">
+            <div className="stat-icon">
+              <Users size={24} />
+            </div>
+            <div className="stat-content">
+              <h3>{professeurs.length}</h3>
+              <p>Professeurs</p>
+              <span className="stat-detail">Équipe pédagogique</span>
+            </div>
           </div>
 
-          <div className="simple-stat-card">
-            <h3>{formatMoney(statsGeneralesFiltered.moyennePrixFormation)}</h3>
-            <p>Prix moyen</p>
+          <div className="stat-card purple">
+            <div className="stat-icon">
+              <Award size={24} />
+            </div>
+            <div className="stat-content">
+              <h3>{statsGeneralesFiltered.nouveauxEtudiants}</h3>
+              <p>Nouvelles Inscriptions</p>
+              <span className="stat-detail">Cette année</span>
+            </div>
           </div>
         </div>
 
-        {/* Navigation par onglets */}
-        <div className="tabs-navigation">
-          <button 
-            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            <Home size={16} />
-            Vue d'ensemble
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'niveaux' ? 'active' : ''}`}
-            onClick={() => setActiveTab('niveaux')}
-          >
-            <Layers size={16} />
-            Par Niveau
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'specialites' ? 'active' : ''}`}
-            onClick={() => setActiveTab('specialites')}
-          >
-            <Award size={16} />
-            Par Spécialité
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'annees' ? 'active' : ''}`}
-            onClick={() => setActiveTab('annees')}
-          >
-            <Calendar size={16} />
-            Par Année Scolaire
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'cours-profs' ? 'active' : ''}`}
-            onClick={() => setActiveTab('cours-profs')}
-          >
-            <BookOpen size={16} />
-            Cours & Professeurs
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'students' ? 'active' : ''}`}
-            onClick={() => setActiveTab('students')}
-          >
-            <Users size={16} />
-            Liste Étudiants
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'professors' ? 'active' : ''}`}
-            onClick={() => setActiveTab('professors')}
-          >
-            <UserCog size={16} />
-            Professeurs
-          </button>
-        </div>
-
-        <div className="dashboard-content">
-          
-          {activeTab === 'overview' && (
-            <>
-         
-
-              {/* Section spéciale pour pédagogique général : Répartition par filière */}
-              {userInfo?.filiere === 'GENERAL' && stats && stats.repartitionFiliere && (
-                <div className="charts-section">
-                  <div className="chart-card" style={{ marginBottom: '2rem' }}>
-                    <h3>
-                      <PieChartIcon size={20} />
-                      Répartition par Filière (Vue Générale)
-                    </h3>
-                    {Object.keys(stats.repartitionFiliere).length > 0 ? (
-                      <ResponsiveContainer width="100%" height={350}>
-                        <PieChart>
-                          <Pie
-                            data={Object.entries(stats.repartitionFiliere).map(([filiere, data]) => ({
-                              name: filiere,
-                              value: data.total,
-                              ca: data.ca,
-                              payes: data.payes
-                            }))}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={120}
-                            dataKey="value"
-                            label={({name, value}) => `${name}: ${value}`}
-                          >
-                            {Object.entries(stats.repartitionFiliere).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            formatter={(value, name, props) => [
-                              `${value} étudiants`,
-                              `CA: ${formatMoney(props.payload.ca)}`,
-                              `Payés: ${props.payload.payes}`
-                            ]}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="no-data">Aucune donnée à afficher</div>
-                    )}
-                  </div>
-                </div>
+        {/* Graphiques principaux */}
+        <div className="charts-section">
+          <div className="charts-grid">
+            <div className="chart-card">
+              <h3>
+                <PieChartIcon size={20} />
+                Répartition par Type de Formation
+              </h3>
+              {formationTypesData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <PieChart>
+                    <Pie
+                      data={formationTypesData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={120}
+                      dataKey="total"
+                      label={({label, total}) => `${label}: ${total}`}
+                    >
+                      {formationTypesData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value) => [`${value} étudiants`]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="no-data">Aucune donnée à afficher</div>
               )}
+            </div>
 
-              {/* Graphiques overview */}
-              <div className="charts-section">
-                <div className="charts-grid">
-                  <div className="chart-card">
-                    <h3>
-                      <PieChartIcon size={20} />
-                      Répartition par Niveau {userInfo?.filiere === 'GENERAL' ? '(Global)' : '(Filtré)'}
-                    </h3>
-                    {niveauxData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={niveauxData}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={100}
-                            dataKey="total"
-                            label={({niveau, total}) => `${niveau}: ${total}`}
-                          >
-                            {niveauxData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="no-data">Aucune donnée à afficher</div>
-                    )}
-                  </div>
+            <div className="chart-card">
+              <h3>
+                <BarChart3 size={20} />
+                Répartition par Niveau
+              </h3>
+              {niveauxData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={niveauxData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="niveau" stroke="#64748b" />
+                    <YAxis stroke="#64748b" />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="total" fill="#2563eb" name="Total Étudiants" />
+                    <Bar dataKey="payes" fill="#059669" name="Payés" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="no-data">Aucune donnée à afficher</div>
+              )}
+            </div>
 
-                  <div className="chart-card">
-                    <h3>
-                      <BarChart3 size={20} />
-                      Évolution par Année Scolaire {userInfo?.filiere === 'GENERAL' ? '(Global)' : '(Filtré)'}
-                    </h3>
-                    {anneesData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={anneesData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                          <XAxis dataKey="annee" stroke="#64748b" />
-                          <YAxis stroke="#64748b" />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="total" fill="#2563eb" name="Total Étudiants" />
-                          <Bar dataKey="payes" fill="#059669" name="Payés" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="no-data">Aucune donnée à afficher</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Cartes des types de formation */}
-              <div className="formation-types-section">
-                <h2 className="section-title">
-                  <Award size={24} />
-                  Types de Formation
-                </h2>
-                <div className="formation-types-grid">
-                  {formationTypesData.map((formation, index) => (
-                    <div key={index} className="formation-type-card">
-                      <div className="formation-type-header">
-                        <div className="formation-type-icon" style={{ background: formation.color }}>
-                          <GraduationCap size={24} />
-                        </div>
-                        <div className="formation-type-info">
-                          <h3>{formation.label}</h3>
-                          <span className="formation-type-code">{formation.type}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="formation-type-stats">
-                        <div className="formation-stat">
-                          <span className="formation-stat-value">{formation.total}</span>
-                          <span className="formation-stat-label">Étudiants</span>
-                        </div>
-                        <div className="formation-stat">
-                          <span className="formation-stat-value">{formation.payes}</span>
-                          <span className="formation-stat-label">Payés</span>
-                        </div>
-                        <div className="formation-stat">
-                          <span className="formation-stat-value">{formation.tauxPaiement}%</span>
-                          <span className="formation-stat-label">Taux</span>
-                        </div>
-                      </div>
-                      
-                      <div className="formation-ca">
-                        <span className="formation-ca-label">Chiffre d'affaires</span>
-                        <span className="formation-ca-value">{formatMoney(formation.ca)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'niveaux' && (
-            <div className="section">
-              <h2 className="section-title">
-                <Layers size={24} />
-                Analyse par Niveau - {userInfo?.filiere || stats?.filiere}
-                {(filtreAnneeScolaire !== 'toutes' || filtreSpecialite !== 'toutes' || searchTerm) && (
-                  <span className="filtered-indicator">(Vue filtrée)</span>
+            {userInfo?.filiere === 'GENERAL' && (
+              <div className="chart-card">
+                <h3>
+                  <BarChart3 size={20} />
+                  Répartition par Filière
+                </h3>
+                {filieresData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={filieresData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="filiere" stroke="#64748b" />
+                      <YAxis stroke="#64748b" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="total" fill="#2563eb" name="Total Étudiants" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="no-data">Aucune donnée à afficher</div>
                 )}
-              </h2>
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        {/* Types de formation en cartes */}
+        <div className="formation-types-section">
+          <h2 className="section-title">
+            <Award size={24} />
+            Détails par Type de Formation
+          </h2>
+          <div className="formation-types-grid">
+            {formationTypesData.map((formation, index) => (
+              <div key={index} className="formation-type-card">
+                <div className="formation-type-header">
+                  <div className="formation-type-icon" style={{ background: formation.color }}>
+                    <GraduationCap size={24} />
+                  </div>
+                  <div className="formation-type-info">
+                    <h3>{formation.label}</h3>
+                    <span className="formation-type-code">{formation.type}</span>
+                  </div>
+                </div>
+                
+                <div className="formation-type-stats">
+                  <div className="formation-stat">
+                    <span className="formation-stat-value">{formation.total}</span>
+                    <span className="formation-stat-label">Étudiants</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Analyses détaillées sous forme de tableaux */}
+        <div className="analysis-tables-section">
+          <h2 className="section-title">
+            <BarChart3 size={24} />
+            Analyses Détaillées
+          </h2>
+
+          <div className="tables-grid">
+            {/* Table par Niveau */}
+            <div className="analysis-table-card">
+              <h3>Analyse par Niveau</h3>
               <div className="table-container">
                 {niveauxData.length > 0 ? (
                   <table className="analysis-table">
@@ -1019,9 +607,6 @@ const PedagogiqueDashboard = () => {
                       <tr>
                         <th>Niveau</th>
                         <th>Étudiants</th>
-                        <th>Payés</th>
-                        <th>CA Total</th>
-                        <th>Taux Réussite</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1029,50 +614,36 @@ const PedagogiqueDashboard = () => {
                         <tr key={index}>
                           <td className="niveau-name">{niveau.niveau}</td>
                           <td><span className="badge blue">{niveau.total}</span></td>
-                          <td><span className="badge green">{niveau.payes}</span></td>
-                          <td className="money">{formatMoney(niveau.ca)}</td>
-                          <td>
-                            <span className={`rate ${parseFloat(niveau.tauxReussite) >= 70 ? 'good' : 'warning'}`}>
-                              {niveau.tauxReussite}%
-                            </span>
-                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 ) : (
-                  <div className="no-data-table">Aucune donnée correspondante aux filtres</div>
+                  <div className="no-data-table">Aucune donnée</div>
                 )}
               </div>
             </div>
-          )}
 
-          {activeTab === 'specialites' && (
-            <div className="section">
-              <h2 className="section-title">
-                <Award size={24} />
-                Analyse par Spécialité - {userInfo?.filiere || stats?.filiere}
-                {(filtreAnneeScolaire !== 'toutes' || filtreNiveau !== 'tous' || searchTerm) && (
-                  <span className="filtered-indicator">(Vue filtrée)</span>
-                )}
-              </h2>
+            {/* Table par Spécialité */}
+            <div className="analysis-table-card">
+              <h3>Analyse par Spécialité</h3>
               <div className="table-container">
                 {specialitesData.length > 0 ? (
                   <table className="analysis-table">
                     <thead>
                       <tr>
-                        <th>Type Formation</th>
+                        <th>Type</th>
                         <th>Spécialité</th>
                         <th>Étudiants</th>
                         <th>Payés</th>
                         <th>CA Total</th>
-                        <th>Taux Réussite</th>
+                        <th>Taux</th>
                       </tr>
                     </thead>
                     <tbody>
                       {specialitesData.map((spec, index) => (
                         <tr key={index}>
-                          <td className="type-formation-badge">
+                          <td>
                             <span className={`formation-badge ${spec.typeFormation?.toLowerCase()}`}>
                               {spec.typeFormation}
                             </span>
@@ -1093,21 +664,14 @@ const PedagogiqueDashboard = () => {
                     </tbody>
                   </table>
                 ) : (
-                  <div className="no-data-table">Aucune donnée correspondante aux filtres</div>
+                  <div className="no-data-table">Aucune donnée</div>
                 )}
               </div>
             </div>
-          )}
 
-          {activeTab === 'annees' && (
-            <div className="section">
-              <h2 className="section-title">
-                <Calendar size={24} />
-                Analyse par Année Scolaire - {userInfo?.filiere || stats?.filiere}
-                {(filtreNiveau !== 'tous' || filtreSpecialite !== 'toutes' || searchTerm) && (
-                  <span className="filtered-indicator">(Vue filtrée)</span>
-                )}
-              </h2>
+            {/* Table par Année Scolaire */}
+            <div className="analysis-table-card">
+              <h3>Analyse par Année Scolaire</h3>
               <div className="table-container">
                 {anneesData.length > 0 ? (
                   <table className="analysis-table">
@@ -1115,9 +679,6 @@ const PedagogiqueDashboard = () => {
                       <tr>
                         <th>Année Scolaire</th>
                         <th>Étudiants</th>
-                        <th>Payés</th>
-                        <th>CA Total</th>
-                        <th>Taux Réussite</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1125,580 +686,83 @@ const PedagogiqueDashboard = () => {
                         <tr key={index}>
                           <td className="annee-name">{annee.annee}</td>
                           <td><span className="badge blue">{annee.total}</span></td>
-                          <td><span className="badge green">{annee.payes}</span></td>
-                          <td className="money">{formatMoney(annee.ca)}</td>
-                          <td>
-                            <span className={`rate ${parseFloat(annee.tauxReussite) >= 70 ? 'good' : 'warning'}`}>
-                              {annee.tauxReussite}%
-                            </span>
-                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 ) : (
-                  <div className="no-data-table">Aucune donnée correspondante aux filtres</div>
+                  <div className="no-data-table">Aucune donnée</div>
                 )}
               </div>
             </div>
-          )}
 
-          {activeTab === 'cours-profs' && (
-            <div className="section">
-              <h2 className="section-title">
-                <BookOpen size={24} />
-                Cours & Professeurs - {userInfo?.filiere || stats?.filiere}
-                {(filtreAnneeScolaire !== 'toutes' || filtreNiveau !== 'tous' || filtreSpecialite !== 'toutes' || searchTerm) && (
-                  <span className="filtered-indicator">(Vue filtrée)</span>
-                )}
-              </h2>
-              
-              <div className="cours-professeurs-grid">
-                {coursAvecProfs.length > 0 ? (
-                  coursAvecProfs.map((cours, index) => (
-                    <div key={index} className="cours-card">
-                      <div className="cours-header">
-                        <h3 className="cours-title">
-                          <BookOpen size={18} />
-                          {cours.nom}
-                        </h3>
-                        <div className="cours-stats-badges">
-                          <span className="stat-badge blue">
-                            <Users size={14} />
-                            {cours.etudiantsFiltres} étudiants
-                          </span>
-                          <span className="stat-badge green">
-                            <CheckSquare size={14} />
-                            {cours.etudiantsPayesFiltres} payés
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="cours-details">
-                        <div className="cours-financial">
-                          <div className="financial-item">
-                            <span className="label">CA filtré:</span>
-                            <span className="value">{formatMoney(cours.caFiltre)}</span>
-                          </div>
-                          <div className="financial-item">
-                            <span className="label">Taux paiement:</span>
-                            <span className={`rate ${cours.etudiantsFiltres > 0 && (cours.etudiantsPayesFiltres / cours.etudiantsFiltres) >= 0.7 ? 'good' : 'warning'}`}>
-                              {cours.etudiantsFiltres > 0 ? ((cours.etudiantsPayesFiltres / cours.etudiantsFiltres) * 100).toFixed(1) : 0}%
-                            </span>
-                          </div>
-                        </div>
-
-                        {cours.professeurs && cours.professeurs.length > 0 && (
-                          <div className="professeurs-section">
-                            <h4 className="professeurs-title">
-                              <User size={16} />
-                              Professeurs ({cours.professeurs.length})
-                            </h4>
-                            <div className="professeurs-list">
-                              {cours.professeurs.map((prof, profIndex) => (
-                                <div key={profIndex} className="professeur-item">
-                                  <div className="professeur-info">
-                                    <span className="professeur-nom">{prof.nom}</span>
-                                    {prof.email && (
-                                      <span className="professeur-email">
-                                        <Mail size={12} />
-                                        {prof.email}
-                                      </span>
-                                    )}
-                                    {prof.telephone && (
-                                      <span className="professeur-tel">
-                                        <Phone size={12} />
-                                        {prof.telephone}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {prof.matiere && prof.matiere !== cours.nom && (
-                                    <div className="professeur-matiere">
-                                      Spécialité: {prof.matiere}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {cours.dateCreation && (
-                          <div className="cours-meta">
-                            <span className="creation-date">
-                              <Calendar size={14} />
-                              Créé le {new Date(cours.dateCreation).toLocaleDateString('fr-FR')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="no-data-courses">
-                    <BookOpen size={48} color="#94a3b8" />
-                    <h3>Aucun cours trouvé</h3>
-                    <p>Aucun cours ne correspond aux filtres appliqués ou aucun étudiant n'est inscrit aux cours disponibles.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'students' && (
-            <>
-              <div className="section">
-                <h2 className="section-title">
-                  <Users size={24} />
-                  Liste Complète des Étudiants ({etudiantsFiltered.length})
-                </h2>
-                
-                {/* Filtres spécifiques aux étudiants */}
-                <div className="students-filters">
-                  <div className="students-filters-row">
-                    <div className="search-input-container">
-                      <Search size={16} />
-                      <input
-                        type="text"
-                        placeholder="Rechercher par nom, prénom, CIN, code étudiant..."
-                        value={searchTermStudents}
-                        onChange={(e) => setSearchTermStudents(e.target.value)}
-                        className="students-search-input"
-                      />
-                      {searchTermStudents && (
-                        <button onClick={() => setSearchTermStudents('')} className="clear-search-btn">
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                    
-                    <select 
-                      value={filtreGenreStudents} 
-                      onChange={(e) => setFiltreGenreStudents(e.target.value)} 
-                      className="students-filter-select"
-                    >
-                      <option value="tous">Tous les genres</option>
-                      {genresDisponibles.map(genre => (
-                        <option key={genre} value={genre}>{genre}</option>
-                      ))}
-                    </select>
-
-                    <select 
-                      value={filtreStatutStudents} 
-                      onChange={(e) => setFiltreStatutStudents(e.target.value)} 
-                      className="students-filter-select"
-                    >
-                      <option value="tous">Tous les statuts</option>
-                      <option value="actifs">Actifs</option>
-                      <option value="inactifs">Inactifs</option>
-                      <option value="payes">Payés</option>
-                      <option value="non-payes">Non payés</option>
-                    </select>
-
-                    {/* NOUVEAU : Filtre par cours pour les étudiants - UNIQUEMENT leurs cours */}
-                    <select 
-                      value={filtreCoursStudents} 
-                      onChange={(e) => setFiltreCoursStudents(e.target.value)} 
-                      className="students-filter-select"
-                    >
-                      <option value="tous">Tous les cours</option>
-                      {coursDisponiblesEtudiants.map(cours => (
-                        <option key={cours} value={cours}>
-                          {cours.length > 30 ? cours.substring(0, 30) + '...' : cours}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button 
-                      onClick={() => {
-                        setSearchTermStudents('');
-                        setFiltreGenreStudents('tous');
-                        setFiltreStatutStudents('tous');
-                        setFiltreCoursStudents('tous');
-                      }}
-                      className="reset-students-filters-btn"
-                    >
-                      <RefreshCw size={16} />
-                      Réinitialiser
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="tableau-container">
-                  <div className="table-scroll-wrapper">
-                    <table className="tableau-etudiants">
-                      <thead>
-                        <tr>
-                          <th>Nom Complet</th>
-                          <th>Genre</th>
-                          <th>Date de Naissance</th>
-                          <th>Âge</th>
-                          <th>Téléphone</th>
-                          <th>Email</th>
-                          <th>Filière</th>
-                          <th>Niveau</th>
-                          <th>Statut</th>
-                          <th>Image</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
+            {/* Table par Filière (si vue générale) */}
+            {userInfo?.filiere === 'GENERAL' && (
+              <div className="analysis-table-card">
+                <h3>Analyse par Filière</h3>
+                <div className="table-container">
+                  {filieresData.length > 0 ? (
+                    <table className="analysis-table">
+                    <thead>
+                      <tr>
+                        <th>Filière</th>
+                        <th>Étudiants</th>
+                      </tr>
+                    </thead>
                       <tbody>
-                        {etudiantsFiltered.length === 0 ? (
-                          <tr>
-                            <td colSpan="11" className="aucun-resultat">
-                              Aucun étudiant trouvé
-                            </td>
+                        {filieresData.map((filiere, index) => (
+                          <tr key={index}>
+                            <td className="filiere-name">{filiere.filiere}</td>
+                            <td><span className="badge blue">{filiere.total}</span></td>
                           </tr>
-                        ) : (
-                          etudiantsFiltered.map((e) => (
-                            <tr key={e._id}>
-                              <td className="nom-colonne">{e.prenom} {e.nomDeFamille}</td>
-                              <td>{e.genre || 'N/A'}</td>
-                              <td>{formatDate(e.dateNaissance)}</td>
-                              <td>{calculerAge(e.dateNaissance)} ans</td>
-                              <td>{e.telephone || 'N/A'}</td>
-                              <td>{e.email || 'N/A'}</td>
-                              <td className="filiere-colonne">{e.filiere || 'N/A'}</td>
-                              <td className="niveau-colonne">{e.niveauFormation || e.cycle || 'N/A'}</td>
-                              <td className="statut-colonne">
-                                <span className={`statut-text ${e.actif ? 'actif' : 'inactif'}`}>
-                                  {e.actif ? 'Actif' : 'Inactif'}
-                                </span>
-                              </td>
-                              <td className="image-colonne">
-                                {e.image ? (
-                                  <img
-                                    src={`http://195.179.229.230:5000${e.image}`}
-                                    alt="etudiant"
-                                    className="image-etudiant"
-                                  />
-                                ) : (
-                                  <div className="pas-image">N/A</div>
-                                )}
-                              </td>
-                              <td className="actions-colonne">
-                                <button
-                                  onClick={() => handleViewStudent(e)}
-                                  className="btn-voir"
-                                >
-                                  Voir
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
+                        ))}
                       </tbody>
                     </table>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {activeTab === 'professors' && (
-            <>
-              <div className="section">
-                <h2 className="section-title">
-                  <UserCog size={24} />
-                  Liste des Professeurs ({professeursFiltered.length})
-                </h2>
-                
-                {/* Filtres spécifiques aux professeurs */}
-                <div className="professors-filters">
-                  <div className="professors-filters-row">
-                    <div className="search-input-container">
-                      <Search size={16} />
-                      <input
-                        type="text"
-                        placeholder="Rechercher par nom, email, téléphone, matière..."
-                        value={searchTermProfs}
-                        onChange={(e) => setSearchTermProfs(e.target.value)}
-                        className="professors-search-input"
-                      />
-                      {searchTermProfs && (
-                        <button onClick={() => setSearchTermProfs('')} className="clear-search-btn">
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                    
-                    <select 
-                      value={filtreMatiereProfs} 
-                      onChange={(e) => setFiltreMatiereProfs(e.target.value)} 
-                      className="professors-filter-select"
-                    >
-                      <option value="toutes">Toutes les matières</option>
-                      {matieresDisponibles.map(matiere => (
-                        <option key={matiere} value={matiere}>{matiere}</option>
-                      ))}
-                    </select>
-
-                    {/* NOUVEAU : Filtre par cours pour les professeurs - UNIQUEMENT leurs cours */}
-                    <select 
-                      value={filtreCoursProfs} 
-                      onChange={(e) => setFiltreCoursProfs(e.target.value)} 
-                      className="professors-filter-select"
-                    >
-                      <option value="tous">Tous les cours</option>
-                      {coursDisponiblesProfesseurs.map(cours => (
-                        <option key={cours} value={cours}>
-                          {cours.length > 30 ? cours.substring(0, 30) + '...' : cours}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button 
-                      onClick={() => {
-                        setSearchTermProfs('');
-                        setFiltreMatiereProfs('toutes');
-                        setFiltreCoursProfs('tous');
-                      }}
-                      className="reset-professors-filters-btn"
-                    >
-                      <RefreshCw size={16} />
-                      Réinitialiser
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="professors-list">
-                  {professeursFiltered.length === 0 ? (
-                    <div className="no-professors">
-                      <UserCog size={48} color="#94a3b8" />
-                      <h3>Aucun professeur trouvé</h3>
-                      <p>Aucun professeur ne correspond aux critères de recherche.</p>
-                    </div>
                   ) : (
-                    <div className="professors-grid">
-                      {professeursFiltered.map((prof, index) => (
-                        <div key={index} className="professor-card">
-                          <div className="professor-header">
-                            <div className="professor-avatar">
-                              <UserCog size={24} />
-                            </div>
-                            <div className="professor-info">
-                              <h3 className="professor-name">{prof.nom}</h3>
-                              {prof.matiere && (
-                                <span className="professor-subject">{prof.matiere}</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="professor-details">
-                            {prof.email && (
-                              <div className="professor-contact">
-                                <Mail size={16} />
-                                <span>{prof.email}</span>
-                              </div>
-                            )}
-                            {prof.telephone && (
-                              <div className="professor-contact">
-                                <Phone size={16} />
-                                <span>{prof.telephone}</span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {prof.cours && prof.cours.length > 0 && (
-                            <div className="professor-courses">
-                              <h4>Cours enseignés:</h4>
-                              <div className="courses-list">
-                                {prof.cours.map((cours, idx) => (
-                                  <span key={idx} className="course-badge">{cours}</span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <div className="no-data-table">Aucune donnée</div>
                   )}
                 </div>
-              
               </div>
-            </>
-          )}
-
-        </div>
-      </div>
-
-      {/* Modal pour les détails d'un étudiant */}
-      {showStudentModal && selectedStudent && (
-        <div className="modal-overlay" onClick={() => setShowStudentModal(false)}>
-          <div className="student-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="student-modal-header">
-              <h2>
-                <User size={24} />
-                Détails de l'étudiant
-              </h2>
-              <button 
-                onClick={() => setShowStudentModal(false)}
-                className="modal-close-btn"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="student-modal-content">
-              <div className="student-info-grid">
-                {/* Informations personnelles */}
-                <div className="student-info-section">
-                  <h3>
-                    <IdCard size={20} />
-                    Informations Personnelles
-                  </h3>
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <label>Nom complet:</label>
-                      <span>{selectedStudent.prenom} {selectedStudent.nomDeFamille}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>CIN:</label>
-                      <span>{selectedStudent.cin || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Code étudiant:</label>
-                      <span>{selectedStudent.codeEtudiant || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Genre:</label>
-                      <span>{selectedStudent.genre || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Date de naissance:</label>
-                      <span>{formatDate(selectedStudent.dateNaissance)}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Âge:</label>
-                      <span>{calculerAge(selectedStudent.dateNaissance)} ans</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Téléphone:</label>
-                      <span>{selectedStudent.telephone || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Email:</label>
-                      <span>{selectedStudent.email || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informations académiques */}
-                <div className="student-info-section">
-                  <h3>
-                    <GraduationCap size={20} />
-                    Informations Académiques
-                  </h3>
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <label>Filière:</label>
-                      <span>{selectedStudent.filiere || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Niveau:</label>
-                      <span>{selectedStudent.niveau || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Cycle:</label>
-                      <span>{selectedStudent.cycle || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Niveau formation:</label>
-                      <span>{selectedStudent.niveauFormation || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Spécialité:</label>
-                      <span>
-                        {selectedStudent.specialiteIngenieur || 
-                         selectedStudent.specialiteLicencePro || 
-                         selectedStudent.specialiteMasterPro || 
-                         selectedStudent.specialite || 'Tronc commun'}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <label>Année scolaire:</label>
-                      <span>{selectedStudent.anneeScolaire || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Professeur:</label>
-                      <span>{selectedStudent.professeur || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informations financières */}
-                <div className="student-info-section">
-                  <h3>
-                    <TrendingUp size={20} />
-                    Informations Financières
-                  </h3>
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <label>Prix total:</label>
-                      <span className="price-value">{formatMoney(selectedStudent.prixTotal)}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Statut paiement:</label>
-                      <span className={`payment-status ${selectedStudent.paye ? 'paid' : 'unpaid'}`}>
-                        {selectedStudent.paye ? (
-                          <>
-                            <CheckCircle size={16} />
-                            Payé
-                          </>
-                        ) : (
-                          <>
-                            <XCircle size={16} />
-                            Non payé
-                          </>
-                        )}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <label>Statut inscription:</label>
-                      <span className={`status ${selectedStudent.actif ? 'active' : 'inactive'}`}>
-                        {selectedStudent.actif ? 'Actif' : 'Inactif'}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <label>Nouvelle inscription:</label>
-                      <span>{selectedStudent.nouvelleInscription ? 'Oui' : 'Non'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Photo de l'étudiant */}
-                {selectedStudent.image && (
-                  <div className="student-info-section">
-                    <h3>
-                      <Eye size={20} />
-                      Photo
-                    </h3>
-                    <div className="student-photo">
-                      <img
-                        src={`http://195.179.229.230:5000${selectedStudent.image}`}
-                        alt="Photo étudiant"
-                        className="modal-student-image"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Styles CSS ultra simplifiés avec nouvelles couleurs */}
+        {/* Section spéciale pour vue générale */}
+     
+      </div>
+
       <style jsx>{`
-        .enhanced-dashboard {
-          background: #f8fafc;
+        .dashboard {
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%);
           min-height: 100vh;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          color: #1f2937;
         }
 
-        /* HEADER AVEC NOUVELLES COULEURS */
-        .simple-header {
+        .header-toggle-btn {
+          position: fixed;
+          top: 1rem;
+          right: 1rem;
+          z-index: 1000;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 3rem;
+          height: 3rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+          transition: all 0.3s ease;
+        }
+
+        .header-toggle-btn:hover {
+          background: linear-gradient(135deg, #059669, #047857);
+          transform: scale(1.05);
+        }
+
+        .dashboard-header {
           background: white;
           border-bottom: 3px solid #3b82f6;
           padding: 1.5rem 0;
@@ -1709,14 +773,14 @@ const PedagogiqueDashboard = () => {
           max-width: 1200px;
           margin: 0 auto;
           padding: 0 1rem;
+          text-align: center;
         }
 
-        .simple-header h1 {
+        .dashboard-header h1 {
           font-size: 1.75rem;
           color: #1f2937;
           margin: 0 0 1rem 0;
           font-weight: 700;
-          text-align: center;
         }
 
         .header-stats {
@@ -1724,10 +788,8 @@ const PedagogiqueDashboard = () => {
           justify-content: center;
           gap: 2rem;
           font-size: 0.875rem;
-          color: #1f2937;
           margin-bottom: 1.5rem;
           flex-wrap: wrap;
-          font-weight: 600;
         }
 
         .header-stats span {
@@ -1735,11 +797,10 @@ const PedagogiqueDashboard = () => {
           color: white;
           padding: 0.5rem 1rem;
           border-radius: 20px;
-          font-size: 0.875rem;
           font-weight: 600;
         }
 
-        .simple-filters {
+        .dashboard-filters {
           display: flex;
           justify-content: center;
           gap: 1rem;
@@ -1748,24 +809,51 @@ const PedagogiqueDashboard = () => {
           margin-bottom: 1rem;
         }
 
-        .simple-search {
-          padding: 0.75rem;
+        .search-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .search-container svg {
+          position: absolute;
+          left: 0.75rem;
+          color: #10b981;
+          z-index: 1;
+        }
+
+        .dashboard-search {
+          padding: 0.75rem 1rem 0.75rem 2.5rem;
           border: 2px solid #10b981;
           border-radius: 8px;
           font-size: 0.875rem;
           min-width: 250px;
           outline: none;
-          color: #1f2937;
-          font-weight: 500;
           transition: all 0.3s ease;
         }
 
-        .simple-search:focus {
+        .dashboard-search:focus {
           border-color: #059669;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
 
-        .simple-select {
+        .clear-search {
+          position: absolute;
+          right: 0.75rem;
+          background: none;
+          border: none;
+          color: #10b981;
+          cursor: pointer;
+          padding: 0.25rem;
+          border-radius: 50%;
+          transition: all 0.3s ease;
+        }
+
+        .clear-search:hover {
+          background: #f0fdf4;
+        }
+
+        .dashboard-select {
           padding: 0.75rem;
           border: 2px solid #6b7280;
           border-radius: 8px;
@@ -1779,29 +867,32 @@ const PedagogiqueDashboard = () => {
           transition: all 0.3s ease;
         }
 
-        .simple-select:focus {
+        .dashboard-select:focus {
           border-color: #4b5563;
           box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
         }
 
-        .simple-btn {
-          background: linear-gradient(135deg, #6b7280, #4b5563);
+        .dashboard-reset-btn {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
           color: white;
           border: none;
-          padding: 0.75rem 1.5rem;
+          padding: 0.75rem 1rem;
           border-radius: 8px;
           cursor: pointer;
           font-size: 0.875rem;
           font-weight: 600;
           transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
 
-        .simple-btn:hover {
-          background: linear-gradient(135deg, #4b5563, #374151);
+        .dashboard-reset-btn:hover {
+          background: linear-gradient(135deg, #d97706, #b45309);
           transform: translateY(-1px);
         }
 
-        .simple-indicator {
+        .filter-indicator {
           background: linear-gradient(135deg, #3b82f6, #1d4ed8);
           color: white;
           padding: 0.75rem 1.5rem;
@@ -1812,64 +903,147 @@ const PedagogiqueDashboard = () => {
           font-weight: 600;
         }
 
-        /* NAVIGATION AVEC NOUVELLES COULEURS */
-        .simple-tabs {
-          background: white;
-          border-bottom: 3px solid #10b981;
-          padding: 0;
-          max-width: 1200px;
-          margin: 0 auto;
-          overflow-x: auto;
-          display: flex;
-          box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
-        }
-
-        .simple-tab-btn {
-          padding: 1rem 1.5rem;
-          border: none;
-          background: white;
-          color: #6b7280;
-          font-weight: 600;
-          cursor: pointer;
-          border-bottom: 3px solid transparent;
-          white-space: nowrap;
-          transition: all 0.3s ease;
-        }
-
-        .simple-tab-btn.active {
-          color: #10b981;
-          border-bottom-color: #10b981;
-          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-        }
-
-        .simple-tab-btn:hover {
-          color: #059669;
-          background: #f0fdf4;
-        }
-
-        /* CONTAINER PRINCIPAL */
-        .simple-container {
+        .dashboard-content {
           max-width: 1200px;
           margin: 0 auto;
           padding: 2rem 1rem;
-          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%) !important;
-
         }
 
-        .dashboard-container {
-          max-width: 1200px;
-          margin: 0 auto;
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 2rem;
+          margin-bottom: 3rem;
         }
-/* FORMATION TYPES SECTION - COMPLET */
+
+        .stat-card {
+          background: white;
+          padding: 2rem;
+          border-radius: 16px;
+          border: 2px solid #e5e7eb;
+          text-align: center;
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .stat-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(135deg, #3b82f6, #10b981);
+        }
+
+        .stat-card:hover {
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
+        }
+
+        .stat-card.blue::before { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .stat-card.green::before { background: linear-gradient(135deg, #10b981, #059669); }
+        .stat-card.orange::before { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .stat-card.purple::before { background: linear-gradient(135deg, #6b7280, #4b5563); }
+
+        .stat-icon {
+          width: 4rem;
+          height: 4rem;
+          margin: 0 auto 1rem auto;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card.blue .stat-icon { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .stat-card.green .stat-icon { background: linear-gradient(135deg, #10b981, #059669); }
+        .stat-card.orange .stat-icon { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .stat-card.purple .stat-icon { background: linear-gradient(135deg, #6b7280, #4b5563); }
+
+        .stat-content h3 {
+          font-size: 2rem;
+          font-weight: 700;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .stat-card.blue .stat-content h3 { color: #3b82f6; }
+        .stat-card.green .stat-content h3 { color: #10b981; }
+        .stat-card.orange .stat-content h3 { color: #f59e0b; }
+        .stat-card.purple .stat-content h3 { color: #6b7280; }
+
+        .stat-content p {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1f2937;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .stat-detail {
+          font-size: 0.875rem;
+          color: #6b7280;
+          font-weight: 500;
+        }
+
+        .charts-section {
+          margin-bottom: 3rem;
+        }
+
+        .charts-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+          gap: 2rem;
+        }
+
+        .chart-card {
+          background: white;
+          padding: 2rem;
+          border-radius: 16px;
+          border: 2px solid #e5e7eb;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          transition: all 0.3s ease;
+        }
+
+        .chart-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 30px rgba(16, 185, 129, 0.15);
+        }
+
+        .chart-card h3 {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 1.5rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          border-bottom: 2px solid #10b981;
+          padding-bottom: 0.75rem;
+        }
+
         .formation-types-section {
           margin-bottom: 3rem;
+        }
+
+        .section-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 2rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          text-align: center;
+          justify-content: center;
         }
 
         .formation-types-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 2rem;
-          padding: 1.5rem;
         }
 
         .formation-type-card {
@@ -1891,13 +1065,11 @@ const PedagogiqueDashboard = () => {
           right: 0;
           height: 4px;
           background: linear-gradient(135deg, #3b82f6, #10b981);
-          transition: all 0.3s ease;
         }
 
         .formation-type-card:hover {
           transform: translateY(-8px) scale(1.02);
           box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
-          border-color: #10b981;
         }
 
         .formation-type-header {
@@ -1937,7 +1109,7 @@ const PedagogiqueDashboard = () => {
 
         .formation-type-stats {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: 1fr;
           gap: 1rem;
           margin-bottom: 1.5rem;
         }
@@ -1995,415 +1167,144 @@ const PedagogiqueDashboard = () => {
           font-weight: 700;
         }
 
-        /* COURS CARDS - COMPLET */
-        .cours-professeurs-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-          gap: 2rem;
-          padding: 1.5rem;
+        /* Nouvelles sections d'analyse */
+        .analysis-tables-section {
+          margin-bottom: 3rem;
         }
 
-        .cours-card {
+        .tables-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+          gap: 2rem;
+        }
+
+        .analysis-table-card {
           background: white;
           border-radius: 16px;
-          padding: 2rem;
           border: 2px solid #e5e7eb;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          position: relative;
           overflow: hidden;
+          transition: all 0.3s ease;
         }
 
-        .cours-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(135deg, #3b82f6, #10b981);
+        .analysis-table-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 30px rgba(16, 185, 129, 0.15);
         }
 
-        .cours-card:hover {
-          transform: translateY(-8px) scale(1.02);
-          box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15);
-          border-color: #10b981;
-        }
-
-        .cours-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 1.5rem;
-          gap: 1rem;
-        }
-
-        .cours-title {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #1f2937;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          flex: 1;
-        }
-
-        .cours-stats-badges {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-          align-items: center;
-        }
-
-        .stat-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 700;
+        .analysis-table-card h3 {
+          background: linear-gradient(135deg, #10b981, #059669);
           color: white;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          white-space: nowrap;
-        }
-
-        .cours-details {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .cours-financial {
-          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 1px solid #e5e7eb;
-          transition: all 0.3s ease;
-        }
-
-        .cours-financial:hover {
-          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-          border-color: #10b981;
-        }
-
-        .financial-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.75rem;
-        }
-
-        .financial-item:last-child {
-          margin-bottom: 0;
-        }
-
-        .financial-item .label {
-          font-weight: 600;
-          color: #6b7280;
-          font-size: 0.875rem;
-        }
-
-        .financial-item .value {
-          font-weight: 700;
-          color: #10b981;
-          font-size: 1rem;
-        }
-
-        .professeurs-section {
-          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 1px solid #10b981;
-          transition: all 0.3s ease;
-        }
-
-        .professeurs-section:hover {
-          border-color: #059669;
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-        }
-
-        .professeurs-title {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #10b981;
-          margin: 0 0 1rem 0;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .professeurs-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .professeur-item {
-          background: white;
           padding: 1rem;
-          border-radius: 8px;
-          border: 1px solid #d1d5db;
-          transition: all 0.3s ease;
-        }
-
-        .professeur-item:hover {
-          border-color: #10b981;
-          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
-          transform: translateX(4px);
-        }
-
-        .professeur-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .professeur-nom {
-          font-weight: 700;
-          color: #1f2937;
-          font-size: 1rem;
-        }
-
-        .professeur-email,
-        .professeur-tel {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.875rem;
-          color: #6b7280;
-        }
-
-        .professeur-matiere {
-          font-size: 0.75rem;
-          color: #10b981;
-          font-weight: 600;
-          background: #f0fdf4;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          display: inline-block;
-          margin-top: 0.5rem;
-        }
-
-        .cours-meta {
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 1rem;
-          padding-top: 1rem;
-          border-top: 1px solid #e5e7eb;
-        }
-
-        .creation-date {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.75rem;
-          color: #6b7280;
-          font-weight: 500;
-        }
-
-        .no-data-courses {
-          text-align: center;
-          padding: 4rem 2rem;
-          color: #6b7280;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .no-data-courses h3 {
-          font-size: 1.25rem;
-          font-weight: 700;
           margin: 0;
-          color: #374151;
-        }
-
-        .no-data-courses p {
-          font-size: 1rem;
-          margin: 0;
-          max-width: 500px;
-        }
-
-        /* PROFESSOR CARDS - COMPLET */
-        .professors-list {
-          padding: 1.5rem;
-        }
-
-        .professors-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-          gap: 2rem;
-        }
-
-        .professor-card {
-          background: white;
-          border-radius: 16px;
-          padding: 2rem;
-          border: 2px solid #e5e7eb;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .professor-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-
-        .professor-card:hover {
-          transform: translateY(-8px) scale(1.02);
-          box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
-          border-color: #3b82f6;
-        }
-
-        .professor-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .professor-info {
-          flex: 1;
-        }
-
-        .professor-name {
-          font-size: 1.25rem;
+          font-size: 1.125rem;
           font-weight: 700;
-          color: #1f2937;
-          margin: 0 0 0.5rem 0;
         }
 
-        .professor-details {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .professor-contact {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.75rem;
-          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-          transition: all 0.3s ease;
-        }
-
-        .professor-contact:hover {
-          background: linear-gradient(135deg, #eff6ff, #dbeafe);
-          border-color: #3b82f6;
-          transform: translateX(4px);
-        }
-
-        .professor-contact span {
-          font-size: 0.875rem;
-          color: #1f2937;
-          font-weight: 500;
-        }
-
-        .professor-courses {
-          background: linear-gradient(135deg, #eff6ff, #dbeafe);
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 1px solid #3b82f6;
-        }
-
-        .professor-courses h4 {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #3b82f6;
-          margin: 0 0 1rem 0;
-        }
-
-        .courses-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-
-        .no-professors {
-          text-align: center;
-          padding: 4rem 2rem;
-          color: #6b7280;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .no-professors h3 {
-          font-size: 1.25rem;
-          font-weight: 700;
-          margin: 0;
-          color: #374151;
-        }
-
-        .no-professors p {
-          font-size: 1rem;
-          margin: 0;
-          max-width: 500px;
-        }
-
-        /* MODAL COMPLET */
-        .info-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 1rem;
-        }
-
-        .student-info-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-          gap: 2rem;
-          padding: 2rem;
-        }
-
-        .student-modal-content {
-          max-height: calc(90vh - 80px);
+        .table-container {
+          overflow-x: auto;
+          max-height: 400px;
           overflow-y: auto;
           scrollbar-width: thin;
           scrollbar-color: #10b981 #f3f4f6;
         }
 
-        .student-modal-content::-webkit-scrollbar {
+        .table-container::-webkit-scrollbar {
           width: 8px;
+          height: 8px;
         }
 
-        .student-modal-content::-webkit-scrollbar-track {
+        .table-container::-webkit-scrollbar-track {
           background: #f3f4f6;
           border-radius: 4px;
         }
 
-        .student-modal-content::-webkit-scrollbar-thumb {
+        .table-container::-webkit-scrollbar-thumb {
           background: linear-gradient(135deg, #10b981, #059669);
           border-radius: 4px;
         }
 
-        .student-photo {
-          text-align: center;
-          padding: 1rem;
+        .analysis-table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 450px;
         }
 
-        .payment-status {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
+        .analysis-table th {
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          color: #1f2937;
+          padding: 0.75rem;
+          text-align: left;
+          font-weight: 700;
+          font-size: 0.875rem;
+          border-bottom: 2px solid #e5e7eb;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+
+        .analysis-table td {
+          padding: 0.75rem;
+          border-bottom: 1px solid #e5e7eb;
+          color: #1f2937;
+          font-weight: 500;
+          font-size: 0.875rem;
+        }
+
+        .analysis-table tbody tr:hover {
+          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+        }
+
+        .badge {
+          display: inline-block;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: white;
+          text-align: center;
+          min-width: 2rem;
+        }
+
+        .badge.blue { 
+          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        .badge.green { 
+          background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .money {
+          font-weight: 700;
+          color: #10b981;
+          font-size: 0.875rem;
+        }
+
+        .rate {
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
           font-weight: 700;
         }
 
-        /* TYPE FORMATION BADGES COULEURS SPÉCIFIQUES */
+        .rate.good {
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+        }
+
+        .rate.warning {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: white;
+        }
+
+        .formation-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: white;
+          text-transform: uppercase;
+        }
+
         .formation-badge.cycle_ingenieur {
           background: linear-gradient(135deg, #3b82f6, #1d4ed8);
         }
@@ -2424,133 +1325,211 @@ const PedagogiqueDashboard = () => {
           background: linear-gradient(135deg, #ef4444, #dc2626);
         }
 
-        .type-formation-badge {
-          text-align: center;
+        .niveau-name,
+        .specialite-name,
+        .annee-name,
+        .filiere-name {
+          font-weight: 700;
+          color: #1f2937;
         }
 
-        /* STATS PRINCIPALES OVERVIEW */
-        .stats-section {
+        .no-data-table {
+          text-align: center;
+          padding: 2rem;
+          color: #6b7280;
+          font-weight: 600;
+        }
+
+        .filiere-section {
           margin-bottom: 3rem;
         }
 
-        .stats-grid {
+        .filiere-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
           gap: 2rem;
         }
 
-        .stat-card {
+        .filiere-card {
           background: white;
+          border-radius: 16px;
           padding: 2rem;
-          border-radius: 12px;
           border: 2px solid #e5e7eb;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           text-align: center;
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
         }
 
-        .stat-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(135deg, #3b82f6, #10b981);
+        .filiere-card:hover {
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+          border-color: #3b82f6;
         }
 
-        .stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .stat-icon {
-          width: 4rem;
-          height: 4rem;
-          margin: 0 auto 1rem auto;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          color: white;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .stat-card.green .stat-icon {
-          background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .stat-card.purple .stat-icon {
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-        }
-
-        .stat-card.orange .stat-icon {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .stat-content h3 {
-          font-size: 2rem;
+        .filiere-card h3 {
+          font-size: 1.25rem;
           font-weight: 700;
           color: #1f2937;
-          margin: 0 0 0.5rem 0;
+          margin: 0 0 1.5rem 0;
+          border-bottom: 2px solid #3b82f6;
+          padding-bottom: 0.5rem;
         }
 
-        .stat-content p {
-          font-size: 1rem;
+        .filiere-stats {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .filiere-stat {
+          padding: 1rem;
+          background: linear-gradient(135deg, #eff6ff, #dbeafe);
+          border-radius: 12px;
+          border: 1px solid #3b82f6;
+        }
+
+        .filiere-stat .value {
+          display: block;
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #3b82f6;
+          margin-bottom: 0.25rem;
+        }
+
+        .filiere-stat .label {
+          font-size: 0.75rem;
+          color: #1f2937;
           font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .no-data {
+          text-align: center;
+          padding: 3rem;
           color: #6b7280;
-          margin: 0 0 0.5rem 0;
+          font-weight: 600;
+          font-size: 1.1rem;
         }
 
-        .stat-detail {
-          font-size: 0.875rem;
-          color: #9ca3af;
-          font-weight: 500;
+        .loading-container,
+        .error-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          padding: 2rem;
+          text-align: center;
         }
 
-        /* TABS NAVIGATION CACHÉE */
-        .tabs-navigation {
-          display: none;
+        .loading-spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid #e5e7eb;
+          border-left: 4px solid #10b981;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 1rem;
         }
 
-        /* RESPONSIVE POUR LES NOUVELLES CARTES */
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .retry-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          margin-top: 1rem;
+          transition: all 0.3s ease;
+        }
+
+        .retry-btn:hover {
+          background: linear-gradient(135deg, #059669, #047857);
+          transform: translateY(-1px);
+        }
+
         @media (max-width: 768px) {
-          .formation-types-grid,
-          .professors-grid,
-          .cours-professeurs-grid {
+          .header-stats {
+            gap: 1rem;
+          }
+
+          .header-stats span {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+          }
+
+          .dashboard-filters {
+            flex-direction: column;
+            gap: 0.75rem;
+          }
+
+          .dashboard-search,
+          .dashboard-select {
+            min-width: 200px;
+            width: 100%;
+            max-width: 300px;
+          }
+
+          .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+          }
+
+          .charts-grid {
             grid-template-columns: 1fr;
-            padding: 1rem;
+          }
+
+          .tables-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .formation-types-grid {
+            grid-template-columns: 1fr;
           }
 
           .formation-type-stats {
             grid-template-columns: 1fr;
           }
 
-          .student-info-grid {
-            grid-template-columns: 1fr;
+          .dashboard-content {
             padding: 1rem;
           }
 
-          .cours-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
+          .analysis-table {
+            min-width: 350px;
           }
 
-          .cours-stats-badges {
-            align-self: stretch;
-          }
-
-          .simple-container {
-            padding: 1rem;
+          .analysis-table th,
+          .analysis-table td {
+            padding: 0.5rem;
+            font-size: 0.75rem;
           }
         }
 
         @media (max-width: 480px) {
-          .formation-type-card,
-          .professor-card,
-          .cours-card {
+          .stat-card {
+            padding: 1.5rem;
+          }
+
+          .stat-icon {
+            width: 3rem;
+            height: 3rem;
+          }
+
+          .stat-content h3 {
+            font-size: 1.5rem;
+          }
+
+          .formation-type-card {
             padding: 1rem;
           }
 
@@ -2565,890 +1544,31 @@ const PedagogiqueDashboard = () => {
             height: 3rem;
           }
 
-          .stat-card {
-            padding: 1.5rem;
+          .dashboard-filters {
+            padding: 0 0.5rem;
           }
 
-          .stat-icon {
-            width: 3rem;
-            height: 3rem;
+          .dashboard-search,
+          .dashboard-select {
+            min-width: 150px;
           }
 
-          .stat-content h3 {
-            font-size: 1.75rem;
-          }
-        }
-        .dashboard-content {
-          padding: 2rem 1rem;
-        }
-
-        /* STATISTIQUES AVEC COULEURS VARIÉES */
-        .simple-stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1.5rem;
-          margin-bottom: 3rem;
-        }
-
-        .simple-stat-card {
-          background: white;
-          padding: 2rem;
-          border-radius: 12px;
-          border: 2px solid #e5e7eb;
-          text-align: center;
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .simple-stat-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: linear-gradient(135deg, #3b82f6, #10b981);
-        }
-
-        .simple-stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
-        }
-
-        .simple-stat-card:nth-child(1)::before {
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-
-        .simple-stat-card:nth-child(2)::before {
-          background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .simple-stat-card:nth-child(3)::before {
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-        }
-
-        .simple-stat-card:nth-child(4)::before {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .simple-stat-card h3 {
-          font-size: 2.5rem;
-          color: #1f2937;
-          margin: 0 0 0.5rem 0;
-          font-weight: 700;
-        }
-
-        .simple-stat-card:nth-child(1) h3 { color: #3b82f6; }
-        .simple-stat-card:nth-child(2) h3 { color: #10b981; }
-        .simple-stat-card:nth-child(3) h3 { color: #6b7280; }
-        .simple-stat-card:nth-child(4) h3 { color: #f59e0b; }
-
-        .simple-stat-card p {
-          color: #1f2937;
-          margin: 0;
-          font-size: 1rem;
-          font-weight: 600;
-        }
-
-        /* BOUTON TOGGLE AVEC NOUVELLE COULEUR */
-        .header-toggle-btn {
-          position: fixed;
-          top: 1rem;
-          right: 1rem;
-          z-index: 1000;
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-          border: none;
-          border-radius: 50%;
-          width: 3rem;
-          height: 3rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          font-weight: 600;
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-          transition: all 0.3s ease;
-        }
-
-        .header-toggle-btn:hover {
-          background: linear-gradient(135deg, #059669, #047857);
-          transform: scale(1.05);
-        }
-
-        /* SECTIONS AVEC NOUVELLES COULEURS */
-        .section {
-          background: white;
-          border-radius: 12px;
-          border: 2px solid #e5e7eb;
-          margin-bottom: 2rem;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .section-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: white;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          padding: 1rem;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .filtered-indicator {
-          background: #1f2937;
-          color: white;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          margin-left: 1rem;
-        }
-
-        /* CHARTS AVEC NOUVELLES COULEURS */
-        .charts-section {
-          margin-bottom: 3rem;
-        }
-
-        .charts-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-          gap: 2rem;
-        }
-
-        .chart-card {
-          background: white;
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 2px solid #e5e7eb;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .chart-card h3 {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #1f2937;
-          margin: 0 0 1.5rem 0;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          border-bottom: 2px solid #10b981;
-          padding-bottom: 0.75rem;
-        }
-
-        /* TABLEAUX AVEC SCROLL ET NOUVELLES COULEURS */
-        .table-container {
-          background: white;
-          border-radius: 12px;
-          border: 2px solid #e5e7eb;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        /* NOUVEAU: Wrapper pour le scroll de la table étudiants */
-        .tableau-container {
-          background: white;
-          border-radius: 12px;
-          border: 2px solid #10b981;
-          overflow: hidden;
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
-        }
-
-        .table-scroll-wrapper {
-          overflow-x: auto;
-          overflow-y: auto;
-          max-height: 600px;
-          scrollbar-width: thin;
-          scrollbar-color: #10b981 #f3f4f6;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-track {
-          background: #f3f4f6;
-          border-radius: 4px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #10b981, #059669);
-          border-radius: 4px;
-        }
-
-        .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, #059669, #047857);
-        }
-
-        .analysis-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        .analysis-table th {
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-          padding: 1rem;
-          text-align: left;
-          font-weight: 700;
-          font-size: 0.875rem;
-          position: sticky;
-          top: 0;
-          z-index: 10;
-        }
-
-        .analysis-table td {
-          padding: 1rem;
-          border-bottom: 1px solid #e5e7eb;
-          color: #1f2937;
-          font-weight: 500;
-        }
-
-        .analysis-table tbody tr:hover {
-          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-        }
-
-        .no-data-table {
-          text-align: center;
-          padding: 3rem;
-          color: #6b7280;
-          font-weight: 600;
-          font-size: 1.1rem;
-        }
-
-        /* BADGES AVEC NOUVELLES COULEURS */
-        .badge {
-          display: inline-block;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.875rem;
-          font-weight: 700;
-          color: white;
-          text-align: center;
-          min-width: 3rem;
-        }
-
-        .badge.blue { 
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-        .badge.green { 
-          background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .money {
-          font-weight: 700;
-          color: #10b981;
-          font-size: 1.1rem;
-        }
-
-        .rate {
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.875rem;
-          font-weight: 700;
-        }
-
-        .rate.good {
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-        }
-
-        .rate.warning {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-          color: white;
-        }
-
-        .no-data {
-          text-align: center;
-          padding: 3rem;
-          color: #6b7280;
-          font-weight: 600;
-          font-size: 1.1rem;
-        }
-
-        /* FORMATION BADGES AVEC NOUVELLES COULEURS */
-        .formation-badge {
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: white;
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-          text-transform: uppercase;
-        }
-
-        /* FILTRES ÉTUDIANTS AVEC NOUVELLES COULEURS */
-        .students-filters,
-        .professors-filters {
-          background: white;
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 2px solid #10b981;
-          margin-bottom: 2rem;
-          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
-        }
-
-        .students-filters-row,
-        .professors-filters-row {
-          display: flex;
-          gap: 1rem;
-          align-items: center;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-
-        .search-input-container {
-          position: relative;
-          flex: 1;
-          min-width: 300px;
-          max-width: 400px;
-        }
-
-        .search-input-container svg {
-          position: absolute;
-          left: 0.75rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #10b981;
-          z-index: 1;
-        }
-
-        .students-search-input,
-        .professors-search-input {
-          width: 100%;
-          padding: 0.75rem 1rem 0.75rem 2.5rem;
-          border: 2px solid #10b981;
-          border-radius: 8px;
-          font-size: 0.875rem;
-          outline: none;
-          font-weight: 500;
-          color: #1f2937;
-          transition: all 0.3s ease;
-        }
-
-        .students-search-input:focus,
-        .professors-search-input:focus {
-          border-color: #059669;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .students-filter-select,
-        .professors-filter-select {
-          padding: 0.75rem 1rem;
-          border: 2px solid #6b7280;
-          border-radius: 8px;
-          background: white;
-          color: #1f2937;
-          font-size: 0.875rem;
-          cursor: pointer;
-          min-width: 150px;
-          font-weight: 500;
-          outline: none;
-          transition: all 0.3s ease;
-        }
-
-        .students-filter-select:focus,
-        .professors-filter-select:focus {
-          border-color: #4b5563;
-          box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.1);
-        }
-
-        .reset-students-filters-btn,
-        .reset-professors-filters-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-          color: white;
-          border: none;
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: all 0.3s ease;
-        }
-
-        .reset-students-filters-btn:hover,
-        .reset-professors-filters-btn:hover {
-          background: linear-gradient(135deg, #d97706, #b45309);
-          transform: translateY(-1px);
-        }
-
-        .clear-search-btn {
-          position: absolute;
-          right: 0.75rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #10b981;
-          cursor: pointer;
-          padding: 0.25rem;
-          border-radius: 50%;
-          transition: all 0.3s ease;
-        }
-
-        .clear-search-btn:hover {
-          background: #f0fdf4;
-          color: #059669;
-        }
-
-        /* TABLEAU ÉTUDIANTS AVEC SCROLL ET NOUVELLES COULEURS */
-        .tableau-etudiants {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 1200px;
-        }
-
-        .tableau-etudiants th {
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-          padding: 1rem;
-          text-align: left;
-          font-weight: 700;
-          font-size: 0.875rem;
-          position: sticky;
-          top: 0;
-          z-index: 10;
-        }
-
-        .tableau-etudiants td {
-          padding: 1rem;
-          border-bottom: 1px solid #e5e7eb;
-          color: #1f2937;
-          font-weight: 500;
-        }
-
-        .tableau-etudiants tbody tr:hover {
-          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-        }
-
-        .image-etudiant {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          object-fit: cover;
-          border: 2px solid #10b981;
-        }
-
-        .pas-image {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.75rem;
-          font-weight: 700;
-        }
-
-        .statut-text.actif {
-          color: #10b981;
-          font-weight: 700;
-        }
-
-        .statut-text.inactif {
-          color: #f59e0b;
-          font-weight: 700;
-        }
-
-        .btn-voir {
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          color: white;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          cursor: pointer;
-          font-size: 0.875rem;
-          font-weight: 600;
-          transition: all 0.3s ease;
-        }
-
-        .btn-voir:hover {
-          background: linear-gradient(135deg, #1d4ed8, #1e40af);
-          transform: translateY(-1px);
-        }
-
-        .aucun-resultat {
-          text-align: center;
-          color: #6b7280;
-          font-weight: 600;
-          padding: 3rem;
-          font-size: 1.1rem;
-        }
-
-        .nom-colonne {
-          font-weight: 700;
-          color: #1f2937;
-        }
-
-        .filiere-colonne {
-          font-weight: 600;
-          color: #10b981;
-        }
-
-        .niveau-colonne {
-          font-weight: 600;
-          color: #6b7280;
-        }
-
-        .statut-colonne,
-        .image-colonne,
-        .actions-colonne {
-          text-align: center;
-        }
-
-        /* AUTRES CARTES AVEC NOUVELLES COULEURS */
-        .professor-card,
-        .cours-card,
-        .formation-type-card {
-          background: white;
-          border-radius: 12px;
-          padding: 1.5rem;
-          border: 2px solid #e5e7eb;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          transition: all 0.3s ease;
-        }
-
-        .professor-card:hover,
-        .cours-card:hover,
-        .formation-type-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
-        }
-
-        .professor-avatar {
-          width: 3rem;
-          height: 3rem;
-          border-radius: 8px;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          flex-shrink: 0;
-        }
-
-        .professor-subject {
-          font-size: 0.875rem;
-          color: white;
-          background: linear-gradient(135deg, #10b981, #059669);
-          padding: 0.25rem 0.75rem;
-          border-radius: 20px;
-          font-weight: 600;
-          display: inline-block;
-        }
-
-        .course-badge {
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-          color: white;
-          padding: 0.25rem 0.5rem;
-          border-radius: 12px;
-          font-size: 0.75rem;
-          font-weight: 600;
-        }
-
-        .stat-badge.blue { 
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-        }
-        .stat-badge.green { 
-          background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .type-badge {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-          color: white;
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          font-size: 0.75rem;
-          font-weight: 600;
-        }
-
-        /* MODAL AVEC NOUVELLES COULEURS */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(31, 41, 55, 0.8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-        }
-
-        .student-modal {
-          background: white;
-          border-radius: 12px;
-          border: 2px solid #10b981;
-          max-width: 900px;
-          width: 90%;
-          max-height: 90%;
-          overflow-y: auto;
-          box-shadow: 0 20px 50px rgba(16, 185, 129, 0.2);
-        }
-
-        .student-modal-header {
-          background: linear-gradient(135deg, #10b981, #059669);
-          color: white;
-          padding: 1.5rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .student-modal-header h2 {
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin: 0;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .modal-close-btn {
-          background: white;
-          color: #10b981;
-          border: none;
-          cursor: pointer;
-          padding: 0.5rem;
-          border-radius: 8px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-        }
-
-        .modal-close-btn:hover {
-          background: #f0fdf4;
-          transform: scale(1.05);
-        }
-
-        .student-info-section {
-          border: 2px solid #e5e7eb;
-          border-radius: 12px;
-          padding: 1.5rem;
-          transition: all 0.3s ease;
-        }
-
-        .student-info-section:hover {
-          border-color: #10b981;
-        }
-
-        .student-info-section h3 {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #10b981;
-          margin: 0 0 1rem 0;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          border-bottom: 2px solid #10b981;
-          padding-bottom: 0.5rem;
-        }
-
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem;
-          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-          transition: all 0.3s ease;
-        }
-
-        .info-item:hover {
-          background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-          border-color: #10b981;
-        }
-
-        .info-item label {
-          font-weight: 700;
-          color: #1f2937;
-          font-size: 0.875rem;
-          flex-shrink: 0;
-          margin-right: 1rem;
-        }
-
-        .info-item span {
-          font-weight: 600;
-          color: #10b981;
-          font-size: 0.875rem;
-          text-align: right;
-          word-break: break-word;
-        }
-
-        .payment-status.paid {
-          color: #10b981;
-        }
-
-        .payment-status.unpaid {
-          color: #f59e0b;
-        }
-
-        .status.active {
-          color: #10b981;
-          font-weight: 700;
-        }
-
-        .status.inactive {
-          color: #f59e0b;
-          font-weight: 700;
-        }
-
-        .modal-student-image {
-          max-width: 200px;
-          max-height: 250px;
-          border-radius: 12px;
-          border: 3px solid #10b981;
-          object-fit: cover;
-        }
-
-        /* RESPONSIVE AMÉLIORÉ */
-        @media (max-width: 768px) {
-          .header-stats span {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
+          .analysis-table {
+            min-width: 300px;
           }
 
-          .table-scroll-wrapper {
-            max-height: 400px;
+          .badge {
+            padding: 0.125rem 0.5rem;
+            font-size: 0.625rem;
           }
 
-          .tableau-etudiants {
-            min-width: 800px;
+          .chart-card {
+            padding: 1rem;
           }
 
-          .simple-stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          .chart-card h3 {
+            font-size: 1rem;
           }
-        }
-
-        @media (max-width: 480px) {
-          .table-scroll-wrapper {
-            max-height: 300px;
-          }
-
-          .tableau-etudiants th,
-          .tableau-etudiants td {
-            padding: 0.5rem;
-            font-size: 0.75rem;
-          }
-        }
-
-        /* SCROLL GÉNÉRAL POUR TOUTES LES TABLES */
-        .table-container {
-          overflow-x: auto;
-          scrollbar-width: thin;
-          scrollbar-color: #10b981 #f3f4f6;
-        }
-
-        .table-container::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-
-        .table-container::-webkit-scrollbar-track {
-          background: #f3f4f6;
-          border-radius: 4px;
-        }
-
-        .table-container::-webkit-scrollbar-thumb {
-          background: linear-gradient(135deg, #10b981, #059669);
-          border-radius: 4px;
-        }
-
-        .table-container::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(135deg, #059669, #047857);
-        }
-
-        /* AUTRES STYLES INCHANGÉS */
-        .stats-section {
-          margin-bottom: 3rem;
-        }
-
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 2rem;
-        }
-
-        .stat-card {
-          background: white;
-          padding: 2rem;
-          border-radius: 12px;
-          border: 2px solid #e5e7eb;
-          text-align: center;
-          transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .stat-icon {
-          width: 4rem;
-          height: 4rem;
-          margin: 0 auto 1rem auto;
-          background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-          color: white;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .stat-card.green .stat-icon {
-          background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .stat-card.purple .stat-icon {
-          background: linear-gradient(135deg, #6b7280, #4b5563);
-        }
-
-        .stat-card.orange .stat-icon {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .tabs-navigation {
-          display: none;
-        }
-
-        /* AUTRES GRILLES INCHANGÉES */
-        .professors-grid,
-        .professeurs-grid,
-        .cours-professeurs-grid,
-        .formation-types-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-          gap: 2rem;
-          padding: 1.5rem;
-        }
-
-        .niveau-name,
-        .specialite-name,
-        .annee-name {
-          font-weight: 700;
-          color: #1f2937;
-          font-size: 1rem;
-        }
-
-        .price-value {
-          font-weight: 700;
-          color: #10b981;
-          font-size: 1.1rem;
         }
       `}</style>
     </div>

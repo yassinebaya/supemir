@@ -1,0 +1,89 @@
+/* Styles pour le système Partner */
+.type-badge {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.type-badge.partner {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+}
+
+.type-badge.normal {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
+  border: 1px solid #ce93d8;
+}
+
+.type-badge-card {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.type-badge-card.partner {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  border: 1px solid #4caf50;
+}
+
+.type-badge-card.normal {
+  background-color: #f0f0f0;
+  color: #424242;
+  border: 1px solid #bdbdbd;
+}
+
+.type-colonne {
+  text-align: center;
+  padding: 8px;
+  white-space: nowrap;
+}
+
+/* Section Partner dans les formulaires */
+.partner-section {
+  border: 2px solid #e3f2fd;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  background-color: #fafafe;
+}
+
+.partner-section h4 {
+  color: #1976d2;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-group.partner {
+  background-color: #fff;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.checkbox-label.partner {
+  font-weight: 600;
+  color: #1976d2;
+}
+
+/* Prix Partner dans les détails */
+.prix-partner {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}

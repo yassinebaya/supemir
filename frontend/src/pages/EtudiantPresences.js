@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, CheckCircle, XCircle, BookOpen, MessageCircle, Search, X, Filter, Users, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, BookOpen, MessageCircle, Search, X, Filter, Users, Clock, AlertCircle } from 'lucide-react';
 import Sidebar from '../components/sidebaretudiant';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ const handleLogout = () => {
 const EtudiantPresencesAbsences = () => {
   const [presences, setPresences] = useState([]);
   const [absences, setAbsences] = useState([]);
+  const [retards, setRetards] = useState([]); // 🆕
   const [activeTab, setActiveTab] = useState('presences'); // 'presences' ou 'absences'
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,22 +32,24 @@ const EtudiantPresencesAbsences = () => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
-        
         // Récupérer les présences
         const presencesRes = await fetch('http://195.179.229.230:5000/api/etudiant/presences', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const presencesData = await presencesRes.json();
         setPresences(presencesData);
-
         // Récupérer les absences
         const absencesRes = await fetch('http://195.179.229.230:5000/api/etudiant/absences', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const absencesData = await absencesRes.json();
         setAbsences(absencesData);
-
-        // Initialiser les données filtrées avec les présences par défaut
+        // 🆕 Récupérer les retards
+        const retardsRes = await fetch('http://195.179.229.230:5000/api/etudiant/retards', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const retardsData = await retardsRes.json();
+        setRetards(retardsData);
         setFilteredData(presencesData);
       } catch (err) {
         console.error('Erreur chargement données:', err);
@@ -54,13 +57,12 @@ const EtudiantPresencesAbsences = () => {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
   // Effet pour filtrer les données selon l'onglet actif et les critères de recherche
   useEffect(() => {
-    const currentData = activeTab === 'presences' ? presences : absences;
+    const currentData = activeTab === 'presences' ? presences : activeTab === 'retards' ? retards : absences;
     let filtered = currentData;
 
     // Filtre par texte (cours ou remarque)
@@ -117,7 +119,7 @@ const EtudiantPresencesAbsences = () => {
     }
 
     setFilteredData(filtered);
-  }, [searchTerm, dateFilter, dateRange, presences, absences, activeTab]);
+  }, [searchTerm, dateFilter, dateRange, presences, retards, absences, activeTab]);
 
   // Gestion du changement d'onglet
   const handleTabChange = (tab) => {
@@ -153,7 +155,7 @@ const EtudiantPresencesAbsences = () => {
   };
 
   const hasActiveFilters = searchTerm || dateFilter || dateRange.start || dateRange.end;
-  const currentData = activeTab === 'presences' ? presences : absences;
+  const currentData = activeTab === 'presences' ? presences : activeTab === 'retards' ? retards : absences;
 
   if (loading) {
     return (
@@ -180,6 +182,10 @@ const EtudiantPresencesAbsences = () => {
               <span style={styles.statLabel}>Présences</span>
             </div>
             <div style={styles.statItem}>
+              <span style={styles.statNumber}>{retards.length}</span>
+              <span style={styles.statLabel}>Retards</span>
+            </div>
+            <div style={styles.statItem}>
               <span style={styles.statNumber}>{absences.length}</span>
               <span style={styles.statLabel}>Absences</span>
             </div>
@@ -203,6 +209,16 @@ const EtudiantPresencesAbsences = () => {
           >
             <CheckCircle size={20} />
             <span>Présences ({presences.length})</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('retards')}
+            style={{
+              ...styles.tabButton,
+              ...(activeTab === 'retards' ? styles.activeTab : styles.inactiveTab)
+            }}
+          >
+            <AlertCircle size={20} />
+            <span>Retards ({retards.length})</span>
           </button>
           <button
             onClick={() => handleTabChange('absences')}
@@ -317,23 +333,33 @@ const EtudiantPresencesAbsences = () => {
           <div style={styles.emptyState}>
             {activeTab === 'presences' ? (
               <CheckCircle size={64} color="#d1d5db" />
+            ) : activeTab === 'retards' ? (
+              <AlertCircle size={64} color="#d1d5db" />
             ) : (
               <XCircle size={64} color="#d1d5db" />
             )}
             <h3 style={styles.emptyTitle}>
               {hasActiveFilters ? 'Aucun résultat trouvé' : 
-                `Aucune ${activeTab === 'presences' ? 'présence' : 'absence'} enregistrée`
+                `Aucun${activeTab === 'presences' ? 'e présence' : 
+                        activeTab === 'retards' ? ' retard' : 
+                        'e absence'} enregistré${activeTab === 'retards' ? '' : 'e'}`
               }
             </h3>
             <p style={styles.emptyText}>
               {hasActiveFilters 
-                ? `Aucune ${activeTab === 'presences' ? 'présence' : 'absence'} ne correspond aux critères de recherche. Essayez de modifier vos filtres.`
-                : `Vos ${activeTab === 'presences' ? 'présences' : 'absences'} aux séances apparaîtront ici une fois enregistrées.`
+                ? `Aucun${activeTab === 'presences' ? 'e présence' : 
+                          activeTab === 'retards' ? ' retard' : 
+                          'e absence'} ne correspond aux critères de recherche. Essayez de modifier vos filtres.`
+                : `Vos ${activeTab === 'presences' ? 'présences' : 
+                         activeTab === 'retards' ? 'retards' : 
+                         'absences'} aux séances apparaîtront ici une fois enregistrées.`
               }
             </p>
             {hasActiveFilters && (
               <button onClick={clearAllFilters} style={styles.clearSearchButton}>
-                Afficher toutes les {activeTab === 'presences' ? 'présences' : 'absences'}
+                Afficher tous les {activeTab === 'presences' ? 'présences' : 
+                                  activeTab === 'retards' ? 'retards' : 
+                                  'absences'}
               </button>
             )}
           </div>
@@ -346,14 +372,26 @@ const EtudiantPresencesAbsences = () => {
                     <BookOpen size={20} color="#4f46e5" />
                     <span style={styles.courseName}>{item.cours}</span>
                   </div>
-                  <div style={activeTab === 'presences' ? styles.presentBadge : styles.absentBadge}>
+                  <div style={
+                    activeTab === 'presences' ? styles.presentBadge : 
+                    activeTab === 'retards' ? styles.retardBadge : 
+                    styles.absentBadge
+                  }>
                     {activeTab === 'presences' ? (
                       <CheckCircle size={16} color="#10b981" />
+                    ) : activeTab === 'retards' ? (
+                      <AlertCircle size={16} color="#d97706" />
                     ) : (
                       <XCircle size={16} color="#ef4444" />
                     )}
-                    <span style={styles.statusText}>
-                      {activeTab === 'presences' ? 'Présent' : 'Absent'}
+                    <span style={{
+                      ...styles.statusText,
+                      color: activeTab === 'presences' ? '#065f46' : 
+                             activeTab === 'retards' ? '#92400e' : '#991b1b'
+                    }}>
+                      {activeTab === 'presences' ? 'Présent' : 
+                       activeTab === 'retards' ? `En retard (${item.retardMinutes || 0}min)` : 
+                       'Absent'}
                     </span>
                   </div>
                 </div>
@@ -817,6 +855,17 @@ const styles = {
     backgroundColor: '#fecaca',
     borderRadius: '0.5rem',
     border: '1px solid #fca5a5',
+    flexShrink: 0,
+  },
+
+  retardBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.375rem 0.75rem',
+    backgroundColor: '#fef3c7',
+    borderRadius: '0.5rem',
+    border: '1px solid #fcd34d',
     flexShrink: 0,
   },
   
