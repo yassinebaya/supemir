@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import Sidebaretudiant from '../components/SidebarProf';
+
 import { 
   Calendar, 
   ChevronLeft, 
@@ -18,6 +20,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+
+
+ const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  };
 const SeancesProfesseur = () => {
   const [seances, setSeances] = useState([]);
   const [professeurInfo, setProfesseurInfo] = useState(null);
@@ -669,14 +677,12 @@ const SeancesProfesseur = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-  };
+ 
 
   if (loading) {
     return (
       <div style={styles.container}>
+        
         <div style={styles.content}>
           <div style={styles.loading}>
             <div>Chargement de votre emploi du temps...</div>
@@ -691,6 +697,8 @@ const SeancesProfesseur = () => {
 
   return (
     <div style={styles.container}>
+            <Sidebaretudiant onLogout={handleLogout} />
+
       <div style={styles.content}>
         {/* Header */}
         <div style={styles.header}>

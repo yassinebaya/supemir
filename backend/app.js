@@ -507,12 +507,1360 @@ app.post('/api/admin/logout', (req, res) => {
 });
 
 
-
-app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
+app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
-      actif, commercial, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
+      actif, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
+      filiere, option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
+      mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
+      premiereAnneeInscription, sourceInscription, typePaiement, prixTotal,
+      pourcentageBourse, situation, nouvelleInscription, paye, handicape,
+      resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
+      typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
+      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
+      modePaiement,
+      
+      // NOUVEAUX CHAMPS
+      telephoneResponsable,
+      codeBaccalaureat,
+      
+      // NOUVEAUX CHAMPS PARTNER
+      isPartner,
+      prixTotalPartner,
+      
+      // COMMENTAIRES POUR LES DOCUMENTS
+      commentaireCin,
+      commentaireBacCommentaire,
+      commentaireReleveNoteBac,
+      commentaireDiplomeCommentaire,
+      commentaireAttestationReussiteCommentaire,
+      commentaireReleveNotesFormationCommentaire,
+      commentairePasseport,
+      commentaireBacOuAttestationBacCommentaire,
+      commentaireAuthentificationBac,
+      commentaireAuthenticationDiplome,
+      commentaireEngagementCommentaire
+    } = req.body;
+
+    // 1. RECHERCHER L'ÉTUDIANT EXISTANT (vérification d'autorisation)
+    const etudiantExistant = await Etudiant.findOne({ 
+      _id: req.params.id, 
+      commercial: req.commercialId 
+    });
+    
+    if (!etudiantExistant) {
+      return res.status(404).json({ 
+        message: 'Étudiant non trouvé ou vous n\'êtes pas autorisé à le modifier' 
+      });
+    }
+
+    console.log(`📋 Étudiant trouvé: ${etudiantExistant.prenom} ${etudiantExistant.nomDeFamille}`);
+    console.log(`📋 Données reçues - Niveau: "${niveau}", Filière: "${filiere}"`);
+    console.log(`📋 Spécialité reçue: "${specialiteIngenieur}", Option reçue: "${optionIngenieur}"`);
+
+    // Validation du mode de paiement
+    if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
+      return res.status(400).json({ 
+        message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
+      });
+    }
+
+    // NOUVEAU: Validation des champs Partner
+    if (isPartner !== undefined) {
+      const isPartnerBool = isPartner === 'true' || isPartner === true;
+      if (isPartnerBool && prixTotalPartner !== undefined) {
+        if (!prixTotalPartner || parseFloat(prixTotalPartner) <= 0) {
+          return res.status(400).json({ 
+            message: 'Le prix total Partner est obligatoire et doit être supérieur à 0 pour les étudiants partenaires' 
+          });
+        }
+      }
+    }
+
+    // 2. DÉTECTER SI C'EST UNE NOUVELLE ANNÉE SCOLAIRE
+    const estNouvelleAnneeScolaire = anneeScolaire && 
+                                    anneeScolaire.trim() !== '' && 
+                                    anneeScolaire !== etudiantExistant.anneeScolaire;
+
+    if (estNouvelleAnneeScolaire) {
+      console.log(`🆕 NOUVELLE ANNÉE SCOLAIRE DÉTECTÉE: ${etudiantExistant.anneeScolaire} → ${anneeScolaire}`);
+      
+      // DÉTERMINATION AUTOMATIQUE DU TYPE DE FORMATION
+      let typeFormationFinal;
+      if (filiere) {
+        const mappingFiliere = {
+          'CYCLE_INGENIEUR': 'CYCLE_INGENIEUR',
+          'MASI': 'MASI',
+          'IRM': 'IRM',
+          'LICENCE_PRO': 'LICENCE_PRO',
+          'MASTER_PRO': 'MASTER_PRO'
+        };
+        typeFormationFinal = mappingFiliere[filiere];
+      } else {
+        typeFormationFinal = typeFormation || etudiantExistant.typeFormation;
+      }
+
+      // AUTO-ASSIGNATION DU NIVEAU
+      let niveauFinal = parseInt(niveau) || null;
+      
+      // Auto-assignation du niveau selon le type de formation
+      if (typeFormationFinal === 'LICENCE_PRO') {
+        niveauFinal = 3; // Licence Pro = toujours niveau 3
+      } else if (typeFormationFinal === 'MASTER_PRO') {
+        niveauFinal = 4; // Master Pro = toujours niveau 4
+      }
+
+      // VALIDATION SELON LE TYPE DE FORMATION
+      
+      if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+        // Validation pour formation d'ingénieur
+        if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
+          return res.status(400).json({ 
+            message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
+          });
+        }
+
+        let cycleCalcule = cycle;
+        if (niveauFinal >= 1 && niveauFinal <= 2) {
+          cycleCalcule = 'Classes Préparatoires Intégrées';
+        } else if (niveauFinal >= 3 && niveauFinal <= 5) {
+          cycleCalcule = 'Cycle Ingénieur';
+        }
+
+        if (niveauFinal >= 1 && niveauFinal <= 2) {
+          if (specialiteIngenieur || optionIngenieur) {
+            return res.status(400).json({ 
+              message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
+            });
+          }
+        }
+
+        if (niveauFinal >= 3 && niveauFinal <= 5) {
+          if (!specialiteIngenieur) {
+            return res.status(400).json({ 
+              message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
+            });
+          }
+          if (niveauFinal === 5 && !optionIngenieur) {
+            return res.status(400).json({ 
+              message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
+            });
+          }
+        }
+
+        if (specialiteIngenieur && optionIngenieur) {
+          const STRUCTURE_OPTIONS_INGENIEUR = {
+            'Génie Informatique': [
+              'Sécurité & Mobilité Informatique',
+              'IA & Science des Données',
+              'Réseaux & Cloud Computing'
+            ],
+            'Génie Mécatronique': [
+              'Génie Mécanique',
+              'Génie Industriel',
+              'Automatisation'
+            ],
+            'Génie Civil': [
+              'Structures & Ouvrages d\'art',
+              'Bâtiment & Efficacité Énergétique',
+              'Géotechnique & Infrastructures'
+            ]
+          };
+
+          if (!STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur] || 
+              !STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur].includes(optionIngenieur)) {
+            return res.status(400).json({ 
+              message: `L'option "${optionIngenieur}" n'est pas disponible pour la spécialité "${specialiteIngenieur}"` 
+            });
+          }
+        }
+
+        if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
+          return res.status(400).json({ 
+            message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
+          });
+        }
+
+      } else if (typeFormationFinal === 'LICENCE_PRO') {
+        // VALIDATION POUR LICENCE PRO (NIVEAU AUTO-ASSIGNÉ À 3)
+        
+        if (!specialiteLicencePro) {
+          return res.status(400).json({ 
+            message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
+          });
+        }
+
+        if (optionLicencePro) {
+          const OPTIONS_LICENCE_PRO = {
+            'Développement Informatique Full Stack': [
+              'Développement Mobile',
+              'Intelligence Artificielle et Data Analytics',
+              'Développement JAVA JEE',
+              'Développement Gaming et VR'
+            ],
+            'Réseaux et Cybersécurité': [
+              'Administration des Systèmes et Cloud Computing'
+            ]
+          };
+
+          const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteLicencePro];
+          if (!optionsDisponibles || !optionsDisponibles.includes(optionLicencePro)) {
+            return res.status(400).json({ 
+              message: `L'option "${optionLicencePro}" n'est pas disponible pour la spécialité "${specialiteLicencePro}"` 
+            });
+          }
+        }
+
+        const specialitesAvecOptions = [
+          'Développement Informatique Full Stack',
+          'Réseaux et Cybersécurité'
+        ];
+
+        if (optionLicencePro && !specialitesAvecOptions.includes(specialiteLicencePro)) {
+          return res.status(400).json({ 
+            message: `La spécialité "${specialiteLicencePro}" ne propose pas d'options` 
+          });
+        }
+
+        if (cycle || specialiteIngenieur || optionIngenieur || specialiteMasterPro || optionMasterPro) {
+          return res.status(400).json({ 
+            message: 'Les champs Cycle Ingénieur et Master Pro ne sont pas disponibles pour LICENCE_PRO' 
+          });
+        }
+
+      } else if (typeFormationFinal === 'MASTER_PRO') {
+        // VALIDATION POUR MASTER PRO (NIVEAU AUTO-ASSIGNÉ À 4)
+        
+        if (!specialiteMasterPro) {
+          return res.status(400).json({ 
+            message: 'Une spécialité est obligatoire pour Master Professionnel' 
+          });
+        }
+
+        if (optionMasterPro) {
+          const OPTIONS_MASTER_PRO = {
+            'Cybersécurité et Transformation Digitale': [
+              'Systèmes de communication et Data center',
+              'Management des Systèmes d\'Information'
+            ],
+            'Génie Informatique et Innovation Technologique': [
+              'Génie Logiciel',
+              'Intelligence Artificielle et Data Science'
+            ]
+          };
+
+          const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteMasterPro];
+          if (!optionsDisponibles || !optionsDisponibles.includes(optionMasterPro)) {
+            return res.status(400).json({ 
+              message: `L'option "${optionMasterPro}" n'est pas disponible pour la spécialité "${specialiteMasterPro}"` 
+            });
+          }
+        }
+
+        const specialitesAvecOptions = [
+          'Cybersécurité et Transformation Digitale',
+          'Génie Informatique et Innovation Technologique'
+        ];
+
+        if (optionMasterPro && !specialitesAvecOptions.includes(specialiteMasterPro)) {
+          return res.status(400).json({ 
+            message: `La spécialité "${specialiteMasterPro}" ne propose pas d'options` 
+          });
+        }
+
+        if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro) {
+          return res.status(400).json({ 
+            message: 'Les champs Cycle Ingénieur et Licence Pro ne sont pas disponibles pour MASTER_PRO' 
+          });
+        }
+
+      } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+        // VALIDATION POUR LES ANCIENNES FORMATIONS (MASI, IRM)
+        
+        if (!niveauFinal) {
+          return res.status(400).json({ 
+            message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
+          });
+        }
+        
+        if (niveauFinal >= 3 && !specialite) {
+          return res.status(400).json({ 
+            message: `Une spécialité est obligatoire à partir de la 3ème année pour ${typeFormationFinal}` 
+          });
+        }
+
+        if (niveauFinal === 5 && !option) {
+          return res.status(400).json({ 
+            message: `Une option est obligatoire en 5ème année pour ${typeFormationFinal}` 
+          });
+        }
+
+        if (specialite) {
+          const STRUCTURE_FORMATION = {
+            MASI: {
+              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
+              4: ['Management des affaires et systèmes d\'information'],
+              5: ['Management des affaires et systèmes d\'information']
+            },
+            IRM: {
+              3: ['Développement informatique', 'Réseaux et cybersécurité'],
+              4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
+              5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
+            }
+          };
+
+          const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
+          if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialite)) {
+            return res.status(400).json({ 
+              message: `La spécialité "${specialite}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}` 
+            });
+          }
+        }
+
+        if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
+          return res.status(400).json({ 
+            message: 'Les champs Cycle Ingénieur, Licence Pro et Master Pro ne sont pas disponibles pour les formations MASI/IRM' 
+          });
+        }
+      }
+
+      // GESTION DES COURS AVEC LIMITE
+      const MAX_ETUDIANTS = 20;
+      let coursArray = [];
+
+      if (cours) {
+        const coursDemandes = Array.isArray(cours) ? cours : [cours];
+        for (let coursNom of coursDemandes) {
+          const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
+          let nomAvecSuffixe = '';
+          let coursTrouve = false;
+
+          for (let suffix of suffixes) {
+            nomAvecSuffixe = coursNom + suffix;
+
+            let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
+            if (!coursExiste) {
+              const coursOriginal = await Cours.findOne({ nom: coursNom });
+              let professeurs = [];
+              if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+                professeurs = coursOriginal.professeur;
+              } else {
+                const prof = await Professeur.findOne({ cours: coursNom });
+                if (prof) professeurs = [prof.nom];
+              }
+              const nouveauCours = new Cours({
+                nom: nomAvecSuffixe,
+                professeur: professeurs,
+                creePar: req.commercialId
+              });
+              await nouveauCours.save();
+              for (const nomProf of professeurs) {
+                await Professeur.updateOne(
+                  { nom: nomProf },
+                  { $addToSet: { cours: nomAvecSuffixe } }
+                );
+              }
+              coursExiste = nouveauCours;
+            }
+
+            const count = await Etudiant.countDocuments({ cours: nomAvecSuffixe });
+            if (count < MAX_ETUDIANTS) {
+              coursArray.push(nomAvecSuffixe);
+              coursTrouve = true;
+              break;
+            }
+          }
+
+          if (!coursTrouve) {
+            const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
+            const nomNouveau = `${coursNom}${nextSuffix}`;
+            const coursOriginal = await Cours.findOne({ nom: coursNom });
+            let professeurs = [];
+            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+              professeurs = coursOriginal.professeur;
+            } else {
+              const prof = await Professeur.findOne({ cours: coursNom });
+              if (prof) professeurs = [prof.nom];
+            }
+            const nouveauCours = new Cours({
+              nom: nomNouveau,
+              professeur: professeurs,
+              creePar: req.commercialId
+            });
+            await nouveauCours.save();
+            for (const nomProf of professeurs) {
+              await Professeur.updateOne(
+                { nom: nomProf },
+                { $addToSet: { cours: nomNouveau } }
+              );
+            }
+            coursArray.push(nomNouveau);
+          }
+        }
+      }
+
+      // TRAITEMENT DES FICHIERS
+      const getFilePath = (fileField) => {
+        return req.files && req.files[fileField] && req.files[fileField][0] 
+          ? `/uploads/${req.files[fileField][0].filename}` 
+          : '';
+      };
+
+      const getDocumentPath = (documentField) => {
+        return req.files && req.files[documentField] && req.files[documentField][0] 
+          ? `/documents/${req.files[documentField][0].filename}` 
+          : '';
+      };
+
+      const imagePath = getFilePath('image');
+      
+      // Traitement des nouveaux documents
+      const documentsData = {
+        cin: {
+          fichier: getDocumentPath('documentCin'),
+          commentaire: commentaireCin || ''
+        },
+        bacCommentaire: {
+          fichier: getDocumentPath('documentBacCommentaire'),
+          commentaire: commentaireBacCommentaire || ''
+        },
+        releveNoteBac: {
+          fichier: getDocumentPath('documentReleveNoteBac'),
+          commentaire: commentaireReleveNoteBac || ''
+        },
+        diplomeCommentaire: {
+          fichier: getDocumentPath('documentDiplomeCommentaire'),
+          commentaire: commentaireDiplomeCommentaire || ''
+        },
+        attestationReussiteCommentaire: {
+          fichier: getDocumentPath('documentAttestationReussiteCommentaire'),
+          commentaire: commentaireAttestationReussiteCommentaire || ''
+        },
+        releveNotesFormationCommentaire: {
+          fichier: getDocumentPath('documentReleveNotesFormationCommentaire'),
+          commentaire: commentaireReleveNotesFormationCommentaire || ''
+        },
+        passeport: {
+          fichier: getDocumentPath('documentPasseport'),
+          commentaire: commentairePasseport || ''
+        },
+        bacOuAttestationBacCommentaire: {
+          fichier: getDocumentPath('documentBacOuAttestationBacCommentaire'),
+          commentaire: commentaireBacOuAttestationBacCommentaire || ''
+        },
+        authentificationBac: {
+          fichier: getDocumentPath('documentAuthentificationBac'),
+          commentaire: commentaireAuthentificationBac || ''
+        },
+        authenticationDiplome: {
+          fichier: getDocumentPath('documentAuthenticationDiplome'),
+          commentaire: commentaireAuthenticationDiplome || ''
+        },
+        engagementCommentaire: {
+          fichier: getDocumentPath('documentEngagementCommentaire'),
+          commentaire: commentaireEngagementCommentaire || ''
+        }
+      };
+
+      // Fonctions utilitaires
+      const toDate = (d) => {
+        if (!d) return null;
+        const date = new Date(d);
+        return isNaN(date.getTime()) ? null : date;
+      };
+
+      const toBool = (v) => v === 'true' || v === true;
+      
+      const toNumber = (v) => {
+        if (!v || v === '') return null;
+        const n = parseFloat(v);
+        return isNaN(n) ? null : n;
+      };
+
+      const dateNaissanceFormatted = toDate(dateNaissance);
+      const dateEtReglementFormatted = toDate(dateEtReglement);
+
+      const boolFields = ['actif', 'paye', 'handicape', 'resident', 'fonctionnaire', 'mobilite', 'nouvelleInscription'];
+      boolFields.forEach(field => {
+        if (req.body[field] !== undefined) req.body[field] = toBool(req.body[field]);
+      });
+
+      const prixTotalNum = toNumber(prixTotal);
+      const prixTotalPartnerNum = isPartner ? toNumber(prixTotalPartner) || 0 : 0;
+      const pourcentageBourseNum = toNumber(pourcentageBourse);
+      const anneeBacNum = toNumber(anneeBaccalaureat);
+      const premiereInscriptionNum = toNumber(premiereAnneeInscription);
+
+      if (pourcentageBourseNum && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
+        return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
+      }
+
+      // Logique automatique pour le mode de paiement annuel
+      if (modePaiement === 'annuel' && paye === undefined) {
+        req.body.paye = true;
+      }
+
+      // CRÉER UNE COPIE POUR LA NOUVELLE ANNÉE SCOLAIRE
+      const donneesCopiees = {
+        prenom: prenom?.trim() || etudiantExistant.prenom,
+        nomDeFamille: nomDeFamille?.trim() || etudiantExistant.nomDeFamille,
+        genre: genre || etudiantExistant.genre,
+        dateNaissance: dateNaissanceFormatted || etudiantExistant.dateNaissance,
+        telephone: telephone?.trim() || etudiantExistant.telephone,
+        telephoneResponsable: telephoneResponsable?.trim() || etudiantExistant.telephoneResponsable || '',
+        email: email?.toLowerCase().trim() || etudiantExistant.email,
+        motDePasse: etudiantExistant.motDePasse, // Garder le même mot de passe
+        cin: cin?.trim() || etudiantExistant.cin || '',
+        passeport: passeport?.trim() || etudiantExistant.passeport || '',
+        codeBaccalaureat: codeBaccalaureat?.trim() || etudiantExistant.codeBaccalaureat || '',
+        documents: Object.keys(documentsData).some(key => documentsData[key].fichier || documentsData[key].commentaire) 
+          ? documentsData 
+          : etudiantExistant.documents || {},
+        lieuNaissance: lieuNaissance?.trim() || etudiantExistant.lieuNaissance || '',
+        pays: pays?.trim() || etudiantExistant.pays || '',
+        niveau: niveauFinal, // LE NIVEAU EST MAINTENANT AUTO-ASSIGNÉ
+        niveauFormation: niveauFormation?.trim() || etudiantExistant.niveauFormation || '',
+        filiere: filiere?.trim() || etudiantExistant.filiere || '',
+        typeFormation: typeFormationFinal,
+        typeDiplome: typeDiplome?.trim() || etudiantExistant.typeDiplome || '',
+        diplomeAcces: diplomeAcces?.trim() || etudiantExistant.diplomeAcces || '',
+        specialiteDiplomeAcces: specialiteDiplomeAcces?.trim() || etudiantExistant.specialiteDiplomeAcces || '',
+        mention: mention?.trim() || etudiantExistant.mention || '',
+        lieuObtentionDiplome: lieuObtentionDiplome?.trim() || etudiantExistant.lieuObtentionDiplome || '',
+        serieBaccalaureat: serieBaccalaureat?.trim() || etudiantExistant.serieBaccalaureat || '',
+        anneeBaccalaureat: anneeBacNum || etudiantExistant.anneeBaccalaureat,
+        premiereAnneeInscription: premiereInscriptionNum || etudiantExistant.premiereAnneeInscription,
+        sourceInscription: sourceInscription?.trim() || etudiantExistant.sourceInscription || '',
+        typePaiement: typePaiement?.trim() || etudiantExistant.typePaiement || '',
+        prixTotal: prixTotalNum || etudiantExistant.prixTotal,
+        pourcentageBourse: pourcentageBourseNum || etudiantExistant.pourcentageBourse,
+        situation: situation?.trim() || etudiantExistant.situation || '',
+        codeEtudiant: codeEtudiant?.trim() || etudiantExistant.codeEtudiant || '',
+        dateEtReglement: dateEtReglementFormatted || etudiantExistant.dateEtReglement,
+        cours: coursArray.length > 0 ? coursArray : etudiantExistant.cours,
+        modePaiement: modePaiement || etudiantExistant.modePaiement || 'semestriel',
+        
+        // Image
+        image: imagePath || etudiantExistant.image,
+        
+        // Champs booléens
+        actif: req.body.actif !== undefined ? req.body.actif : etudiantExistant.actif,
+        paye: req.body.paye !== undefined ? req.body.paye : etudiantExistant.paye,
+        handicape: req.body.handicape !== undefined ? req.body.handicape : etudiantExistant.handicape,
+        resident: req.body.resident !== undefined ? req.body.resident : etudiantExistant.resident,
+        fonctionnaire: req.body.fonctionnaire !== undefined ? req.body.fonctionnaire : etudiantExistant.fonctionnaire,
+        mobilite: req.body.mobilite !== undefined ? req.body.mobilite : etudiantExistant.mobilite,
+        nouvelleInscription: req.body.nouvelleInscription !== undefined ? req.body.nouvelleInscription : etudiantExistant.nouvelleInscription,
+        
+        // IMPORTANT: Garder le commercial actuel pour nouvelle année (pas reset à null comme admin)
+        commercial: req.commercialId,
+        
+        anneeScolaire: anneeScolaire, // NOUVELLE ANNÉE SCOLAIRE
+        
+        // Commercial créateur (équivalent de creeParAdmin pour commercial)
+        creeParCommercial: etudiantExistant.commercial || req.commercialId,
+        creeParAdmin: null,
+
+        // NOUVEAUX CHAMPS PARTNER
+        isPartner: isPartner !== undefined ? toBool(isPartner) : etudiantExistant.isPartner || false,
+        prixTotalPartner: prixTotalPartnerNum || etudiantExistant.prixTotalPartner || 0
+      };
+
+      // ASSIGNATION DES CHAMPS SPÉCIFIQUES SELON LE TYPE DE FORMATION
+      
+      if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+        // Formation d'ingénieur
+        const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
+        donneesCopiees.cycle = cycleCalcule;
+        donneesCopiees.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
+        donneesCopiees.optionIngenieur = optionIngenieur?.trim() || undefined;
+        donneesCopiees.specialite = '';
+        donneesCopiees.option = '';
+        donneesCopiees.specialiteLicencePro = undefined;
+        donneesCopiees.optionLicencePro = undefined;
+        donneesCopiees.specialiteMasterPro = undefined;
+        donneesCopiees.optionMasterPro = undefined;
+        
+      } else if (typeFormationFinal === 'LICENCE_PRO') {
+        // Licence Professionnelle - NIVEAU AUTO-ASSIGNÉ À 3
+        donneesCopiees.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
+        donneesCopiees.optionLicencePro = optionLicencePro?.trim() || undefined;
+        donneesCopiees.cycle = undefined;
+        donneesCopiees.specialiteIngenieur = undefined;
+        donneesCopiees.optionIngenieur = undefined;
+        donneesCopiees.specialiteMasterPro = undefined;
+        donneesCopiees.optionMasterPro = undefined;
+        donneesCopiees.specialite = '';
+        donneesCopiees.option = '';
+        
+      } else if (typeFormationFinal === 'MASTER_PRO') {
+        // Master Professionnel - NIVEAU AUTO-ASSIGNÉ À 4
+        donneesCopiees.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
+        donneesCopiees.optionMasterPro = optionMasterPro?.trim() || undefined;
+        donneesCopiees.cycle = undefined;
+        donneesCopiees.specialiteIngenieur = undefined;
+        donneesCopiees.optionIngenieur = undefined;
+        donneesCopiees.specialiteLicencePro = undefined;
+        donneesCopiees.optionLicencePro = undefined;
+        donneesCopiees.specialite = '';
+        donneesCopiees.option = '';
+        
+      } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+        // Anciennes formations
+        donneesCopiees.specialite = specialite?.trim() || '';
+        donneesCopiees.option = option?.trim() || '';
+        donneesCopiees.cycle = undefined;
+        donneesCopiees.specialiteIngenieur = undefined;
+        donneesCopiees.optionIngenieur = undefined;
+        donneesCopiees.specialiteLicencePro = undefined;
+        donneesCopiees.optionLicencePro = undefined;
+        donneesCopiees.specialiteMasterPro = undefined;
+        donneesCopiees.optionMasterPro = undefined;
+      }
+
+      // Validation supplémentaire de l'email si modifié
+      if (email && email !== etudiantExistant.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return res.status(400).json({ message: 'Format d\'email invalide' });
+        }
+
+        // Vérification de l'unicité de l'email (exclure l'étudiant existant)
+        const emailExiste = await Etudiant.findOne({ 
+          email: email.toLowerCase().trim(),
+          _id: { $ne: req.params.id }
+        });
+        if (emailExiste) {
+          return res.status(400).json({ message: 'Email déjà utilisé par un autre étudiant' });
+        }
+      }
+
+      // Validation du mot de passe si fourni
+      if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
+        if (motDePasse.length < 6) {
+          return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+        }
+        const hashedPassword = await bcrypt.hash(motDePasse.trim(), 10);
+        donneesCopiees.motDePasse = hashedPassword;
+      }
+
+      // CRÉER LE NOUVEAU DOCUMENT POUR LA NOUVELLE ANNÉE
+      // 1 Modifier temporairement l'email de l'étudiant existant
+      await Etudiant.findByIdAndUpdate(etudiantExistant._id, {
+        email: `${etudiantExistant.email}_archived_${Date.now()}`,
+        actif: false, // Marquer comme inactif
+        archivedAt: new Date()
+      });
+
+      // 2 Créer le nouveau document avec l'email original
+      const nouvelEtudiant = new Etudiant({
+        ...donneesCopiees,
+        createdAt: new Date(),
+        modifiePar: req.commercialId,
+        versionOriginalId: etudiantExistant._id
+      });
+
+      const etudiantSauvegarde = await nouvelEtudiant.save();
+
+      console.log(`✅ Nouvelle année scolaire créée - ID: ${etudiantSauvegarde._id}`);
+      console.log(`📋 Document original conservé - ID: ${etudiantExistant._id}`);
+      console.log(`💼 Commercial maintenu: ${req.commercialId}`);
+
+      // RETOURNER SEULEMENT LE NOUVEAU DOCUMENT
+      const etudiantResponse = etudiantSauvegarde.toObject();
+      delete etudiantResponse.motDePasse;
+
+      return res.status(201).json({
+        message: `Nouvel étudiant créé pour l'année scolaire ${anneeScolaire}`,
+        data: etudiantResponse,
+        originalId: etudiantExistant._id,
+        newId: etudiantSauvegarde._id,
+        isNewSchoolYear: true
+      });
+    }
+
+    // 3. MODIFICATION NORMALE (PAS DE NOUVELLE ANNÉE SCOLAIRE)
+    console.log(`✏️ Modification normale de l'étudiant existant`);
+    
+    // DÉTERMINATION CORRIGÉE DU TYPE DE FORMATION
+    const filiereFinale = filiere !== undefined ? filiere : etudiantExistant.filiere;
+
+    // CORRECTION PRINCIPALE: Toujours dériver le type de formation de la filière finale
+    let typeFormationFinal;
+
+    if (filiereFinale) {
+      const mappingFiliere = {
+        'CYCLE_INGENIEUR': 'CYCLE_INGENIEUR',
+        'MASI': 'MASI',
+        'IRM': 'IRM',
+        'LICENCE_PRO': 'LICENCE_PRO',
+        'MASTER_PRO': 'MASTER_PRO'
+      };
+      typeFormationFinal = mappingFiliere[filiereFinale];
+    } else {
+      // Si pas de filière, utiliser le typeFormation fourni ou existant
+      typeFormationFinal = typeFormation !== undefined ? typeFormation : etudiantExistant.typeFormation;
+    }
+
+    console.log(`🔍 Formation déterminée: Filière="${filiereFinale}" -> Type="${typeFormationFinal}"`);
+    console.log(`📋 Anciennes données: Filière="${etudiantExistant.filiere}", Type="${etudiantExistant.typeFormation}"`);
+
+    // DÉTERMINATION DU NIVEAU
+    let niveauFinal;
+    if (niveau !== undefined && niveau !== null && niveau !== '') {
+      niveauFinal = parseInt(niveau);
+      console.log(`✅ Nouveau niveau explicite reçu: "${niveau}" -> ${niveauFinal}`);
+    } else {
+      niveauFinal = etudiantExistant.niveau;
+      console.log(`✅ Niveau gardé de l'existant: ${niveauFinal}`);
+    }
+
+    // Auto-assignation du niveau pour LP et MP seulement
+    if (typeFormationFinal === 'LICENCE_PRO') {
+      niveauFinal = 3;
+      console.log(`🔒 Niveau forcé à 3 pour Licence Pro`);
+    } else if (typeFormationFinal === 'MASTER_PRO') {
+      niveauFinal = 4;
+      console.log(`🔒 Niveau forcé à 4 pour Master Pro`);
+    }
+
+    console.log(`✅ Niveau final déterminé: ${niveauFinal} (Type: ${typeFormationFinal})`);
+
+    // VALIDATION CORRIGÉE SELON LE TYPE DE FORMATION
+    
+    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+      console.log(`🔍 Validation CYCLE_INGENIEUR - Niveau: ${niveauFinal}`);
+      
+      // Validation du niveau
+      if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
+        return res.status(400).json({ 
+          message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
+        });
+      }
+
+      // Validation pour Classes Préparatoires (années 1-2)
+      if (niveauFinal >= 1 && niveauFinal <= 2) {
+        if (specialiteIngenieur || optionIngenieur) {
+          return res.status(400).json({ 
+            message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
+          });
+        }
+      }
+
+      // Validation pour Cycle Ingénieur (années 3-5)
+      if (niveauFinal >= 3 && niveauFinal <= 5) {
+        // CORRECTION : Déterminer quelle spécialité utiliser
+        const specialiteAUtiliser = specialiteIngenieur !== undefined 
+          ? specialiteIngenieur 
+          : etudiantExistant.specialiteIngenieur;
+        
+        console.log(`🔍 Spécialité à utiliser: "${specialiteAUtiliser}"`);
+        
+        if (!specialiteAUtiliser) {
+          return res.status(400).json({ 
+            message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
+          });
+        }
+        
+        // VALIDATION DE L'OPTION POUR LA 5ÈME ANNÉE SEULEMENT
+        if (niveauFinal === 5) {
+          const optionAUtiliser = optionIngenieur !== undefined 
+            ? optionIngenieur 
+            : etudiantExistant.optionIngenieur;
+          
+          console.log(`🔍 Option à utiliser (année 5): "${optionAUtiliser}"`);
+          
+          if (!optionAUtiliser) {
+            return res.status(400).json({ 
+              message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
+            });
+          }
+          
+          // VALIDATION DE LA COMPATIBILITÉ SPÉCIALITÉ-OPTION
+          const STRUCTURE_OPTIONS_INGENIEUR = {
+            'Génie Informatique': [
+              'Sécurité & Mobilité Informatique',
+              'IA & Science des Données',
+              'Réseaux & Cloud Computing'
+            ],
+            'Génie Mécatronique': [
+              'Génie Mécanique',
+              'Génie Industriel',
+              'Automatisation'
+            ],
+            'Génie Civil': [
+              'Structures & Ouvrages d\'art',
+              'Bâtiment & Efficacité Énergétique',
+              'Géotechnique & Infrastructures'
+            ]
+          };
+
+          const optionsDisponibles = STRUCTURE_OPTIONS_INGENIEUR[specialiteAUtiliser];
+          console.log(`🔍 Options disponibles pour "${specialiteAUtiliser}":`, optionsDisponibles);
+          
+          if (!optionsDisponibles || !optionsDisponibles.includes(optionAUtiliser)) {
+            return res.status(400).json({ 
+              message: `L'option "${optionAUtiliser}" n'est pas disponible pour la spécialité "${specialiteAUtiliser}". Options disponibles: ${optionsDisponibles ? optionsDisponibles.join(', ') : 'aucune'}` 
+            });
+          }
+        }
+      }
+
+      // Vérifier qu'on n'a pas de champs LP/MP
+      if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
+        return res.status(400).json({ 
+          message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
+        });
+      }
+
+    } else if (typeFormationFinal === 'LICENCE_PRO') {
+      console.log(`🔍 Validation LICENCE_PRO`);
+      
+      const specialiteSource = specialiteLicencePro !== undefined 
+        ? specialiteLicencePro 
+        : etudiantExistant.specialiteLicencePro;
+      if (!specialiteSource) {
+        return res.status(400).json({ 
+          message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
+        });
+      }
+
+      const optionSource = optionLicencePro !== undefined 
+        ? optionLicencePro 
+        : etudiantExistant.optionLicencePro;
+      if (optionSource) {
+        const OPTIONS_LICENCE_PRO = {
+          'Développement Informatique Full Stack': [
+            'Développement Mobile',
+            'Intelligence Artificielle et Data Analytics',
+            'Développement JAVA JEE',
+            'Développement Gaming et VR'
+          ],
+          'Réseaux et Cybersécurité': [
+            'Administration des Systèmes et Cloud Computing'
+          ]
+        };
+
+        const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteSource];
+        if (!optionsDisponibles || !optionsDisponibles.includes(optionSource)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionSource}" n'est pas disponible pour cette spécialité` 
+          });
+        }
+      }
+
+    } else if (typeFormationFinal === 'MASTER_PRO') {
+      console.log(`🔍 Validation MASTER_PRO`);
+      
+      const specialiteSource = specialiteMasterPro !== undefined 
+        ? specialiteMasterPro 
+        : etudiantExistant.specialiteMasterPro;
+      if (!specialiteSource) {
+        return res.status(400).json({ 
+          message: 'Une spécialité est obligatoire pour Master Professionnel' 
+        });
+      }
+
+      const optionSource = optionMasterPro !== undefined 
+        ? optionMasterPro 
+        : etudiantExistant.optionMasterPro;
+      if (optionSource) {
+        const OPTIONS_MASTER_PRO = {
+          'Cybersécurité et Transformation Digitale': [
+            'Systèmes de communication et Data center',
+            'Management des Systèmes d\'Information'
+          ],
+          'Génie Informatique et Innovation Technologique': [
+            'Génie Logiciel',
+            'Intelligence Artificielle et Data Science'
+          ]
+        };
+
+        const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteSource];
+        if (!optionsDisponibles || !optionsDisponibles.includes(optionSource)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionSource}" n'est pas disponible pour cette spécialité` 
+          });
+        }
+      }
+
+    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+      console.log(`🔍 Validation ${typeFormationFinal} - Niveau: ${niveauFinal}`);
+      
+      if (!niveauFinal) {
+        return res.status(400).json({ 
+          message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
+        });
+      }
+      
+      // Validation spécialité pour niveau >= 3
+      if (niveauFinal >= 3) {
+        const specialiteAUtiliser = specialite !== undefined ? specialite : etudiantExistant.specialite;
+        console.log(`🔍 Validation spécialité - Fournie: "${specialite}", Existante: "${etudiantExistant.specialite}", À utiliser: "${specialiteAUtiliser}"`);
+        
+        if (!specialiteAUtiliser || specialiteAUtiliser.trim() === '') {
+          return res.status(400).json({ 
+            message: `Une spécialité est obligatoire à partir de la 3ème année pour ${typeFormationFinal}` 
+          });
+        }
+      }
+
+      // Validation option pour niveau 5
+      if (niveauFinal === 5) {
+        const optionAUtiliser = option !== undefined ? option : etudiantExistant.option;
+        console.log(`🔍 Validation option - Fournie: "${option}", Existante: "${etudiantExistant.option}", À utiliser: "${optionAUtiliser}"`);
+        
+        if (!optionAUtiliser || optionAUtiliser.trim() === '') {
+          return res.status(400).json({ 
+            message: `Une option est obligatoire en 5ème année pour ${typeFormationFinal}` 
+          });
+        }
+      }
+
+      // Validation structure formation
+      if (specialite !== undefined || niveauFinal !== etudiantExistant.niveau) {
+        const specialiteAValider = specialite !== undefined ? specialite : etudiantExistant.specialite;
+        if (specialiteAValider && specialiteAValider.trim() !== '') {
+          const STRUCTURE_FORMATION = {
+            MASI: {
+              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
+              4: ['Management des affaires et systèmes d\'information'],
+              5: ['Management des affaires et systèmes d\'information']
+            },
+            IRM: {
+              3: ['Développement informatique', 'Réseaux et cybersécurité'],
+              4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
+              5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
+            }
+          };
+
+          const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
+          console.log(`🔍 Spécialités disponibles pour ${typeFormationFinal} niveau ${niveauFinal}:`, specialitesDisponibles);
+          
+          if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialiteAValider)) {
+            return res.status(400).json({ 
+              message: `La spécialité "${specialiteAValider}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}. Spécialités disponibles: ${specialitesDisponibles.join(', ')}` 
+            });
+          }
+        }
+      }
+    }
+
+    // GESTION DES COURS AVEC LIMITE
+    const MAX_ETUDIANTS = 20;
+    let coursArray = etudiantExistant.cours || [];
+
+    if (cours !== undefined) {
+      const coursDemandes = Array.isArray(cours) ? cours : (cours ? [cours] : []);
+      coursArray = [];
+      
+      for (let coursNom of coursDemandes) {
+        if (!coursNom || coursNom.trim() === '') continue;
+        
+        const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
+        let nomAvecSuffixe = '';
+        let coursTrouve = false;
+
+        for (let suffix of suffixes) {
+          nomAvecSuffixe = coursNom + suffix;
+
+          let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
+          if (!coursExiste) {
+            const coursOriginal = await Cours.findOne({ nom: coursNom });
+            let professeurs = [];
+            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+              professeurs = coursOriginal.professeur;
+            } else {
+              const prof = await Professeur.findOne({ cours: coursNom });
+              if (prof) professeurs = [prof.nom];
+            }
+            const nouveauCours = new Cours({
+              nom: nomAvecSuffixe,
+              professeur: professeurs,
+              creePar: req.commercialId
+            });
+            await nouveauCours.save();
+            for (const nomProf of professeurs) {
+              await Professeur.updateOne(
+                { nom: nomProf },
+                { $addToSet: { cours: nomAvecSuffixe } }
+              );
+            }
+            coursExiste = nouveauCours;
+          }
+
+          // Compter en excluant l'étudiant actuel pour éviter les faux positifs
+          const count = await Etudiant.countDocuments({ 
+            cours: nomAvecSuffixe,
+            _id: { $ne: req.params.id }
+          });
+          if (count < MAX_ETUDIANTS) {
+            coursArray.push(nomAvecSuffixe);
+            coursTrouve = true;
+            break;
+          }
+        }
+
+        if (!coursTrouve) {
+          const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
+          const nomNouveau = `${coursNom}${nextSuffix}`;
+          const coursOriginal = await Cours.findOne({ nom: coursNom });
+          let professeurs = [];
+          if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+            professeurs = coursOriginal.professeur;
+          } else {
+            const prof = await Professeur.findOne({ cours: coursNom });
+            if (prof) professeurs = [prof.nom];
+          }
+          const nouveauCours = new Cours({
+            nom: nomNouveau,
+            professeur: professeurs,
+            creePar: req.commercialId
+          });
+          await nouveauCours.save();
+          for (const nomProf of professeurs) {
+            await Professeur.updateOne(
+              { nom: nomProf },
+              { $addToSet: { cours: nomNouveau } }
+            );
+          }
+          coursArray.push(nomNouveau);
+        }
+      }
+    }
+
+    // FONCTIONS UTILITAIRES
+    const toDate = (val) => {
+      if (!val) return undefined;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? undefined : date;
+    };
+
+    const toNumber = (val) => {
+      if (val === undefined || val === '' || val === null) return undefined;
+      const n = parseFloat(val);
+      return isNaN(n) ? undefined : n;
+    };
+
+    const toBool = (val) => val === 'true' || val === true;
+
+    // VALIDATIONS DES CHAMPS OBLIGATOIRES
+    if (prenom !== undefined && !prenom.trim()) {
+      return res.status(400).json({ message: 'Le prénom est obligatoire' });
+    }
+    if (nomDeFamille !== undefined && !nomDeFamille.trim()) {
+      return res.status(400).json({ message: 'Le nom de famille est obligatoire' });
+    }
+    if (telephone !== undefined && !telephone.trim()) {
+      return res.status(400).json({ message: 'Le téléphone est obligatoire' });
+    }
+    if (email !== undefined && !email.trim()) {
+      return res.status(400).json({ message: 'L\'email est obligatoire' });
+    }
+
+    // Validation de l'email si fourni
+    if (email && email !== etudiantExistant.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: 'Format d\'email invalide' });
+      }
+
+      // Vérification de l'unicité de l'email (sauf pour l'étudiant actuel)
+      const emailExiste = await Etudiant.findOne({ 
+        email: email.toLowerCase().trim(), 
+        _id: { $ne: req.params.id } 
+      });
+      if (emailExiste) {
+        return res.status(400).json({ message: 'Email déjà utilisé par un autre étudiant' });
+      }
+    }
+
+    // Validation du code étudiant si fourni
+    if (codeEtudiant && codeEtudiant !== etudiantExistant.codeEtudiant) {
+      const codeExiste = await Etudiant.findOne({ 
+        codeEtudiant: codeEtudiant.trim(),
+        _id: { $ne: req.params.id }
+      });
+      if (codeExiste) {
+        return res.status(400).json({ message: 'Code étudiant déjà utilisé' });
+      }
+    }
+
+    // Validation du pourcentage de bourse
+    const pourcentageBourseNum = toNumber(pourcentageBourse);
+    if (pourcentageBourseNum !== undefined && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
+      return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
+    }
+
+    // TRAITEMENT DES FICHIERS UPLOADÉS
+    const getDocumentPath = (documentField) => {
+      return req.files && req.files[documentField] && req.files[documentField][0] 
+        ? `/documents/${req.files[documentField][0].filename}` 
+        : undefined;
+    };
+
+    const imagePath = req.files && req.files['image'] && req.files['image'][0] 
+      ? `/uploads/${req.files['image'][0].filename}` 
+      : undefined;
+
+    // CRÉER L'OBJET DE MODIFICATIONS
+    const modifications = {};
+
+    // Appliquer toutes les modifications reçues
+    if (prenom !== undefined) modifications.prenom = prenom.trim();
+    if (nomDeFamille !== undefined) modifications.nomDeFamille = nomDeFamille.trim();
+    if (genre !== undefined) modifications.genre = genre;
+    if (dateNaissance !== undefined) modifications.dateNaissance = toDate(dateNaissance);
+    if (telephone !== undefined) modifications.telephone = telephone.trim();
+    if (telephoneResponsable !== undefined) modifications.telephoneResponsable = telephoneResponsable?.trim() || '';
+    if (email !== undefined) modifications.email = email.toLowerCase().trim();
+    if (cours !== undefined) modifications.cours = coursArray;
+    if (actif !== undefined) modifications.actif = toBool(actif);
+    if (cin !== undefined) modifications.cin = cin.trim();
+    if (passeport !== undefined) modifications.passeport = passeport.trim();
+    if (codeBaccalaureat !== undefined) modifications.codeBaccalaureat = codeBaccalaureat?.trim() || '';
+    if (lieuNaissance !== undefined) modifications.lieuNaissance = lieuNaissance.trim();
+    if (pays !== undefined) modifications.pays = pays.trim();
+    
+    // LIGNE CRUCIALE: TOUJOURS ASSIGNER LE NIVEAU FINAL CALCULÉ
+    modifications.niveau = niveauFinal;
+    console.log(`🔥 ASSIGNATION NIVEAU DANS MODIFICATIONS: ${niveauFinal}`);
+    
+    if (niveauFormation !== undefined) modifications.niveauFormation = niveauFormation.trim();
+    if (filiere !== undefined) modifications.filiere = filiere.trim();
+    modifications.typeFormation = typeFormationFinal;
+    if (typeDiplome !== undefined) modifications.typeDiplome = typeDiplome.trim();
+    if (diplomeAcces !== undefined) modifications.diplomeAcces = diplomeAcces.trim();
+    if (specialiteDiplomeAcces !== undefined) modifications.specialiteDiplomeAcces = specialiteDiplomeAcces.trim();
+    if (mention !== undefined) modifications.mention = mention.trim();
+    if (lieuObtentionDiplome !== undefined) modifications.lieuObtentionDiplome = lieuObtentionDiplome.trim();
+    if (serieBaccalaureat !== undefined) modifications.serieBaccalaureat = serieBaccalaureat.trim();
+    if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
+    if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
+    if (sourceInscription !== undefined) modifications.sourceInscription = sourceInscription.trim();
+    if (typePaiement !== undefined) modifications.typePaiement = typePaiement.trim();
+    if (prixTotal !== undefined) modifications.prixTotal = toNumber(prixTotal);
+    if (pourcentageBourse !== undefined) modifications.pourcentageBourse = toNumber(pourcentageBourse);
+    if (situation !== undefined) modifications.situation = situation.trim();
+    if (nouvelleInscription !== undefined) modifications.nouvelleInscription = toBool(nouvelleInscription);
+    if (paye !== undefined) modifications.paye = toBool(paye);
+    if (handicape !== undefined) modifications.handicape = toBool(handicape);
+    if (resident !== undefined) modifications.resident = toBool(resident);
+    if (fonctionnaire !== undefined) modifications.fonctionnaire = toBool(fonctionnaire);
+    if (mobilite !== undefined) modifications.mobilite = toBool(mobilite);
+    if (codeEtudiant !== undefined) modifications.codeEtudiant = codeEtudiant.trim();
+    if (dateEtReglement !== undefined) modifications.dateEtReglement = toDate(dateEtReglement);
+    if (anneeScolaire !== undefined) modifications.anneeScolaire = anneeScolaire;
+    if (modePaiement !== undefined) modifications.modePaiement = modePaiement;
+
+    // NOUVEAUX CHAMPS PARTNER
+    if (isPartner !== undefined) modifications.isPartner = toBool(isPartner);
+    if (prixTotalPartner !== undefined) modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
+
+    // S'assurer que le commercial reste le même (sécurité)
+    modifications.commercial = req.commercialId;
+
+    // Validation du mot de passe si fourni
+    if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
+      if (motDePasse.length < 6) {
+        return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+      }
+      const hashedPassword = await bcrypt.hash(motDePasse.trim(), 10);
+      modifications.motDePasse = hashedPassword;
+    }
+
+    // Logique automatique pour le mode de paiement annuel
+    if (modePaiement === 'annuel' && paye === undefined) {
+      modifications.paye = true;
+    }
+
+    // ASSIGNATION DES CHAMPS SPÉCIFIQUES SELON LE TYPE DE FORMATION
+    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+      // Formation d'ingénieur
+      const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
+      modifications.cycle = cycleCalcule;
+      
+      // CORRECTION : Gestion intelligente des spécialités et options d'ingénieur
+      if (specialiteIngenieur !== undefined) {
+        modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
+        
+        // Si on change de spécialité, on efface l'option pour éviter l'incompatibilité
+        if (specialiteIngenieur !== etudiantExistant.specialiteIngenieur) {
+          console.log(`🔄 Changement de spécialité détecté: "${etudiantExistant.specialiteIngenieur}" -> "${specialiteIngenieur}"`);
+          console.log(`🔄 Effacement de l'ancienne option: "${etudiantExistant.optionIngenieur}"`);
+          modifications.optionIngenieur = undefined;
+        }
+      }
+      
+      if (optionIngenieur !== undefined) {
+        modifications.optionIngenieur = optionIngenieur?.trim() || undefined;
+      }
+      
+      // Nettoyer les autres champs
+      modifications.specialite = '';
+      modifications.option = '';
+      modifications.specialiteLicencePro = undefined;
+      modifications.optionLicencePro = undefined;
+      modifications.specialiteMasterPro = undefined;
+      modifications.optionMasterPro = undefined;
+      
+    } else if (typeFormationFinal === 'LICENCE_PRO') {
+      // Licence Professionnelle
+      if (specialiteLicencePro !== undefined) modifications.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
+      if (optionLicencePro !== undefined) modifications.optionLicencePro = optionLicencePro?.trim() || undefined;
+      modifications.cycle = undefined;
+      modifications.specialiteIngenieur = undefined;
+      modifications.optionIngenieur = undefined;
+      modifications.specialiteMasterPro = undefined;
+      modifications.optionMasterPro = undefined;
+      modifications.specialite = '';
+      modifications.option = '';
+      
+    } else if (typeFormationFinal === 'MASTER_PRO') {
+      // Master Professionnel
+      if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
+      if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
+      modifications.cycle = undefined;
+      modifications.specialiteIngenieur = undefined;
+      modifications.optionIngenieur = undefined;
+      modifications.specialiteLicencePro = undefined;
+      modifications.optionLicencePro = undefined;
+      modifications.specialite = '';
+      modifications.option = '';
+      
+    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+      // Anciennes formations
+      console.log(`🔍 Assignation ${typeFormationFinal} - Spécialité: "${specialite}", Option: "${option}"`);
+      
+      if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
+      if (option !== undefined) modifications.option = option?.trim() || '';
+      
+      // Nettoyer les autres champs
+      modifications.cycle = undefined;
+      modifications.specialiteIngenieur = undefined;
+      modifications.optionIngenieur = undefined;
+      modifications.specialiteLicencePro = undefined;
+      modifications.optionLicencePro = undefined;
+      modifications.specialiteMasterPro = undefined;
+      modifications.optionMasterPro = undefined;
+    }
+
+    // TRAITEMENT DES FICHIERS UPLOADÉS
+    if (imagePath !== undefined) modifications.image = imagePath;
+
+    // Mise à jour des documents (seulement si de nouveaux fichiers ou commentaires sont fournis)
+    const documentsExistants = etudiantExistant.documents || {};
+    const nouveauxDocuments = {};
+
+    // Types de documents avec leurs commentaires
+    const typesDocuments = [
+      { key: 'cin', fileField: 'documentCin', commentField: 'commentaireCin' },
+      { key: 'bacCommentaire', fileField: 'documentBacCommentaire', commentField: 'commentaireBacCommentaire' },
+      { key: 'releveNoteBac', fileField: 'documentReleveNoteBac', commentField: 'commentaireReleveNoteBac' },
+      { key: 'diplomeCommentaire', fileField: 'documentDiplomeCommentaire', commentField: 'commentaireDiplomeCommentaire' },
+      { key: 'attestationReussiteCommentaire', fileField: 'documentAttestationReussiteCommentaire', commentField: 'commentaireAttestationReussiteCommentaire' },
+      { key: 'releveNotesFormationCommentaire', fileField: 'documentReleveNotesFormationCommentaire', commentField: 'commentaireReleveNotesFormationCommentaire' },
+      { key: 'passeport', fileField: 'documentPasseport', commentField: 'commentairePasseport' },
+      { key: 'bacOuAttestationBacCommentaire', fileField: 'documentBacOuAttestationBacCommentaire', commentField: 'commentaireBacOuAttestationBacCommentaire' },
+      { key: 'authentificationBac', fileField: 'documentAuthentificationBac', commentField: 'commentaireAuthentificationBac' },
+      { key: 'authenticationDiplome', fileField: 'documentAuthenticationDiplome', commentField: 'commentaireAuthenticationDiplome' },
+      { key: 'engagementCommentaire', fileField: 'documentEngagementCommentaire', commentField: 'commentaireEngagementCommentaire' }
+    ];
+
+    typesDocuments.forEach(type => {
+      const documentExistant = documentsExistants[type.key] || {};
+      const nouveauFichier = getDocumentPath(type.fileField);
+      const nouveauCommentaire = req.body[type.commentField];
+
+      nouveauxDocuments[type.key] = {
+        fichier: nouveauFichier !== undefined ? nouveauFichier : documentExistant.fichier || '',
+        commentaire: nouveauCommentaire !== undefined ? nouveauCommentaire : documentExistant.commentaire || ''
+      };
+    });
+
+    modifications.documents = nouveauxDocuments;
+
+    // Ajouter les informations de modification
+    modifications.updatedAt = new Date();
+    modifications.modifiePar = req.commercialId;
+
+    console.log(`🔍 Modifications finales à appliquer:`, {
+      niveau: modifications.niveau,
+      filiere: modifications.filiere,
+      typeFormation: modifications.typeFormation,
+      specialiteIngenieur: modifications.specialiteIngenieur,
+      optionIngenieur: modifications.optionIngenieur,
+      specialite: modifications.specialite,
+      option: modifications.option,
+      specialiteLicencePro: modifications.specialiteLicencePro,
+      optionLicencePro: modifications.optionLicencePro,
+      specialiteMasterPro: modifications.specialiteMasterPro,
+      optionMasterPro: modifications.optionMasterPro
+    });
+
+    // 4. MISE À JOUR DU DOCUMENT EXISTANT
+    const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
+      req.params.id,
+      modifications,
+      { 
+        new: true, // Retourner le document mis à jour
+        runValidators: true // Exécuter les validations Mongoose
+      }
+    );
+
+    if (!etudiantMiseAJour) {
+      return res.status(404).json({ message: 'Étudiant non trouvé lors de la mise à jour' });
+    }
+
+    console.log(`✅ Étudiant mis à jour avec succès - ID: ${etudiantMiseAJour._id}`);
+    console.log(`📋 Nouveau niveau: ${etudiantMiseAJour.niveau}`);
+    console.log(`📋 Nouvelle filière: ${etudiantMiseAJour.filiere}`);
+    console.log(`📋 Nouveau type de formation: ${etudiantMiseAJour.typeFormation}`);
+    console.log(`📋 Nouvelle spécialité ingénieur: ${etudiantMiseAJour.specialiteIngenieur}`);
+    console.log(`📋 Nouvelle option ingénieur: ${etudiantMiseAJour.optionIngenieur}`);
+    console.log(`📋 Nouvelle spécialité MASI/IRM: ${etudiantMiseAJour.specialite}`);
+    console.log(`📋 Nouvelle option MASI/IRM: ${etudiantMiseAJour.option}`);
+
+    // RETOURNER LE DOCUMENT MIS À JOUR (sans mot de passe)
+    const etudiantResponse = etudiantMiseAJour.toObject();
+    delete etudiantResponse.motDePasse;
+
+    res.status(200).json({
+      message: 'Étudiant mis à jour avec succès',
+      data: etudiantResponse,
+      isNewSchoolYear: false
+    });
+
+  } catch (err) {
+    console.error('❌ Erreur lors de la mise à jour étudiant (commercial):', err);
+    
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ message: 'Erreur de validation', errors });
+    }
+    
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ message: `${field} déjà utilisé par un autre étudiant` });
+    }
+
+    if (err.name === 'CastError') {
+      return res.status(400).json({ message: 'ID étudiant invalide' });
+    }
+
+    res.status(500).json({
+      message: 'Erreur interne du serveur',
+      error: err.message
+    });
+  }
+});
+
+app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
+  try {
+    const {
+      prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
+      actif, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
       filiere, option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
       mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
       premiereAnneeInscription, sourceInscription, typePaiement, prixTotal,
@@ -611,6 +1959,240 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       niveauFinal = 4; // Master Pro = toujours niveau 4
     }
 
+    // ===== VALIDATION SPÉCIFIQUE PAR TYPE DE FORMATION =====
+    
+    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+      // Validation formation d'ingénieur
+      if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
+        return res.status(400).json({ 
+          message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
+        });
+      }
+
+      let cycleCalcule = cycle;
+      if (niveauFinal >= 1 && niveauFinal <= 2) {
+        cycleCalcule = 'Classes Préparatoires Intégrées';
+      } else if (niveauFinal >= 3 && niveauFinal <= 5) {
+        cycleCalcule = 'Cycle Ingénieur';
+      }
+
+      if (niveauFinal >= 1 && niveauFinal <= 2) {
+        if (specialiteIngenieur || optionIngenieur) {
+          return res.status(400).json({ 
+            message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
+          });
+        }
+      }
+
+      if (niveauFinal >= 3 && niveauFinal <= 5) {
+        if (!specialiteIngenieur) {
+          return res.status(400).json({ 
+            message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
+          });
+        }
+        if (niveauFinal === 5 && !optionIngenieur) {
+          return res.status(400).json({ 
+            message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
+          });
+        }
+      }
+
+      if (specialiteIngenieur && optionIngenieur) {
+        const STRUCTURE_OPTIONS_INGENIEUR = {
+          'Génie Informatique': [
+            'Sécurité & Mobilité Informatique',
+            'IA & Science des Données',
+            'Réseaux & Cloud Computing'
+          ],
+          'Génie Mécatronique': [
+            'Génie Mécanique',
+            'Génie Industriel',
+            'Automatisation'
+          ],
+          'Génie Civil': [
+            'Structures & Ouvrages d\'art',
+            'Bâtiment & Efficacité Énergétique',
+            'Géotechnique & Infrastructures'
+          ]
+        };
+
+        if (!STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur] || 
+            !STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur].includes(optionIngenieur)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionIngenieur}" n'est pas disponible pour la spécialité "${specialiteIngenieur}"` 
+          });
+        }
+      }
+
+    } else if (typeFormationFinal === 'LICENCE_PRO') {
+      // Validation Licence Professionnelle
+      if (!specialiteLicencePro) {
+        return res.status(400).json({ 
+          message: 'Une spécialité est obligatoire pour la Licence Professionnelle' 
+        });
+      }
+
+      if (optionLicencePro) {
+        const OPTIONS_LICENCE_PRO = {
+          'Développement Informatique Full Stack': [
+            'Développement Mobile',
+            'Intelligence Artificielle et Data Analytics',
+            'Développement JAVA JEE',
+            'Développement Gaming et VR'
+          ],
+          'Réseaux et Cybersécurité': [
+            'Administration des Systèmes et Cloud Computing'
+          ]
+        };
+
+        const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteLicencePro];
+        if (!optionsDisponibles || !optionsDisponibles.includes(optionLicencePro)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionLicencePro}" n'est pas disponible pour la spécialité "${specialiteLicencePro}"` 
+          });
+        }
+      }
+
+    } else if (typeFormationFinal === 'MASTER_PRO') {
+      // Validation Master Professionnel
+      if (!specialiteMasterPro) {
+        return res.status(400).json({ 
+          message: 'Une spécialité est obligatoire pour le Master Professionnel' 
+        });
+      }
+
+      if (optionMasterPro) {
+        const OPTIONS_MASTER_PRO = {
+          'Cybersécurité et Transformation Digitale': [
+            'Systèmes de communication et Data center',
+            'Management des Systèmes d\'Information'
+          ],
+          'Génie Informatique et Innovation Technologique': [
+            'Génie Logiciel',
+            'Intelligence Artificielle et Data Science'
+          ]
+        };
+
+        const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteMasterPro];
+        if (!optionsDisponibles || !optionsDisponibles.includes(optionMasterPro)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionMasterPro}" n'est pas disponible pour la spécialité "${specialiteMasterPro}"` 
+          });
+        }
+      }
+
+    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+      // Validation anciennes formations
+      if (niveauFinal >= 3 && !specialite) {
+        return res.status(400).json({ 
+          message: 'Une spécialité est obligatoire à partir de la 3ème année' 
+        });
+      }
+
+      if (niveauFinal === 5 && !option) {
+        return res.status(400).json({ 
+          message: 'Une option est obligatoire en 5ème année' 
+        });
+      }
+
+      if (typeFormationFinal && specialite) {
+        const STRUCTURE_FORMATION = {
+          MASI: {
+            3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
+            4: ['Management des affaires et systèmes d\'information'],
+            5: ['Management des affaires et systèmes d\'information']
+          },
+          IRM: {
+            3: ['Développement informatique', 'Réseaux et cybersécurité'],
+            4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
+            5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
+          }
+        };
+
+        const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
+        if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialite)) {
+          return res.status(400).json({ 
+            message: `La spécialité "${specialite}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}` 
+          });
+        }
+      }
+    }
+
+    // ===== GESTION DES COURS AVEC LIMITE =====
+    const MAX_ETUDIANTS = 20;
+    let coursArray = [];
+
+    if (cours) {
+      const coursDemandes = Array.isArray(cours) ? cours : [cours];
+      for (let coursNom of coursDemandes) {
+        const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
+        let nomAvecSuffixe = '';
+        let coursTrouve = false;
+
+        for (let suffix of suffixes) {
+          nomAvecSuffixe = coursNom + suffix;
+
+          let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
+          if (!coursExiste) {
+            const coursOriginal = await Cours.findOne({ nom: coursNom });
+            let professeurs = [];
+            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+              professeurs = coursOriginal.professeur;
+            } else {
+              const prof = await Professeur.findOne({ cours: coursNom });
+              if (prof) professeurs = [prof.nom];
+            }
+            const nouveauCours = new Cours({
+              nom: nomAvecSuffixe,
+              professeur: professeurs,
+              creePar: req.commercialId
+            });
+            await nouveauCours.save();
+            for (const nomProf of professeurs) {
+              await Professeur.updateOne(
+                { nom: nomProf },
+                { $addToSet: { cours: nomAvecSuffixe } }
+              );
+            }
+            coursExiste = nouveauCours;
+          }
+
+          const count = await Etudiant.countDocuments({ cours: nomAvecSuffixe });
+          if (count < MAX_ETUDIANTS) {
+            coursArray.push(nomAvecSuffixe);
+            coursTrouve = true;
+            break;
+          }
+        }
+
+        if (!coursTrouve) {
+          const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
+          const nomNouveau = `${coursNom}${nextSuffix}`;
+          const coursOriginal = await Cours.findOne({ nom: coursNom });
+          let professeurs = [];
+          if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+            professeurs = coursOriginal.professeur;
+          } else {
+            const prof = await Professeur.findOne({ cours: coursNom });
+            if (prof) professeurs = [prof.nom];
+          }
+          const nouveauCours = new Cours({
+            nom: nomNouveau,
+            professeur: professeurs,
+            creePar: req.commercialId
+          });
+          await nouveauCours.save();
+          for (const nomProf of professeurs) {
+            await Professeur.updateOne(
+              { nom: nomProf },
+              { $addToSet: { cours: nomNouveau } }
+            );
+          }
+          coursArray.push(nomNouveau);
+        }
+      }
+    }
+
     // Fonction pour obtenir le chemin des fichiers documents
     const getDocumentPath = (documentField) => {
       return req.files && req.files[documentField] && req.files[documentField][0] 
@@ -670,86 +2252,11 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
         commentaire: commentaireEngagementCommentaire || ''
       }
     };
-
-    // Gestion des cours avec limite (garder votre logique existante)
-    const MAX_ETUDIANTS = 20;
-    let coursArray = [];
-
-    if (cours) {
-      const coursDemandes = Array.isArray(cours) ? cours : [cours];
-      for (let coursNom of coursDemandes) {
-        const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
-        let nomAvecSuffixe = '';
-        let coursTrouve = false;
-
-        for (let suffix of suffixes) {
-          nomAvecSuffixe = coursNom + suffix;
-
-          let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
-          if (!coursExiste) {
-            const coursOriginal = await Cours.findOne({ nom: coursNom });
-            let professeurs = [];
-            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-              professeurs = coursOriginal.professeur;
-            } else {
-              const prof = await Professeur.findOne({ cours: coursNom });
-              if (prof) professeurs = [prof.nom];
-            }
-            const nouveauCours = new Cours({
-              nom: nomAvecSuffixe,
-              professeur: professeurs,
-              creePar: req.adminId
-            });
-            await nouveauCours.save();
-            for (const nomProf of professeurs) {
-              await Professeur.updateOne(
-                { nom: nomProf },
-                { $addToSet: { cours: nomAvecSuffixe } }
-              );
-            }
-            coursExiste = nouveauCours;
-          }
-
-          const count = await Etudiant.countDocuments({ cours: nomAvecSuffixe });
-          if (count < MAX_ETUDIANTS) {
-            coursArray.push(nomAvecSuffixe);
-            coursTrouve = true;
-            break;
-          }
-        }
-
-        if (!coursTrouve) {
-          const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
-          const nomNouveau = `${coursNom}${nextSuffix}`;
-          const coursOriginal = await Cours.findOne({ nom: coursNom });
-          let professeurs = [];
-          if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-            professeurs = coursOriginal.professeur;
-          } else {
-            const prof = await Professeur.findOne({ cours: coursNom });
-            if (prof) professeurs = [prof.nom];
-          }
-          const nouveauCours = new Cours({
-            nom: nomNouveau,
-            professeur: professeurs,
-            creePar: req.adminId
-          });
-          await nouveauCours.save();
-          for (const nomProf of professeurs) {
-            await Professeur.updateOne(
-              { nom: nomProf },
-              { $addToSet: { cours: nomNouveau } }
-            );
-          }
-          coursArray.push(nomNouveau);
-        }
-      }
-    }
-
+    
     // Hashage du mot de passe
     const hashedPassword = await bcrypt.hash(motDePasse, 10);
 
-    // Fonctions utilitaires
+    // Fonctions utilitaires pour la conversion des données
     const toDate = (d) => {
       if (!d) return null;
       const date = new Date(d);
@@ -764,20 +2271,24 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       return isNaN(n) ? null : n;
     };
 
+    // Conversion des dates
     const dateNaissanceFormatted = toDate(dateNaissance);
     const dateEtReglementFormatted = toDate(dateEtReglement);
 
+    // Conversion des booléens
     const boolFields = ['actif', 'paye', 'handicape', 'resident', 'fonctionnaire', 'mobilite', 'nouvelleInscription'];
     boolFields.forEach(field => {
       if (req.body[field] !== undefined) req.body[field] = toBool(req.body[field]);
     });
 
+    // Conversion des nombres
     const prixTotalNum = toNumber(prixTotal);
     const prixTotalPartnerNum = isPartnerBool ? toNumber(prixTotalPartner) || 0 : 0;
     const pourcentageBourseNum = toNumber(pourcentageBourse);
     const anneeBacNum = toNumber(anneeBaccalaureat);
     const premiereInscriptionNum = toNumber(premiereAnneeInscription);
 
+    // Validation du pourcentage de bourse
     if (pourcentageBourseNum && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
       return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
     }
@@ -787,7 +2298,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       req.body.paye = true;
     }
 
-    // Création de l'étudiant avec les nouveaux champs
+    // ===== CRÉATION DE L'ÉTUDIANT =====
     const etudiantData = {
       prenom: prenom.trim(),
       nomDeFamille: nomDeFamille.trim(),
@@ -825,6 +2336,8 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       cours: coursArray,
       modePaiement: modePaiement || 'semestriel',
       image: imagePath,
+      
+      // Champs booléens
       actif: req.body.actif,
       paye: req.body.paye,
       handicape: req.body.handicape,
@@ -832,17 +2345,23 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       fonctionnaire: req.body.fonctionnaire,
       mobilite: req.body.mobilite,
       nouvelleInscription: req.body.nouvelleInscription,
-      commercial: commercial || null,
-      creeParAdmin: req.adminId,
-      anneeScolaire: anneeScolaire || undefined,
       
+      // Lier au commercial (pas d'admin)
+      commercial: req.commercialId,
+      creeParAdmin: null,
+      creeParCommercial: req.commercialId,
+      
+      // Année scolaire
+      anneeScolaire: anneeScolaire || undefined,
+
       // NOUVEAUX CHAMPS PARTNER
       isPartner: isPartnerBool,
       prixTotalPartner: prixTotalPartnerNum
     };
 
-    // Assignation des champs spécifiques selon le type de formation
+    // Ajouter les champs spécifiques selon le type de formation
     if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+      // Formation d'ingénieur
       const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
       etudiantData.cycle = cycleCalcule;
       etudiantData.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
@@ -855,6 +2374,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       etudiantData.optionMasterPro = undefined;
       
     } else if (typeFormationFinal === 'LICENCE_PRO') {
+      // Licence Professionnelle
       etudiantData.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
       etudiantData.optionLicencePro = optionLicencePro?.trim() || undefined;
       etudiantData.cycle = undefined;
@@ -866,6 +2386,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       etudiantData.option = '';
       
     } else if (typeFormationFinal === 'MASTER_PRO') {
+      // Master Professionnel
       etudiantData.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
       etudiantData.optionMasterPro = optionMasterPro?.trim() || undefined;
       etudiantData.cycle = undefined;
@@ -877,6 +2398,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       etudiantData.option = '';
       
     } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+      // Anciennes formations
       etudiantData.specialite = specialite?.trim() || '';
       etudiantData.option = option?.trim() || '';
       etudiantData.cycle = undefined;
@@ -898,7 +2420,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
     res.status(201).json(etudiantResponse);
 
   } catch (err) {
-    console.error('Erreur ajout étudiant:', err);
+    console.error('❌ Erreur ajout étudiant (commercial):', err);
     
     if (err.name === 'ValidationError') {
       const errors = Object.values(err.errors).map(e => e.message);
@@ -916,283 +2438,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
     });
   }
 });
-// Route PUT pour modifier un étudiant
-app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
-  try {
-    const {
-      prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
-      actif, commercial, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
-      filiere, option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
-      mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
-      premiereAnneeInscription, sourceInscription, typePaiement, prixTotal,
-      pourcentageBourse, situation, nouvelleInscription, paye, handicape,
-      resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
-      typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
-      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
-      modePaiement,
-      telephoneResponsable,
-      codeBaccalaureat,
-      
-      // NOUVEAUX CHAMPS PARTNER
-      isPartner,
-      prixTotalPartner,
-      
-      // COMMENTAIRES POUR LES DOCUMENTS
-      commentaireCin,
-      commentaireBacCommentaire,
-      commentaireReleveNoteBac,
-      commentaireDiplomeCommentaire,
-      commentaireAttestationReussiteCommentaire,
-      commentaireReleveNotesFormationCommentaire,
-      commentairePasseport,
-      commentaireBacOuAttestationBacCommentaire,
-      commentaireAuthentificationBac,
-      commentaireAuthenticationDiplome,
-      commentaireEngagementCommentaire
-    } = req.body;
 
-    // Rechercher l'étudiant existant
-    const etudiantExistant = await Etudiant.findById(req.params.id);
-    if (!etudiantExistant) {
-      return res.status(404).json({ message: 'Étudiant non trouvé' });
-    }
-
-    // Validation du mode de paiement
-    if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
-      return res.status(400).json({ 
-        message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
-      });
-    }
-
-    // NOUVEAU: Validation des champs Partner
-    if (isPartner !== undefined) {
-      const isPartnerBool = isPartner === 'true' || isPartner === true;
-      if (isPartnerBool && prixTotalPartner !== undefined) {
-        if (!prixTotalPartner || parseFloat(prixTotalPartner) <= 0) {
-          return res.status(400).json({ 
-            message: 'Le prix total Partner est obligatoire et doit être supérieur à 0 pour les étudiants partenaires' 
-          });
-        }
-      }
-    }
-
-    // Fonction pour obtenir le chemin des nouveaux documents
-    const getDocumentPath = (documentField) => {
-      return req.files && req.files[documentField] && req.files[documentField][0] 
-        ? `/documents/${req.files[documentField][0].filename}` 
-        : undefined;
-    };
-
-    // Image de profil
-    const imagePath = req.files && req.files['image'] && req.files['image'][0] 
-      ? `/uploads/${req.files['image'][0].filename}` 
-      : undefined;
-
-    // Fonctions utilitaires
-    const toDate = (val) => {
-      if (!val) return undefined;
-      const date = new Date(val);
-      return isNaN(date.getTime()) ? undefined : date;
-    };
-
-    const toNumber = (val) => {
-      if (val === undefined || val === '' || val === null) return undefined;
-      const n = parseFloat(val);
-      return isNaN(n) ? undefined : n;
-    };
-
-    const toBool = (val) => val === 'true' || val === true;
-
-    // Validation de l'email si fourni
-    if (email && email !== etudiantExistant.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: 'Format d\'email invalide' });
-      }
-
-      const emailExiste = await Etudiant.findOne({ 
-        email: email.toLowerCase().trim(), 
-        _id: { $ne: req.params.id } 
-      });
-      if (emailExiste) {
-        return res.status(400).json({ message: 'Email déjà utilisé par un autre étudiant' });
-      }
-    }
-
-    // Validation du code étudiant si fourni
-    if (codeEtudiant && codeEtudiant !== etudiantExistant.codeEtudiant) {
-      const codeExiste = await Etudiant.findOne({ 
-        codeEtudiant: codeEtudiant.trim(),
-        _id: { $ne: req.params.id } 
-      });
-      if (codeExiste) {
-        return res.status(400).json({ message: 'Code étudiant déjà utilisé par un autre étudiant' });
-      }
-    }
-
-    // Créer l'objet de modifications
-    const modifications = {};
-
-    // Appliquer toutes les modifications reçues
-    if (prenom !== undefined) modifications.prenom = prenom.trim();
-    if (nomDeFamille !== undefined) modifications.nomDeFamille = nomDeFamille.trim();
-    if (genre !== undefined) modifications.genre = genre;
-    if (dateNaissance !== undefined) modifications.dateNaissance = toDate(dateNaissance);
-    if (telephone !== undefined) modifications.telephone = telephone.trim();
-    if (telephoneResponsable !== undefined) modifications.telephoneResponsable = telephoneResponsable?.trim() || '';
-    if (email !== undefined) modifications.email = email.toLowerCase().trim();
-    if (cin !== undefined) modifications.cin = cin.trim();
-    if (passeport !== undefined) modifications.passeport = passeport.trim();
-    if (codeBaccalaureat !== undefined) modifications.codeBaccalaureat = codeBaccalaureat?.trim() || '';
-    if (lieuNaissance !== undefined) modifications.lieuNaissance = lieuNaissance.trim();
-    if (pays !== undefined) modifications.pays = pays.trim();
-    if (niveau !== undefined) modifications.niveau = toNumber(niveau);
-    if (niveauFormation !== undefined) modifications.niveauFormation = niveauFormation.trim();
-    if (filiere !== undefined) modifications.filiere = filiere.trim();
-    if (typeFormation !== undefined) modifications.typeFormation = typeFormation;
-    if (modePaiement !== undefined) modifications.modePaiement = modePaiement;
-    if (anneeScolaire !== undefined) modifications.anneeScolaire = anneeScolaire;
-    if (actif !== undefined) modifications.actif = toBool(actif);
-    if (paye !== undefined) modifications.paye = toBool(paye);
-    if (handicape !== undefined) modifications.handicape = toBool(handicape);
-    if (resident !== undefined) modifications.resident = toBool(resident);
-    if (fonctionnaire !== undefined) modifications.fonctionnaire = toBool(fonctionnaire);
-    if (mobilite !== undefined) modifications.mobilite = toBool(mobilite);
-    if (nouvelleInscription !== undefined) modifications.nouvelleInscription = toBool(nouvelleInscription);
-    if (commercial !== undefined) modifications.commercial = commercial || null;
-    if (codeEtudiant !== undefined) modifications.codeEtudiant = codeEtudiant?.trim() || '';
-    if (dateEtReglement !== undefined) modifications.dateEtReglement = toDate(dateEtReglement);
-    if (prixTotal !== undefined) modifications.prixTotal = toNumber(prixTotal);
-    if (pourcentageBourse !== undefined) modifications.pourcentageBourse = toNumber(pourcentageBourse);
-    if (situation !== undefined) modifications.situation = situation?.trim() || '';
-    if (sourceInscription !== undefined) modifications.sourceInscription = sourceInscription?.trim() || '';
-    if (typePaiement !== undefined) modifications.typePaiement = typePaiement?.trim() || '';
-    if (typeDiplome !== undefined) modifications.typeDiplome = typeDiplome?.trim() || '';
-    if (diplomeAcces !== undefined) modifications.diplomeAcces = diplomeAcces?.trim() || '';
-    if (specialiteDiplomeAcces !== undefined) modifications.specialiteDiplomeAcces = specialiteDiplomeAcces?.trim() || '';
-    if (mention !== undefined) modifications.mention = mention?.trim() || '';
-    if (lieuObtentionDiplome !== undefined) modifications.lieuObtentionDiplome = lieuObtentionDiplome?.trim() || '';
-    if (serieBaccalaureat !== undefined) modifications.serieBaccalaureat = serieBaccalaureat?.trim() || '';
-    if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
-    if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
-    
-    // NOUVEAUX CHAMPS PARTNER
-    if (isPartner !== undefined) modifications.isPartner = toBool(isPartner);
-    if (prixTotalPartner !== undefined) modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
-    
-    // Champs spécifiques selon le type de formation
-    if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
-    if (option !== undefined) modifications.option = option?.trim() || '';
-    if (cycle !== undefined) modifications.cycle = cycle;
-    if (specialiteIngenieur !== undefined) modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
-    if (optionIngenieur !== undefined) modifications.optionIngenieur = optionIngenieur?.trim() || undefined;
-    if (specialiteLicencePro !== undefined) modifications.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
-    if (optionLicencePro !== undefined) modifications.optionLicencePro = optionLicencePro?.trim() || undefined;
-    if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
-    if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
-    
-    // Image de profil
-    if (imagePath !== undefined) modifications.image = imagePath;
-
-    // Validation du mot de passe si fourni
-    if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
-      if (motDePasse.length < 6) {
-        return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
-      }
-      const hashedPassword = await bcrypt.hash(motDePasse.trim(), 10);
-      modifications.motDePasse = hashedPassword;
-    }
-
-    // Validation du pourcentage de bourse
-    if (modifications.pourcentageBourse !== undefined && modifications.pourcentageBourse !== null) {
-      if (modifications.pourcentageBourse < 0 || modifications.pourcentageBourse > 100) {
-        return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
-      }
-    }
-
-    // Logique automatique pour le mode de paiement annuel
-    if (modePaiement === 'annuel' && paye === undefined) {
-      modifications.paye = true;
-    }
-
-    // Mise à jour des documents (seulement si de nouveaux fichiers ou commentaires sont fournis)
-    const documentsExistants = etudiantExistant.documents || {};
-    const nouveauxDocuments = {};
-
-    // Types de documents avec leurs commentaires
-    const typesDocuments = [
-      { key: 'cin', fileField: 'documentCin', commentField: 'commentaireCin' },
-      { key: 'bacCommentaire', fileField: 'documentBacCommentaire', commentField: 'commentaireBacCommentaire' },
-      { key: 'releveNoteBac', fileField: 'documentReleveNoteBac', commentField: 'commentaireReleveNoteBac' },
-      { key: 'diplomeCommentaire', fileField: 'documentDiplomeCommentaire', commentField: 'commentaireDiplomeCommentaire' },
-      { key: 'attestationReussiteCommentaire', fileField: 'documentAttestationReussiteCommentaire', commentField: 'commentaireAttestationReussiteCommentaire' },
-      { key: 'releveNotesFormationCommentaire', fileField: 'documentReleveNotesFormationCommentaire', commentField: 'commentaireReleveNotesFormationCommentaire' },
-      { key: 'passeport', fileField: 'documentPasseport', commentField: 'commentairePasseport' },
-      { key: 'bacOuAttestationBacCommentaire', fileField: 'documentBacOuAttestationBacCommentaire', commentField: 'commentaireBacOuAttestationBacCommentaire' },
-      { key: 'authentificationBac', fileField: 'documentAuthentificationBac', commentField: 'commentaireAuthentificationBac' },
-      { key: 'authenticationDiplome', fileField: 'documentAuthenticationDiplome', commentField: 'commentaireAuthenticationDiplome' },
-      { key: 'engagementCommentaire', fileField: 'documentEngagementCommentaire', commentField: 'commentaireEngagementCommentaire' }
-    ];
-
-    typesDocuments.forEach(type => {
-      const documentExistant = documentsExistants[type.key] || {};
-      const nouveauFichier = getDocumentPath(type.fileField);
-      const nouveauCommentaire = req.body[type.commentField];
-
-      nouveauxDocuments[type.key] = {
-        fichier: nouveauFichier !== undefined ? nouveauFichier : documentExistant.fichier || '',
-        commentaire: nouveauCommentaire !== undefined ? nouveauCommentaire : documentExistant.commentaire || ''
-      };
-    });
-
-    modifications.documents = nouveauxDocuments;
-
-    // Mise à jour du document existant
-    const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
-      req.params.id,
-      modifications,
-      { 
-        new: true,
-        runValidators: true
-      }
-    );
-
-    if (!etudiantMiseAJour) {
-      return res.status(404).json({ message: 'Étudiant non trouvé lors de la mise à jour' });
-    }
-
-    // Retourner le document mis à jour (sans mot de passe)
-    const etudiantResponse = etudiantMiseAJour.toObject();
-    delete etudiantResponse.motDePasse;
-
-    res.status(200).json({
-      message: 'Étudiant mis à jour avec succès',
-      data: etudiantResponse
-    });
-
-  } catch (err) {
-    console.error('Erreur lors de la mise à jour étudiant:', err);
-    
-    if (err.name === 'ValidationError') {
-      const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ message: 'Erreur de validation', errors });
-    }
-    
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({ message: `${field} déjà utilisé par un autre étudiant` });
-    }
-
-    if (err.name === 'CastError') {
-      return res.status(400).json({ message: 'ID étudiant invalide' });
-    }
-
-    res.status(500).json({
-      message: 'Erreur interne du serveur',
-      error: err.message
-    });
-  }
-});
 // Route pour obtenir les statistiques des étudiants Partners
 app.get('/api/stats/partners', authAdmin, async (req, res) => {
   try {
@@ -1741,7 +2987,9 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
       commercial,
       // Nouveaux champs pour le système de formation intelligent
-      cycle, specialiteIngenieur, optionIngenieur, anneeScolaire
+      cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
+      // Champs Partner
+      isPartner, nomPartner, prixTotalPartner
     } = req.body;
 
     // 1. 🔍 RECHERCHER L'ÉTUDIANT EXISTANT
@@ -1751,6 +2999,26 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     }
 
     console.log(`📋 Étudiant trouvé: ${etudiantExistant.prenom} ${etudiantExistant.nomDeFamille}`);
+
+    // NOUVEAU: Validation des champs Partner
+    if (isPartner !== undefined) {
+      const isPartnerBool = isPartner === 'true' || isPartner === true;
+      
+      if (isPartnerBool) {
+        // Validation du nom du partner
+        if (nomPartner !== undefined && (!nomPartner || nomPartner.trim() === '')) {
+          return res.status(400).json({ 
+            message: 'Le nom du partner est obligatoire pour les étudiants partenaires' 
+          });
+        }
+        
+        if (prixTotalPartner !== undefined && (!prixTotalPartner || parseFloat(prixTotalPartner) <= 0)) {
+          return res.status(400).json({ 
+            message: 'Le prix total Partner est obligatoire et doit être supérieur à 0 pour les étudiants partenaires' 
+          });
+        }
+      }
+    }
 
     // 2. 🎯 DÉTECTER SI C'EST UNE NOUVELLE ANNÉE SCOLAIRE
     const estNouvelleAnneeScolaire = anneeScolaire && 
@@ -1804,6 +3072,11 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
         
         // 🚨 IMPORTANT: Reset du commercial pour éviter double comptage du CA
         commercial: null, // ← TOUJOURS NULL POUR NOUVELLE ANNÉE
+        
+        // Champs Partner
+        isPartner: etudiantExistant.isPartner,
+        nomPartner: etudiantExistant.nomPartner,
+        prixTotalPartner: etudiantExistant.prixTotalPartner,
         
         cycle: etudiantExistant.cycle,
         specialiteIngenieur: etudiantExistant.specialiteIngenieur,
@@ -1886,6 +3159,11 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
         if (cycle !== undefined) data.cycle = cycle?.trim() || undefined;
         if (specialiteIngenieur !== undefined) data.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
         if (optionIngenieur !== undefined) data.optionIngenieur = optionIngenieur?.trim() || undefined;
+        
+        // Champs Partner
+        if (isPartner !== undefined) data.isPartner = toBool(isPartner);
+        if (nomPartner !== undefined) data.nomPartner = nomPartner?.trim() || '';
+        if (prixTotalPartner !== undefined) data.prixTotalPartner = toNumber(prixTotalPartner) || 0;
 
         return data;
       };
@@ -2046,6 +3324,11 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     if (cycle !== undefined) modifications.cycle = cycle?.trim() || undefined;
     if (specialiteIngenieur !== undefined) modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
     if (optionIngenieur !== undefined) modifications.optionIngenieur = optionIngenieur?.trim() || undefined;
+    
+    // Champs Partner
+    if (isPartner !== undefined) modifications.isPartner = toBool(isPartner);
+    if (nomPartner !== undefined) modifications.nomPartner = nomPartner?.trim() || '';
+    if (prixTotalPartner !== undefined) modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
 
     // Traitement des fichiers uploadés
     const getFilePath = (fileField) => {
@@ -2122,7 +3405,862 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
   }
 });
 // ===== ROUTE GET MODIFIÉE POUR FILTRAGE PAR ANNÉE =====
+// Route POST pour créer un étudiant
+app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
+  try {
+    const {
+      prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
+      actif, commercial, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
+      filiere, option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
+      mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
+      premiereAnneeInscription, sourceInscription, typePaiement, prixTotal,
+      pourcentageBourse, situation, nouvelleInscription, paye, handicape,
+      resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
+      typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
+      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
+      modePaiement, telephoneResponsable, codeMassar, codeBaccalaureat,
+      isPartner, nomPartner, prixTotalPartner
+    } = req.body;
 
+    // Validation des champs obligatoires
+    if (!prenom || !nomDeFamille || !telephone || !email || !motDePasse || !dateNaissance || !genre) {
+      return res.status(400).json({
+        message: 'Les champs prenom, nomDeFamille, telephone, email, motDePasse, dateNaissance et genre sont obligatoires'
+      });
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Format d\'email invalide' });
+    }
+
+    // Validation du mot de passe
+    if (motDePasse.length < 6) {
+      return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+    }
+
+    // Validation du mode de paiement avec toutes les valeurs
+    if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
+      return res.status(400).json({ 
+        message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
+      });
+    }
+
+    // Validation du genre
+    if (!['Homme', 'Femme'].includes(genre)) {
+      return res.status(400).json({ message: 'Le genre doit être "Homme" ou "Femme"' });
+    }
+
+    // Vérification de l'unicité de l'email
+    const existe = await Etudiant.findOne({ email });
+    if (existe) return res.status(400).json({ message: 'Email déjà utilisé' });
+
+    // Vérification de l'unicité du code étudiant
+    if (codeEtudiant) {
+      const codeExiste = await Etudiant.findOne({ codeEtudiant });
+      if (codeExiste) return res.status(400).json({ message: 'Code étudiant déjà utilisé' });
+    }
+
+    // Vérification de l'unicité du code Massar
+    if (codeMassar) {
+      const codeMassarExiste = await Etudiant.findOne({ codeMassar });
+      if (codeMassarExiste) return res.status(400).json({ message: 'Code Massar déjà utilisé' });
+    }
+
+    // Détermination automatique du type de formation
+    let typeFormationFinal = typeFormation;
+    if (!typeFormationFinal && filiere) {
+      const mappingFiliere = {
+        'CYCLE_INGENIEUR': 'CYCLE_INGENIEUR',
+        'MASI': 'MASI',
+        'IRM': 'IRM',
+        'LICENCE_PRO': 'LICENCE_PRO',
+        'MASTER_PRO': 'MASTER_PRO'
+      };
+      typeFormationFinal = mappingFiliere[filiere];
+    }
+
+    // Auto-assignation du niveau
+    let niveauFinal = parseInt(niveau) || null;
+    
+    if (typeFormationFinal === 'LICENCE_PRO') {
+      niveauFinal = 3; // Licence Pro = toujours niveau 3
+    } else if (typeFormationFinal === 'MASTER_PRO') {
+      niveauFinal = 4; // Master Pro = toujours niveau 4
+    }
+
+    // Validation selon le type de formation
+    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+      if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
+        return res.status(400).json({ 
+          message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
+        });
+      }
+
+      let cycleCalcule = cycle;
+      if (niveauFinal >= 1 && niveauFinal <= 2) {
+        cycleCalcule = 'Classes Préparatoires Intégrées';
+      } else if (niveauFinal >= 3 && niveauFinal <= 5) {
+        cycleCalcule = 'Cycle Ingénieur';
+      }
+
+      if (niveauFinal >= 1 && niveauFinal <= 2) {
+        if (specialiteIngenieur || optionIngenieur) {
+          return res.status(400).json({ 
+            message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
+          });
+        }
+      }
+
+      if (niveauFinal >= 3 && niveauFinal <= 5) {
+        if (!specialiteIngenieur) {
+          return res.status(400).json({ 
+            message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
+          });
+        }
+        if (niveauFinal === 5 && !optionIngenieur) {
+          return res.status(400).json({ 
+            message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
+          });
+        }
+      }
+
+      if (specialiteIngenieur && optionIngenieur) {
+        const STRUCTURE_OPTIONS_INGENIEUR = {
+          'Génie Informatique': [
+            'Sécurité & Mobilité Informatique',
+            'IA & Science des Données',
+            'Réseaux & Cloud Computing'
+          ],
+          'Génie Mécatronique': [
+            'Génie Mécanique',
+            'Génie Industriel',
+            'Automatisation'
+          ],
+          'Génie Civil': [
+            'Structures & Ouvrages d\'art',
+            'Bâtiment & Efficacité Énergétique',
+            'Géotechnique & Infrastructures'
+          ]
+        };
+
+        if (!STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur] || 
+            !STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur].includes(optionIngenieur)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionIngenieur}" n'est pas disponible pour la spécialité "${specialiteIngenieur}"` 
+          });
+        }
+      }
+
+      if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
+        return res.status(400).json({ 
+          message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
+        });
+      }
+
+    } else if (typeFormationFinal === 'LICENCE_PRO') {
+      if (!specialiteLicencePro) {
+        return res.status(400).json({ 
+          message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
+        });
+      }
+
+      if (optionLicencePro) {
+        const OPTIONS_LICENCE_PRO = {
+          'Développement Informatique Full Stack': [
+            'Développement Mobile',
+            'Intelligence Artificielle et Data Analytics',
+            'Développement JAVA JEE',
+            'Développement Gaming et VR'
+          ],
+          'Réseaux et Cybersécurité': [
+            'Administration des Systèmes et Cloud Computing'
+          ]
+        };
+
+        const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteLicencePro];
+        if (!optionsDisponibles || !optionsDisponibles.includes(optionLicencePro)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionLicencePro}" n'est pas disponible pour la spécialité "${specialiteLicencePro}"` 
+          });
+        }
+      }
+
+      if (cycle || specialiteIngenieur || optionIngenieur || specialiteMasterPro || optionMasterPro) {
+        return res.status(400).json({ 
+          message: 'Les champs Cycle Ingénieur et Master Pro ne sont pas disponibles pour LICENCE_PRO' 
+        });
+      }
+
+    } else if (typeFormationFinal === 'MASTER_PRO') {
+      if (!specialiteMasterPro) {
+        return res.status(400).json({ 
+          message: 'Une spécialité est obligatoire pour Master Professionnel' 
+        });
+      }
+
+      if (optionMasterPro) {
+        const OPTIONS_MASTER_PRO = {
+          'Cybersécurité et Transformation Digitale': [
+            'Systèmes de communication et Data center',
+            'Management des Systèmes d\'Information'
+          ],
+          'Génie Informatique et Innovation Technologique': [
+            'Génie Logiciel',
+            'Intelligence Artificielle et Data Science'
+          ]
+        };
+
+        const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteMasterPro];
+        if (!optionsDisponibles || !optionsDisponibles.includes(optionMasterPro)) {
+          return res.status(400).json({ 
+            message: `L'option "${optionMasterPro}" n'est pas disponible pour la spécialité "${specialiteMasterPro}"` 
+          });
+        }
+      }
+
+      if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro) {
+        return res.status(400).json({ 
+          message: 'Les champs Cycle Ingénieur et Licence Pro ne sont pas disponibles pour MASTER_PRO' 
+        });
+      }
+
+    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+      if (!niveauFinal) {
+        return res.status(400).json({ 
+          message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
+        });
+      }
+      
+      if (niveauFinal >= 3 && !specialite) {
+        return res.status(400).json({ 
+          message: `Une spécialité est obligatoire à partir de la 3ème année pour ${typeFormationFinal}` 
+        });
+      }
+
+      if (niveauFinal === 5 && !option) {
+        return res.status(400).json({ 
+          message: `Une option est obligatoire en 5ème année pour ${typeFormationFinal}` 
+        });
+      }
+
+      if (specialite) {
+        const STRUCTURE_FORMATION = {
+          MASI: {
+            3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
+            4: ['Management des affaires et systèmes d\'information'],
+            5: ['Management des affaires et systèmes d\'information']
+          },
+          IRM: {
+            3: ['Développement informatique', 'Réseaux et cybersécurité'],
+            4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
+            5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
+          }
+        };
+
+        const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
+        if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialite)) {
+          return res.status(400).json({ 
+            message: `La spécialité "${specialite}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}` 
+          });
+        }
+      }
+
+      if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
+        return res.status(400).json({ 
+          message: 'Les champs Cycle Ingénieur, Licence Pro et Master Pro ne sont pas disponibles pour les formations MASI/IRM' 
+        });
+      }
+    }
+
+    // Validation Partner
+    if (isPartner === true || isPartner === 'true') {
+      if (!nomPartner || nomPartner.trim() === '') {
+        return res.status(400).json({ 
+          message: 'Le nom du partner est obligatoire pour un étudiant partner' 
+        });
+      }
+      if (!prixTotalPartner || parseFloat(prixTotalPartner) <= 0) {
+        return res.status(400).json({ 
+          message: 'Le prix total partner doit être supérieur à 0 pour un étudiant partner' 
+        });
+      }
+    }
+
+    // Gestion des cours avec limite
+    const MAX_ETUDIANTS = 20;
+    let coursArray = [];
+
+    if (cours) {
+      const coursDemandes = Array.isArray(cours) ? cours : [cours];
+      for (let coursNom of coursDemandes) {
+        const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
+        let nomAvecSuffixe = '';
+        let coursTrouve = false;
+
+        for (let suffix of suffixes) {
+          nomAvecSuffixe = coursNom + suffix;
+
+          let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
+          if (!coursExiste) {
+            const coursOriginal = await Cours.findOne({ nom: coursNom });
+            let professeurs = [];
+            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+              professeurs = coursOriginal.professeur;
+            } else {
+              const prof = await Professeur.findOne({ cours: coursNom });
+              if (prof) professeurs = [prof.nom];
+            }
+            const nouveauCours = new Cours({
+              nom: nomAvecSuffixe,
+              professeur: professeurs,
+              creePar: req.adminId
+            });
+            await nouveauCours.save();
+            for (const nomProf of professeurs) {
+              await Professeur.updateOne(
+                { nom: nomProf },
+                { $addToSet: { cours: nomAvecSuffixe } }
+              );
+            }
+            coursExiste = nouveauCours;
+          }
+
+          const count = await Etudiant.countDocuments({ cours: nomAvecSuffixe });
+          if (count < MAX_ETUDIANTS) {
+            coursArray.push(nomAvecSuffixe);
+            coursTrouve = true;
+            break;
+          }
+        }
+
+        if (!coursTrouve) {
+          const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
+          const nomNouveau = `${coursNom}${nextSuffix}`;
+          const coursOriginal = await Cours.findOne({ nom: coursNom });
+          let professeurs = [];
+          if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
+            professeurs = coursOriginal.professeur;
+          } else {
+            const prof = await Professeur.findOne({ cours: coursNom });
+            if (prof) professeurs = [prof.nom];
+          }
+          const nouveauCours = new Cours({
+            nom: nomNouveau,
+            professeur: professeurs,
+            creePar: req.adminId
+          });
+          await nouveauCours.save();
+          for (const nomProf of professeurs) {
+            await Professeur.updateOne(
+              { nom: nomProf },
+              { $addToSet: { cours: nomNouveau } }
+            );
+          }
+          coursArray.push(nomNouveau);
+        }
+      }
+    }
+
+    // Traitement des fichiers pour les documents (NOUVEAU)
+    const getFilePath = (fileField) => {
+      return req.files && req.files[fileField] && req.files[fileField][0] 
+        ? `/uploads/${req.files[fileField][0].filename}` 
+        : '';
+    };
+
+    // Gestion des documents avec commentaires
+    const documents = {};
+    const typesDocuments = [
+      'cin', 'bacCommentaire', 'releveNoteBac', 'diplomeCommentaire',
+      'attestationReussiteCommentaire', 'releveNotesFormationCommentaire',
+      'passeport', 'bacOuAttestationBacCommentaire', 'authentificationBac',
+      'authenticationDiplome', 'engagementCommentaire'
+    ];
+
+    typesDocuments.forEach(type => {
+      const fichier = getFilePath(type);
+      const commentaire = req.body[`${type}_commentaire`] || '';
+      
+      if (fichier || commentaire) {
+        documents[type] = {
+          fichier: fichier,
+          commentaire: commentaire
+        };
+      }
+    });
+
+    // Traitement des anciens fichiers (compatibilité)
+    const imagePath = getFilePath('image');
+    
+    // Hashage du mot de passe
+    const hashedPassword = await bcrypt.hash(motDePasse, 10);
+
+    // Fonctions utilitaires
+    const toDate = (d) => {
+      if (!d) return null;
+      const date = new Date(d);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
+    const toBool = (v) => v === 'true' || v === true;
+    
+    const toNumber = (v) => {
+      if (!v || v === '') return null;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    };
+
+    const dateNaissanceFormatted = toDate(dateNaissance);
+    const dateEtReglementFormatted = toDate(dateEtReglement);
+
+    const boolFields = ['actif', 'paye', 'handicape', 'resident', 'fonctionnaire', 'mobilite', 'nouvelleInscription', 'isPartner'];
+    boolFields.forEach(field => {
+      if (req.body[field] !== undefined) req.body[field] = toBool(req.body[field]);
+    });
+
+    const prixTotalNum = toNumber(prixTotal);
+    const prixTotalPartnerNum = toNumber(prixTotalPartner);
+    const pourcentageBourseNum = toNumber(pourcentageBourse);
+    const anneeBacNum = toNumber(anneeBaccalaureat);
+    const premiereInscriptionNum = toNumber(premiereAnneeInscription);
+
+    if (pourcentageBourseNum && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
+      return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
+    }
+
+    // Logique automatique pour le mode de paiement annuel
+    if (modePaiement === 'annuel' && paye === undefined) {
+      req.body.paye = true;
+    }
+
+    // Création de l'étudiant
+    const etudiantData = {
+      prenom: prenom.trim(),
+      nomDeFamille: nomDeFamille.trim(),
+      genre,
+      dateNaissance: dateNaissanceFormatted,
+      telephone: telephone.trim(),
+      email: email.toLowerCase().trim(),
+      motDePasse: hashedPassword,
+      cin: cin?.trim() || '',
+      codeMassar: codeMassar?.trim() || '',
+      passeport: passeport?.trim() || '',
+      codeBaccalaureat: codeBaccalaureat?.trim() || '',
+      telephoneResponsable: telephoneResponsable?.trim() || '',
+      lieuNaissance: lieuNaissance?.trim() || '',
+      pays: pays?.trim() || '',
+      niveau: niveauFinal,
+      niveauFormation: niveauFormation?.trim() || '',
+      filiere: filiere?.trim() || '',
+      typeFormation: typeFormationFinal,
+      typeDiplome: typeDiplome?.trim() || '',
+      diplomeAcces: diplomeAcces?.trim() || '',
+      specialiteDiplomeAcces: specialiteDiplomeAcces?.trim() || '',
+      mention: mention?.trim() || '',
+      lieuObtentionDiplome: lieuObtentionDiplome?.trim() || '',
+      serieBaccalaureat: serieBaccalaureat?.trim() || '',
+      anneeBaccalaureat: anneeBacNum,
+      premiereAnneeInscription: premiereInscriptionNum,
+      sourceInscription: sourceInscription?.trim() || '',
+      typePaiement: typePaiement?.trim() || '',
+      prixTotal: prixTotalNum,
+      pourcentageBourse: pourcentageBourseNum,
+      situation: situation?.trim() || '',
+      codeEtudiant: codeEtudiant?.trim() || '',
+      dateEtReglement: dateEtReglementFormatted,
+      cours: coursArray,
+      modePaiement: modePaiement || 'mensuel',
+      
+      // Nouveaux champs Partner
+      isPartner: req.body.isPartner || false,
+      nomPartner: nomPartner?.trim() || '',
+      prixTotalPartner: prixTotalPartnerNum || 0,
+      
+      // Système de documents
+      documents: documents,
+      
+      // Image (ancien système, maintenu pour compatibilité)
+      image: imagePath,
+      
+      // Champs booléens
+      actif: req.body.actif !== undefined ? req.body.actif : true,
+      paye: req.body.paye || false,
+      handicape: req.body.handicape || false,
+      resident: req.body.resident || false,
+      fonctionnaire: req.body.fonctionnaire || false,
+      mobilite: req.body.mobilite || false,
+      nouvelleInscription: req.body.nouvelleInscription !== undefined ? req.body.nouvelleInscription : true,
+      commercial: commercial || null,
+      creeParAdmin: req.adminId,
+      
+      anneeScolaire: anneeScolaire || Etudiant.getAnneeScolaireActuelle()
+    };
+
+    // Assignation des champs spécifiques selon le type de formation
+    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
+      const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
+      etudiantData.cycle = cycleCalcule;
+      etudiantData.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
+      etudiantData.optionIngenieur = optionIngenieur?.trim() || undefined;
+      etudiantData.specialite = '';
+      etudiantData.option = '';
+      etudiantData.specialiteLicencePro = undefined;
+      etudiantData.optionLicencePro = undefined;
+      etudiantData.specialiteMasterPro = undefined;
+      etudiantData.optionMasterPro = undefined;
+      
+    } else if (typeFormationFinal === 'LICENCE_PRO') {
+      etudiantData.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
+      etudiantData.optionLicencePro = optionLicencePro?.trim() || undefined;
+      etudiantData.cycle = undefined;
+      etudiantData.specialiteIngenieur = undefined;
+      etudiantData.optionIngenieur = undefined;
+      etudiantData.specialiteMasterPro = undefined;
+      etudiantData.optionMasterPro = undefined;
+      etudiantData.specialite = '';
+      etudiantData.option = '';
+      
+    } else if (typeFormationFinal === 'MASTER_PRO') {
+      etudiantData.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
+      etudiantData.optionMasterPro = optionMasterPro?.trim() || undefined;
+      etudiantData.cycle = undefined;
+      etudiantData.specialiteIngenieur = undefined;
+      etudiantData.optionIngenieur = undefined;
+      etudiantData.specialiteLicencePro = undefined;
+      etudiantData.optionLicencePro = undefined;
+      etudiantData.specialite = '';
+      etudiantData.option = '';
+      
+    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
+      etudiantData.specialite = specialite?.trim() || '';
+      etudiantData.option = option?.trim() || '';
+      etudiantData.cycle = undefined;
+      etudiantData.specialiteIngenieur = undefined;
+      etudiantData.optionIngenieur = undefined;
+      etudiantData.specialiteLicencePro = undefined;
+      etudiantData.optionLicencePro = undefined;
+      etudiantData.specialiteMasterPro = undefined;
+      etudiantData.optionMasterPro = undefined;
+    }
+
+    const etudiant = new Etudiant(etudiantData);
+    const etudiantSauve = await etudiant.save();
+    
+    // Préparer la réponse sans le mot de passe
+    const etudiantResponse = etudiantSauve.toObject();
+    delete etudiantResponse.motDePasse;
+
+    res.status(201).json(etudiantResponse);
+
+  } catch (err) {
+    console.error('Erreur ajout étudiant:', err);
+    
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ message: 'Erreur de validation', errors });
+    }
+    
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ message: `${field} déjà utilisé par un autre étudiant` });
+    }
+
+    res.status(500).json({
+      message: 'Erreur interne du serveur',
+      error: err.message
+    });
+  }
+});
+
+// Route PUT pour modifier un étudiant
+app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
+  try {
+    const {
+      prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
+      actif, commercial, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
+      filiere, option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
+      mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
+      premiereAnneeInscription, sourceInscription, typePaiement, prixTotal,
+      pourcentageBourse, situation, nouvelleInscription, paye, handicape,
+      resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
+      typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
+      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
+      modePaiement,
+      telephoneResponsable,
+      codeBaccalaureat,
+      
+      // NOUVEAUX CHAMPS PARTNER
+      isPartner,
+      nomPartner,
+      prixTotalPartner,
+      
+      // COMMENTAIRES POUR LES DOCUMENTS
+      commentaireCin,
+      commentaireBacCommentaire,
+      commentaireReleveNoteBac,
+      commentaireDiplomeCommentaire,
+      commentaireAttestationReussiteCommentaire,
+      commentaireReleveNotesFormationCommentaire,
+      commentairePasseport,
+      commentaireBacOuAttestationBacCommentaire,
+      commentaireAuthentificationBac,
+      commentaireAuthenticationDiplome,
+      commentaireEngagementCommentaire
+    } = req.body;
+
+    // Rechercher l'étudiant existant
+    const etudiantExistant = await Etudiant.findById(req.params.id);
+    if (!etudiantExistant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    // Validation du mode de paiement
+    if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
+      return res.status(400).json({ 
+        message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
+      });
+    }
+
+    // NOUVEAU: Validation des champs Partner
+    if (isPartner !== undefined) {
+      const isPartnerBool = isPartner === 'true' || isPartner === true;
+      
+      if (isPartnerBool) {
+        // Validation du nom du partner
+        if (nomPartner !== undefined && (!nomPartner || nomPartner.trim() === '')) {
+          return res.status(400).json({ 
+            message: 'Le nom du partner est obligatoire pour les étudiants partenaires' 
+          });
+        }
+        
+        if (prixTotalPartner !== undefined && (!prixTotalPartner || parseFloat(prixTotalPartner) <= 0)) {
+          return res.status(400).json({ 
+            message: 'Le prix total Partner est obligatoire et doit être supérieur à 0 pour les étudiants partenaires' 
+          });
+        }
+      }
+    }
+
+    // Fonction pour obtenir le chemin des nouveaux documents
+    const getDocumentPath = (documentField) => {
+      return req.files && req.files[documentField] && req.files[documentField][0] 
+        ? `/documents/${req.files[documentField][0].filename}` 
+        : undefined;
+    };
+
+    // Image de profil
+    const imagePath = req.files && req.files['image'] && req.files['image'][0] 
+      ? `/uploads/${req.files['image'][0].filename}` 
+      : undefined;
+
+    // Fonctions utilitaires
+    const toDate = (val) => {
+      if (!val) return undefined;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? undefined : date;
+    };
+
+    const toNumber = (val) => {
+      if (val === undefined || val === '' || val === null) return undefined;
+      const n = parseFloat(val);
+      return isNaN(n) ? undefined : n;
+    };
+
+    const toBool = (val) => val === 'true' || val === true;
+
+    // Validation de l'email si fourni
+    if (email && email !== etudiantExistant.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: 'Format d\'email invalide' });
+      }
+
+      const emailExiste = await Etudiant.findOne({ 
+        email: email.toLowerCase().trim(), 
+        _id: { $ne: req.params.id } 
+      });
+      if (emailExiste) {
+        return res.status(400).json({ message: 'Email déjà utilisé par un autre étudiant' });
+      }
+    }
+
+    // Validation du code étudiant si fourni
+    if (codeEtudiant && codeEtudiant !== etudiantExistant.codeEtudiant) {
+      const codeExiste = await Etudiant.findOne({ 
+        codeEtudiant: codeEtudiant.trim(),
+        _id: { $ne: req.params.id } 
+      });
+      if (codeExiste) {
+        return res.status(400).json({ message: 'Code étudiant déjà utilisé par un autre étudiant' });
+      }
+    }
+
+    // Créer l'objet de modifications
+    const modifications = {};
+
+    // Appliquer toutes les modifications reçues
+    if (prenom !== undefined) modifications.prenom = prenom.trim();
+    if (nomDeFamille !== undefined) modifications.nomDeFamille = nomDeFamille.trim();
+    if (genre !== undefined) modifications.genre = genre;
+    if (dateNaissance !== undefined) modifications.dateNaissance = toDate(dateNaissance);
+    if (telephone !== undefined) modifications.telephone = telephone.trim();
+    if (telephoneResponsable !== undefined) modifications.telephoneResponsable = telephoneResponsable?.trim() || '';
+    if (email !== undefined) modifications.email = email.toLowerCase().trim();
+    if (cin !== undefined) modifications.cin = cin.trim();
+    if (passeport !== undefined) modifications.passeport = passeport.trim();
+    if (codeBaccalaureat !== undefined) modifications.codeBaccalaureat = codeBaccalaureat?.trim() || '';
+    if (lieuNaissance !== undefined) modifications.lieuNaissance = lieuNaissance.trim();
+    if (pays !== undefined) modifications.pays = pays.trim();
+    if (niveau !== undefined) modifications.niveau = toNumber(niveau);
+    if (niveauFormation !== undefined) modifications.niveauFormation = niveauFormation.trim();
+    if (filiere !== undefined) modifications.filiere = filiere.trim();
+    if (typeFormation !== undefined) modifications.typeFormation = typeFormation;
+    if (modePaiement !== undefined) modifications.modePaiement = modePaiement;
+    if (anneeScolaire !== undefined) modifications.anneeScolaire = anneeScolaire;
+    if (actif !== undefined) modifications.actif = toBool(actif);
+    if (paye !== undefined) modifications.paye = toBool(paye);
+    if (handicape !== undefined) modifications.handicape = toBool(handicape);
+    if (resident !== undefined) modifications.resident = toBool(resident);
+    if (fonctionnaire !== undefined) modifications.fonctionnaire = toBool(fonctionnaire);
+    if (mobilite !== undefined) modifications.mobilite = toBool(mobilite);
+    if (nouvelleInscription !== undefined) modifications.nouvelleInscription = toBool(nouvelleInscription);
+    if (commercial !== undefined) modifications.commercial = commercial || null;
+    if (codeEtudiant !== undefined) modifications.codeEtudiant = codeEtudiant?.trim() || '';
+    if (dateEtReglement !== undefined) modifications.dateEtReglement = toDate(dateEtReglement);
+    if (prixTotal !== undefined) modifications.prixTotal = toNumber(prixTotal);
+    if (pourcentageBourse !== undefined) modifications.pourcentageBourse = toNumber(pourcentageBourse);
+    if (situation !== undefined) modifications.situation = situation?.trim() || '';
+    if (sourceInscription !== undefined) modifications.sourceInscription = sourceInscription?.trim() || '';
+    if (typePaiement !== undefined) modifications.typePaiement = typePaiement?.trim() || '';
+    if (typeDiplome !== undefined) modifications.typeDiplome = typeDiplome?.trim() || '';
+    if (diplomeAcces !== undefined) modifications.diplomeAcces = diplomeAcces?.trim() || '';
+    if (specialiteDiplomeAcces !== undefined) modifications.specialiteDiplomeAcces = specialiteDiplomeAcces?.trim() || '';
+    if (mention !== undefined) modifications.mention = mention?.trim() || '';
+    if (lieuObtentionDiplome !== undefined) modifications.lieuObtentionDiplome = lieuObtentionDiplome?.trim() || '';
+    if (serieBaccalaureat !== undefined) modifications.serieBaccalaureat = serieBaccalaureat?.trim() || '';
+    if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
+    if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
+    
+    // NOUVEAUX CHAMPS PARTNER
+    if (isPartner !== undefined) modifications.isPartner = toBool(isPartner);
+    if (nomPartner !== undefined) modifications.nomPartner = nomPartner?.trim() || '';
+    if (prixTotalPartner !== undefined) modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
+    
+    // Champs spécifiques selon le type de formation
+    if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
+    if (option !== undefined) modifications.option = option?.trim() || '';
+    if (cycle !== undefined) modifications.cycle = cycle;
+    if (specialiteIngenieur !== undefined) modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
+    if (optionIngenieur !== undefined) modifications.optionIngenieur = optionIngenieur?.trim() || undefined;
+    if (specialiteLicencePro !== undefined) modifications.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
+    if (optionLicencePro !== undefined) modifications.optionLicencePro = optionLicencePro?.trim() || undefined;
+    if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
+    if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
+    
+    // Image de profil
+    if (imagePath !== undefined) modifications.image = imagePath;
+
+    // Validation du mot de passe si fourni
+    if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
+      if (motDePasse.length < 6) {
+        return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+      }
+      const hashedPassword = await bcrypt.hash(motDePasse.trim(), 10);
+      modifications.motDePasse = hashedPassword;
+    }
+
+    // Validation du pourcentage de bourse
+    if (modifications.pourcentageBourse !== undefined && modifications.pourcentageBourse !== null) {
+      if (modifications.pourcentageBourse < 0 || modifications.pourcentageBourse > 100) {
+        return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
+      }
+    }
+
+    // Logique automatique pour le mode de paiement annuel
+    if (modePaiement === 'annuel' && paye === undefined) {
+      modifications.paye = true;
+    }
+
+    // Mise à jour des documents (seulement si de nouveaux fichiers ou commentaires sont fournis)
+    const documentsExistants = etudiantExistant.documents || {};
+    const nouveauxDocuments = {};
+
+    // Types de documents avec leurs commentaires
+    const typesDocuments = [
+      { key: 'cin', fileField: 'documentCin', commentField: 'commentaireCin' },
+      { key: 'bacCommentaire', fileField: 'documentBacCommentaire', commentField: 'commentaireBacCommentaire' },
+      { key: 'releveNoteBac', fileField: 'documentReleveNoteBac', commentField: 'commentaireReleveNoteBac' },
+      { key: 'diplomeCommentaire', fileField: 'documentDiplomeCommentaire', commentField: 'commentaireDiplomeCommentaire' },
+      { key: 'attestationReussiteCommentaire', fileField: 'documentAttestationReussiteCommentaire', commentField: 'commentaireAttestationReussiteCommentaire' },
+      { key: 'releveNotesFormationCommentaire', fileField: 'documentReleveNotesFormationCommentaire', commentField: 'commentaireReleveNotesFormationCommentaire' },
+      { key: 'passeport', fileField: 'documentPasseport', commentField: 'commentairePasseport' },
+      { key: 'bacOuAttestationBacCommentaire', fileField: 'documentBacOuAttestationBacCommentaire', commentField: 'commentaireBacOuAttestationBacCommentaire' },
+      { key: 'authentificationBac', fileField: 'documentAuthentificationBac', commentField: 'commentaireAuthentificationBac' },
+      { key: 'authenticationDiplome', fileField: 'documentAuthenticationDiplome', commentField: 'commentaireAuthenticationDiplome' },
+      { key: 'engagementCommentaire', fileField: 'documentEngagementCommentaire', commentField: 'commentaireEngagementCommentaire' }
+    ];
+
+    typesDocuments.forEach(type => {
+      const documentExistant = documentsExistants[type.key] || {};
+      const nouveauFichier = getDocumentPath(type.fileField);
+      const nouveauCommentaire = req.body[type.commentField];
+
+      nouveauxDocuments[type.key] = {
+        fichier: nouveauFichier !== undefined ? nouveauFichier : documentExistant.fichier || '',
+        commentaire: nouveauCommentaire !== undefined ? nouveauCommentaire : documentExistant.commentaire || ''
+      };
+    });
+
+    modifications.documents = nouveauxDocuments;
+
+    // Mise à jour du document existant
+    const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
+      req.params.id,
+      modifications,
+      { 
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!etudiantMiseAJour) {
+      return res.status(404).json({ message: 'Étudiant non trouvé lors de la mise à jour' });
+    }
+
+    // Retourner le document mis à jour (sans mot de passe)
+    const etudiantResponse = etudiantMiseAJour.toObject();
+    delete etudiantResponse.motDePasse;
+
+    res.status(200).json({
+      message: 'Étudiant mis à jour avec succès',
+      data: etudiantResponse
+    });
+
+  } catch (err) {
+    console.error('Erreur lors de la mise à jour étudiant:', err);
+    
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ message: 'Erreur de validation', errors });
+    }
+    
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({ message: `${field} déjà utilisé par un autre étudiant` });
+    }
+
+    if (err.name === 'CastError') {
+      return res.status(400).json({ message: 'ID étudiant invalide' });
+    }
+
+    res.status(500).json({
+      message: 'Erreur interne du serveur',
+      error: err.message
+    });
+  }
+});
 // ===== NOUVELLE ROUTE POUR STATISTIQUES DÉTAILLÉES =====
 app.get('/api/statistiques', authAdmin, async (req, res) => {
   try {
@@ -10941,537 +13079,7 @@ app.get('/api/commercial/etudiants', authCommercial, async (req, res) => {
 
 // PUT - Modifier un étudiant du commercial
 // ===== ROUTE POST - CRÉATION D'ÉTUDIANT PAR COMMERCIAL =====
-app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
-  try {
-    const {
-      prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
-      actif, commercial, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
-      filiere, option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
-      mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
-      premiereAnneeInscription, sourceInscription, typePaiement, prixTotal,
-      pourcentageBourse, situation, nouvelleInscription, paye, handicape,
-      resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
-      // Nouveaux champs pour le système de formation intelligent
-      cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
-      // Nouveaux champs pour LICENCE_PRO et MASTER_PRO
-      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro
-    } = req.body;
 
-    // Validation des champs obligatoires
-    if (!prenom || !nomDeFamille || !telephone || !email || !motDePasse || !dateNaissance) {
-      return res.status(400).json({
-        message: 'Les champs prenom, nomDeFamille, telephone, email, motDePasse et dateNaissance sont obligatoires'
-      });
-    }
-
-    // Validation de l'email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Format d\'email invalide' });
-    }
-
-    // Validation du mot de passe
-    if (motDePasse.length < 6) {
-      return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
-    }
-
-    // Vérification de l'unicité de l'email
-    const existe = await Etudiant.findOne({ email });
-    if (existe) return res.status(400).json({ message: 'Email déjà utilisé' });
-
-    // Vérification de l'unicité du code étudiant
-    if (codeEtudiant) {
-      const codeExiste = await Etudiant.findOne({ codeEtudiant });
-      if (codeExiste) return res.status(400).json({ message: 'Code étudiant déjà utilisé' });
-    }
-
-    // ===== VALIDATION DU SYSTÈME DE FORMATION INTELLIGENT =====
-    
-    // Définir les structures de formation
-    const STRUCTURE_OPTIONS_INGENIEUR = {
-      'Génie Informatique': [
-        'Sécurité & Mobilité Informatique',
-        'IA & Science des Données',
-        'Réseaux & Cloud Computing'
-      ],
-      'Génie Mécatronique': [
-        'Génie Mécanique',
-        'Génie Industriel',
-        'Automatisation'
-      ],
-      'Génie Civil': [
-        'Structures & Ouvrages d\'art',
-        'Bâtiment & Efficacité Énergétique',
-        'Géotechnique & Infrastructures'
-      ]
-    };
-
-    const STRUCTURE_OPTIONS_LICENCE_PRO = {
-      'Développement Informatique Full Stack': [
-        'Développement Mobile',
-        'Intelligence Artificielle et Data Analytics',
-        'Développement JAVA JEE',
-        'Développement Gaming et VR'
-      ],
-      'Réseaux et Cybersécurité': [
-        'Administration des Systèmes et Cloud Computing'
-      ]
-    };
-
-    const STRUCTURE_OPTIONS_MASTER_PRO = {
-      'Cybersécurité et Transformation Digitale': [
-        'Systèmes de communication et Data center',
-        'Management des Systèmes d\'Information'
-      ],
-      'Génie Informatique et Innovation Technologique': [
-        'Génie Logiciel',
-        'Intelligence Artificielle et Data Science'
-      ]
-    };
-    
-    // Déterminer automatiquement le niveau et le cycle
-    let niveauFinal = parseInt(niveau);
-    let cycleFinal = cycle;
-    
-    // Auto-assignation du niveau pour LICENCE_PRO et MASTER_PRO
-    if (filiere === 'LICENCE_PRO') {
-      niveauFinal = 3;
-    } else if (filiere === 'MASTER_PRO') {
-      niveauFinal = 4;
-    }
-    
-    // Auto-assignation du cycle pour CYCLE_INGENIEUR
-    if (filiere === 'CYCLE_INGENIEUR' && niveauFinal) {
-      if (niveauFinal >= 1 && niveauFinal <= 2) {
-        cycleFinal = 'Classes Préparatoires Intégrées';
-      } else if (niveauFinal >= 3 && niveauFinal <= 5) {
-        cycleFinal = 'Cycle Ingénieur';
-      }
-    }
-
-    // ===== VALIDATION SPÉCIFIQUE PAR TYPE DE FORMATION =====
-    
-    if (filiere === 'CYCLE_INGENIEUR') {
-      // Validation formation d'ingénieur
-      if (!cycleFinal) {
-        return res.status(400).json({ 
-          message: 'Le cycle est obligatoire pour la formation d\'ingénieur' 
-        });
-      }
-
-      // Validation cohérence niveau/cycle
-      if (niveauFinal >= 1 && niveauFinal <= 2 && cycleFinal !== 'Classes Préparatoires Intégrées') {
-        return res.status(400).json({ 
-          message: 'Les niveaux 1-2 doivent être en Classes Préparatoires Intégrées' 
-        });
-      }
-
-      if (niveauFinal >= 3 && niveauFinal <= 5 && cycleFinal !== 'Cycle Ingénieur') {
-        return res.status(400).json({ 
-          message: 'Les niveaux 3-5 doivent être en Cycle Ingénieur' 
-        });
-      }
-
-      // Validation spécialité d'ingénieur
-      if (cycleFinal === 'Cycle Ingénieur' && niveauFinal >= 3 && !specialiteIngenieur) {
-        return res.status(400).json({ 
-          message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année du Cycle Ingénieur' 
-        });
-      }
-
-      // Validation option d'ingénieur
-      if (cycleFinal === 'Cycle Ingénieur' && niveauFinal === 5 && !optionIngenieur) {
-        return res.status(400).json({ 
-          message: 'Une option d\'ingénieur est obligatoire en 5ème année du Cycle Ingénieur' 
-        });
-      }
-
-      // Validation cohérence spécialité/option
-      if (specialiteIngenieur && optionIngenieur) {
-        if (!STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur] || 
-            !STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur].includes(optionIngenieur)) {
-          return res.status(400).json({ 
-            message: 'Cette option n\'est pas disponible pour cette spécialité d\'ingénieur' 
-          });
-        }
-      }
-
-    } else if (filiere === 'LICENCE_PRO') {
-      // Validation Licence Professionnelle
-      if (!specialiteLicencePro) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour la Licence Professionnelle' 
-        });
-      }
-
-      // Validation option si elle existe pour cette spécialité
-      const optionsDisponibles = STRUCTURE_OPTIONS_LICENCE_PRO[specialiteLicencePro] || [];
-      if (optionsDisponibles.length > 0 && !optionLicencePro) {
-        return res.status(400).json({ 
-          message: 'Une option est obligatoire pour cette spécialité de Licence Professionnelle' 
-        });
-      }
-
-      if (optionLicencePro && !optionsDisponibles.includes(optionLicencePro)) {
-        return res.status(400).json({ 
-          message: 'Cette option n\'est pas disponible pour cette spécialité de Licence Professionnelle' 
-        });
-      }
-
-    } else if (filiere === 'MASTER_PRO') {
-      // Validation Master Professionnel
-      if (!specialiteMasterPro) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour le Master Professionnel' 
-        });
-      }
-
-      // Validation option si elle existe pour cette spécialité
-      const optionsDisponibles = STRUCTURE_OPTIONS_MASTER_PRO[specialiteMasterPro] || [];
-      if (optionsDisponibles.length > 0 && !optionMasterPro) {
-        return res.status(400).json({ 
-          message: 'Une option est obligatoire pour cette spécialité de Master Professionnel' 
-        });
-      }
-
-      if (optionMasterPro && !optionsDisponibles.includes(optionMasterPro)) {
-        return res.status(400).json({ 
-          message: 'Cette option n\'est pas disponible pour cette spécialité de Master Professionnel' 
-        });
-      }
-
-    } else if (filiere === 'MASI' || filiere === 'IRM') {
-      // Validation anciennes formations
-      if (niveauFinal >= 3 && !specialite) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire à partir de la 3ème année' 
-        });
-      }
-
-      if (niveauFinal === 5 && !option) {
-        return res.status(400).json({ 
-          message: 'Une option est obligatoire en 5ème année' 
-        });
-      }
-
-      // Validation cohérence filière/spécialité/option
-      if (filiere && specialite) {
-        const STRUCTURE_FORMATION = {
-          MASI: {
-            3: [
-              'Entreprenariat, audit et finance',
-              'Développement commercial et marketing digital'
-            ],
-            4: [
-              'Management des affaires et systèmes d\'information'
-            ],
-            5: [
-              'Management des affaires et systèmes d\'information'
-            ]
-          },
-          IRM: {
-            3: [
-              'Développement informatique',
-              'Réseaux et cybersécurité'
-            ],
-            4: [
-              'Génie informatique et innovation technologique',
-              'Cybersécurité et transformation digitale'
-            ],
-            5: [
-              'Génie informatique et innovation technologique',
-              'Cybersécurité et transformation digitale'
-            ]
-          }
-        };
-
-        const specialitesDisponibles = STRUCTURE_FORMATION[filiere]?.[niveauFinal] || [];
-        if (!specialitesDisponibles.includes(specialite)) {
-          return res.status(400).json({ 
-            message: 'Cette spécialité n\'est pas disponible pour ce niveau et cette filière' 
-          });
-        }
-      }
-    }
-
-    // ===== GESTION DES COURS AVEC LIMITE =====
-    const MAX_ETUDIANTS = 20;
-    let coursArray = [];
-
-    if (cours) {
-      const coursDemandes = Array.isArray(cours) ? cours : [cours];
-      for (let coursNom of coursDemandes) {
-        const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
-        let nomAvecSuffixe = '';
-        let coursTrouve = false;
-
-        for (let suffix of suffixes) {
-          nomAvecSuffixe = coursNom + suffix;
-
-          let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
-          if (!coursExiste) {
-            const coursOriginal = await Cours.findOne({ nom: coursNom });
-            let professeurs = [];
-            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-              professeurs = coursOriginal.professeur;
-            } else {
-              const prof = await Professeur.findOne({ cours: coursNom });
-              if (prof) professeurs = [prof.nom];
-            }
-            const nouveauCours = new Cours({
-              nom: nomAvecSuffixe,
-              professeur: professeurs,
-              creePar: req.commercialId
-            });
-            await nouveauCours.save();
-            for (const nomProf of professeurs) {
-              await Professeur.updateOne(
-                { nom: nomProf },
-                { $addToSet: { cours: nomAvecSuffixe } }
-              );
-            }
-            coursExiste = nouveauCours;
-          }
-
-          const count = await Etudiant.countDocuments({ cours: nomAvecSuffixe });
-          if (count < MAX_ETUDIANTS) {
-            coursArray.push(nomAvecSuffixe);
-            coursTrouve = true;
-            break;
-          }
-        }
-
-        if (!coursTrouve) {
-          const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length); // H
-          const nomNouveau = `${coursNom}${nextSuffix}`;
-          const coursOriginal = await Cours.findOne({ nom: coursNom });
-          let professeurs = [];
-          if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-            professeurs = coursOriginal.professeur;
-          } else {
-            const prof = await Professeur.findOne({ cours: coursNom });
-            if (prof) professeurs = [prof.nom];
-          }
-          const nouveauCours = new Cours({
-            nom: nomNouveau,
-            professeur: professeurs,
-            creePar: req.commercialId
-          });
-          await nouveauCours.save();
-          for (const nomProf of professeurs) {
-            await Professeur.updateOne(
-              { nom: nomProf },
-              { $addToSet: { cours: nomNouveau } }
-            );
-          }
-          coursArray.push(nomNouveau);
-        }
-      }
-    }
-
-    // ===== TRAITEMENT DES FICHIERS =====
-    
-    // Fonction pour traiter les chemins des fichiers
-    const getFilePath = (fileField) => {
-      return req.files && req.files[fileField] && req.files[fileField][0] 
-        ? `/uploads/${req.files[fileField][0].filename}` 
-        : '';
-    };
-
-    // Récupération des chemins de tous les fichiers
-    const imagePath = getFilePath('image');
-    const fichierInscritPath = getFilePath('fichierInscrit');
-    const originalBacPath = getFilePath('originalBac');
-    const releveNotesPath = getFilePath('releveNotes');
-    const copieCniPath = getFilePath('copieCni');
-    const fichierPassportPath = getFilePath('fichierPassport');
-    const dtsBac2Path = getFilePath('dtsBac2');
-    const licencePath = getFilePath('licence');
-    
-    // Hashage du mot de passe
-    const hashedPassword = await bcrypt.hash(motDePasse, 10);
-
-    // Fonctions utilitaires pour la conversion des données
-    const toDate = (d) => {
-      if (!d) return null;
-      const date = new Date(d);
-      return isNaN(date.getTime()) ? null : date;
-    };
-
-    const toBool = (v) => v === 'true' || v === true;
-    
-    const toNumber = (v) => {
-      if (!v || v === '') return null;
-      const n = parseFloat(v);
-      return isNaN(n) ? null : n;
-    };
-
-    // Conversion des dates
-    const dateNaissanceFormatted = toDate(dateNaissance);
-    const dateEtReglementFormatted = toDate(dateEtReglement);
-
-    // Conversion des booléens
-    const boolFields = ['actif', 'paye', 'handicape', 'resident', 'fonctionnaire', 'mobilite', 'nouvelleInscription'];
-    boolFields.forEach(field => {
-      if (req.body[field] !== undefined) req.body[field] = toBool(req.body[field]);
-    });
-
-    // Conversion des nombres
-    const prixTotalNum = toNumber(prixTotal);
-    const pourcentageBourseNum = toNumber(pourcentageBourse);
-    const anneeBacNum = toNumber(anneeBaccalaureat);
-    const premiereInscriptionNum = toNumber(premiereAnneeInscription);
-
-    // Validation du pourcentage de bourse
-    if (pourcentageBourseNum && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
-      return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
-    }
-
-    // ===== CRÉATION DE L'ÉTUDIANT =====
-    const etudiantData = {
-      prenom: prenom.trim(),
-      nomDeFamille: nomDeFamille.trim(),
-      genre,
-      dateNaissance: dateNaissanceFormatted,
-      telephone: telephone.trim(),
-      email: email.toLowerCase().trim(),
-      motDePasse: hashedPassword,
-      cin: cin?.trim() || '',
-      passeport: passeport?.trim() || '',
-      lieuNaissance: lieuNaissance?.trim() || '',
-      pays: pays?.trim() || '',
-      niveau: niveauFinal,
-      niveauFormation: niveauFormation?.trim() || '',
-      filiere: filiere?.trim() || '',
-      typeDiplome: typeDiplome?.trim() || '',
-      diplomeAcces: diplomeAcces?.trim() || '',
-      specialiteDiplomeAcces: specialiteDiplomeAcces?.trim() || '',
-      mention: mention?.trim() || '',
-      lieuObtentionDiplome: lieuObtentionDiplome?.trim() || '',
-      serieBaccalaureat: serieBaccalaureat?.trim() || '',
-      anneeBaccalaureat: anneeBacNum,
-      premiereAnneeInscription: premiereInscriptionNum,
-      sourceInscription: sourceInscription?.trim() || '',
-      typePaiement: typePaiement?.trim() || '',
-      prixTotal: prixTotalNum,
-      pourcentageBourse: pourcentageBourseNum,
-      situation: situation?.trim() || '',
-      codeEtudiant: codeEtudiant?.trim() || '',
-      dateEtReglement: dateEtReglementFormatted,
-      cours: coursArray,
-      
-      // Tous les fichiers
-      image: imagePath,
-      fichierInscrit: fichierInscritPath,
-      originalBac: originalBacPath,
-      releveNotes: releveNotesPath,
-      copieCni: copieCniPath,
-      passport: fichierPassportPath,
-      dtsBac2: dtsBac2Path,
-      licence: licencePath,
-      
-      // Champs booléens
-      actif: req.body.actif,
-      paye: req.body.paye,
-      handicape: req.body.handicape,
-      resident: req.body.resident,
-      fonctionnaire: req.body.fonctionnaire,
-      mobilite: req.body.mobilite,
-      nouvelleInscription: req.body.nouvelleInscription,
-      
-      // Lier au commercial au lieu d'admin
-      commercial: req.commercialId,
-      creeParAdmin: null,
-      
-      // Année scolaire
-      anneeScolaire: anneeScolaire || undefined,
-
-      // Déterminer le type de formation basé sur la filière
-      typeFormation: filiere
-    };
-
-    // Ajouter les champs spécifiques selon le type de formation
-    if (filiere === 'CYCLE_INGENIEUR') {
-      // Formation d'ingénieur
-      etudiantData.cycle = cycleFinal;
-      etudiantData.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
-      etudiantData.optionIngenieur = optionIngenieur?.trim() || undefined;
-      // Laisser les anciens champs vides
-      etudiantData.specialite = '';
-      etudiantData.option = '';
-      etudiantData.specialiteLicencePro = undefined;
-      etudiantData.optionLicencePro = undefined;
-      etudiantData.specialiteMasterPro = undefined;
-      etudiantData.optionMasterPro = undefined;
-      
-    } else if (filiere === 'LICENCE_PRO') {
-      // Licence Professionnelle
-      etudiantData.specialiteLicencePro = specialiteLicencePro?.trim() || '';
-      etudiantData.optionLicencePro = optionLicencePro?.trim() || '';
-      // Laisser les autres champs vides/undefined
-      etudiantData.cycle = undefined;
-      etudiantData.specialiteIngenieur = undefined;
-      etudiantData.optionIngenieur = undefined;
-      etudiantData.specialite = '';
-      etudiantData.option = '';
-      etudiantData.specialiteMasterPro = undefined;
-      etudiantData.optionMasterPro = undefined;
-      
-    } else if (filiere === 'MASTER_PRO') {
-      // Master Professionnel
-      etudiantData.specialiteMasterPro = specialiteMasterPro?.trim() || '';
-      etudiantData.optionMasterPro = optionMasterPro?.trim() || '';
-      // Laisser les autres champs vides/undefined
-      etudiantData.cycle = undefined;
-      etudiantData.specialiteIngenieur = undefined;
-      etudiantData.optionIngenieur = undefined;
-      etudiantData.specialite = '';
-      etudiantData.option = '';
-      etudiantData.specialiteLicencePro = undefined;
-      etudiantData.optionLicencePro = undefined;
-      
-    } else {
-      // Anciennes formations (MASI, IRM)
-      etudiantData.specialite = specialite?.trim() || '';
-      etudiantData.option = option?.trim() || '';
-      // Laisser les nouveaux champs undefined
-      etudiantData.cycle = undefined;
-      etudiantData.specialiteIngenieur = undefined;
-      etudiantData.optionIngenieur = undefined;
-      etudiantData.specialiteLicencePro = undefined;
-      etudiantData.optionLicencePro = undefined;
-      etudiantData.specialiteMasterPro = undefined;
-      etudiantData.optionMasterPro = undefined;
-    }
-
-    const etudiant = new Etudiant(etudiantData);
-    const etudiantSauve = await etudiant.save();
-    
-    // Préparer la réponse sans le mot de passe
-    const etudiantResponse = etudiantSauve.toObject();
-    delete etudiantResponse.motDePasse;
-
-    res.status(201).json(etudiantResponse);
-
-  } catch (err) {
-    console.error('❌ Erreur ajout étudiant (commercial):', err);
-    
-    if (err.name === 'ValidationError') {
-      const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ message: 'Erreur de validation', errors });
-    }
-    
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({ message: `${field} déjà utilisé par un autre étudiant` });
-    }
-
-    res.status(500).json({
-      message: 'Erreur interne du serveur',
-      error: err.message
-    });
-  }
-});
 
 
 
@@ -12797,1225 +14405,7 @@ app.get('/api/admin/rattrapages/statistiques', authAdmin, async (req, res) => {
 
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL =====
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL (avec logique de copie) =====
-app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
-  try {
-    const {
-      prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
-      actif, cin, passeport, lieuNaissance, pays, niveau, niveauFormation,
-      filiere, option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
-      mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
-      premiereAnneeInscription, sourceInscription, typePaiement, prixTotal,
-      pourcentageBourse, situation, nouvelleInscription, paye, handicape,
-      resident, fonctionnaire, mobilite, codeEtudiant, dateEtReglement,
-      typeFormation, cycle, specialiteIngenieur, optionIngenieur, anneeScolaire,
-      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro
-    } = req.body;
 
-    // 1. RECHERCHER L'ETUDIANT EXISTANT (verification d'autorisation)
-    const etudiantExistant = await Etudiant.findOne({ 
-      _id: req.params.id, 
-      commercial: req.commercialId 
-    });
-    
-    if (!etudiantExistant) {
-      return res.status(404).json({ 
-        message: 'Étudiant non trouvé ou vous n\'êtes pas autorisé à le modifier' 
-      });
-    }
-
-    console.log(`📋 Étudiant trouvé: ${etudiantExistant.prenom} ${etudiantExistant.nomDeFamille}`);
-    console.log(`📋 Données reçues - Niveau: "${niveau}", Filière: "${filiere}"`);
-    console.log(`📋 Spécialité reçue: "${specialiteIngenieur}", Option reçue: "${optionIngenieur}"`);
-
-    // 2. DETECTER SI C'EST UNE NOUVELLE ANNEE SCOLAIRE
-    const estNouvelleAnneeScolaire = anneeScolaire && 
-                                    anneeScolaire.trim() !== '' && 
-                                    anneeScolaire !== etudiantExistant.anneeScolaire;
-
-    if (estNouvelleAnneeScolaire) {
-      console.log(`🆕 NOUVELLE ANNÉE SCOLAIRE DÉTECTÉE: ${etudiantExistant.anneeScolaire} → ${anneeScolaire}`);
-      
-      // DETERMINATION AUTOMATIQUE DU TYPE DE FORMATION
-      let typeFormationFinal;
-      if (filiere) {
-        const mappingFiliere = {
-          'CYCLE_INGENIEUR': 'CYCLE_INGENIEUR',
-          'MASI': 'MASI',
-          'IRM': 'IRM',
-          'LICENCE_PRO': 'LICENCE_PRO',
-          'MASTER_PRO': 'MASTER_PRO'
-        };
-        typeFormationFinal = mappingFiliere[filiere];
-      } else {
-        typeFormationFinal = typeFormation || etudiantExistant.typeFormation;
-      }
-
-      // AUTO-ASSIGNATION DU NIVEAU
-      let niveauFinal = parseInt(niveau) || null;
-      
-      // Auto-assignation du niveau selon le type de formation
-      if (typeFormationFinal === 'LICENCE_PRO') {
-        niveauFinal = 3; // Licence Pro = toujours niveau 3
-      } else if (typeFormationFinal === 'MASTER_PRO') {
-        niveauFinal = 4; // Master Pro = toujours niveau 4
-      }
-
-      // VALIDATION SELON LE TYPE DE FORMATION
-      
-      if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-        // Validation pour formation d'ingénieur
-        if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
-          return res.status(400).json({ 
-            message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
-          });
-        }
-
-        let cycleCalcule = cycle;
-        if (niveauFinal >= 1 && niveauFinal <= 2) {
-          cycleCalcule = 'Classes Préparatoires Intégrées';
-        } else if (niveauFinal >= 3 && niveauFinal <= 5) {
-          cycleCalcule = 'Cycle Ingénieur';
-        }
-
-        if (niveauFinal >= 1 && niveauFinal <= 2) {
-          if (specialiteIngenieur || optionIngenieur) {
-            return res.status(400).json({ 
-              message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
-            });
-          }
-        }
-
-        if (niveauFinal >= 3 && niveauFinal <= 5) {
-          if (!specialiteIngenieur) {
-            return res.status(400).json({ 
-              message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
-            });
-          }
-          if (niveauFinal === 5 && !optionIngenieur) {
-            return res.status(400).json({ 
-              message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
-            });
-          }
-        }
-
-        if (specialiteIngenieur && optionIngenieur) {
-          const STRUCTURE_OPTIONS_INGENIEUR = {
-            'Génie Informatique': [
-              'Sécurité & Mobilité Informatique',
-              'IA & Science des Données',
-              'Réseaux & Cloud Computing'
-            ],
-            'Génie Mécatronique': [
-              'Génie Mécanique',
-              'Génie Industriel',
-              'Automatisation'
-            ],
-            'Génie Civil': [
-              'Structures & Ouvrages d\'art',
-              'Bâtiment & Efficacité Énergétique',
-              'Géotechnique & Infrastructures'
-            ]
-          };
-
-          if (!STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur] || 
-              !STRUCTURE_OPTIONS_INGENIEUR[specialiteIngenieur].includes(optionIngenieur)) {
-            return res.status(400).json({ 
-              message: `L'option "${optionIngenieur}" n'est pas disponible pour la spécialité "${specialiteIngenieur}"` 
-            });
-          }
-        }
-
-        if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
-          return res.status(400).json({ 
-            message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
-          });
-        }
-
-      } else if (typeFormationFinal === 'LICENCE_PRO') {
-        // VALIDATION POUR LICENCE PRO (NIVEAU AUTO-ASSIGNE A 3)
-        
-        if (!specialiteLicencePro) {
-          return res.status(400).json({ 
-            message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
-          });
-        }
-
-        if (optionLicencePro) {
-          const OPTIONS_LICENCE_PRO = {
-            'Développement Informatique Full Stack': [
-              'Développement Mobile',
-              'Intelligence Artificielle et Data Analytics',
-              'Développement JAVA JEE',
-              'Développement Gaming et VR'
-            ],
-            'Réseaux et Cybersécurité': [
-              'Administration des Systèmes et Cloud Computing'
-            ]
-          };
-
-          const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteLicencePro];
-          if (!optionsDisponibles || !optionsDisponibles.includes(optionLicencePro)) {
-            return res.status(400).json({ 
-              message: `L'option "${optionLicencePro}" n'est pas disponible pour la spécialité "${specialiteLicencePro}"` 
-            });
-          }
-        }
-
-        const specialitesAvecOptions = [
-          'Développement Informatique Full Stack',
-          'Réseaux et Cybersécurité'
-        ];
-
-        if (optionLicencePro && !specialitesAvecOptions.includes(specialiteLicencePro)) {
-          return res.status(400).json({ 
-            message: `La spécialité "${specialiteLicencePro}" ne propose pas d'options` 
-          });
-        }
-
-        if (cycle || specialiteIngenieur || optionIngenieur || specialiteMasterPro || optionMasterPro) {
-          return res.status(400).json({ 
-            message: 'Les champs Cycle Ingénieur et Master Pro ne sont pas disponibles pour LICENCE_PRO' 
-          });
-        }
-
-      } else if (typeFormationFinal === 'MASTER_PRO') {
-        // VALIDATION POUR MASTER PRO (NIVEAU AUTO-ASSIGNE A 4)
-        
-        if (!specialiteMasterPro) {
-          return res.status(400).json({ 
-            message: 'Une spécialité est obligatoire pour Master Professionnel' 
-          });
-        }
-
-        if (optionMasterPro) {
-          const OPTIONS_MASTER_PRO = {
-            'Cybersécurité et Transformation Digitale': [
-              'Systèmes de communication et Data center',
-              'Management des Systèmes d\'Information'
-            ],
-            'Génie Informatique et Innovation Technologique': [
-              'Génie Logiciel',
-              'Intelligence Artificielle et Data Science'
-            ]
-          };
-
-          const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteMasterPro];
-          if (!optionsDisponibles || !optionsDisponibles.includes(optionMasterPro)) {
-            return res.status(400).json({ 
-              message: `L'option "${optionMasterPro}" n'est pas disponible pour la spécialité "${specialiteMasterPro}"` 
-            });
-          }
-        }
-
-        const specialitesAvecOptions = [
-          'Cybersécurité et Transformation Digitale',
-          'Génie Informatique et Innovation Technologique'
-        ];
-
-        if (optionMasterPro && !specialitesAvecOptions.includes(specialiteMasterPro)) {
-          return res.status(400).json({ 
-            message: `La spécialité "${specialiteMasterPro}" ne propose pas d'options` 
-          });
-        }
-
-        if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro) {
-          return res.status(400).json({ 
-            message: 'Les champs Cycle Ingénieur et Licence Pro ne sont pas disponibles pour MASTER_PRO' 
-          });
-        }
-
-      } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-        // VALIDATION POUR LES ANCIENNES FORMATIONS (MASI, IRM)
-        
-        if (!niveauFinal) {
-          return res.status(400).json({ 
-            message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
-          });
-        }
-        
-        if (niveauFinal >= 3 && !specialite) {
-          return res.status(400).json({ 
-            message: `Une spécialité est obligatoire à partir de la 3ème année pour ${typeFormationFinal}` 
-          });
-        }
-
-        if (niveauFinal === 5 && !option) {
-          return res.status(400).json({ 
-            message: `Une option est obligatoire en 5ème année pour ${typeFormationFinal}` 
-          });
-        }
-
-        if (specialite) {
-          const STRUCTURE_FORMATION = {
-            MASI: {
-              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-              4: ['Management des affaires et systèmes d\'information'],
-              5: ['Management des affaires et systèmes d\'information']
-            },
-            IRM: {
-              3: ['Développement informatique', 'Réseaux et cybersécurité'],
-              4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
-              5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
-            }
-          };
-
-          const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
-          if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialite)) {
-            return res.status(400).json({ 
-              message: `La spécialité "${specialite}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}` 
-            });
-          }
-        }
-
-        if (cycle || specialiteIngenieur || optionIngenieur || specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
-          return res.status(400).json({ 
-            message: 'Les champs Cycle Ingénieur, Licence Pro et Master Pro ne sont pas disponibles pour les formations MASI/IRM' 
-          });
-        }
-      }
-
-      // GESTION DES COURS AVEC LIMITE
-      const MAX_ETUDIANTS = 20;
-      let coursArray = [];
-
-      if (cours) {
-        const coursDemandes = Array.isArray(cours) ? cours : [cours];
-        for (let coursNom of coursDemandes) {
-          const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
-          let nomAvecSuffixe = '';
-          let coursTrouve = false;
-
-          for (let suffix of suffixes) {
-            nomAvecSuffixe = coursNom + suffix;
-
-            let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
-            if (!coursExiste) {
-              const coursOriginal = await Cours.findOne({ nom: coursNom });
-              let professeurs = [];
-              if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-                professeurs = coursOriginal.professeur;
-              } else {
-                const prof = await Professeur.findOne({ cours: coursNom });
-                if (prof) professeurs = [prof.nom];
-              }
-              const nouveauCours = new Cours({
-                nom: nomAvecSuffixe,
-                professeur: professeurs,
-                creePar: req.commercialId
-              });
-              await nouveauCours.save();
-              for (const nomProf of professeurs) {
-                await Professeur.updateOne(
-                  { nom: nomProf },
-                  { $addToSet: { cours: nomAvecSuffixe } }
-                );
-              }
-              coursExiste = nouveauCours;
-            }
-
-            const count = await Etudiant.countDocuments({ cours: nomAvecSuffixe });
-            if (count < MAX_ETUDIANTS) {
-              coursArray.push(nomAvecSuffixe);
-              coursTrouve = true;
-              break;
-            }
-          }
-
-          if (!coursTrouve) {
-            const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
-            const nomNouveau = `${coursNom}${nextSuffix}`;
-            const coursOriginal = await Cours.findOne({ nom: coursNom });
-            let professeurs = [];
-            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-              professeurs = coursOriginal.professeur;
-            } else {
-              const prof = await Professeur.findOne({ cours: coursNom });
-              if (prof) professeurs = [prof.nom];
-            }
-            const nouveauCours = new Cours({
-              nom: nomNouveau,
-              professeur: professeurs,
-              creePar: req.commercialId
-            });
-            await nouveauCours.save();
-            for (const nomProf of professeurs) {
-              await Professeur.updateOne(
-                { nom: nomProf },
-                { $addToSet: { cours: nomNouveau } }
-              );
-            }
-            coursArray.push(nomNouveau);
-          }
-        }
-      }
-
-      // TRAITEMENT DES FICHIERS
-      const getFilePath = (fileField) => {
-        return req.files && req.files[fileField] && req.files[fileField][0] 
-          ? `/uploads/${req.files[fileField][0].filename}` 
-          : '';
-      };
-
-      const imagePath = getFilePath('image');
-      const fichierInscritPath = getFilePath('fichierInscrit');
-      const originalBacPath = getFilePath('originalBac');
-      const releveNotesPath = getFilePath('releveNotes');
-      const copieCniPath = getFilePath('copieCni');
-      const fichierPassportPath = getFilePath('fichierPassport');
-      const dtsBac2Path = getFilePath('dtsBac2');
-      const licencePath = getFilePath('licence');
-
-      // Fonctions utilitaires
-      const toDate = (d) => {
-        if (!d) return null;
-        const date = new Date(d);
-        return isNaN(date.getTime()) ? null : date;
-      };
-
-      const toBool = (v) => v === 'true' || v === true;
-      
-      const toNumber = (v) => {
-        if (!v || v === '') return null;
-        const n = parseFloat(v);
-        return isNaN(n) ? null : n;
-      };
-
-      const dateNaissanceFormatted = toDate(dateNaissance);
-      const dateEtReglementFormatted = toDate(dateEtReglement);
-
-      const boolFields = ['actif', 'paye', 'handicape', 'resident', 'fonctionnaire', 'mobilite', 'nouvelleInscription'];
-      boolFields.forEach(field => {
-        if (req.body[field] !== undefined) req.body[field] = toBool(req.body[field]);
-      });
-
-      const prixTotalNum = toNumber(prixTotal);
-      const pourcentageBourseNum = toNumber(pourcentageBourse);
-      const anneeBacNum = toNumber(anneeBaccalaureat);
-      const premiereInscriptionNum = toNumber(premiereAnneeInscription);
-
-      if (pourcentageBourseNum && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
-        return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
-      }
-
-      // CREER UNE COPIE POUR LA NOUVELLE ANNEE SCOLAIRE
-      const donneesCopiees = {
-        prenom: prenom?.trim() || etudiantExistant.prenom,
-        nomDeFamille: nomDeFamille?.trim() || etudiantExistant.nomDeFamille,
-        genre: genre || etudiantExistant.genre,
-        dateNaissance: dateNaissanceFormatted || etudiantExistant.dateNaissance,
-        telephone: telephone?.trim() || etudiantExistant.telephone,
-        email: email?.toLowerCase().trim() || etudiantExistant.email,
-        motDePasse: etudiantExistant.motDePasse, // Garder le même mot de passe
-        cin: cin?.trim() || etudiantExistant.cin || '',
-        passeport: passeport?.trim() || etudiantExistant.passeport || '',
-        lieuNaissance: lieuNaissance?.trim() || etudiantExistant.lieuNaissance || '',
-        pays: pays?.trim() || etudiantExistant.pays || '',
-        niveau: niveauFinal, // LE NIVEAU EST MAINTENANT AUTO-ASSIGNE
-        niveauFormation: niveauFormation?.trim() || etudiantExistant.niveauFormation || '',
-        filiere: filiere?.trim() || etudiantExistant.filiere || '',
-        typeFormation: typeFormationFinal,
-        typeDiplome: typeDiplome?.trim() || etudiantExistant.typeDiplome || '',
-        diplomeAcces: diplomeAcces?.trim() || etudiantExistant.diplomeAcces || '',
-        specialiteDiplomeAcces: specialiteDiplomeAcces?.trim() || etudiantExistant.specialiteDiplomeAcces || '',
-        mention: mention?.trim() || etudiantExistant.mention || '',
-        lieuObtentionDiplome: lieuObtentionDiplome?.trim() || etudiantExistant.lieuObtentionDiplome || '',
-        serieBaccalaureat: serieBaccalaureat?.trim() || etudiantExistant.serieBaccalaureat || '',
-        anneeBaccalaureat: anneeBacNum || etudiantExistant.anneeBaccalaureat,
-        premiereAnneeInscription: premiereInscriptionNum || etudiantExistant.premiereAnneeInscription,
-        sourceInscription: sourceInscription?.trim() || etudiantExistant.sourceInscription || '',
-        typePaiement: typePaiement?.trim() || etudiantExistant.typePaiement || '',
-        prixTotal: prixTotalNum || etudiantExistant.prixTotal,
-        pourcentageBourse: pourcentageBourseNum || etudiantExistant.pourcentageBourse,
-        situation: situation?.trim() || etudiantExistant.situation || '',
-        codeEtudiant: codeEtudiant?.trim() || etudiantExistant.codeEtudiant || '',
-        dateEtReglement: dateEtReglementFormatted || etudiantExistant.dateEtReglement,
-        cours: coursArray.length > 0 ? coursArray : etudiantExistant.cours,
-        
-        // Fichiers
-        image: imagePath || etudiantExistant.image,
-        fichierInscrit: fichierInscritPath || etudiantExistant.fichierInscrit,
-        originalBac: originalBacPath || etudiantExistant.originalBac,
-        releveNotes: releveNotesPath || etudiantExistant.releveNotes,
-        copieCni: copieCniPath || etudiantExistant.copieCni,
-        passport: fichierPassportPath || etudiantExistant.passport,
-        dtsBac2: dtsBac2Path || etudiantExistant.dtsBac2,
-        licence: licencePath || etudiantExistant.licence,
-        
-        // Champs booléens
-        actif: req.body.actif !== undefined ? req.body.actif : etudiantExistant.actif,
-        paye: req.body.paye !== undefined ? req.body.paye : etudiantExistant.paye,
-        handicape: req.body.handicape !== undefined ? req.body.handicape : etudiantExistant.handicape,
-        resident: req.body.resident !== undefined ? req.body.resident : etudiantExistant.resident,
-        fonctionnaire: req.body.fonctionnaire !== undefined ? req.body.fonctionnaire : etudiantExistant.fonctionnaire,
-        mobilite: req.body.mobilite !== undefined ? req.body.mobilite : etudiantExistant.mobilite,
-        nouvelleInscription: req.body.nouvelleInscription !== undefined ? req.body.nouvelleInscription : etudiantExistant.nouvelleInscription,
-        
-        // IMPORTANT: Garder le commercial actuel pour nouvelle année (pas reset à null comme admin)
-        commercial: req.commercialId,
-        
-        anneeScolaire: anneeScolaire, // NOUVELLE ANNEE SCOLAIRE
-        
-        // Commercial créateur (équivalent de creeParAdmin pour commercial)
-        creeParCommercial: etudiantExistant.commercial || req.commercialId,
-        creeParAdmin: null
-      };
-
-      // ASSIGNATION DES CHAMPS SPECIFIQUES SELON LE TYPE DE FORMATION
-      
-      if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-        // Formation d'ingénieur
-        const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
-        donneesCopiees.cycle = cycleCalcule;
-        donneesCopiees.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
-        donneesCopiees.optionIngenieur = optionIngenieur?.trim() || undefined;
-        donneesCopiees.specialite = '';
-        donneesCopiees.option = '';
-        donneesCopiees.specialiteLicencePro = undefined;
-        donneesCopiees.optionLicencePro = undefined;
-        donneesCopiees.specialiteMasterPro = undefined;
-        donneesCopiees.optionMasterPro = undefined;
-        
-      } else if (typeFormationFinal === 'LICENCE_PRO') {
-        // Licence Professionnelle - NIVEAU AUTO-ASSIGNE A 3
-        donneesCopiees.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
-        donneesCopiees.optionLicencePro = optionLicencePro?.trim() || undefined;
-        donneesCopiees.cycle = undefined;
-        donneesCopiees.specialiteIngenieur = undefined;
-        donneesCopiees.optionIngenieur = undefined;
-        donneesCopiees.specialiteMasterPro = undefined;
-        donneesCopiees.optionMasterPro = undefined;
-        donneesCopiees.specialite = '';
-        donneesCopiees.option = '';
-        
-      } else if (typeFormationFinal === 'MASTER_PRO') {
-        // Master Professionnel - NIVEAU AUTO-ASSIGNE A 4
-        donneesCopiees.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
-        donneesCopiees.optionMasterPro = optionMasterPro?.trim() || undefined;
-        donneesCopiees.cycle = undefined;
-        donneesCopiees.specialiteIngenieur = undefined;
-        donneesCopiees.optionIngenieur = undefined;
-        donneesCopiees.specialiteLicencePro = undefined;
-        donneesCopiees.optionLicencePro = undefined;
-        donneesCopiees.specialite = '';
-        donneesCopiees.option = '';
-        
-      } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-        // Anciennes formations
-        donneesCopiees.specialite = specialite?.trim() || '';
-        donneesCopiees.option = option?.trim() || '';
-        donneesCopiees.cycle = undefined;
-        donneesCopiees.specialiteIngenieur = undefined;
-        donneesCopiees.optionIngenieur = undefined;
-        donneesCopiees.specialiteLicencePro = undefined;
-        donneesCopiees.optionLicencePro = undefined;
-        donneesCopiees.specialiteMasterPro = undefined;
-        donneesCopiees.optionMasterPro = undefined;
-      }
-
-      // Validation supplémentaire de l'email si modifié
-      if (email && email !== etudiantExistant.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          return res.status(400).json({ message: 'Format d\'email invalide' });
-        }
-
-        // Vérification de l'unicité de l'email (exclure l'étudiant existant)
-        const emailExiste = await Etudiant.findOne({ 
-          email: email.toLowerCase().trim(),
-          _id: { $ne: req.params.id }
-        });
-        if (emailExiste) {
-          return res.status(400).json({ message: 'Email déjà utilisé par un autre étudiant' });
-        }
-      }
-
-      // Validation du mot de passe si fourni
-      if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
-        if (motDePasse.length < 6) {
-          return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
-        }
-        const hashedPassword = await bcrypt.hash(motDePasse.trim(), 10);
-        donneesCopiees.motDePasse = hashedPassword;
-      }
-
-      // CREER LE NOUVEAU DOCUMENT POUR LA NOUVELLE ANNEE
-      // 1 Modifier temporairement l'email de l'étudiant existant
-      await Etudiant.findByIdAndUpdate(etudiantExistant._id, {
-        email: `${etudiantExistant.email}_archived_${Date.now()}`,
-        actif: false, // Marquer comme inactif
-        archivedAt: new Date()
-      });
-
-      // 2 Créer le nouveau document avec l'email original
-      const nouvelEtudiant = new Etudiant({
-        ...donneesCopiees,
-        createdAt: new Date(),
-        modifiePar: req.commercialId,
-        versionOriginalId: etudiantExistant._id
-      });
-
-      const etudiantSauvegarde = await nouvelEtudiant.save();
-
-      console.log(`✅ Nouvelle année scolaire créée - ID: ${etudiantSauvegarde._id}`);
-      console.log(`📋 Document original conservé - ID: ${etudiantExistant._id}`);
-      console.log(`💼 Commercial maintenu: ${req.commercialId}`);
-
-      // RETOURNER SEULEMENT LE NOUVEAU DOCUMENT
-      const etudiantResponse = etudiantSauvegarde.toObject();
-      delete etudiantResponse.motDePasse;
-
-      return res.status(201).json({
-        message: `Nouvel étudiant créé pour l'année scolaire ${anneeScolaire}`,
-        data: etudiantResponse,
-        originalId: etudiantExistant._id,
-        newId: etudiantSauvegarde._id,
-        isNewSchoolYear: true
-      });
-    }
-
-    // 3. MODIFICATION NORMALE (PAS DE NOUVELLE ANNEE SCOLAIRE)
-    console.log(`✏️ Modification normale de l'étudiant existant`);
-    
-    // DETERMINATION CORRIGEE DU TYPE DE FORMATION
-    const filiereFinale = filiere !== undefined ? filiere : etudiantExistant.filiere;
-
-    // CORRECTION PRINCIPALE: Toujours dériver le type de formation de la filière finale
-    let typeFormationFinal;
-
-    if (filiereFinale) {
-      const mappingFiliere = {
-        'CYCLE_INGENIEUR': 'CYCLE_INGENIEUR',
-        'MASI': 'MASI',
-        'IRM': 'IRM',
-        'LICENCE_PRO': 'LICENCE_PRO',
-        'MASTER_PRO': 'MASTER_PRO'
-      };
-      typeFormationFinal = mappingFiliere[filiereFinale];
-    } else {
-      // Si pas de filière, utiliser le typeFormation fourni ou existant
-      typeFormationFinal = typeFormation !== undefined ? typeFormation : etudiantExistant.typeFormation;
-    }
-
-    console.log(`🔍 Formation déterminée: Filière="${filiereFinale}" -> Type="${typeFormationFinal}"`);
-    console.log(`📋 Anciennes données: Filière="${etudiantExistant.filiere}", Type="${etudiantExistant.typeFormation}"`);
-
-    // DETERMINATION DU NIVEAU
-    let niveauFinal;
-    if (niveau !== undefined && niveau !== null && niveau !== '') {
-      niveauFinal = parseInt(niveau);
-      console.log(`✅ Nouveau niveau explicite reçu: "${niveau}" -> ${niveauFinal}`);
-    } else {
-      niveauFinal = etudiantExistant.niveau;
-      console.log(`✅ Niveau gardé de l'existant: ${niveauFinal}`);
-    }
-
-    // Auto-assignation du niveau pour LP et MP seulement
-    if (typeFormationFinal === 'LICENCE_PRO') {
-      niveauFinal = 3;
-      console.log(`🔒 Niveau forcé à 3 pour Licence Pro`);
-    } else if (typeFormationFinal === 'MASTER_PRO') {
-      niveauFinal = 4;
-      console.log(`🔒 Niveau forcé à 4 pour Master Pro`);
-    }
-
-    console.log(`✅ Niveau final déterminé: ${niveauFinal} (Type: ${typeFormationFinal})`);
-
-    // VALIDATION CORRIGEE SELON LE TYPE DE FORMATION
-    
-    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      console.log(`🔍 Validation CYCLE_INGENIEUR - Niveau: ${niveauFinal}`);
-      
-      // Validation du niveau
-      if (!niveauFinal || niveauFinal < 1 || niveauFinal > 5) {
-        return res.status(400).json({ 
-          message: 'Le niveau doit être entre 1 et 5 pour la formation d\'ingénieur' 
-        });
-      }
-
-      // Validation pour Classes Préparatoires (années 1-2)
-      if (niveauFinal >= 1 && niveauFinal <= 2) {
-        if (specialiteIngenieur || optionIngenieur) {
-          return res.status(400).json({ 
-            message: 'Pas de spécialité ou option d\'ingénieur en Classes Préparatoires' 
-          });
-        }
-      }
-
-      // Validation pour Cycle Ingénieur (années 3-5)
-      if (niveauFinal >= 3 && niveauFinal <= 5) {
-        // CORRECTION : Déterminer quelle spécialité utiliser
-        const specialiteAUtiliser = specialiteIngenieur !== undefined 
-          ? specialiteIngenieur 
-          : etudiantExistant.specialiteIngenieur;
-        
-        console.log(`🔍 Spécialité à utiliser: "${specialiteAUtiliser}"`);
-        
-        if (!specialiteAUtiliser) {
-          return res.status(400).json({ 
-            message: 'Une spécialité d\'ingénieur est obligatoire à partir de la 3ème année' 
-          });
-        }
-        
-        // VALIDATION DE L'OPTION POUR LA 5EME ANNEE SEULEMENT
-        if (niveauFinal === 5) {
-          const optionAUtiliser = optionIngenieur !== undefined 
-            ? optionIngenieur 
-            : etudiantExistant.optionIngenieur;
-          
-          console.log(`🔍 Option à utiliser (année 5): "${optionAUtiliser}"`);
-          
-          if (!optionAUtiliser) {
-            return res.status(400).json({ 
-              message: 'Une option d\'ingénieur est obligatoire en 5ème année' 
-            });
-          }
-          
-          // VALIDATION DE LA COMPATIBILITE SPECIALITE-OPTION
-          const STRUCTURE_OPTIONS_INGENIEUR = {
-            'Génie Informatique': [
-              'Sécurité & Mobilité Informatique',
-              'IA & Science des Données',
-              'Réseaux & Cloud Computing'
-            ],
-            'Génie Mécatronique': [
-              'Génie Mécanique',
-              'Génie Industriel',
-              'Automatisation'
-            ],
-            'Génie Civil': [
-              'Structures & Ouvrages d\'art',
-              'Bâtiment & Efficacité Énergétique',
-              'Géotechnique & Infrastructures'
-            ]
-          };
-
-          const optionsDisponibles = STRUCTURE_OPTIONS_INGENIEUR[specialiteAUtiliser];
-          console.log(`🔍 Options disponibles pour "${specialiteAUtiliser}":`, optionsDisponibles);
-          
-          if (!optionsDisponibles || !optionsDisponibles.includes(optionAUtiliser)) {
-            return res.status(400).json({ 
-              message: `L'option "${optionAUtiliser}" n'est pas disponible pour la spécialité "${specialiteAUtiliser}". Options disponibles: ${optionsDisponibles ? optionsDisponibles.join(', ') : 'aucune'}` 
-            });
-          }
-        }
-      }
-
-      // Vérifier qu'on n'a pas de champs LP/MP
-      if (specialiteLicencePro || optionLicencePro || specialiteMasterPro || optionMasterPro) {
-        return res.status(400).json({ 
-          message: 'Les champs Licence Pro et Master Pro ne sont pas disponibles pour CYCLE_INGENIEUR' 
-        });
-      }
-
-    } else if (typeFormationFinal === 'LICENCE_PRO') {
-      console.log(`🔍 Validation LICENCE_PRO`);
-      
-      const specialiteSource = specialiteLicencePro !== undefined 
-        ? specialiteLicencePro 
-        : etudiantExistant.specialiteLicencePro;
-      if (!specialiteSource) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour Licence Professionnelle' 
-        });
-      }
-
-      const optionSource = optionLicencePro !== undefined 
-        ? optionLicencePro 
-        : etudiantExistant.optionLicencePro;
-      if (optionSource) {
-        const OPTIONS_LICENCE_PRO = {
-          'Développement Informatique Full Stack': [
-            'Développement Mobile',
-            'Intelligence Artificielle et Data Analytics',
-            'Développement JAVA JEE',
-            'Développement Gaming et VR'
-          ],
-          'Réseaux et Cybersécurité': [
-            'Administration des Systèmes et Cloud Computing'
-          ]
-        };
-
-        const optionsDisponibles = OPTIONS_LICENCE_PRO[specialiteSource];
-        if (!optionsDisponibles || !optionsDisponibles.includes(optionSource)) {
-          return res.status(400).json({ 
-            message: `L'option "${optionSource}" n'est pas disponible pour cette spécialité` 
-          });
-        }
-      }
-
-    } else if (typeFormationFinal === 'MASTER_PRO') {
-      console.log(`🔍 Validation MASTER_PRO`);
-      
-      const specialiteSource = specialiteMasterPro !== undefined 
-        ? specialiteMasterPro 
-        : etudiantExistant.specialiteMasterPro;
-      if (!specialiteSource) {
-        return res.status(400).json({ 
-          message: 'Une spécialité est obligatoire pour Master Professionnel' 
-        });
-      }
-
-      const optionSource = optionMasterPro !== undefined 
-        ? optionMasterPro 
-        : etudiantExistant.optionMasterPro;
-      if (optionSource) {
-        const OPTIONS_MASTER_PRO = {
-          'Cybersécurité et Transformation Digitale': [
-            'Systèmes de communication et Data center',
-            'Management des Systèmes d\'Information'
-          ],
-          'Génie Informatique et Innovation Technologique': [
-            'Génie Logiciel',
-            'Intelligence Artificielle et Data Science'
-          ]
-        };
-
-        const optionsDisponibles = OPTIONS_MASTER_PRO[specialiteSource];
-        if (!optionsDisponibles || !optionsDisponibles.includes(optionSource)) {
-          return res.status(400).json({ 
-            message: `L'option "${optionSource}" n'est pas disponible pour cette spécialité` 
-          });
-        }
-      }
-
-    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      console.log(`🔍 Validation ${typeFormationFinal} - Niveau: ${niveauFinal}`);
-      
-      if (!niveauFinal) {
-        return res.status(400).json({ 
-          message: `Le niveau est obligatoire pour ${typeFormationFinal}` 
-        });
-      }
-      
-      // Validation spécialité pour niveau >= 3
-      if (niveauFinal >= 3) {
-        const specialiteAUtiliser = specialite !== undefined ? specialite : etudiantExistant.specialite;
-        console.log(`🔍 Validation spécialité - Fournie: "${specialite}", Existante: "${etudiantExistant.specialite}", À utiliser: "${specialiteAUtiliser}"`);
-        
-        if (!specialiteAUtiliser || specialiteAUtiliser.trim() === '') {
-          return res.status(400).json({ 
-            message: `Une spécialité est obligatoire à partir de la 3ème année pour ${typeFormationFinal}` 
-          });
-        }
-      }
-
-      // Validation option pour niveau 5
-      if (niveauFinal === 5) {
-        const optionAUtiliser = option !== undefined ? option : etudiantExistant.option;
-        console.log(`🔍 Validation option - Fournie: "${option}", Existante: "${etudiantExistant.option}", À utiliser: "${optionAUtiliser}"`);
-        
-        if (!optionAUtiliser || optionAUtiliser.trim() === '') {
-          return res.status(400).json({ 
-            message: `Une option est obligatoire en 5ème année pour ${typeFormationFinal}` 
-          });
-        }
-      }
-
-      // Validation structure formation
-      if (specialite !== undefined || niveauFinal !== etudiantExistant.niveau) {
-        const specialiteAValider = specialite !== undefined ? specialite : etudiantExistant.specialite;
-        if (specialiteAValider && specialiteAValider.trim() !== '') {
-          const STRUCTURE_FORMATION = {
-            MASI: {
-              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-              4: ['Management des affaires et systèmes d\'information'],
-              5: ['Management des affaires et systèmes d\'information']
-            },
-            IRM: {
-              3: ['Développement informatique', 'Réseaux et cybersécurité'],
-              4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
-              5: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale']
-            }
-          };
-
-          const specialitesDisponibles = STRUCTURE_FORMATION[typeFormationFinal]?.[niveauFinal] || [];
-          console.log(`🔍 Spécialités disponibles pour ${typeFormationFinal} niveau ${niveauFinal}:`, specialitesDisponibles);
-          
-          if (specialitesDisponibles.length > 0 && !specialitesDisponibles.includes(specialiteAValider)) {
-            return res.status(400).json({ 
-              message: `La spécialité "${specialiteAValider}" n'est pas disponible pour ${typeFormationFinal} niveau ${niveauFinal}. Spécialités disponibles: ${specialitesDisponibles.join(', ')}` 
-            });
-          }
-        }
-      }
-    }
-
-    // GESTION DES COURS AVEC LIMITE
-    const MAX_ETUDIANTS = 20;
-    let coursArray = etudiantExistant.cours || [];
-
-    if (cours !== undefined) {
-      const coursDemandes = Array.isArray(cours) ? cours : (cours ? [cours] : []);
-      coursArray = [];
-      
-      for (let coursNom of coursDemandes) {
-        if (!coursNom || coursNom.trim() === '') continue;
-        
-        const suffixes = ['', ' A', ' B', ' C', ' D', ' E', ' F', ' G'];
-        let nomAvecSuffixe = '';
-        let coursTrouve = false;
-
-        for (let suffix of suffixes) {
-          nomAvecSuffixe = coursNom + suffix;
-
-          let coursExiste = await Cours.findOne({ nom: nomAvecSuffixe });
-          if (!coursExiste) {
-            const coursOriginal = await Cours.findOne({ nom: coursNom });
-            let professeurs = [];
-            if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-              professeurs = coursOriginal.professeur;
-            } else {
-              const prof = await Professeur.findOne({ cours: coursNom });
-              if (prof) professeurs = [prof.nom];
-            }
-            const nouveauCours = new Cours({
-              nom: nomAvecSuffixe,
-              professeur: professeurs,
-              creePar: req.commercialId
-            });
-            await nouveauCours.save();
-            for (const nomProf of professeurs) {
-              await Professeur.updateOne(
-                { nom: nomProf },
-                { $addToSet: { cours: nomAvecSuffixe } }
-              );
-            }
-            coursExiste = nouveauCours;
-          }
-
-          // Compter en excluant l'étudiant actuel pour éviter les faux positifs
-          const count = await Etudiant.countDocuments({ 
-            cours: nomAvecSuffixe,
-            _id: { $ne: req.params.id }
-          });
-          if (count < MAX_ETUDIANTS) {
-            coursArray.push(nomAvecSuffixe);
-            coursTrouve = true;
-            break;
-          }
-        }
-
-        if (!coursTrouve) {
-          const nextSuffix = ' ' + String.fromCharCode(65 + suffixes.length);
-          const nomNouveau = `${coursNom}${nextSuffix}`;
-          const coursOriginal = await Cours.findOne({ nom: coursNom });
-          let professeurs = [];
-          if (coursOriginal && Array.isArray(coursOriginal.professeur)) {
-            professeurs = coursOriginal.professeur;
-          } else {
-            const prof = await Professeur.findOne({ cours: coursNom });
-            if (prof) professeurs = [prof.nom];
-          }
-          const nouveauCours = new Cours({
-            nom: nomNouveau,
-            professeur: professeurs,
-            creePar: req.commercialId
-          });
-          await nouveauCours.save();
-          for (const nomProf of professeurs) {
-            await Professeur.updateOne(
-              { nom: nomProf },
-              { $addToSet: { cours: nomNouveau } }
-            );
-          }
-          coursArray.push(nomNouveau);
-        }
-      }
-    }
-
-    // FONCTIONS UTILITAIRES
-    const toDate = (val) => {
-      if (!val) return undefined;
-      const date = new Date(val);
-      return isNaN(date.getTime()) ? undefined : date;
-    };
-
-    const toNumber = (val) => {
-      if (val === undefined || val === '' || val === null) return undefined;
-      const n = parseFloat(val);
-      return isNaN(n) ? undefined : n;
-    };
-
-    const toBool = (val) => val === 'true' || val === true;
-
-    // VALIDATIONS DES CHAMPS OBLIGATOIRES
-    if (prenom !== undefined && !prenom.trim()) {
-      return res.status(400).json({ message: 'Le prénom est obligatoire' });
-    }
-    if (nomDeFamille !== undefined && !nomDeFamille.trim()) {
-      return res.status(400).json({ message: 'Le nom de famille est obligatoire' });
-    }
-    if (telephone !== undefined && !telephone.trim()) {
-      return res.status(400).json({ message: 'Le téléphone est obligatoire' });
-    }
-    if (email !== undefined && !email.trim()) {
-      return res.status(400).json({ message: 'L\'email est obligatoire' });
-    }
-
-    // Validation de l'email si fourni
-    if (email && email !== etudiantExistant.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: 'Format d\'email invalide' });
-      }
-
-      // Vérification de l'unicité de l'email (sauf pour l'étudiant actuel)
-      const emailExiste = await Etudiant.findOne({ 
-        email: email.toLowerCase().trim(), 
-        _id: { $ne: req.params.id } 
-      });
-      if (emailExiste) {
-        return res.status(400).json({ message: 'Email déjà utilisé par un autre étudiant' });
-      }
-    }
-
-    // Validation du code étudiant si fourni
-    if (codeEtudiant && codeEtudiant !== etudiantExistant.codeEtudiant) {
-      const codeExiste = await Etudiant.findOne({ 
-        codeEtudiant: codeEtudiant.trim(),
-        _id: { $ne: req.params.id }
-      });
-      if (codeExiste) {
-        return res.status(400).json({ message: 'Code étudiant déjà utilisé' });
-      }
-    }
-
-    // Validation du pourcentage de bourse
-    const pourcentageBourseNum = toNumber(pourcentageBourse);
-    if (pourcentageBourseNum !== undefined && (pourcentageBourseNum < 0 || pourcentageBourseNum > 100)) {
-      return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
-    }
-
-    // TRAITEMENT DES FICHIERS UPLOADES
-    const getFilePath = (fileField) => {
-      return req.files && req.files[fileField] && req.files[fileField][0] 
-        ? `/uploads/${req.files[fileField][0].filename}` 
-        : undefined;
-    };
-
-    const imagePath = getFilePath('image');
-    const fichierInscritPath = getFilePath('fichierInscrit');
-    const originalBacPath = getFilePath('originalBac');
-    const releveNotesPath = getFilePath('releveNotes');
-    const copieCniPath = getFilePath('copieCni');
-    const fichierPassportPath = getFilePath('fichierPassport');
-    const dtsBac2Path = getFilePath('dtsBac2');
-    const licencePath = getFilePath('licence');
-
-    // CREER L'OBJET DE MODIFICATIONS
-    const modifications = {};
-
-    // Appliquer toutes les modifications reçues
-    if (prenom !== undefined) modifications.prenom = prenom.trim();
-    if (nomDeFamille !== undefined) modifications.nomDeFamille = nomDeFamille.trim();
-    if (genre !== undefined) modifications.genre = genre;
-    if (dateNaissance !== undefined) modifications.dateNaissance = toDate(dateNaissance);
-    if (telephone !== undefined) modifications.telephone = telephone.trim();
-    if (email !== undefined) modifications.email = email.toLowerCase().trim();
-    if (cours !== undefined) modifications.cours = coursArray;
-    if (actif !== undefined) modifications.actif = toBool(actif);
-    if (cin !== undefined) modifications.cin = cin.trim();
-    if (passeport !== undefined) modifications.passeport = passeport.trim();
-    if (lieuNaissance !== undefined) modifications.lieuNaissance = lieuNaissance.trim();
-    if (pays !== undefined) modifications.pays = pays.trim();
-    
-    // LIGNE CRUCIALE: TOUJOURS ASSIGNER LE NIVEAU FINAL CALCULE
-    modifications.niveau = niveauFinal;
-    console.log(`🔥 ASSIGNATION NIVEAU DANS MODIFICATIONS: ${niveauFinal}`);
-    
-    if (niveauFormation !== undefined) modifications.niveauFormation = niveauFormation.trim();
-    if (filiere !== undefined) modifications.filiere = filiere.trim();
-    modifications.typeFormation = typeFormationFinal;
-    if (typeDiplome !== undefined) modifications.typeDiplome = typeDiplome.trim();
-    if (diplomeAcces !== undefined) modifications.diplomeAcces = diplomeAcces.trim();
-    if (specialiteDiplomeAcces !== undefined) modifications.specialiteDiplomeAcces = specialiteDiplomeAcces.trim();
-    if (mention !== undefined) modifications.mention = mention.trim();
-    if (lieuObtentionDiplome !== undefined) modifications.lieuObtentionDiplome = lieuObtentionDiplome.trim();
-    if (serieBaccalaureat !== undefined) modifications.serieBaccalaureat = serieBaccalaureat.trim();
-    if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
-    if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
-    if (sourceInscription !== undefined) modifications.sourceInscription = sourceInscription.trim();
-    if (typePaiement !== undefined) modifications.typePaiement = typePaiement.trim();
-    if (prixTotal !== undefined) modifications.prixTotal = toNumber(prixTotal);
-    if (pourcentageBourse !== undefined) modifications.pourcentageBourse = toNumber(pourcentageBourse);
-    if (situation !== undefined) modifications.situation = situation.trim();
-    if (nouvelleInscription !== undefined) modifications.nouvelleInscription = toBool(nouvelleInscription);
-    if (paye !== undefined) modifications.paye = toBool(paye);
-    if (handicape !== undefined) modifications.handicape = toBool(handicape);
-    if (resident !== undefined) modifications.resident = toBool(resident);
-    if (fonctionnaire !== undefined) modifications.fonctionnaire = toBool(fonctionnaire);
-    if (mobilite !== undefined) modifications.mobilite = toBool(mobilite);
-    if (codeEtudiant !== undefined) modifications.codeEtudiant = codeEtudiant.trim();
-    if (dateEtReglement !== undefined) modifications.dateEtReglement = toDate(dateEtReglement);
-    if (anneeScolaire !== undefined) modifications.anneeScolaire = anneeScolaire;
-
-    // S'assurer que le commercial reste le même (sécurité)
-    modifications.commercial = req.commercialId;
-
-    // Validation du mot de passe si fourni
-    if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
-      if (motDePasse.length < 6) {
-        return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
-      }
-      const hashedPassword = await bcrypt.hash(motDePasse.trim(), 10);
-      modifications.motDePasse = hashedPassword;
-    }
-
-    // ASSIGNATION DES CHAMPS SPECIFIQUES SELON LE TYPE DE FORMATION
-    if (typeFormationFinal === 'CYCLE_INGENIEUR') {
-      // Formation d'ingénieur
-      const cycleCalcule = niveauFinal >= 1 && niveauFinal <= 2 ? 'Classes Préparatoires Intégrées' : 'Cycle Ingénieur';
-      modifications.cycle = cycleCalcule;
-      
-      // CORRECTION : Gestion intelligente des spécialités et options d'ingénieur
-      if (specialiteIngenieur !== undefined) {
-        modifications.specialiteIngenieur = specialiteIngenieur?.trim() || undefined;
-        
-        // Si on change de spécialité, on efface l'option pour éviter l'incompatibilité
-        if (specialiteIngenieur !== etudiantExistant.specialiteIngenieur) {
-          console.log(`🔄 Changement de spécialité détecté: "${etudiantExistant.specialiteIngenieur}" -> "${specialiteIngenieur}"`);
-          console.log(`🔄 Effacement de l'ancienne option: "${etudiantExistant.optionIngenieur}"`);
-          modifications.optionIngenieur = undefined;
-        }
-      }
-      
-      if (optionIngenieur !== undefined) {
-        modifications.optionIngenieur = optionIngenieur?.trim() || undefined;
-      }
-      
-      // Nettoyer les autres champs
-      modifications.specialite = '';
-      modifications.option = '';
-      modifications.specialiteLicencePro = undefined;
-      modifications.optionLicencePro = undefined;
-      modifications.specialiteMasterPro = undefined;
-      modifications.optionMasterPro = undefined;
-      
-    } else if (typeFormationFinal === 'LICENCE_PRO') {
-      // Licence Professionnelle
-      if (specialiteLicencePro !== undefined) modifications.specialiteLicencePro = specialiteLicencePro?.trim() || undefined;
-      if (optionLicencePro !== undefined) modifications.optionLicencePro = optionLicencePro?.trim() || undefined;
-      modifications.cycle = undefined;
-      modifications.specialiteIngenieur = undefined;
-      modifications.optionIngenieur = undefined;
-      modifications.specialiteMasterPro = undefined;
-      modifications.optionMasterPro = undefined;
-      modifications.specialite = '';
-      modifications.option = '';
-      
-    } else if (typeFormationFinal === 'MASTER_PRO') {
-      // Master Professionnel
-      if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
-      if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
-      modifications.cycle = undefined;
-      modifications.specialiteIngenieur = undefined;
-      modifications.optionIngenieur = undefined;
-      modifications.specialiteLicencePro = undefined;
-      modifications.optionLicencePro = undefined;
-      modifications.specialite = '';
-      modifications.option = '';
-      
-    } else if (typeFormationFinal === 'MASI' || typeFormationFinal === 'IRM') {
-      // Anciennes formations
-      console.log(`🔍 Assignation ${typeFormationFinal} - Spécialité: "${specialite}", Option: "${option}"`);
-      
-      if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
-      if (option !== undefined) modifications.option = option?.trim() || '';
-      
-      // Nettoyer les autres champs
-      modifications.cycle = undefined;
-      modifications.specialiteIngenieur = undefined;
-      modifications.optionIngenieur = undefined;
-      modifications.specialiteLicencePro = undefined;
-      modifications.optionLicencePro = undefined;
-      modifications.specialiteMasterPro = undefined;
-      modifications.optionMasterPro = undefined;
-    }
-
-    // TRAITEMENT DES FICHIERS UPLOADES
-    if (imagePath !== undefined) modifications.image = imagePath;
-    if (fichierInscritPath !== undefined) modifications.fichierInscrit = fichierInscritPath;
-    if (originalBacPath !== undefined) modifications.originalBac = originalBacPath;
-    if (releveNotesPath !== undefined) modifications.releveNotes = releveNotesPath;
-    if (copieCniPath !== undefined) modifications.copieCni = copieCniPath;
-    if (fichierPassportPath !== undefined) modifications.passport = fichierPassportPath;
-    if (dtsBac2Path !== undefined) modifications.dtsBac2 = dtsBac2Path;
-    if (licencePath !== undefined) modifications.licence = licencePath;
-
-    // Ajouter les informations de modification
-    modifications.updatedAt = new Date();
-    modifications.modifiePar = req.commercialId;
-
-    console.log(`🔍 Modifications finales à appliquer:`, {
-      niveau: modifications.niveau,
-      filiere: modifications.filiere,
-      typeFormation: modifications.typeFormation,
-      specialiteIngenieur: modifications.specialiteIngenieur,
-      optionIngenieur: modifications.optionIngenieur,
-      specialite: modifications.specialite,
-      option: modifications.option,
-      specialiteLicencePro: modifications.specialiteLicencePro,
-      optionLicencePro: modifications.optionLicencePro,
-      specialiteMasterPro: modifications.specialiteMasterPro,
-      optionMasterPro: modifications.optionMasterPro
-    });
-
-    // 4. MISE A JOUR DU DOCUMENT EXISTANT
-    const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
-      req.params.id,
-      modifications,
-      { 
-        new: true, // Retourner le document mis à jour
-        runValidators: true // Exécuter les validations Mongoose
-      }
-    );
-
-    if (!etudiantMiseAJour) {
-      return res.status(404).json({ message: 'Étudiant non trouvé lors de la mise à jour' });
-    }
-
-    console.log(`✅ Étudiant mis à jour avec succès - ID: ${etudiantMiseAJour._id}`);
-    console.log(`📋 Nouveau niveau: ${etudiantMiseAJour.niveau}`);
-    console.log(`📋 Nouvelle filière: ${etudiantMiseAJour.filiere}`);
-    console.log(`📋 Nouveau type de formation: ${etudiantMiseAJour.typeFormation}`);
-    console.log(`📋 Nouvelle spécialité ingénieur: ${etudiantMiseAJour.specialiteIngenieur}`);
-    console.log(`📋 Nouvelle option ingénieur: ${etudiantMiseAJour.optionIngenieur}`);
-    console.log(`📋 Nouvelle spécialité MASI/IRM: ${etudiantMiseAJour.specialite}`);
-    console.log(`📋 Nouvelle option MASI/IRM: ${etudiantMiseAJour.option}`);
-
-    // RETOURNER LE DOCUMENT MIS A JOUR (sans mot de passe)
-    const etudiantResponse = etudiantMiseAJour.toObject();
-    delete etudiantResponse.motDePasse;
-
-    res.status(200).json({
-      message: 'Étudiant mis à jour avec succès',
-      data: etudiantResponse,
-      isNewSchoolYear: false
-    });
-
-  } catch (err) {
-    console.error('❌ Erreur lors de la mise à jour étudiant (commercial):', err);
-    
-    if (err.name === 'ValidationError') {
-      const errors = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ message: 'Erreur de validation', errors });
-    }
-    
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({ message: `${field} déjà utilisé par un autre étudiant` });
-    }
-
-    if (err.name === 'CastError') {
-      return res.status(400).json({ message: 'ID étudiant invalide' });
-    }
-
-    res.status(500).json({
-      message: 'Erreur interne du serveur',
-      error: err.message
-    });
-  }
-});
 app.get('/api/seances/periodes-disponibles', authAdmin, async (req, res) => {
   try {
     // Récupérer toutes les dates distinctes des séances

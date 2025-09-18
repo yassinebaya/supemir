@@ -86,68 +86,23 @@ const Sidebar = ({ onLogout }) => {
     },
     {
       path: '/admin/dashboard-partners',
-      label: 'Dashboard Partenaires',
+      label: 'Partenaires',
       icon: Home
     },
-    {
-      path: '/update-profil',
-      label: 'Profil',
-      icon: Shield,
-    },
+ 
     {
       path: '/liste-classes',
       label: 'Classes',
       icon: BookOpen
     },
-    {
-      path: '/liste-etudiants',
-      label: 'Étudiants',
-      icon: Users
-    },
-    {
-      path: '/liste-professeurs',
-      label: 'Professeurs',
-      icon: User
-    },
-    {
-      path: '/ajouter-paiement',
-      label: 'Nouveau Paiement',
-      icon: Plus
-    },
-    {
-      path: '/liste-paiements',
-      label: 'Paiements',
-      icon: CreditCard
-    },
-       {
-          path: '/admin/paiements-exp',
-          label: 'Paiements Expirés',
-          icon: AlertTriangle
-        },
-    {
-      path: '/admin/seances',
-      label: 'Séances',
-      icon: Clock
-    },
+
+     
     {
       path: '/admin/finance-profs',
       label: 'Finance Professeurs',
       icon: Wallet
     },
-    {
-      path: '/admin/rapports-professeurs',
-      label: 'Rapports Professeurs',
-      icon: FileText
-    },    {
-      path: '/calendrier',
-      label: 'Calendrier',
-      icon: Calendar
-    },
-    {
-      path: '/liste-presences',
-      label: 'Liste présences',
-      icon: ClipboardList
-    },
+  
     {
       path: '/admin/commercial',
       label: 'Commercial',
@@ -158,11 +113,7 @@ const Sidebar = ({ onLogout }) => {
       label: 'Statistiques',
       icon: BarChart3
     },
-    {
-      path: '/admin/Bulletin',
-      label: 'Bulletin',
-      icon: FileText
-    },
+    
     {
       path: '/admin/PaiementManager',
       label: 'Manager',
@@ -176,15 +127,14 @@ const Sidebar = ({ onLogout }) => {
 
     {
       path: '/admin/administratifs',
-      label: 'Administratifs',
+      label: 'Scolarité',
       icon: Users
     },
-
-    {
-      path: '/admin/validation-paiement',
-      label: 'Validation Paiement',
-      icon: CheckCircle
-    }
+       {
+      path: '/update-profil',
+      label: 'Profil',
+      icon: Shield,
+    },
 
   ];
 

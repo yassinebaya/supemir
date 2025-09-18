@@ -307,7 +307,12 @@ const etudiantSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  
+  nomPartner: {
+  type: String,
+  default: '',
+  trim: true
+},
+
   // Prix séparé pour les partners (ne se calcule pas avec prixTotal normal)
   prixTotalPartner: {
     type: Number,

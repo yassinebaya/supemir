@@ -7,16 +7,18 @@ import {
   Users, GraduationCap, Calendar, CreditCard, 
   UserCheck, UserX, TrendingUp, AlertTriangle 
 } from 'lucide-react';
-import Sidebar from '../components/sidberadmin';
+import './AdminDashboard.css';
+import Sidebar from '../components/sidberadmin'; // ✅ استيراد صحيح
+import RappelModal from '../components/RappelModal'; // adapte le chemin si besoin
 
-const handleLogout = () => {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    window.localStorage.removeItem('token');
-  }
-  window.location.href = '/';
-};
+import Header from '../components/Header';
+import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
+   const navigate = useNavigate();
+
+
+  const [admin, setAdmin] = useState(null);
   const [dashboardData, setDashboardData] = useState({
     totalEtudiants: 0,
     etudiantsActifs: 0,
@@ -26,25 +28,82 @@ const AdminDashboard = () => {
     paiementsExpires: 0,
     totalEvenements: 0,
     presencesRecentes: 0,
-    totalProfesseurs: 0
+    totalProfesseurs: 0 // ✅ حقل جديد
   });
-  
   const [chartData, setChartData] = useState({
     coursStats: [],
     paiementsParMois: [],
     presenceStats: [],
     genreStats: []
   });
-  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // Année scolaire ciblée
-  const ANNEE_SCOLAIRE_CIBLE = '2025/2026';
+const [rappelModal, setRappelModal] = useState(null);
+const [editDate, setEditDate] = useState('');
+const [editNote, setEditNote] = useState('');
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
+  useEffect(() => {
+  const fetchRappels = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const res = await fetch('http://195.179.229.230:5000/api/rappels', { headers });
+      if (!res.ok) throw new Error('Erreur lors du chargement des rappels');
+
+      const data = await res.json();
+
+      // ✅ تصفية التذكيرات حسب التاريخ الحالي
+      const today = new Date();
+      const rappelsAujourdhui = data.filter(r =>
+        r.status === 'actif' &&
+new Date(r.dateRappel).toDateString() <= today.toDateString()
+      );
+
+      console.log('📢 Rappels à afficher aujourd’hui:', rappelsAujourdhui);
+
+      if (rappelsAujourdhui.length > 0) {
+        setRappelModal(rappelsAujourdhui[0]);
+        setEditDate(rappelsAujourdhui[0].dateRappel?.split('T')[0] || '');
+        setEditNote(rappelsAujourdhui[0].note || '');
+      }
+
+    } catch (err) {
+      console.error('❌ Erreur rappels:', err.message);
+    }
+  };
+
+  fetchRappels();
+}, []);
+
+const handleUpdateRappel = async (id) => {
+  const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dateRappel: editDate, note: editNote })
+  });
+
+  const updated = await res.json();
+  setRappelModal(null);
+  alert("تم التحديث بنجاح");
+};
+
+const handleDeleteRappel = async (id) => {
+  const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
+    method: 'DELETE'
+  });
+
+  if (res.ok) {
+    setRappelModal(null);
+    alert("تم الحذف بنجاح");
+  }
+};
 
   const fetchDashboardData = async () => {
     try {
@@ -60,91 +119,100 @@ const AdminDashboard = () => {
         'Content-Type': 'application/json'
       };
 
-      // Récupération parallèle des données
-      const [etudiantsRes, coursRes, paiementsRes, evenementsRes, presencesRes, professeursRes] = await Promise.all([
+      console.log('🔄 Début de récupération des données...');
+
+      // Récupération parallèle des données - ✅ إضافة الأساتذة
+      const [adminRes, etudiantsRes, coursRes, paiementsRes, evenementsRes, presencesRes, professeursRes] = await Promise.all([
+        fetch('http://195.179.229.230:5000/api/admin/dashboard', { headers }),
         fetch('http://195.179.229.230:5000/api/etudiants', { headers }),
         fetch('http://195.179.229.230:5000/api/cours', { headers }),
         fetch('http://195.179.229.230:5000/api/paiements', { headers }),
         fetch('http://195.179.229.230:5000/api/evenements', { headers }),
         fetch('http://195.179.229.230:5000/api/presences', { headers }),
-        fetch('http://195.179.229.230:5000/api/professeurs', { headers })
+        fetch('http://195.179.229.230:5000/api/professeurs', { headers }) // ✅ جديد
       ]);
 
-      // Vérification des statuts
+      // Vérification des statuts de réponse
+      if (!adminRes.ok) throw new Error(`Erreur admin: ${adminRes.status}`);
       if (!etudiantsRes.ok) throw new Error(`Erreur étudiants: ${etudiantsRes.status}`);
       if (!coursRes.ok) throw new Error(`Erreur cours: ${coursRes.status}`);
       if (!paiementsRes.ok) throw new Error(`Erreur paiements: ${paiementsRes.status}`);
       if (!evenementsRes.ok) throw new Error(`Erreur événements: ${evenementsRes.status}`);
       if (!presencesRes.ok) throw new Error(`Erreur présences: ${presencesRes.status}`);
-      if (!professeursRes.ok) throw new Error(`Erreur professeurs: ${professeursRes.status}`);
+      if (!professeursRes.ok) throw new Error(`Erreur professeurs: ${professeursRes.status}`); // ✅ جديد
 
       // Conversion en JSON
-      const etudiantsAll = await etudiantsRes.json();
+      const adminData = await adminRes.json();
+      const etudiants = await etudiantsRes.json();
       const cours = await coursRes.json();
-      const paiementsAll = await paiementsRes.json();
+      const paiements = await paiementsRes.json();
       const evenements = await evenementsRes.json();
-      const presencesAll = await presencesRes.json();
-      const professeurs = await professeursRes.json();
+      const presences = await presencesRes.json();
+      const professeurs = await professeursRes.json(); // ✅ جديد
 
-      // Validation et filtrage des données pour l'année 2025/2026
-      const etudiantsAllValid = Array.isArray(etudiantsAll) ? etudiantsAll : [];
-      const etudiants = etudiantsAllValid.filter(e => e.anneeScolaire === ANNEE_SCOLAIRE_CIBLE);
+      console.log('📊 Données récupérées:', {
+        admin: adminData,
+        etudiants: etudiants.length,
+        cours: cours.length,
+        paiements: paiements.length,
+        evenements: evenements.length,
+        presences: presences.length,
+        professeurs: professeurs.length // ✅ جديد
+      });
+
+      // Vérification de l'authentification
+      if (adminData.message && adminData.message.includes('Token')) {
+        setError('Session expirée - veuillez vous reconnecter');
+        setLoading(false);
+        return;
+      }
+
+      setAdmin(adminData.admin);
       
+      // Validation des données
+      const etudiantsValid = Array.isArray(etudiants) ? etudiants : [];
       const coursValid = Array.isArray(cours) ? cours : [];
+      const paiementsValid = Array.isArray(paiements) ? paiements : [];
       const evenementsValid = Array.isArray(evenements) ? evenements : [];
-      const professeursValid = Array.isArray(professeurs) ? professeurs : [];
+      const presencesValid = Array.isArray(presences) ? presences : [];
+      const professeursValid = Array.isArray(professeurs) ? professeurs : []; // ✅ جديد
 
-      // Filtrer les paiements pour les étudiants de l'année 2025/2026
-      const paiementsAllValid = Array.isArray(paiementsAll) ? paiementsAll : [];
-      const etudiantIds2025 = etudiants.map(e => e._id);
-      const paiements = paiementsAllValid.filter(p => 
-        p.etudiant && etudiantIds2025.includes(p.etudiant._id || p.etudiant)
-      );
+      // Calcul des statistiques réelles
+      const etudiantsActifs = etudiantsValid.filter(e => e.actif === true).length;
+      const etudiantsInactifs = etudiantsValid.length - etudiantsActifs;
 
-      // Filtrer les présences pour les étudiants de l'année 2025/2026
-      const presencesAllValid = Array.isArray(presencesAll) ? presencesAll : [];
-      const presences = presencesAllValid.filter(p => 
-        p.etudiant && etudiantIds2025.includes(p.etudiant._id || p.etudiant)
-      );
-
-      // Calcul des statistiques pour l'année 2025/2026
-      const etudiantsActifs = etudiants.filter(e => e.actif === true).length;
-      const etudiantsInactifs = etudiants.length - etudiantsActifs;
-
-      // Paiements expirés pour l'année 2025/2026
+      // Récupération des paiements expirés
       let paiementsExpiresCount = 0;
       try {
         const paiementsExpRes = await fetch('http://195.179.229.230:5000/api/paiements/exp', { headers });
         if (paiementsExpRes.ok) {
-          const paiementsExpiresAll = await paiementsExpRes.json();
-          const paiementsExpires = Array.isArray(paiementsExpiresAll) 
-            ? paiementsExpiresAll.filter(p => 
-                p.etudiant && etudiantIds2025.includes(p.etudiant._id || p.etudiant)
-              ) 
-            : [];
-          paiementsExpiresCount = paiementsExpires.length;
+          const paiementsExpires = await paiementsExpRes.json();
+          paiementsExpiresCount = Array.isArray(paiementsExpires) ? paiementsExpires.length : 0;
         }
       } catch (err) {
-        console.warn('Impossible de récupérer les paiements expirés:', err);
+        console.warn('⚠️ Impossible de récupérer les paiements expirés:', err);
       }
 
       const dashboardStats = {
-        totalEtudiants: etudiants.length,
+        totalEtudiants: etudiantsValid.length,
         etudiantsActifs,
         etudiantsInactifs,
         totalCours: coursValid.length,
-        totalPaiements: paiements.length,
+        totalPaiements: paiementsValid.length,
         paiementsExpires: paiementsExpiresCount,
         totalEvenements: evenementsValid.length,
-        presencesRecentes: presences.length,
-        totalProfesseurs: professeursValid.length
+        presencesRecentes: presencesValid.length,
+        totalProfesseurs: professeursValid.length // ✅ جديد
       };
 
       setDashboardData(dashboardStats);
-      prepareChartData(etudiants, coursValid, paiements, presences);
+      console.log('📈 Statistiques calculées:', dashboardStats);
+
+      // Préparation des données pour les graphiques
+      prepareChartData(etudiantsValid, coursValid, paiementsValid, presencesValid);
       
     } catch (error) {
-      console.error('Erreur lors de la récupération des données:', error);
+      console.error('❌ Erreur lors de la récupération des données:', error);
       setError(`Erreur de connexion: ${error.message}`);
     } finally {
       setLoading(false);
@@ -152,7 +220,9 @@ const AdminDashboard = () => {
   };
 
   const prepareChartData = (etudiants, cours, paiements, presences) => {
-    // Statistiques par cours pour les étudiants 2025/2026
+    console.log('🎨 Préparation des graphiques...');
+
+    // 1. Statistiques par cours (étudiants inscrits)
     const coursStats = cours.map(c => {
       const etudiantsInscrit = etudiants.filter(e => 
         Array.isArray(e.cours) && e.cours.includes(c.nom)
@@ -165,7 +235,7 @@ const AdminDashboard = () => {
       };
     }).filter(c => c.etudiants > 0);
 
-    // Statistiques par genre pour les étudiants 2025/2026
+    // 2. Statistiques par genre
     const hommes = etudiants.filter(e => e.genre === 'Homme').length;
     const femmes = etudiants.filter(e => e.genre === 'Femme').length;
     const genreStats = [
@@ -173,7 +243,7 @@ const AdminDashboard = () => {
       { name: 'Femmes', value: femmes }
     ].filter(g => g.value > 0);
 
-    // Paiements par mois pour les étudiants 2025/2026
+    // 3. Paiements par mois (derniers 6 mois)
     const paiementsParMois = [];
     const today = new Date();
     
@@ -191,7 +261,7 @@ const AdminDashboard = () => {
       paiementsParMois.push({ mois: moisNom, paiements: count });
     }
 
-    // Statistiques de présence pour les étudiants 2025/2026
+    // 4. Statistiques de présence
     const presents = presences.filter(p => p.present === true).length;
     const absents = presences.filter(p => p.present === false).length;
     
@@ -200,34 +270,29 @@ const AdminDashboard = () => {
       { name: 'Absents', value: absents, color: '#EF4444' }
     ].filter(p => p.value > 0);
 
-    setChartData({
+    const chartDataResult = {
       coursStats,
       paiementsParMois,
       presenceStats,
       genreStats
-    });
+    };
+
+    console.log('📊 Données graphiques préparées:', chartDataResult);
+    setChartData(chartDataResult);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
   };
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid #f3f4f6',
-            borderTop: '4px solid #3b82f6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto'
-          }}></div>
-          <p style={{ marginTop: '16px', color: '#6b7280' }}>Chargement des statistiques...</p>
+      <div className="loading-container">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Chargement des données réelles...</p>
+          <p className="loading-subtext">Récupération depuis la base de données</p>
         </div>
       </div>
     );
@@ -235,189 +300,106 @@ const AdminDashboard = () => {
 
   if (error) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <AlertTriangle style={{ 
-            height: '48px', 
-            width: '48px', 
-            color: '#ef4444', 
-            margin: '0 auto 16px' 
-          }} />
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: 'bold', 
-            color: '#1f2937', 
-            marginBottom: '8px' 
-          }}>
-            Erreur de Connexion
-          </h2>
-          <p style={{ color: '#6b7280', marginBottom: '16px' }}>{error}</p>
-          <button 
-            onClick={fetchDashboardData}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-            onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
-          >
-            Réessayer
-          </button>
+      <div className="error-container">
+        <div className="error-content">
+          <AlertTriangle className="error-icon" />
+          <h2 className="error-title">Erreur de Connexion</h2>
+          <p className="error-message">{error}</p>
+          <div className="error-actions">
+            <button 
+              onClick={fetchDashboardData}
+              className="error-btn primary"
+            >
+              Réessayer
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="error-btn secondary"
+            >
+              Se reconnecter
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  const StatCard = ({ title, value, icon: Icon, bgColor, textColor, subtitle }) => (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      padding: '24px',
-      border: '1px solid #e5e7eb'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <p style={{ color: '#6b7280', fontSize: '14px', fontWeight: '500', margin: '0' }}>{title}</p>
-          <p style={{ 
-            color: textColor, 
-            fontSize: '30px', 
-            fontWeight: 'bold', 
-            margin: '4px 0 0 0' 
-          }}>
-            {value || 0}
-          </p>
+  const StatCard = ({ title, value, icon: Icon, colorClass, trend, subtitle }) => (
+    <div className={`stat-card ${colorClass}`}>
+      <div className="stat-card-content">
+        <div className="stat-card-info">
+          <p className="stat-card-title">{title}</p>
+          <p className="stat-card-value">{value || 0}</p>
           {subtitle && (
-            <p style={{ color: '#9ca3af', fontSize: '12px', margin: '4px 0 0 0' }}>{subtitle}</p>
+            <p className="stat-card-subtitle">{subtitle}</p>
+          )}
+          {trend && (
+            <p className="stat-card-trend">
+              <TrendingUp />
+              {trend}
+            </p>
           )}
         </div>
-        <div style={{
-          padding: '12px',
-          borderRadius: '50%',
-          backgroundColor: '#f3f4f6'
-        }}>
-          <Icon style={{ height: '32px', width: '32px', color: '#6b7280' }} />
+        <div className="stat-card-icon">
+          <Icon />
         </div>
       </div>
-    </div>
-  );
-
-  const ChartCard = ({ title, icon: Icon, iconColor, children, isEmpty, emptyIcon: EmptyIcon, emptyText }) => (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      padding: '24px'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-        <Icon style={{ height: '24px', width: '24px', color: iconColor, marginRight: '8px' }} />
-        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: '0' }}>{title}</h3>
-      </div>
-      {isEmpty ? (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '256px',
-          color: '#6b7280'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <EmptyIcon style={{ height: '48px', width: '48px', margin: '0 auto 8px', color: '#9ca3af' }} />
-            <p style={{ margin: '0' }}>{emptyText}</p>
-          </div>
-        </div>
-      ) : (
-        children
-      )}
     </div>
   );
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 
   return (
-    <div>
-      <style>
-        {`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
-          }
-          .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
-          }
-          .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 24px;
-          }
-          @media (max-width: 768px) {
-            .charts-grid {
-              grid-template-columns: 1fr;
-            }
-            .stats-grid {
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            }
-          }
-        `}
-      </style>
-      
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
-        padding: '24px'
-      }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-          <Sidebar onLogout={handleLogout} />
+    <div className="admin-dashboard"style={{
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
+        }}>
+      {/* Header */}
+      <Sidebar onLogout={handleLogout} />
+      <Header />
+{rappelModal && (
+  <RappelModal
+    rappel={rappelModal}
+    onClose={() => setRappelModal(null)}
+    onUpdate={() => handleUpdateRappel(rappelModal._id)}
+    onDelete={() => handleDeleteRappel(rappelModal._id)}
+    editDate={editDate}
+    setEditDate={setEditDate}
+    editNote={editNote}
+    setEditNote={setEditNote}
+  />
+)}
 
-     
+      <div className="dashboard-container">
+        <div className="dashboard-content">
           {/* Cartes de statistiques principales */}
           <div className="stats-grid">
             <StatCard
-              title={`Total Étudiants ${ANNEE_SCOLAIRE_CIBLE}`}
+              title="Total Étudiants"
               value={dashboardData.totalEtudiants}
               icon={Users}
-              textColor="#2563eb"
-              subtitle="Inscrits cette année"
+              colorClass="blue"
+              subtitle="Inscrits dans la base"
             />
             <StatCard
               title="Étudiants Actifs"
               value={dashboardData.etudiantsActifs}
               icon={UserCheck}
-              textColor="#059669"
+              colorClass="green"
               subtitle="En cours de formation"
             />
             <StatCard
-              title="Total Classes"
+              title="Total classes"
               value={dashboardData.totalCours}
               icon={GraduationCap}
-              textColor="#7c3aed"
+              colorClass="purple"
               subtitle="Disponibles"
             />
             <StatCard
               title="Paiements Expirés"
               value={dashboardData.paiementsExpires}
               icon={AlertTriangle}
-              textColor="#dc2626"
-              subtitle="Année 2025/2026"
+              colorClass="red"
+              subtitle="Nécessitent suivi"
             />
           </div>
 
@@ -427,234 +409,228 @@ const AdminDashboard = () => {
               title="Total Paiements"
               value={dashboardData.totalPaiements}
               icon={CreditCard}
-              textColor="#d97706"
-              subtitle="Année 2025/2026"
+              colorClass="yellow"
+              subtitle="Enregistrés en DB"
             />
             <StatCard
               title="Événements"
               value={dashboardData.totalEvenements}
               icon={Calendar}
-              textColor="#4f46e5"
+              colorClass="indigo"
               subtitle="Planifiés"
             />
             <StatCard
               title="Étudiants Inactifs"
               value={dashboardData.etudiantsInactifs}
               icon={UserX}
-              textColor="#6b7280"
-              subtitle="Année 2025/2026"
+              colorClass="gray"
+              subtitle="Suspendus"
             />
+            {/* ✅ البطاقة الجديدة - Total Professeurs */}
             <StatCard
               title="Total Professeurs"
               value={dashboardData.totalProfesseurs}
               icon={Users}
-              textColor="#ea580c"
-              subtitle="Enseignants"
+              colorClass="orange"
+              subtitle="Enseignants enregistrés"
             />
           </div>
 
           {/* Graphiques principaux */}
           <div className="charts-grid">
-            <ChartCard
-              title={`Étudiants par Classe (${ANNEE_SCOLAIRE_CIBLE})`}
-              icon={GraduationCap}
-              iconColor="#2563eb"
-              isEmpty={!chartData.coursStats || chartData.coursStats.length === 0}
-              emptyIcon={GraduationCap}
-              emptyText="Aucune classe avec étudiants 2025/2026"
-            >
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData.coursStats}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="nom" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    fontSize={12}
-                  />
-                  <YAxis fontSize={12} />
-                  <Tooltip 
-                    formatter={(value, name) => [value, 'Étudiants 2025/2026']}
-                    labelFormatter={(label) => {
-                      const cours = chartData.coursStats.find(c => c.nom === label);
-                      return cours ? cours.nomComplet : label;
-                    }}
-                  />
-                  <Bar dataKey="etudiants" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            {/* Graphique des étudiants par cours */}
+            <div className="chart-card">
+              <div className="chart-header">
+                <GraduationCap />
+                <h3>Étudiants par Classe (Données Réelles)</h3>
+              </div>
+              {chartData.coursStats && chartData.coursStats.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData.coursStats}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="nom" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value, name) => [value, 'Étudiants inscrits']}
+                      labelFormatter={(label) => {
+                        const cours = chartData.coursStats.find(c => c.nom === label);
+                        return cours ? cours.nomComplet : label;
+                      }}
+                    />
+                    <Bar dataKey="etudiants" fill="#3B82F6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="chart-empty">
+                  <GraduationCap />
+                  <div>
+                    <h4>Aucune classe avec étudiants inscrits</h4>
+                    <p>Ajoutez des classes et des étudiants</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <ChartCard
-              title={`Évolution Paiements (${ANNEE_SCOLAIRE_CIBLE})`}
-              icon={TrendingUp}
-              iconColor="#059669"
-            >
+            {/* Graphique des paiements par mois */}
+            <div className="chart-card">
+              <div className="chart-header">
+                <TrendingUp />
+                <h3>Évolution Paiements (6 derniers mois)</h3>
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={chartData.paiementsParMois}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="mois" fontSize={12} />
-                  <YAxis fontSize={12} />
-                  <Tooltip formatter={(value) => [value, 'Paiements 2025/2026']} />
+                  <XAxis dataKey="mois" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [value, 'Paiements']} />
                   <Line 
                     type="monotone" 
                     dataKey="paiements" 
                     stroke="#10B981" 
                     strokeWidth={3} 
-                    dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }} 
+                    dot={{ fill: '#10B981', strokeWidth: 2, r: 6 }} 
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </ChartCard>
+            </div>
           </div>
 
           {/* Graphiques circulaires */}
-          <div className="charts-grid">
-            <ChartCard
-              title={`Répartition par Genre (${ANNEE_SCOLAIRE_CIBLE})`}
-              icon={Users}
-              iconColor="#7c3aed"
-              isEmpty={!chartData.genreStats || chartData.genreStats.length === 0 || !chartData.genreStats.some(stat => stat.value > 0)}
-              emptyIcon={Users}
-              emptyText="Aucun étudiant 2025/2026"
-            >
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={chartData.genreStats}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.genreStats.map((entry, index) => (
-                      <Cell key={`cell-gender-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
+          <div className="pie-charts-grid">
+            {/* Répartition par genre */}
+            <div className="chart-card">
+              <div className="chart-header">
+                <Users />
+                <h3>Répartition par Genre</h3>
+              </div>
+              {chartData.genreStats && chartData.genreStats.length > 0 && chartData.genreStats.some(stat => stat.value > 0) ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={chartData.genreStats}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.genreStats.map((entry, index) => (
+                        <Cell key={`cell-gender-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="chart-empty">
+                  <Users />
+                  <div>
+                    <h4>Aucun étudiant enregistré</h4>
+                    <p>Ajoutez des étudiants pour voir les statistiques</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            <ChartCard
-              title={`Statistiques de Présence (${ANNEE_SCOLAIRE_CIBLE})`}
-              icon={UserCheck}
-              iconColor="#059669"
-              isEmpty={!chartData.presenceStats || chartData.presenceStats.length === 0 || !chartData.presenceStats.some(stat => stat.value > 0)}
-              emptyIcon={UserCheck}
-              emptyText="Aucune présence enregistrée 2025/2026"
-            >
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={chartData.presenceStats}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.presenceStats.map((entry, index) => (
-                      <Cell key={`cell-presence-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            {/* Statistiques de présence */}
+            <div className="chart-card">
+              <div className="chart-header">
+                <UserCheck />
+                <h3>Statistiques de Présence</h3>
+              </div>
+              {chartData.presenceStats && chartData.presenceStats.length > 0 && chartData.presenceStats.some(stat => stat.value > 0) ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={chartData.presenceStats}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.presenceStats.map((entry, index) => (
+                        <Cell key={`cell-presence-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="chart-empty">
+                  <UserCheck />
+                  <div>
+                    <h4>Aucun enregistrement de présence</h4>
+                    <p>Commencez à enregistrer les présences</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Alerte paiements expirés */}
+          {/* Section d'alertes */}
           {dashboardData.paiementsExpires > 0 && (
-            <div style={{
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '12px',
-              padding: '24px',
-              marginBottom: '32px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <AlertTriangle style={{ height: '24px', width: '24px', color: '#dc2626', marginRight: '12px' }} />
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#991b1b', margin: '0 0 4px 0' }}>
-                    Paiements Expirés Détectés - Année {ANNEE_SCOLAIRE_CIBLE}
-                  </h3>
-                  <p style={{ color: '#b91c1c', margin: '0' }}>
-                    <strong>{dashboardData.paiementsExpires}</strong> étudiant(s) de l'année {ANNEE_SCOLAIRE_CIBLE} ont des paiements expirés.
+            <div className="alert-section">
+              <div className="alert-content">
+                <AlertTriangle />
+                <div className="alert-text">
+                  <h3>⚠️ Paiements Expirés Détectés</h3>
+                  <p>
+                    <strong>{dashboardData.paiementsExpires}</strong> étudiant(s) ont des paiements expirés dans votre base de données.
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Résumé statistiques */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-            padding: '24px'
-          }}>
-            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '24px' }}>
-              Résumé Statistiques - Année {ANNEE_SCOLAIRE_CIBLE}
+          {/* Résumé avec données réelles */}
+          <div className="summary-card">
+            <h3 className="summary-header">
+              📊 Résumé en Temps Réel
             </h3>
             <div className="summary-grid">
-              <div style={{
-                backgroundColor: '#eff6ff',
-                borderRadius: '8px',
-                padding: '16px',
-                textAlign: 'center'
-              }}>
-                <p style={{ color: '#2563eb', fontSize: '14px', fontWeight: '500', margin: '0 0 4px 0' }}>
-                  Taux d'Activité
-                </p>
-                <p style={{ color: '#1e40af', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>
+              <div className="summary-item blue">
+                <p className="summary-item-label">Taux d'Activité</p>
+                <p className="summary-item-value">
                   {dashboardData.totalEtudiants ? Math.round((dashboardData.etudiantsActifs / dashboardData.totalEtudiants) * 100) : 0}%
                 </p>
-                <p style={{ color: '#2563eb', fontSize: '12px', margin: '4px 0 0 0' }}>
+                <p className="summary-item-detail">
                   {dashboardData.etudiantsActifs}/{dashboardData.totalEtudiants} étudiants actifs
                 </p>
               </div>
-              <div style={{
-                backgroundColor: '#f0fdf4',
-                borderRadius: '8px',
-                padding: '16px',
-                textAlign: 'center'
-              }}>
-                <p style={{ color: '#059669', fontSize: '14px', fontWeight: '500', margin: '0 0 4px 0' }}>
-                  Moyenne Étudiants/Classe
-                </p>
-                <p style={{ color: '#047857', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>
+              <div className="summary-item green">
+                <p className="summary-item-label">Moyenne Étudiants/Classes</p>
+                <p className="summary-item-value">
                   {dashboardData.totalCours ? Math.round(dashboardData.totalEtudiants / dashboardData.totalCours) : 0}
                 </p>
-                <p style={{ color: '#059669', fontSize: '12px', margin: '4px 0 0 0' }}>
-                  {dashboardData.totalEtudiants} étudiants / {dashboardData.totalCours} classes
+                <p className="summary-item-detail">
+                  {dashboardData.totalEtudiants} étudiants / {dashboardData.totalCours} classe
                 </p>
               </div>
-              <div style={{
-                backgroundColor: '#faf5ff',
-                borderRadius: '8px',
-                padding: '16px',
-                textAlign: 'center'
-              }}>
-                <p style={{ color: '#7c3aed', fontSize: '14px', fontWeight: '500', margin: '0 0 4px 0' }}>
-                  Ratio Profs/Étudiants
-                </p>
-                <p style={{ color: '#6d28d9', fontSize: '24px', fontWeight: 'bold', margin: '0' }}>
+              <div className="summary-item purple">
+                <p className="summary-item-label">Ratio Profs/Étudiants</p>
+                <p className="summary-item-value">
                   {dashboardData.totalProfesseurs ? Math.round(dashboardData.totalEtudiants / dashboardData.totalProfesseurs) : 0}
                 </p>
-                <p style={{ color: '#7c3aed', fontSize: '12px', margin: '4px 0 0 0' }}>
+                <p className="summary-item-detail">
                   {dashboardData.totalEtudiants} étudiants / {dashboardData.totalProfesseurs} professeurs
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Informations de debug */}
+      
         </div>
       </div>
     </div>

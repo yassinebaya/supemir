@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Upload, BookOpen, FileText, GraduationCap, Hash, Send, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import Sidebaretudiant from '../components/sidebaretudiant.js';
+import Sidebaretudiant from '../components/sidebaretudiant';
  const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/';

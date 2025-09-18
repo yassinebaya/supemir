@@ -233,11 +233,11 @@ const AdministratifPage = () => {
         <div className="header-card">
           <div className="header-content">
             <div className="header-info">
-              <h1 className="page-title">Gestion des Administratifs</h1>
+              <h1 className="page-title">Gestion des Scolarité</h1>
             </div>
             <button className="btn btn-primary" onClick={openAddModal}>
               <Plus size={20} />
-              Nouvel Administratif
+              Nouvelle Scolarité
             </button>
           </div>
         </div>
@@ -261,7 +261,7 @@ const AdministratifPage = () => {
         <div className="commercials-card">
           <h2 className="section-title">
             <Shield size={24} className="icon-green" />
-            Administratifs ({administratifs.length})
+            Scolarité ({administratifs.length})
           </h2>
           
           {loading ? (
@@ -359,7 +359,7 @@ const AdministratifPage = () => {
             <div className="modal">
               <div className="modal-header">
                 <h3 className="modal-title">
-                  {editingAdministratif ? 'Modifier Administratif' : 'Nouvel Administratif'}
+                  {editingAdministratif ? 'Modifier Scolarité' : 'Nouvelle Scolarité'}
                 </h3>
                 <button
                   onClick={() => {

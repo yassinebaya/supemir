@@ -36,7 +36,7 @@ const EnhancedDashboard = () => {
   const [headerVisible, setHeaderVisible] = useState(true);
   
   // Filtres etendus
-  const [filtreAnneeScolaire, setFiltreAnneeScolaire] = useState('toutes');
+  const [filtreAnneeScolaire, setFiltreAnneeScolaire] = useState('2025/2026');
   const [filtreFiliere, setFiltreFiliere] = useState('toutes');
   const [filtreNiveauFormation, setFiltreNiveauFormation] = useState('tous');
   const [filtreCycle, setFiltreCycle] = useState('tous');
@@ -55,7 +55,7 @@ const EnhancedDashboard = () => {
       const token = localStorage.getItem('token');
       
       const [etudiantsRes, commerciauxRes, coursRes] = await Promise.all([
-        axios.get('http://195.179.229.230:5000/api/etudiant', {
+        axios.get('http://195.179.229.230:5000/api/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get('http://195.179.229.230:5000/api/commerciaux', {
@@ -472,28 +472,22 @@ const EnhancedDashboard = () => {
             <div className="header-content header-content-center">
               <div className="header-info header-info-center">
                 <h1>
-                  <Database size={28} />
                   Dashboard Administrateur - Formations Completes
                 </h1>
                 <div className="header-stats header-stats-center">
                   <span className="header-stat">
-                    <Users size={16} />
                     {etudiantsFiltres.length} etudiants
                   </span>
                   <span className="header-stat">
-                    <GraduationCap size={16} />
                     {formationsData.length} types de formation
                   </span>
                   <span className="header-stat">
-                    <DollarSign size={16} />
                     {formatMoney(statsGenerales.chiffreAffaireTotal)}
                   </span>
                   <span className="header-stat">
-                    <Percent size={16} />
                     {statsGenerales.tauxPaiement.toFixed(1)}% paye
                   </span>
                   <span className="header-stat">
-                    <UserPlus size={16} />
                     {inscriptions.nouvelles} new / {inscriptions.anciennes} old
                   </span>
                 </div>
@@ -523,7 +517,6 @@ const EnhancedDashboard = () => {
                 </div>
 
                 <button onClick={fetchData} className="btn-refresh">
-                  <RefreshCw size={16} />
                   Actualiser
                 </button>
               </div>
@@ -597,35 +590,30 @@ const EnhancedDashboard = () => {
             className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            <Home size={16} />
             Vue d'ensemble
           </button>
           <button 
             className={`tab-btn ${activeTab === 'formations' ? 'active' : ''}`}
             onClick={() => setActiveTab('formations')}
           >
-            <GraduationCap size={16} />
             Formations
           </button>
           <button 
             className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
             onClick={() => setActiveTab('analytics')}
           >
-            <BarChart3 size={16} />
             Analyses
           </button>
           <button 
             className={`tab-btn ${activeTab === 'geography' ? 'active' : ''}`}
             onClick={() => setActiveTab('geography')}
           >
-            <Globe size={16} />
             Geographie
           </button>
           <button 
             className={`tab-btn ${activeTab === 'inscriptions' ? 'active' : ''}`}
             onClick={() => setActiveTab('inscriptions')}
           >
-            <UserPlus size={16} />
             Inscriptions
           </button>
         </div>
@@ -639,7 +627,6 @@ const EnhancedDashboard = () => {
                 <div className="stats-grid">
                   <div className="stat-card blue">
                     <div className="stat-icon">
-                      <Users size={24} />
                     </div>
                     <div className="stat-content">
                       <h3>{statsGenerales.totalEtudiants}</h3>
@@ -650,7 +637,6 @@ const EnhancedDashboard = () => {
 
                   <div className="stat-card green">
                     <div className="stat-icon">
-                      <DollarSign size={24} />
                     </div>
                     <div className="stat-content">
                       <h3>{formatMoney(statsGenerales.chiffreAffaireTotal)}</h3>
@@ -661,7 +647,6 @@ const EnhancedDashboard = () => {
 
                   <div className="stat-card purple">
                     <div className="stat-icon">
-                      <Percent size={24} />
                     </div>
                     <div className="stat-content">
                       <h3>{statsGenerales.tauxPaiement.toFixed(1)}%</h3>
@@ -672,7 +657,6 @@ const EnhancedDashboard = () => {
 
                   <div className="stat-card orange">
                     <div className="stat-icon">
-                      <Award size={24} />
                     </div>
                     <div className="stat-content">
                       <h3>{formatMoney(statsGenerales.moyennePrixFormation)}</h3>
@@ -686,7 +670,6 @@ const EnhancedDashboard = () => {
               {/* Vue d'ensemble des formations */}
               <div className="section">
                 <h2 className="section-title">
-                  <GraduationCap size={24} />
                   Repartition des Formations FI vs Executive
                 </h2>
                 <div className="formation-overview">
@@ -730,7 +713,6 @@ const EnhancedDashboard = () => {
               (IRM 1, IRM 2, MASI 1, ...) */}
               <div className="section">
                 <h2 className="section-title">
-                  <Layers size={24} />
                   Cartes par Filière + Niveau
                 </h2>
 
@@ -782,7 +764,6 @@ const EnhancedDashboard = () => {
               {/* Analyse des niveaux de formation */}
               <div className="section">
                 <h2 className="section-title">
-                  <Layers size={24} />
                   Analyse par Niveau de Formation
                 </h2>
                 <div className="table-container">
@@ -815,7 +796,6 @@ const EnhancedDashboard = () => {
                           <td className="money">{formatMoney(niveau.prixMoyen)}</td>
                           <td>
                             <button className="btn-action" onClick={() => ouvrirModal(`Niveau: ${niveau.niveau}`, niveau)}>
-                              <Eye size={16} />
                               Details
                             </button>
                           </td>
@@ -829,7 +809,6 @@ const EnhancedDashboard = () => {
               {/* Analyse des filieres */}
               <div className="section">
                 <h2 className="section-title">
-                  <BookOpen size={24} />
                   Analyse Detaillee par Filiere
                 </h2>
                 <div className="table-container">
@@ -867,7 +846,6 @@ const EnhancedDashboard = () => {
                           </td>
                           <td>
                             <button className="btn-action" onClick={() => ouvrirModal(`Filiere: ${filiere.filiere}`, filiere)}>
-                              <Eye size={16} />
                               Details
                             </button>
                           </td>
@@ -881,7 +859,6 @@ const EnhancedDashboard = () => {
               {/* Analyse des cycles */}
               <div className="section">
                 <h2 className="section-title">
-                  <Code size={24} />
                   Analyse par Cycle de Formation
                 </h2>
                 <div className="cycles-grid">
@@ -921,7 +898,6 @@ const EnhancedDashboard = () => {
                   {/* Graphique Formations FT vs Executive */}
                   <div className="chart-card large">
                     <h3>
-                      <PieChartIcon size={20} />
                       Repartition FI vs Executive
                     </h3>
                     <ResponsiveContainer width="100%" height={350}>
@@ -947,7 +923,6 @@ const EnhancedDashboard = () => {
                   {/* Graphique par Annee Scolaire */}
                   <div className="chart-card large">
                     <h3>
-                      <Calendar size={20} />
                       Evolution par Annee Scolaire
                     </h3>
                     <ResponsiveContainer width="100%" height={350}>
@@ -972,7 +947,6 @@ const EnhancedDashboard = () => {
                   {/* Graphique Top Filieres */}
                   <div className="chart-card">
                     <h3>
-                      <BookOpen size={20} />
                       Top Filieres (Effectifs)
                     </h3>
                     <ResponsiveContainer width="100%" height={300}>
@@ -996,7 +970,6 @@ const EnhancedDashboard = () => {
                   {/* Graphique Niveaux de Formation */}
                   <div className="chart-card">
                     <h3>
-                      <Layers size={20} />
                       Niveaux de Formation
                     </h3>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1023,7 +996,6 @@ const EnhancedDashboard = () => {
               {/* Analyse par Annees Scolaires */}
               <div className="section">
                 <h2 className="section-title">
-                  <Calendar size={24} />
                   Analyse par Annee Scolaire
                 </h2>
                 <div className="table-container">
@@ -1056,7 +1028,6 @@ const EnhancedDashboard = () => {
                           <td className="money">{formatMoney(annee.prixMoyen)}</td>
                           <td>
                             <button className="btn-action" onClick={() => ouvrirModal(`Annee: ${annee.annee}`, annee)}>
-                              <Eye size={16} />
                               Details
                             </button>
                           </td>
@@ -1074,7 +1045,6 @@ const EnhancedDashboard = () => {
               {/* Analyse geographique */}
               <div className="section">
                 <h2 className="section-title">
-                  <Globe size={24} />
                   Analyse Geographique des A‰tudiants
                 </h2>
                 <div className="table-container">
@@ -1095,7 +1065,6 @@ const EnhancedDashboard = () => {
                       {paysData.map((pays, index) => (
                         <tr key={index}>
                           <td className="pays-name">
-                            <MapPin size={16} />
                             {pays.pays}
                           </td>
                           <td><span className="badge blue">{pays.total}</span></td>
@@ -1113,7 +1082,6 @@ const EnhancedDashboard = () => {
                           <td><span className="badge orange">{pays.fonctionnaires}</span></td>
                           <td>
                             <button className="btn-action" onClick={() => ouvrirModal(`Pays: ${pays.pays}`, pays)}>
-                              <Eye size={16} />
                               Details
                             </button>
                           </td>
@@ -1129,7 +1097,6 @@ const EnhancedDashboard = () => {
                 <div className="charts-grid">
                   <div className="chart-card">
                     <h3>
-                      <Globe size={20} />
                       Repartition par Pays (CA)
                     </h3>
                     <ResponsiveContainer width="100%" height={350}>
@@ -1154,7 +1121,6 @@ const EnhancedDashboard = () => {
 
                   <div className="chart-card">
                     <h3>
-                      <Users2 size={20} />
                       Repartition par Pays (Effectifs)
                     </h3>
                     <ResponsiveContainer width="100%" height={350}>

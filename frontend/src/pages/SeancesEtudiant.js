@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Book, Clock, User, Download, MapPin, RefreshCw, BookOpen } from 'lucide-react';
+import Sidebaretudiant from '../components/sidebaretudiant.js';
 
+
+ const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  };
 const SeancesEtudiant = () => {
   const [seances, setSeances] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -569,6 +575,8 @@ const SeancesEtudiant = () => {
 
   return (
     <div style={styles.container}>
+                         <Sidebaretudiant onLogout={handleLogout} />
+      
       <div style={styles.content}>
         {/* Header */}
         <div style={styles.header}>
