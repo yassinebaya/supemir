@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, BookOpen, User, Eye, X, Users, GraduationCap, Trash2, Filter, Search } from 'lucide-react';
 import Sidebar from '../components/sidberadmin';
+import * as XLSX from 'xlsx';
 
 const ListeCoursAdmin = () => {
   const [cours, setCours] = useState([]);
@@ -222,6 +223,18 @@ const ListeCoursAdmin = () => {
   const etudiantsDansCours = coursActuel
     ? etudiants.filter(e => e.cours && e.cours.includes(coursActuel.nom))
     : [];
+
+  // Fonction d'export XLSX
+  const exportToXLSX = () => {
+    const data = coursFiltres.map(c => ({
+      'Nom du cours': c.nom,
+      "Nombre d'étudiants": etudiants.filter(e => e.cours && e.cours.includes(c.nom)).length
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Cours');
+    XLSX.writeFile(workbook, 'liste_cours.xlsx');
+  };
 
   const styles = {
     container: {
@@ -880,6 +893,38 @@ const ListeCoursAdmin = () => {
           </div>
         </div>
 
+        {/* Bouton Export Excel */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <button
+            onClick={exportToXLSX}
+            style={{
+              background: 'linear-gradient(135deg, #059669, #10b981)',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '0.75rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '1rem',
+              marginRight: 0
+            }}
+            onMouseEnter={e => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseLeave={e => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            Exporter en Excel
+          </button>
+        </div>
+
         {/* Section des filtres */}
         <div style={styles.filterSection}>
           <div style={styles.filterHeader}>
@@ -980,7 +1025,7 @@ const ListeCoursAdmin = () => {
                   style={styles.resetButton}
                   onMouseEnter={(e) => {
                     e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                    e.target.style.boxShadow = '0 10px 15px -5px rgba(0, 0, 0, 0.1)';
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.transform = 'translateY(0)';

@@ -312,7 +312,27 @@ const etudiantSchema = new mongoose.Schema({
   default: '',
   trim: true
 },
-
+// Dans votre modèle Etudiant, AJOUTER si pas encore fait :
+validationPedagogique: {
+  statut: {
+    type: String,
+    enum: ['En attente', 'En cours', 'Validé', 'Pas Validé'],
+    default: 'En attente'
+  },
+  commentaire: {
+    type: String,
+    default: ''
+  },
+  validePar: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin', // ou 'User' selon votre modèle
+    default: null
+  },
+  dateValidation: {
+    type: Date,
+    default: null
+  }
+},
   // Prix séparé pour les partners (ne se calcule pas avec prixTotal normal)
   prixTotalPartner: {
     type: Number,

@@ -401,19 +401,6 @@ const PedagogiqueDashboard = () => {
                 ))}
               </select>
 
-              <select 
-                value={filtreSpecialite} 
-                onChange={(e) => setFiltreSpecialite(e.target.value)} 
-                className="dashboard-select"
-              >
-                <option value="toutes">Toutes spécialités</option>
-                {specialitesDisponibles.map(specialite => (
-                  <option key={specialite} value={specialite}>
-                    {specialite.length > 30 ? specialite.substring(0, 30) + '...' : specialite}
-                  </option>
-                ))}
-              </select>
-
               <button onClick={resetFilters} className="dashboard-reset-btn">
                 <RefreshCw size={16} />
                 Reset

@@ -2334,6 +2334,104 @@ input:checked + .slider:before {
     opacity: 0.5;
   }
 }
+/* Validation pédagogique styles */
+.validation-colonne {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.validation-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.validation-badge.en-attente {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.validation-badge.en-cours {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.validation-badge.valide {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.validation-badge.pas-valide {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.validation-commentaire {
+  font-size: 0.7rem;
+  color: #666;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.validation-badge-card {
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.validation-badge-card.en-attente {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.validation-badge-card.en-cours {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.validation-badge-card.valide {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.validation-badge-card.pas-valide {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.validation-badge-view {
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.validation-badge-view.en-attente {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+.validation-badge-view.en-cours {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.validation-badge-view.valide {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.validation-badge-view.pas-valide {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
 
 /* ===== Styles pour le système Partner ===== */
 

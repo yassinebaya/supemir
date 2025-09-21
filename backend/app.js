@@ -3404,6 +3404,8 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     });
   }
 });
+// Route pour valider un étudiant (PUT)
+
 // ===== ROUTE GET MODIFIÉE POUR FILTRAGE PAR ANNÉE =====
 // Route POST pour créer un étudiant
 app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
@@ -8802,7 +8804,72 @@ app.post('/api/seances/copier-semaine', authAdminOrPedagogique, async (req, res)
   }
 });
 
+// Route pour la validation pédagogique des étudiants
+app.put('/api/etudiants/:id/validation-pedagogique', authPedagogique, async (req, res) => {
+  try {
+    const { statut, commentaire } = req.body;
+    const etudiantId = req.params.id;
+    
+    // Vérifier que le statut est valide
+    const statutsValides = ['En attente', 'En cours', 'Validé', 'Pas Validé'];
+    if (!statutsValides.includes(statut)) {
+      return res.status(400).json({ 
+        ok: false,
+        error: 'Statut de validation invalide' 
+      });
+    }
 
+    console.log(`📋 Validation pédagogique demandée par ${req.user.nom}:`, {
+      etudiantId,
+      statut,
+      commentaire: commentaire || 'Aucun commentaire'
+    });
+
+    // Chercher l'étudiant
+    const etudiant = await Etudiant.findById(etudiantId);
+    
+    if (!etudiant) {
+      return res.status(404).json({ 
+        ok: false,
+        error: 'Étudiant non trouvé' 
+      });
+    }
+
+    // Mettre à jour la validation pédagogique
+    etudiant.validationPedagogique = {
+      statut: statut,
+      commentaire: commentaire || '',
+      validePar: req.user._id,
+      dateValidation: new Date()
+    };
+
+    await etudiant.save();
+
+    console.log(`✅ Validation pédagogique mise à jour:`, {
+      etudiant: `${etudiant.prenom} ${etudiant.nomDeFamille}`,
+      statut,
+      par: req.user.nom
+    });
+    
+    res.json({ 
+      ok: true,
+      message: 'Validation mise à jour avec succès',
+      validation: etudiant.validationPedagogique,
+      etudiant: {
+        nom: `${etudiant.prenom} ${etudiant.nomDeFamille}`,
+        id: etudiant._id
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erreur lors de la validation pédagogique:', error);
+    res.status(500).json({ 
+      ok: false,
+      error: 'Erreur interne lors de la validation',
+      details: error.message
+    });
+  }
+});
 // Route pour copier une semaine (pédagogique)
 app.post('/api/pedagogique/seances/copier-semaine', authPedagogique, async (req, res) => {
   try {
@@ -15703,30 +15770,7 @@ app.put('/api/admin/profile', authAdmin, async (req, res) => {
 // ===== ROUTES PÉDAGOGIQUE CORRIGÉES - VERSION FINALE =====
 
 // 1. Route pour obtenir les étudiants (CORRIGÉE)
-app.get('/api/pedagogique/etudiants', authPedagogique, async (req, res) => {
-  try {
-    const filierePedagogique = req.user.filiere;
-    const estGeneral = filierePedagogique === 'GENERAL';
-    
-    let query = {};
-    if (!estGeneral) {
-      // Pédagogique spécifique : seulement sa filière
-      query.filiere = filierePedagogique;
-    }
-    // Pour le général : query reste vide = tous les étudiants
-    
-    const etudiants = await Etudiant.find(query)
-      .populate('commercial', 'nom nomComplet')
-      .sort({ createdAt: -1 });
 
-    console.log(`📚 Pédagogique ${estGeneral ? 'GÉNÉRAL' : req.user.filiere} - ${etudiants.length} étudiants trouvés${estGeneral ? ' (Toutes filières)' : ''}`);
-    
-    res.json(etudiants);
-  } catch (error) {
-    console.error('Erreur récupération étudiants pédagogique:', error);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-});
 
 // 2. Route pour obtenir les cours (CORRIGÉE)
 app.get('/api/pedagogique/cours', authPedagogique, async (req, res) => {

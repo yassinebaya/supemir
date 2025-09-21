@@ -24,7 +24,13 @@ const styles = {
   borderRadius: '8px',
   boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
   boxShadowLg: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  transition: 'all 0.2s ease'
+  transition: 'all 0.2s ease',
+  validationColors: {
+    'Validé': '#dcfce7',      // vert clair
+    'Pas Validé': '#fee2e2',  // rouge clair  
+    'En cours': '#fef3c7',    // orange clair
+    'En attente': '#f3f4f6'   // gris clair (défaut)
+  }
 };
 
 const EtudiantsPedagogiquePage = () => {
@@ -44,6 +50,7 @@ const EtudiantsPedagogiquePage = () => {
   const [filtreNiveauFormation, setFiltreNiveauFormation] = useState('tous');
   const [filtreCommercial, setFiltreCommercial] = useState('tous');
   const [filtrePays, setFiltrePays] = useState('tous');
+  const [filtreFiliere, setFiltreFiliere] = useState('toutes');
 
   // États pour les données de référence
   const [listeCommerciaux, setListeCommerciaux] = useState([]);
@@ -56,9 +63,15 @@ const EtudiantsPedagogiquePage = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
 
   // États pour les actions en lot
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [selectedStudentForValidation, setSelectedStudentForValidation] = useState(null);
+  const [validationData, setValidationData] = useState({
+    statut: '',
+    commentaire: ''
+  });
 
   // Vue actuelle
   const [viewMode, setViewMode] = useState('table'); // 'table' ou 'cards'
@@ -117,8 +130,6 @@ const EtudiantsPedagogiquePage = () => {
     }
   };
 
-
-
   // Fonction pour filtrer les étudiants
   const getFilteredEtudiants = () => {
     let filtered = [...etudiants];
@@ -141,6 +152,13 @@ const EtudiantsPedagogiquePage = () => {
     // Filtre par année scolaire
     if (filtreAnneeScolaire !== 'toutes') {
       filtered = filtered.filter(e => e.anneeScolaire === filtreAnneeScolaire);
+    }
+
+    // Filtre par filière
+    if (filtreFiliere !== 'toutes') {
+      filtered = filtered.filter(e => 
+        e.filiere === filtreFiliere || e.typeFormation === filtreFiliere
+      );
     }
 
     // Filtre par niveau
@@ -204,11 +222,26 @@ const EtudiantsPedagogiquePage = () => {
   const currentEtudiants = etudiantsFiltres.slice(startIndex, startIndex + itemsPerPage);
 
   // Obtenir les valeurs uniques pour les filtres
-  const anneesDisponibles = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))].sort((a, b) => b.localeCompare(a));
-  const niveauxDisponibles = [...new Set(etudiants.map(e => e.niveau).filter(n => n !== undefined))].sort((a, b) => a - b);
-  const specialitesDisponibles = [...new Set(etudiants.map(e => {
-    return e.specialiteIngenieur || e.specialiteLicencePro || e.specialiteMasterPro || e.specialite;
-  }).filter(Boolean))].sort();
+// Obtenir les valeurs uniques pour les filtres
+const anneesDisponibles = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))].sort((a, b) => b.localeCompare(a));
+const niveauxDisponibles = [...new Set(etudiants.map(e => e.niveau).filter(n => n !== undefined))].sort((a, b) => a - b);
+
+// Organiser les spécialités par filière à partir des étudiants filtrés
+const specialitesParFiliere = etudiantsFiltres.reduce((acc, etudiant) => {
+  const filiere = etudiant.filiere || etudiant.typeFormation || 'Autres';
+  const specialite = etudiant.specialiteIngenieur || etudiant.specialiteLicencePro || etudiant.specialiteMasterPro || etudiant.specialite;
+  if (specialite) {
+    if (!acc[filiere]) acc[filiere] = new Set();
+    acc[filiere].add(specialite);
+  }
+  return acc;
+}, {});
+Object.keys(specialitesParFiliere).forEach(filiere => {
+  specialitesParFiliere[filiere] = [...specialitesParFiliere[filiere]].sort();
+});
+
+// Obtenir toutes les filières disponibles
+const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFormation).filter(Boolean))].sort();
   const genresDisponibles = [...new Set(etudiants.map(e => e.genre).filter(Boolean))].sort();
   const coursDisponibles = [...new Set(etudiants.flatMap(e => e.cours || []))].filter(Boolean).sort();
   const typesFormationDisponibles = [...new Set(etudiants.map(e => e.typeFormation).filter(Boolean))].sort();
@@ -266,6 +299,11 @@ const EtudiantsPedagogiquePage = () => {
            'Tronc commun';
   };
 
+  const getValidationBackgroundColor = (etudiant) => {
+    const statut = etudiant.validationPedagogique?.statut || 'En attente';
+    return styles.validationColors[statut] || styles.validationColors['En attente'];
+  };
+
   // Gestion des actions
   const handleViewStudent = (etudiant) => {
     setSelectedStudent(etudiant);
@@ -293,6 +331,7 @@ const EtudiantsPedagogiquePage = () => {
   const resetFilters = () => {
     setSearchTerm('');
     setFiltreAnneeScolaire('2025/2026');
+    setFiltreFiliere('toutes'); // Ajouter cette ligne
     setFiltreNiveau('tous');
     setFiltreSpecialite('toutes');
     setFiltreGenre('tous');
@@ -558,6 +597,34 @@ const EtudiantsPedagogiquePage = () => {
     window.location.href = '/';
   };
 
+  // Validation pédagogique
+  const handleValidation = async (etudiantId, statut, commentaire = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://195.179.229.230:5000/api/etudiants/${etudiantId}/validation-pedagogique`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ statut, commentaire })
+      });
+      if (response.ok) {
+        setEtudiants(prev => prev.map(etudiant => 
+          etudiant._id === etudiantId 
+            ? { 
+                ...etudiant, 
+                validationPedagogique: { statut, commentaire, dateValidation: new Date() }
+              }
+            : etudiant
+        ));
+        setShowValidationModal(false);
+      }
+    } catch (error) {
+      console.error('Erreur validation:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -818,6 +885,39 @@ const EtudiantsPedagogiquePage = () => {
                 </select>
               </div>
 
+              {/* FILIERE + SPECIALITE */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: styles.darkGray,
+                  marginBottom: '0.5rem'
+                }}>
+                  Filière
+                </label>
+                <select 
+                  value={filtreFiliere} 
+                  onChange={(e) => {
+                    setFiltreFiliere(e.target.value);
+                    setFiltreSpecialite('toutes'); // Reset spécialité quand on change de filière
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: `1px solid ${styles.mediumGray}`,
+                    borderRadius: styles.borderRadius,
+                    fontSize: '0.875rem',
+                    background: styles.white
+                  }}
+                >
+                  <option value="toutes">Toutes les filières</option>
+                  {filieresDisponibles.map(filiere => (
+                    <option key={filiere} value={filiere}>{filiere}</option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label style={{
                   display: 'block',
@@ -840,14 +940,27 @@ const EtudiantsPedagogiquePage = () => {
                     background: styles.white
                   }}
                 >
-                  <option value="toutes">Toutes</option>
-                  {specialitesDisponibles.map(specialite => (
-                    <option key={specialite} value={specialite}>
-                      {specialite.length > 25 ? specialite.substring(0, 25) + '...' : specialite}
-                    </option>
-                  ))}
+                  <option value="toutes">Toutes les spécialités</option>
+                  {filtreFiliere === 'toutes' ? (
+                    Object.keys(specialitesParFiliere).map(filiere => (
+                      <optgroup key={filiere} label={filiere}>
+                        {specialitesParFiliere[filiere].map(specialite => (
+                          <option key={`${filiere}-${specialite}`} value={specialite}>
+                            {specialite.length > 30 ? specialite.substring(0, 30) + '...' : specialite}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))
+                  ) : (
+                    specialitesParFiliere[filtreFiliere] ? specialitesParFiliere[filtreFiliere].map(specialite => (
+                      <option key={specialite} value={specialite}>
+                        {specialite.length > 30 ? specialite.substring(0, 30) + '...' : specialite}
+                      </option>
+                    )) : null
+                  )}
                 </select>
               </div>
+              {/* FIN FILIERE + SPECIALITE */}
 
               <div>
                 <label style={{
@@ -1307,54 +1420,12 @@ const EtudiantsPedagogiquePage = () => {
                         letterSpacing: '0.05em',
                         minWidth: '150px'
                       }}>Nom Complet</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'left',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>CIN</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'left',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>Code Massar</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'left',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>Code Étudiant</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'left',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>Genre</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'left',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>Âge</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'left',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>Contact</th>
+                    
+                    
+                
+                   
+                     
+                  
                       <th style={{
                         padding: '1rem 0.75rem',
                         textAlign: 'left',
@@ -1420,14 +1491,8 @@ const EtudiantsPedagogiquePage = () => {
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                       }}>Année Scolaire</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'left',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>Prix</th>
+                     
+                   
                       <th style={{
                         padding: '1rem 0.75rem',
                         textAlign: 'center',
@@ -1435,15 +1500,8 @@ const EtudiantsPedagogiquePage = () => {
                         fontSize: '0.8125rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
-                      }}>Statut</th>
-                      <th style={{
-                        padding: '1rem 0.75rem',
-                        textAlign: 'center',
-                        fontWeight: '600',
-                        fontSize: '0.8125rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>Actions</th>
+                      }}>Validation</th>
+                
                     </tr>
                   </thead>
                   <tbody>
@@ -1454,7 +1512,7 @@ const EtudiantsPedagogiquePage = () => {
                           borderBottom: `1px solid ${styles.mediumGray}`,
                           background: selectedStudents.includes(etudiant._id) ? 
                             '#eff6ff' : 
-                            (index % 2 === 0 ? styles.white : '#f9fafb'),
+                            getValidationBackgroundColor(etudiant),
                           transition: styles.transition
                         }}
                         onMouseEnter={(e) => {
@@ -1464,7 +1522,7 @@ const EtudiantsPedagogiquePage = () => {
                         }}
                         onMouseLeave={(e) => {
                           if (!selectedStudents.includes(etudiant._id)) {
-                            e.target.closest('tr').style.background = index % 2 === 0 ? styles.white : '#f9fafb';
+                            e.target.closest('tr').style.background = getValidationBackgroundColor(etudiant);
                           }
                         }}
                       >
@@ -1519,54 +1577,8 @@ const EtudiantsPedagogiquePage = () => {
                         }}>
                           {etudiant.prenom} {etudiant.nomDeFamille}
                         </td>
-                        <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
-                          {etudiant.cin || 'N/A'}
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
-                          {etudiant.codeMassar || 'N/A'}
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
-                          {etudiant.codeEtudiant || 'N/A'}
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
-                          {etudiant.genre || 'N/A'}
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
-                          {calculerAge(etudiant.dateNaissance)} ans
-                        </td>
-                        <td style={{ 
-                          padding: '0.875rem 0.75rem', 
-                          verticalAlign: 'middle',
-                          maxWidth: '200px',
-                          fontSize: '0.8125rem'
-                        }}>
-                          {etudiant.email && (
-                            <div style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '4px',
-                              marginBottom: '4px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              <Mail size={12} color={styles.secondaryColor} />
-                              <span title={etudiant.email}>
-                                {etudiant.email.length > 20 ? etudiant.email.substring(0, 20) + '...' : etudiant.email}
-                              </span>
-                            </div>
-                          )}
-                          {etudiant.telephone && (
-                            <div style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '4px'
-                            }}>
-                              <Phone size={12} color={styles.secondaryColor} />
-                              <span>{etudiant.telephone}</span>
-                            </div>
-                          )}
-                        </td>
+                      
+                       
                         <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
                           {etudiant.typeFormation && (
                             <span style={{
@@ -1655,77 +1667,8 @@ const EtudiantsPedagogiquePage = () => {
                         <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
                           {etudiant.anneeScolaire || 'N/A'}
                         </td>
-                        <td style={{ 
-                          padding: '0.875rem 0.75rem', 
-                          verticalAlign: 'middle',
-                          fontWeight: '600',
-                          color: styles.primaryColor
-                        }}>
-                          {formatMoney(etudiant.prixTotal)}
-                        </td>
-                        <td style={{ 
-                          padding: '0.875rem 0.75rem', 
-                          verticalAlign: 'middle',
-                          textAlign: 'center'
-                        }}>
-                          <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '0.5rem'
-                          }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.75rem',
-                              fontSize: '0.75rem',
-                              fontWeight: '600',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
-                              background: etudiant.actif ? '#dcfce7' : '#fee2e2',
-                              color: etudiant.actif ? '#166534' : '#991b1b'
-                            }}>
-                              {etudiant.actif ? (
-                                <>
-                                  <UserCheck size={12} />
-                                  Actif
-                                </>
-                              ) : (
-                                <>
-                                  <UserX size={12} />
-                                  Inactif
-                                </>
-                              )}
-                            </span>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.75rem',
-                              fontSize: '0.75rem',
-                              fontWeight: '600',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
-                              background: etudiant.paye ? '#dbeafe' : '#fef3c7',
-                              color: etudiant.paye ? '#1e40af' : '#92400e'
-                            }}>
-                              {etudiant.paye ? (
-                                <>
-                                  <CheckCircle size={12} />
-                                  Payé
-                                </>
-                              ) : (
-                                <>
-                                  <XCircle size={12} />
-                                  Non payé
-                                </>
-                              )}
-                            </span>
-                          </div>
-                        </td>
+                 
+                     
                         <td style={{ 
                           padding: '0.875rem 0.75rem', 
                           verticalAlign: 'middle',
@@ -1757,6 +1700,52 @@ const EtudiantsPedagogiquePage = () => {
                               title="Voir les détails"
                             >
                               <Eye size={14} />
+                            </button>
+                            {/* NOUVEAUX BOUTONS DE VALIDATION */}
+                            <button
+                              onClick={() => handleValidation(etudiant._id, 'Validé')}
+                              style={{
+                                background: '#22c55e',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.5rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Valider"
+                            >
+                              <CheckCircle size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleValidation(etudiant._id, 'Pas Validé')}
+                              style={{
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.5rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Pas Validé"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedStudentForValidation(etudiant);
+                                setShowValidationModal(true);
+                              }}
+                              style={{
+                                background: '#f59e0b',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.5rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="En cours"
+                            >
+                              <AlertCircle size={14} />
                             </button>
                           </div>
                         </td>
@@ -2754,52 +2743,6 @@ const EtudiantsPedagogiquePage = () => {
                       padding: '15px',
                       background: styles.lightGray,
                       borderRadius: '12px',
-                      borderLeft: `4px solid ${styles.mediumGray}`
-                    }}>
-                      <span style={{
-                        fontWeight: '600',
-                        color: '#374151',
-                        minWidth: '160px',
-                        fontSize: '0.95rem'
-                      }}>Niveau:</span>
-                      <span style={{
-                        color: styles.darkGray,
-                        fontWeight: '500',
-                        flex: 1,
-                        textAlign: 'right',
-                        fontSize: '0.95rem'
-                      }}>{selectedStudent.niveau || 'N/A'}</span>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      padding: '15px',
-                      background: styles.lightGray,
-                      borderRadius: '12px',
-                      borderLeft: `4px solid ${styles.mediumGray}`
-                    }}>
-                      <span style={{
-                        fontWeight: '600',
-                        color: '#374151',
-                        minWidth: '160px',
-                        fontSize: '0.95rem'
-                      }}>Cycle:</span>
-                      <span style={{
-                        color: styles.darkGray,
-                        fontWeight: '500',
-                        flex: 1,
-                        textAlign: 'right',
-                        fontSize: '0.95rem'
-                      }}>{selectedStudent.cycle || 'N/A'}</span>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      padding: '15px',
-                      background: styles.lightGray,
-                      borderRadius: '12px',
                       borderLeft: `4px solid ${styles.mediumGray}`,
                       gridColumn: '1 / -1'
                     }}>
@@ -3454,6 +3397,76 @@ const EtudiantsPedagogiquePage = () => {
                   Exporter
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de validation En cours */}
+      {showValidationModal && selectedStudentForValidation && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            width: '400px'
+          }}>
+            <h3>Dossier en cours de validation</h3>
+            <p>Étudiant: {selectedStudentForValidation.prenom} {selectedStudentForValidation.nomDeFamille}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label>Commentaire (ce qui manque):</label>
+              <textarea
+                value={validationData.commentaire}
+                onChange={(e) => setValidationData({...validationData, commentaire: e.target.value})}
+                style={{
+                  width: '100%',
+                  height: '100px',
+                  margin: '0.5rem 0',
+                  padding: '0.5rem',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px'
+                }}
+                placeholder="Indiquez ce qui manque..."
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowValidationModal(false)}
+                style={{
+                  background: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleValidation(selectedStudentForValidation._id, 'En cours', validationData.commentaire)}
+                style={{
+                  background: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Marquer en cours
+              </button>
             </div>
           </div>
         </div>

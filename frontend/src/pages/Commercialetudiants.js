@@ -26,7 +26,30 @@ import {
   CreditCard,
   FileText
 } from "lucide-react";
-
+const PAYS_LIST = [
+  'Afghanistan', 'Afrique du Sud', 'Albanie', 'Algérie', 'Allemagne', 'Andorre', 'Angola', 'Antigua-et-Barbuda',
+  'Arabie Saoudite', 'Argentine', 'Arménie', 'Australie', 'Autriche', 'Azerbaïdjan', 'Bahamas', 'Bahreïn',
+  'Bangladesh', 'Barbade', 'Belgique', 'Belize', 'Bénin', 'Bhoutan', 'Biélorussie', 'Birmanie', 'Bolivie',
+  'Bosnie-Herzégovine', 'Botswana', 'Brésil', 'Brunei', 'Bulgarie', 'Burkina Faso', 'Burundi', 'Cambodge',
+  'Cameroun', 'Canada', 'Cap-Vert', 'Chili', 'Chine', 'Chypre', 'Colombie', 'Comores', 'Congo', 'Corée du Sud',
+  'Costa Rica', 'Côte d’Ivoire', 'Croatie', 'Cuba', 'Danemark', 'Djibouti', 'Dominique', 'Égypte', 'El Salvador',
+  'Émirats arabes unis', 'Équateur', 'Érythrée', 'Espagne', 'Estonie', 'Eswatini', 'États-Unis', 'Éthiopie',
+  'Fidji', 'Finlande', 'France', 'Gabon', 'Gambie', 'Géorgie', 'Ghana', 'Grèce', 'Grenade', 'Guatemala',
+  'Guinée', 'Guinée équatoriale', 'Guinée-Bissau', 'Guyana', 'Haïti', 'Honduras', 'Hongrie', 'Îles Cook',
+  'Îles Marshall', 'Îles Salomon', 'Inde', 'Indonésie', 'Irak', 'Iran', 'Irlande', 'Islande', 'Israël', 'Italie',
+  'Jamaïque', 'Japon', 'Jordanie', 'Kazakhstan', 'Kenya', 'Kirghizistan', 'Kiribati', 'Koweït', 'Laos', 'Lesotho',
+  'Lettonie', 'Liban', 'Libéria', 'Libye', 'Liechtenstein', 'Lituanie', 'Luxembourg', 'Macédoine', 'Madagascar',
+  'Malaisie', 'Malawi', 'Maldives', 'Mali', 'Malte', 'Maroc', 'Maurice', 'Mauritanie', 'Mexique', 'Micronésie',
+  'Moldavie', 'Monaco', 'Mongolie', 'Monténégro', 'Mozambique', 'Namibie', 'Nauru', 'Népal', 'Nicaragua',
+  'Niger', 'Nigéria', 'Norvège', 'Nouvelle-Zélande', 'Oman', 'Ouganda', 'Ouzbékistan', 'Pakistan', 'Palaos',
+  'Palestine', 'Panama', 'Papouasie-Nouvelle-Guinée', 'Paraguay', 'Pays-Bas', 'Pérou', 'Philippines', 'Pologne',
+  'Portugal', 'Qatar', 'Roumanie', 'Royaume-Uni', 'Russie', 'Rwanda', 'Saint-Kitts-et-Nevis', 'Saint-Marin',
+  'Saint-Vincent-et-les-Grenadines', 'Sainte-Lucie', 'Samoa', 'Sao Tomé-et-Principe', 'Sénégal', 'Serbie',
+  'Seychelles', 'Sierra Leone', 'Singapour', 'Slovaquie', 'Slovénie', 'Somalie', 'Soudan', 'Soudan du Sud',
+  'Sri Lanka', 'Suède', 'Suisse', 'Suriname', 'Syrie', 'Tadjikistan', 'Tanzanie', 'Tchad', 'Thaïlande',
+  'Timor oriental', 'Togo', 'Tonga', 'Trinité-et-Tobago', 'Tunisie', 'Turkménistan', 'Turquie', 'Tuvalu',
+  'Ukraine', 'Uruguay', 'Vanuatu', 'Vatican', 'Venezuela', 'Viêt Nam', 'Yémen', 'Zambie', 'Zimbabwe'
+];
 // ====== Utils auto-cours ======
 const normalize = (s = "") =>
   s
@@ -1570,7 +1593,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       diplomeAcces: etudiant.diplomeAcces || '',
       specialiteDiplomeAcces: etudiant.specialiteDiplomeAcces || '',
       mention: etudiant.mention || '',
-      anneeScolaire: etudiant.anneeScolaire || genererAnneeScolaireActuelle(),
       lieuObtentionDiplome: etudiant.lieuObtentionDiplome || '',
       serieBaccalaureat: etudiant.serieBaccalaureat || '',
       anneeBaccalaureat: etudiant.anneeBaccalaureat || '',
@@ -2145,8 +2167,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                 <th>Date de Naissance</th>
                 <th>Téléphone</th>
                 <th>Email</th>
-                <th>CIN</th>
-                <th>Code Étudiant</th>
+                <th>Validation Pédagogique</th>
                 <th>Prix Total</th>
                 <th>Classe</th>
                 <th>Statut</th>
@@ -2157,7 +2178,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
             <tbody>
               {etudiantsActuels.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="aucun-resultat">
+                  <td colSpan="10" className="aucun-resultat">
                     Aucun étudiant trouvé
                   </td>
                 </tr>
@@ -2169,8 +2190,20 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     <td>{formatDate(e.dateNaissance)}</td>
                     <td>{e.telephone}</td>
                     <td>{e.email}</td>
-                    <td>{e.cin || 'N/A'}</td>
-                    <td>{e.codeEtudiant || 'N/A'}</td>
+                    <td className="validation-colonne">
+                      <span className={`validation-badge ${
+                        e.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                        e.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                        e.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                      }`}>
+                        {e.validationPedagogique?.statut || 'En attente'}
+                      </span>
+                      {e.validationPedagogique?.commentaire && (
+                        <div className="validation-commentaire">
+                          {e.validationPedagogique.commentaire.substring(0, 30)}...
+                        </div>
+                      )}
+                    </td>
                     <td className="prix-colonne">
                       {e.prixTotal ? `${e.prixTotal} DH` : 'N/A'}
                     </td>
@@ -2299,47 +2332,37 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                           </span>
                         </div>
                       )}
-                      {e.codeEtudiant && (
+                      {e.passport && (
                         <div className="carte-detail">
-                          <span className="carte-label">Code:</span>
-                          <span>{e.codeEtudiant}</span>
+                          <span className="carte-label">Passeport:</span>
+                          <span className="carte-value">{e.passport}</span>
                         </div>
                       )}
-                      <div className="carte-detail">
-                        <span className="carte-label">Commercial:</span>
-                        <span>
-                          <UserCheck size={16} className="inline mr-1" /> 
-                          {getNomCommercial(e.commercial)}
-                        </span>
-                      </div>
-                      <div className="carte-detail cours-detail">
-                        <span className="carte-label">Classe:</span>
-                        <div className="carte-cours">
-                          {e.cours && e.cours.length > 0 ? (
-                            e.cours.map((cours, index) => (
-                              <span key={index} className="cours-tag">{cours}</span>
-                            ))
-                          ) : (
-                            <span className="no-cours">Aucun classe</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="carte-detail">
-                        <span className="carte-label">Type:</span>
-                        <span className={`type-badge-card ${e.isPartner ? 'partner' : 'normal'}`}>
-                          {e.isPartner ? '🤝 Partner' : '👤 Normal'}
-                        </span>
-                      </div>
-                      {e.isPartner && e.nomPartner && (
+                      {e.lieuNaissance && (
                         <div className="carte-detail">
-                          <span className="carte-label">Partenaire:</span>
-                          <span>{e.nomPartner}</span>
+                          <span className="carte-label">Lieu de naissance:</span>
+                          <span className="carte-value">
+                            <MapPin size={16} className="inline mr-1" />
+                            {e.lieuNaissance}
+                          </span>
                         </div>
                       )}
-                      {e.isPartner && e.prixTotalPartner && (
+                      {e.pays && (
                         <div className="carte-detail">
-                          <span className="carte-label">Prix Partner:</span>
-                          <span>{e.prixTotalPartner} DH</span>
+                          <span className="carte-label">Pays:</span>
+                          <span className="carte-value">{e.pays}</span>
+                        </div>
+                      )}
+                      {e.validationPedagogique && (
+                        <div className="carte-detail">
+                          <span className="carte-label">Validation:</span>
+                          <span className={`validation-badge-card ${
+                            e.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                            e.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                            e.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                          }`}>
+                            {e.validationPedagogique?.statut || 'En attente'}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -2545,13 +2568,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   </div>
                   <div className="form-group">
                     <label>Pays</label>
-                    <input
-                      type="text"
+                    <select
                       name="pays"
-                      placeholder="Pays"
                       value={formAjout.pays}
                       onChange={handleChangeAjout}
-                    />
+                    >
+                      <option value="">Sélectionner le pays...</option>
+                      {PAYS_LIST.map((pays) => (
+                        <option key={pays} value={pays}>{pays}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -2906,32 +2932,40 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     />
                   </div>
                 </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Mode de Paiement</label>
-                    <select
-                      name="modePaiement"
-                      value={formAjout.modePaiement}
-                      onChange={handleChangeAjout}
-                    >
-                      <option value="semestriel">Semestriel</option>
-                      <option value="trimestriel">Trimestriel</option>
-                      <option value="mensuel">Mensuel</option>
-                      <option value="annuel">Annuel</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Type de Paiement</label>
-                    <input
-                      type="text"
-                      name="typePaiement"
-                      placeholder="Type de paiement"
-                      value={formAjout.typePaiement}
-                      onChange={handleChangeAjout}
-                    />
-                  </div>
-                </div>
+<div className="form-row">
+  <div className="form-group">
+    <label>Mode de Paiement</label>
+    <select
+      name="modePaiement"
+      value={formModifier.modePaiement}
+      onChange={handleChangeModifier}
+    >
+      <option value="semestriel">Semestriel</option>
+      <option value="trimestriel">Trimestriel</option>
+      <option value="mensuel">Mensuel</option>
+      <option value="annuel">Annuel</option>
+    </select>
+  </div>
+  <div className="form-group">
+    <label>Type de Paiement</label>
+    <input
+      type="text"
+      name="typePaiement"
+      placeholder="Type de paiement"
+      value={formModifier.typePaiement}
+      onChange={handleChangeModifier}
+    />
+  </div>
+</div>
+<div className="form-group">
+  <label>Image</label>
+  <input
+    type="file"
+    name="image"
+    accept="image/*"
+    onChange={handleImageChangeModifier}
+  />
+</div>
 
                 <div className="form-row">
                   <div className="form-group">
@@ -3468,13 +3502,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   </div>
                   <div className="form-group">
                     <label>Pays</label>
-                    <input
-                      type="text"
+                    <select
                       name="pays"
-                      placeholder="Pays"
                       value={formModifier.pays}
                       onChange={handleChangeModifier}
-                    />
+                    >
+                      <option value="">Sélectionner le pays...</option>
+                      {PAYS_LIST.map((pays) => (
+                        <option key={pays} value={pays}>{pays}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -3830,32 +3867,40 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     />
                   </div>
                 </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Mode de Paiement</label>
-                    <select
-                      name="modePaiement"
-                      value={formModifier.modePaiement}
-                      onChange={handleChangeModifier}
-                    >
-                      <option value="semestriel">Semestriel</option>
-                      <option value="trimestriel">Trimestriel</option>
-                      <option value="mensuel">Mensuel</option>
-                      <option value="annuel">Annuel</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Type de Paiement</label>
-                    <input
-                      type="text"
-                      name="typePaiement"
-                      placeholder="Type de paiement"
-                      value={formModifier.typePaiement}
-                      onChange={handleChangeModifier}
-                    />
-                  </div>
-                </div>
+<div className="form-row">
+  <div className="form-group">
+    <label>Mode de Paiement</label>
+    <select
+      name="modePaiement"
+      value={formModifier.modePaiement}
+      onChange={handleChangeModifier}
+    >
+      <option value="semestriel">Semestriel</option>
+      <option value="trimestriel">Trimestriel</option>
+      <option value="mensuel">Mensuel</option>
+      <option value="annuel">Annuel</option>
+    </select>
+  </div>
+  <div className="form-group">
+    <label>Type de Paiement</label>
+    <input
+      type="text"
+      name="typePaiement"
+      placeholder="Type de paiement"
+      value={formModifier.typePaiement}
+      onChange={handleChangeModifier}
+    />
+  </div>
+</div>
+<div className="form-group">
+  <label>Image</label>
+  <input
+    type="file"
+    name="image"
+    accept="image/*"
+    onChange={handleImageChangeModifier}
+  />
+</div>
 
                 <div className="form-row">
                   <div className="form-group">
@@ -3906,6 +3951,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <label>Document CIN</label>
                       <input
                         type="file"
+
                         name="documentCin"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         onChange={handleFileChangeModifier}
@@ -4342,9 +4388,8 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   {etudiantSelectionne.cin && (
                     <div className="info-row">
                       <span className="info-label">CIN:</span>
-                      <span className="info-value">
-                        <IdCard size={16} className="info-icon" />
-                        {etudiantSelectionne.cin}
+                      <span>
+                        <IdCard size={16} className="inline mr-1" /> {etudiantSelectionne.cin}
                       </span>
                     </div>
                   )}
@@ -4718,6 +4763,39 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                  !etudiantSelectionne.fonctionnaire && !etudiantSelectionne.mobilite && (
                   <p className="no-statut">Aucun statut spécial</p>
                 )}
+              </div>
+              {/* Section Validation Pédagogique */}
+              <div className="view-section">
+                <h4><Shield size={20} className="section-icon" />Validation Pédagogique</h4>
+                <div className="info-grid">
+                  <div className="info-row">
+                    <span className="info-label">Statut:</span>
+                    <span className="info-value">
+                      <span className={`validation-badge-view ${
+                        etudiantSelectionne.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                        etudiantSelectionne.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                        etudiantSelectionne.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                      }`}>
+                        {etudiantSelectionne.validationPedagogique?.statut || 'En attente'}
+                      </span>
+                    </span>
+                  </div>
+                  {etudiantSelectionne.validationPedagogique?.commentaire && (
+                    <div className="info-row">
+                      <span className="info-label">Commentaire pédagogique:</span>
+                      <span className="info-value">{etudiantSelectionne.validationPedagogique.commentaire}</span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.validationPedagogique?.dateValidation && (
+                    <div className="info-row">
+                      <span className="info-label">Date de validation:</span>
+                      <span className="info-value">
+                        <Calendar size={16} className="info-icon" />
+                        {formatDate(etudiantSelectionne.validationPedagogique.dateValidation)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Section Dates importantes */}

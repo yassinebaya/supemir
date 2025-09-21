@@ -510,7 +510,6 @@ const handleFormationChange = (formSetter, currentForm) => (field, value) => {
       delete newForm.optionMasterPro;
       delete newForm.specialite;
       delete newForm.option;
-      // Le cycle sera défini automatiquement selon le niveau
     } else if (value === 'LICENCE_PRO') {
       // Pour LICENCE_PRO : niveau fixe 3
       newForm.niveau = '3';
@@ -718,11 +717,15 @@ const handleFormationChangeIngenieurCorrige = (formSetter, currentForm) => (fiel
     newForm.optionMasterPro = value;
   } else if (field === 'specialite') {
     newForm.specialite = value;
+    // Réinitialiser l'option
     const optionsDisponibles = getOptionsDisponibles(newForm.filiere, newForm.niveau, value);
     if (!optionsDisponibles.includes(newForm.option)) {
       newForm.option = '';
     }
+  } else if (field === 'option') {
+    newForm.option = value;
   } else {
+    // Pour tous les autres champs
     newForm[field] = value;
   }
   
@@ -2537,10 +2540,13 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                 <th>Date de Naissance</th>
                 <th>Téléphone</th>
                 <th>Email</th>
+                                <th>Validation Pédagogique</th>
+
                 <th>CIN</th>
                 <th>Code Massar</th>
                 <th>Code Étudiant</th>
                 <th>Type</th>
+                <th>Validation Pédagogique</th>
                 <th>Commercial</th>
                 <th>Classe</th>
                 <th>Statut</th>
@@ -2551,7 +2557,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
             <tbody>
               {etudiantsActuels.length === 0 ? (
                 <tr>
-                  <td colSpan="14" className="aucun-resultat">
+                  <td colSpan="15" className="aucun-resultat">
                     Aucun étudiant trouvé
                   </td>
                 </tr>
@@ -2563,6 +2569,20 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <td>{formatDate(e.dateNaissance)}</td>
                     <td>{e.telephone}</td>
                     <td>{e.email}</td>
+                          <td className="validation-colonne">
+                      <span className={`validation-badge ${
+                        e.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                        e.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                        e.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                      }`}>
+                        {e.validationPedagogique?.statut || 'En attente'}
+                      </span>
+                      {e.validationPedagogique?.commentaire && (
+                        <div className="validation-commentaire" title={e.validationPedagogique.commentaire}>
+                          💬 {e.validationPedagogique.commentaire.substring(0, 20)}...
+                        </div>
+                      )}
+                    </td>
                     <td>{e.cin || 'N/A'}</td>
                     <td>{e.codeMassar || 'N/A'}</td>
                     <td>{e.codeEtudiant || 'N/A'}</td>
@@ -2571,6 +2591,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                         {e.isPartner ? '🤝 Partner' : '👤 Normal'}
                       </span>
                     </td>
+              
                     <td className="commercial-colonne">
                       {getNomCommercial(e.commercial)}
                     </td>
@@ -4686,7 +4707,39 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
               <h3>Détails de l'étudiant</h3>
               <button className="btn-fermer-modal" onClick={closeViewModal}>×</button>
             </div>
-            
+            {/* Section Validation Pédagogique */}
+<div className="view-section">
+  <h4><Shield size={20} className="section-icon" />Validation Pédagogique</h4>
+  <div className="info-grid">
+    <div className="info-row">
+      <span className="info-label">Statut:</span>
+      <span className="info-value">
+        <span className={`validation-badge-view ${
+          etudiantSelectionne.validationPedagogique?.statut === 'Validé' ? 'valide' :
+          etudiantSelectionne.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+          etudiantSelectionne.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+        }`}>
+          {etudiantSelectionne.validationPedagogique?.statut || 'En attente'}
+        </span>
+      </span>
+    </div>
+    {etudiantSelectionne.validationPedagogique?.commentaire && (
+      <div className="info-row">
+        <span className="info-label">Commentaire pédagogique:</span>
+        <span className="info-value">{etudiantSelectionne.validationPedagogique.commentaire}</span>
+      </div>
+    )}
+    {etudiantSelectionne.validationPedagogique?.dateValidation && (
+      <div className="info-row">
+        <span className="info-label">Date de validation:</span>
+        <span className="info-value">
+          <Calendar size={16} className="info-icon" />
+          {formatDate(etudiantSelectionne.validationPedagogique.dateValidation)}
+        </span>
+      </div>
+    )}
+  </div>
+</div>
             <div className="view-content">
               {/* Section Informations personnelles */}
               <div className="view-section">
