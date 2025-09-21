@@ -62,9 +62,9 @@ const navigate = useNavigate();
       const headers = { Authorization: `Bearer ${token}` };
 
       const [resEt, resCours, resPre] = await Promise.all([
-        fetch('http://localhost:5000/api/professeur/etudiants', { headers }),
-        fetch('http://localhost:5000/api/professeur/mes-cours', { headers }),
-        fetch('http://localhost:5000/api/professeur/presences', { headers })
+        fetch('http://195.179.229.230:5000/api/professeur/etudiants', { headers }),
+        fetch('http://195.179.229.230:5000/api/professeur/mes-cours', { headers }),
+        fetch('http://195.179.229.230:5000/api/professeur/presences', { headers })
       ]);
 
       if (resEt.ok) {
@@ -94,7 +94,7 @@ useEffect(() => {
   const fetchProf = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/professeur/profile', {
+      const res = await fetch('http://195.179.229.230:5000/api/professeur/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
 

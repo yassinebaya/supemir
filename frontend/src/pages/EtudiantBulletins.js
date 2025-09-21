@@ -84,7 +84,7 @@ const EtudiantBulletins = () => {
     const fetchBulletins = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/bulletins/etudiant/me', {
+        const res = await fetch('http://195.179.229.230:5000/api/bulletins/etudiant/me', {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -189,7 +189,7 @@ const EtudiantBulletins = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/bulletins/etudiant/me', {
+      const res = await fetch('http://195.179.229.230:5000/api/bulletins/etudiant/me', {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

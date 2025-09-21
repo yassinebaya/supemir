@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './ListeEtudiants.css';
+import '../styles/partner-styles.css';
 import Sidebar from '../components/sidberadmin';
 import * as XLSX from 'xlsx';
+
 import { 
   User, 
   CheckCircle, 
@@ -25,6 +27,34 @@ import {
   CreditCard,
   FileText
 } from "lucide-react";
+
+// Liste complète des pays
+const PAYS_LISTE = [
+  'Afghanistan', 'Afrique du Sud', 'Albanie', 'Algérie', 'Allemagne', 'Andorre', 'Angola', 'Antigua-et-Barbuda', 'Arabie saoudite', 'Argentine', 'Arménie', 'Australie', 'Autriche', 'Azerbaïdjan',
+  'Bahamas', 'Bahreïn', 'Bangladesh', 'Barbade', 'Belgique', 'Belize', 'Bénin', 'Bhoutan', 'Biélorussie', 'Birmanie', 'Bolivie', 'Bosnie-Herzégovine', 'Botswana', 'Brésil', 'Brunei', 'Bulgarie', 'Burkina Faso', 'Burundi',
+  'Cambodge', 'Cameroun', 'Canada', 'Cap-Vert', 'Centrafrique', 'Chili', 'Chine', 'Chypre', 'Colombie', 'Comores', 'Congo', 'Congo démocratique', 'Corée du Nord', 'Corée du Sud', 'Costa Rica', 'Côte d\'Ivoire', 'Croatie', 'Cuba',
+  'Danemark', 'Djibouti', 'Dominique',
+  'Égypte', 'Émirats arabes unis', 'Équateur', 'Érythrée', 'Espagne', 'Estonie', 'États-Unis', 'Éthiopie',
+  'Fidji', 'Finlande', 'France',
+  'Gabon', 'Gambie', 'Géorgie', 'Ghana', 'Grèce', 'Grenade', 'Guatemala', 'Guinée', 'Guinée-Bissau', 'Guinée équatoriale', 'Guyana',
+  'Haïti', 'Honduras', 'Hongrie',
+  'Îles Cook', 'Îles Marshall', 'Inde', 'Indonésie', 'Irak', 'Iran', 'Irlande', 'Islande', 'Israël', 'Italie',
+  'Jamaïque', 'Japon', 'Jordanie',
+  'Kazakhstan', 'Kenya', 'Kirghizistan', 'Kiribati', 'Koweït',
+  'Laos', 'Lesotho', 'Lettonie', 'Liban', 'Liberia', 'Libye', 'Liechtenstein', 'Lituanie', 'Luxembourg',
+  'Macédoine du Nord', 'Madagascar', 'Malaisie', 'Malawi', 'Maldives', 'Mali', 'Malte', 'Maroc', 'Maurice', 'Mauritanie', 'Mexique', 'Micronésie', 'Moldavie', 'Monaco', 'Mongolie', 'Monténégro', 'Mozambique',
+  'Namibie', 'Nauru', 'Népal', 'Nicaragua', 'Niger', 'Nigeria', 'Niue', 'Norvège', 'Nouvelle-Zélande',
+  'Oman', 'Ouganda', 'Ouzbékistan',
+  'Pakistan', 'Palaos', 'Palestine', 'Panama', 'Papouasie-Nouvelle-Guinée', 'Paraguay', 'Pays-Bas', 'Pérou', 'Philippines', 'Pologne', 'Portugal',
+  'Qatar',
+  'République dominicaine', 'République tchèque', 'Roumanie', 'Royaume-Uni', 'Russie', 'Rwanda',
+  'Saint-Christophe-et-Niévès', 'Saint-Marin', 'Saint-Vincent-et-les-Grenadines', 'Sainte-Lucie', 'Salomon', 'Salvador', 'Samoa', 'São Tomé-et-Principe', 'Sénégal', 'Serbie', 'Seychelles', 'Sierra Leone', 'Singapour', 'Slovaquie', 'Slovénie', 'Somalie', 'Soudan', 'Soudan du Sud', 'Sri Lanka', 'Suède', 'Suisse', 'Suriname', 'Swaziland', 'Syrie',
+  'Tadjikistan', 'Tanzanie', 'Tchad', 'Thaïlande', 'Timor oriental', 'Togo', 'Tonga', 'Trinité-et-Tobago', 'Tunisie', 'Turkménistan', 'Turquie', 'Tuvalu',
+  'Ukraine', 'Uruguay',
+  'Vanuatu', 'Vatican', 'Venezuela', 'Viêt Nam',
+  'Yémen',
+  'Zambie', 'Zimbabwe'
+];
 
 // ====== Utils auto-cours ======
 const normalize = (s = "") =>
@@ -265,7 +295,8 @@ const STRUCTURE_FORMATION = {
       'Développement Commercial et Marketing Digital',
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
-      'Informatique – Cnam'
+      'Informatique – Cnam',
+      'Achat & Logistique'
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {
@@ -439,100 +470,121 @@ const isChampDisponibleIngenieur = (champ, filiere, niveau, cycle) => {
 // Fonction de gestion des changements de formation adaptée au nouveau modèle backend
 const handleFormationChange = (formSetter, currentForm) => (field, value) => {
   const newForm = { ...currentForm };
+  
   if (field === 'niveauFormation') {
     newForm.niveauFormation = value;
-
-    // منين يتبدّل المود كنفضّيو أي قيم قديمة باش ما يبقاش تعارض
+    // Reset tout quand on change le mode
     newForm.filiere = '';
     newForm.niveau = '';
-    newForm.cycle = '';
+    newForm.cycle = undefined; // Important : undefined au lieu de ''
     newForm.specialite = '';
     newForm.option = '';
-    newForm.specialiteIngenieur = '';
-    newForm.optionIngenieur = '';
-    newForm.specialiteLicencePro = '';
-    newForm.optionLicencePro = '';
-    newForm.specialiteMasterPro = '';
-    newForm.optionMasterPro = '';
-    newForm.cours = []; // reset classe quand on change de mode
+    newForm.specialiteIngenieur = undefined;
+    newForm.optionIngenieur = undefined;
+    newForm.specialiteLicencePro = undefined;
+    newForm.optionLicencePro = undefined;
+    newForm.specialiteMasterPro = undefined;
+    newForm.optionMasterPro = undefined;
+    newForm.cours = [];
   }
+  
   if (field === 'filiere') {
     newForm.filiere = value;
-    newForm.cours = []; // reset classe quand on change de filière
+    newForm.cours = [];
     
-    // Réinitialiser tous les champs spécifiques
-    newForm.cycle = '';
-    newForm.specialiteIngenieur = '';
-    newForm.optionIngenieur = '';
-    newForm.specialiteLicencePro = '';
-    newForm.optionLicencePro = '';
-    newForm.specialiteMasterPro = '';
-    newForm.optionMasterPro = '';
+    // SOLUTION : Reset explicite selon le type de filière
+    if (value === 'MASI' || value === 'IRM') {
+      // Pour MASI/IRM : pas de cycle ni de champs ingénieur
+      delete newForm.cycle;
+      delete newForm.specialiteIngenieur;
+      delete newForm.optionIngenieur;
+      delete newForm.specialiteLicencePro;
+      delete newForm.optionLicencePro;
+      delete newForm.specialiteMasterPro;
+      delete newForm.optionMasterPro;
+    } else if (value === 'CYCLE_INGENIEUR') {
+      // Pour CYCLE_INGENIEUR : reset les autres
+      delete newForm.specialiteLicencePro;
+      delete newForm.optionLicencePro;
+      delete newForm.specialiteMasterPro;
+      delete newForm.optionMasterPro;
+      delete newForm.specialite;
+      delete newForm.option;
+    } else if (value === 'LICENCE_PRO') {
+      // Pour LICENCE_PRO : niveau fixe 3
+      newForm.niveau = '3';
+      delete newForm.cycle;
+      delete newForm.specialiteIngenieur;
+      delete newForm.optionIngenieur;
+      delete newForm.specialiteMasterPro;
+      delete newForm.optionMasterPro;
+      delete newForm.specialite;
+      delete newForm.option;
+    } else if (value === 'MASTER_PRO') {
+      // Pour MASTER_PRO : niveau fixe 4
+      newForm.niveau = '4';
+      delete newForm.cycle;
+      delete newForm.specialiteIngenieur;
+      delete newForm.optionIngenieur;
+      delete newForm.specialiteLicencePro;
+      delete newForm.optionLicencePro;
+      delete newForm.specialite;
+      delete newForm.option;
+    }
+    
+    // Réinitialiser les champs génériques
     newForm.specialite = '';
     newForm.option = '';
-    
-    // Gestion du niveau selon le type de formation
-    const formationData = STRUCTURE_FORMATION[value];
-    if (formationData && !formationData.niveauxManuels) {
-      // Auto-assignation du niveau pour LICENCE_PRO et MASTER_PRO
-      newForm.niveau = formationData.niveauFixe;
-    } else {
-      // Réinitialiser le niveau pour les formations à niveau manuel
-      newForm.niveau = '';
-    }
-    
-    // Configurer le cycle pour École d'Ingénieur
-    if (value === 'CYCLE_INGENIEUR' && newForm.niveau) {
-      newForm.cycle = getCycleParNiveau(newForm.niveau);
-    }
     
   } else if (field === 'niveau') {
     newForm.niveau = value;
     newForm.cours = []; // reset classe quand on change de niveau
     
-    // Mise à jour du cycle pour École d'Ingénieur
+    // Pour CYCLE_INGENIEUR seulement, définir le cycle
     if (newForm.filiere === 'CYCLE_INGENIEUR') {
       const nouveauCycle = getCycleParNiveau(value);
       newForm.cycle = nouveauCycle;
       
       // Réinitialiser les spécialités/options selon le cycle
       if (nouveauCycle === 'Classes Préparatoires Intégrées') {
-        newForm.specialiteIngenieur = '';
-        newForm.optionIngenieur = '';
+        delete newForm.specialiteIngenieur;
+        delete newForm.optionIngenieur;
       } else if (nouveauCycle === 'Cycle Ingénieur') {
         // Vérifier si la spécialité actuelle est toujours valide
         const specialitesDisponibles = getSpecialitesIngenieur(nouveauCycle);
         if (!specialitesDisponibles.includes(newForm.specialiteIngenieur)) {
-          newForm.specialiteIngenieur = '';
+          delete newForm.specialiteIngenieur;
         }
         
         // Réinitialiser l'option si pas en 5ème année
         if (parseInt(value) !== 5) {
-          newForm.optionIngenieur = '';
+          delete newForm.optionIngenieur;
         }
       }
-    }
-    
-    // Pour MASI/IRM, gérer les spécialités/options selon le niveau
-    if ((newForm.filiere === 'MASI' || newForm.filiere === 'IRM')) {
-      const niveauInt = parseInt(value);
-      if (niveauInt <= 2) {
-        newForm.specialite = '';
-        newForm.option = '';
-      } else if (niveauInt <= 4) {
-        newForm.option = '';
-        // Vérifier si la spécialité actuelle est toujours valide
-        const specialitesDisponibles = getSpecialitesDisponibles(newForm.filiere, value);
-        if (!specialitesDisponibles.includes(newForm.specialite)) {
+    } else {
+      // Pour MASI/IRM : gérer spécialités/options selon niveau
+      if ((newForm.filiere === 'MASI' || newForm.filiere === 'IRM')) {
+        const niveauInt = parseInt(value);
+        if (niveauInt <= 2) {
           newForm.specialite = '';
+          newForm.option = '';
+        } else if (niveauInt <= 4) {
+          newForm.option = '';
+          // Vérifier si la spécialité actuelle est toujours valide
+          const specialitesDisponibles = getSpecialitesDisponibles(newForm.filiere, value);
+          if (!specialitesDisponibles.includes(newForm.specialite)) {
+            newForm.specialite = '';
+          }
         }
+        // Important : s'assurer qu'il n'y a pas de cycle
+        delete newForm.cycle;
       }
     }
     
   } else if (field === 'specialiteIngenieur') {
     newForm.specialiteIngenieur = value;
     // Réinitialiser l'option d'ingénieur
-    newForm.optionIngenieur = '';
+    delete newForm.optionIngenieur;
     
   } else if (field === 'optionIngenieur') {
     newForm.optionIngenieur = value;
@@ -540,7 +592,7 @@ const handleFormationChange = (formSetter, currentForm) => (field, value) => {
   } else if (field === 'specialiteLicencePro') {
     newForm.specialiteLicencePro = value;
     // Réinitialiser l'option Licence Pro
-    newForm.optionLicencePro = '';
+    delete newForm.optionLicencePro;
     
   } else if (field === 'optionLicencePro') {
     newForm.optionLicencePro = value;
@@ -548,7 +600,7 @@ const handleFormationChange = (formSetter, currentForm) => (field, value) => {
   } else if (field === 'specialiteMasterPro') {
     newForm.specialiteMasterPro = value;
     // Réinitialiser l'option Master Pro
-    newForm.optionMasterPro = '';
+    delete newForm.optionMasterPro;
     
   } else if (field === 'optionMasterPro') {
     newForm.optionMasterPro = value;
@@ -661,15 +713,19 @@ const handleFormationChangeIngenieurCorrige = (formSetter, currentForm) => (fiel
     if (formationData && formationData.options[value] && !formationData.options[value].includes(newForm.optionMasterPro)) {
       newForm.optionMasterPro = '';
     }
- } else if (field === 'optionMasterPro') {
+  } else if (field === 'optionMasterPro') {
     newForm.optionMasterPro = value;
   } else if (field === 'specialite') {
     newForm.specialite = value;
+    // Réinitialiser l'option
     const optionsDisponibles = getOptionsDisponibles(newForm.filiere, newForm.niveau, value);
     if (!optionsDisponibles.includes(newForm.option)) {
       newForm.option = '';
     }
+  } else if (field === 'option') {
+    newForm.option = value;
   } else {
+    // Pour tous les autres champs
     newForm[field] = value;
   }
   
@@ -1164,15 +1220,18 @@ const ListeEtudiants = () => {
   const [filtreGenre, setFiltreGenre] = useState('');
   const [filtreCours, setFiltreCours] = useState('');
   const [filtreActif, setFiltreActif] = useState('');
-  // Add new filter for academic year
+  const [filtreCommercial, setFiltreCommercial] = useState('');
   const [filtreAnneeScolaire, setFiltreAnneeScolaire] = useState('');
+  const [filtrePartner, setFiltrePartner] = useState('');
   const [pageActuelle, setPageActuelle] = useState(1);
   const [etudiantsParPage] = useState(10);
   const [loading, setLoading] = useState(true);
+  
   // États pour l'export Excel
-const [showExportModal, setShowExportModal] = useState(false);
-const [exportAnneeScolaire, setExportAnneeScolaire] = useState('');
-const [loadingExport, setLoadingExport] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportAnneeScolaire, setExportAnneeScolaire] = useState('');
+  const [loadingExport, setLoadingExport] = useState(false);
+  
   // États pour le verrouillage de l'auto-sélection des cours
   const [lockCoursAjout, setLockCoursAjout] = useState(false);
   const [lockCoursModifier, setLockCoursModifier] = useState(false);
@@ -1209,6 +1268,7 @@ const [loadingExport, setLoadingExport] = useState(false);
     sourceInscription: '',
     dateInscription: '',
     typePaiement: '',
+    modePaiement: 'mensuel',
     prixTotal: '',
     pourcentageBourse: '',
     situation: '',
@@ -1229,7 +1289,15 @@ const [loadingExport, setLoadingExport] = useState(false);
     specialiteLicencePro: '',
     optionLicencePro: '',
     specialiteMasterPro: '',
-    optionMasterPro: ''
+    optionMasterPro: '',
+    // Nouveaux champs supplémentaires
+    telephoneResponsable: '',
+    codeBaccalaureat: '',
+    codeMassar: '',
+    // Nouveaux champs Partner
+    isPartner: false,
+    nomPartner: '',
+    prixTotalPartner: ''
   });
   
   const [vueMode, setVueMode] = useState('tableau');
@@ -1276,6 +1344,7 @@ const [loadingExport, setLoadingExport] = useState(false);
     sourceInscription: '',
     dateInscription: '',
     typePaiement: '',
+    modePaiement: 'mensuel',
     prixTotal: '',
     pourcentageBourse: '',
     situation: '',
@@ -1296,7 +1365,15 @@ const [loadingExport, setLoadingExport] = useState(false);
     specialiteLicencePro: '',
     optionLicencePro: '',
     specialiteMasterPro: '',
-    optionMasterPro: ''
+    optionMasterPro: '',
+    // Nouveaux champs supplémentaires
+    telephoneResponsable: '',
+    codeBaccalaureat: '',
+    codeMassar: '',
+    // Nouveaux champs Partner
+    isPartner: false,
+    nomPartner: '',
+    prixTotalPartner: ''
   });
   
   const [imageFileModifier, setImageFileModifier] = useState(null);
@@ -1304,24 +1381,63 @@ const [loadingExport, setLoadingExport] = useState(false);
   const [loadingModifier, setLoadingModifier] = useState(false);
   const [etudiantAModifier, setEtudiantAModifier] = useState(null);
   
-  const [filesAjout, setFilesAjout] = useState({
-    fichierInscrit: null,
-    originalBac: null,
-    releveNotes: null,
-    copieCni: null,
-    passport: null,
-    dtsBac2: null,
-    licence: null
+  // Nouveaux états pour les documents avec commentaires
+  const [documentsAjout, setDocumentsAjout] = useState({
+    documentCin: null,
+    documentBacCommentaire: null,
+    documentReleveNoteBac: null,
+    documentDiplomeCommentaire: null,
+    documentAttestationReussiteCommentaire: null,
+    documentReleveNotesFormationCommentaire: null,
+    documentPasseport: null,
+    documentBacOuAttestationBacCommentaire: null,
+    documentAuthentificationBac: null,
+    documentAuthenticationDiplome: null,
+    documentEngagementCommentaire: null
   });
-  const [filesModifier, setFilesModifier] = useState({
-    fichierInscrit: null,
-    originalBac: null,
-    releveNotes: null,
-    copieCni: null,
-    passport: null,
-    dtsBac2: null,
-    licence: null
+
+  const [commentairesAjout, setCommentairesAjout] = useState({
+    commentaireCin: '',
+    commentaireBacCommentaire: '',
+    commentaireReleveNoteBac: '',
+    commentaireDiplomeCommentaire: '',
+    commentaireAttestationReussiteCommentaire: '',
+    commentaireReleveNotesFormationCommentaire: '',
+    commentairePasseport: '',
+    commentaireBacOuAttestationBacCommentaire: '',
+    commentaireAuthentificationBac: '',
+    commentaireAuthenticationDiplome: '',
+    commentaireEngagementCommentaire: ''
   });
+
+  const [documentsModifier, setDocumentsModifier] = useState({
+    documentCin: null,
+    documentBacCommentaire: null,
+    documentReleveNoteBac: null,
+    documentDiplomeCommentaire: null,
+    documentAttestationReussiteCommentaire: null,
+    documentReleveNotesFormationCommentaire: null,
+    documentPasseport: null,
+    documentBacOuAttestationBacCommentaire: null,
+    documentAuthentificationBac: null,
+    documentAuthenticationDiplome: null,
+    documentEngagementCommentaire: null
+  });
+
+  const [commentairesModifier, setCommentairesModifier] = useState({
+    commentaireCin: '',
+    commentaireBacCommentaire: '',
+    commentaireReleveNoteBac: '',
+    commentaireDiplomeCommentaire: '',
+    commentaireAttestationReussiteCommentaire: '',
+    commentaireReleveNotesFormationCommentaire: '',
+    commentairePasseport: '',
+    commentaireBacOuAttestationBacCommentaire: '',
+    commentaireAuthentificationBac: '',
+    commentaireAuthenticationDiplome: '',
+    commentaireEngagementCommentaire: ''
+  });
+  
   const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
   const navigate = useNavigate();
 
@@ -1337,7 +1453,7 @@ const [loadingExport, setLoadingExport] = useState(false);
 
   useEffect(() => {
     filtrerEtudiants();
-  }, [etudiants, recherche, filtreGenre, filtreCours, filtreActif, filtreAnneeScolaire]);
+  }, [etudiants, recherche, filtreGenre, filtreCours, filtreActif, filtreCommercial, filtreAnneeScolaire, filtrePartner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-assign pour AJOUT
   useEffect(() => {
@@ -1387,7 +1503,7 @@ const [loadingExport, setLoadingExport] = useState(false);
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/etudiants', {
+      const res = await axios.get('http://195.179.229.230:5000/api/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);
@@ -1401,7 +1517,7 @@ const [loadingExport, setLoadingExport] = useState(false);
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/cours', {
+      const res = await axios.get('http://195.179.229.230:5000/api/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCours(res.data);
@@ -1413,7 +1529,7 @@ const [loadingExport, setLoadingExport] = useState(false);
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/commerciaux', {
+      const res = await axios.get('http://195.179.229.230:5000/api/commerciaux', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCommerciaux(res.data);
@@ -1435,6 +1551,7 @@ const [loadingExport, setLoadingExport] = useState(false);
           (e.telephone && e.telephone.includes(recherche)) ||
           (e.email && e.email.toLowerCase().includes(recherche.toLowerCase())) ||
           (e.cin && e.cin.toLowerCase().includes(recherche.toLowerCase())) ||
+          (e.codeMassar && e.codeMassar.toLowerCase().includes(recherche.toLowerCase())) ||
           (e.codeEtudiant && e.codeEtudiant.toLowerCase().includes(recherche.toLowerCase()))
         );
       });
@@ -1454,9 +1571,16 @@ const [loadingExport, setLoadingExport] = useState(false);
       resultats = resultats.filter(e => e.actif === (filtreActif === 'true'));
     }
 
-    // Add academic year filter
+    if (filtreCommercial) {
+      resultats = resultats.filter(e => e.commercial === filtreCommercial);
+    }
+
     if (filtreAnneeScolaire) {
       resultats = resultats.filter(e => e.anneeScolaire === filtreAnneeScolaire);
+    }
+
+    if (filtrePartner !== '') {
+      resultats = resultats.filter(e => e.isPartner === (filtrePartner === 'true'));
     }
 
     setEtudiantsFiltres(resultats);
@@ -1502,6 +1626,7 @@ const [loadingExport, setLoadingExport] = useState(false);
       sourceInscription: '',
       dateInscription: '',
       typePaiement: '',
+      modePaiement: 'mensuel',
       prixTotal: '',
       pourcentageBourse: '',
       situation: '',
@@ -1517,16 +1642,46 @@ const [loadingExport, setLoadingExport] = useState(false);
       commercial: '',
       cycle: '',
       specialiteIngenieur: '',
-      optionIngenieur: ''
+      optionIngenieur: '',
+      // Nouveaux champs pour le modèle backend
+      specialiteLicencePro: '',
+      optionLicencePro: '',
+      specialiteMasterPro: '',
+      optionMasterPro: '',
+      // Nouveaux champs supplémentaires
+      telephoneResponsable: '',
+      codeBaccalaureat: '',
+      codeMassar: '',
+      // Nouveaux champs Partner
+      isPartner: false,
+      nomPartner: '',
+      prixTotalPartner: ''
     });
-    setFilesAjout({
-      fichierInscrit: null,
-      originalBac: null,
-      releveNotes: null,
-      copieCni: null,
-      passport: null,
-      dtsBac2: null,
-      licence: null
+    setDocumentsAjout({
+      documentCin: null,
+      documentBacCommentaire: null,
+      documentReleveNoteBac: null,
+      documentDiplomeCommentaire: null,
+      documentAttestationReussiteCommentaire: null,
+      documentReleveNotesFormationCommentaire: null,
+      documentPasseport: null,
+      documentBacOuAttestationBacCommentaire: null,
+      documentAuthentificationBac: null,
+      documentAuthenticationDiplome: null,
+      documentEngagementCommentaire: null
+    });
+    setCommentairesAjout({
+      commentaireCin: '',
+      commentaireBacCommentaire: '',
+      commentaireReleveNoteBac: '',
+      commentaireDiplomeCommentaire: '',
+      commentaireAttestationReussiteCommentaire: '',
+      commentaireReleveNotesFormationCommentaire: '',
+      commentairePasseport: '',
+      commentaireBacOuAttestationBacCommentaire: '',
+      commentaireAuthentificationBac: '',
+      commentaireAuthenticationDiplome: '',
+      commentaireEngagementCommentaire: ''
     });
     setImageFile(null);
     setMessageAjout('');
@@ -1569,6 +1724,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       sourceInscription: etudiant.sourceInscription || '',
       dateInscription: etudiant.dateInscription ? etudiant.dateInscription.slice(0, 10) : '',
       typePaiement: etudiant.typePaiement || '',
+      modePaiement: etudiant.modePaiement || 'mensuel',
       prixTotal: etudiant.prixTotal || '',
       pourcentageBourse: etudiant.pourcentageBourse || '',
       situation: etudiant.situation || '',
@@ -1590,7 +1746,30 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       specialiteLicencePro: etudiant.specialiteLicencePro || '',
       optionLicencePro: etudiant.optionLicencePro || '',
       specialiteMasterPro: etudiant.specialiteMasterPro || '',
-      optionMasterPro: etudiant.optionMasterPro || ''
+      optionMasterPro: etudiant.optionMasterPro || '',
+      // Nouveaux champs supplémentaires
+      telephoneResponsable: etudiant.telephoneResponsable || '',
+      codeBaccalaureat: etudiant.codeBaccalaureat || '',
+      codeMassar: etudiant.codeMassar || '',
+      // Nouveaux champs Partner
+      isPartner: etudiant.isPartner || false,
+      nomPartner: etudiant.nomPartner || '',
+      prixTotalPartner: etudiant.prixTotalPartner || ''
+    });
+    
+    // Pré-remplir les commentaires des documents
+    setCommentairesModifier({
+      commentaireCin: etudiant.documents?.cin?.commentaire || '',
+      commentaireBacCommentaire: etudiant.documents?.bacCommentaire?.commentaire || '',
+      commentaireReleveNoteBac: etudiant.documents?.releveNoteBac?.commentaire || '',
+      commentaireDiplomeCommentaire: etudiant.documents?.diplomeCommentaire?.commentaire || '',
+      commentaireAttestationReussiteCommentaire: etudiant.documents?.attestationReussiteCommentaire?.commentaire || '',
+      commentaireReleveNotesFormationCommentaire: etudiant.documents?.releveNotesFormationCommentaire?.commentaire || '',
+      commentairePasseport: etudiant.documents?.passeport?.commentaire || '',
+      commentaireBacOuAttestationBacCommentaire: etudiant.documents?.bacOuAttestationBacCommentaire?.commentaire || '',
+      commentaireAuthentificationBac: etudiant.documents?.authentificationBac?.commentaire || '',
+      commentaireAuthenticationDiplome: etudiant.documents?.authenticationDiplome?.commentaire || '',
+      commentaireEngagementCommentaire: etudiant.documents?.engagementCommentaire?.commentaire || ''
     });
     
     console.log('✅ FormModifier mis à jour:', {
@@ -1641,6 +1820,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       sourceInscription: '',
       dateInscription: '',
       typePaiement: '',
+      modePaiement: 'mensuel',
       prixTotal: '',
       pourcentageBourse: '',
       situation: '',
@@ -1661,16 +1841,41 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       specialiteLicencePro: '',
       optionLicencePro: '',
       specialiteMasterPro: '',
-      optionMasterPro: ''
+      optionMasterPro: '',
+      // Nouveaux champs supplémentaires
+      telephoneResponsable: '',
+      codeBaccalaureat: '',
+      codeMassar: '',
+      // Nouveaux champs Partner
+      isPartner: false,
+      nomPartner: '',
+      prixTotalPartner: ''
     });
-    setFilesModifier({
-      fichierInscrit: null,
-      originalBac: null,
-      releveNotes: null,
-      copieCni: null,
-      passport: null,
-      dtsBac2: null,
-      licence: null
+    setDocumentsModifier({
+      documentCin: null,
+      documentBacCommentaire: null,
+      documentReleveNoteBac: null,
+      documentDiplomeCommentaire: null,
+      documentAttestationReussiteCommentaire: null,
+      documentReleveNotesFormationCommentaire: null,
+      documentPasseport: null,
+      documentBacOuAttestationBacCommentaire: null,
+      documentAuthentificationBac: null,
+      documentAuthenticationDiplome: null,
+      documentEngagementCommentaire: null
+    });
+    setCommentairesModifier({
+      commentaireCin: '',
+      commentaireBacCommentaire: '',
+      commentaireReleveNoteBac: '',
+      commentaireDiplomeCommentaire: '',
+      commentaireAttestationReussiteCommentaire: '',
+      commentaireReleveNotesFormationCommentaire: '',
+      commentairePasseport: '',
+      commentaireBacOuAttestationBacCommentaire: '',
+      commentaireAuthentificationBac: '',
+      commentaireAuthenticationDiplome: '',
+      commentaireEngagementCommentaire: ''
     });
     setImageFileModifier(null);
     setMessageModifier('');
@@ -1688,7 +1893,9 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       'niveauFormation'
     ].includes(name)) {
       setLockCoursAjout(false);
-      handleFormationChangeAjout(name, type === 'checkbox' ? checked : value);
+      // Ne pas passer de valeurs vides pour les champs enum
+      const cleanValue = type === 'checkbox' ? checked : (value || undefined);
+      handleFormationChangeAjout(name, cleanValue);
     } else {
       setFormAjout({ ...formAjout, [name]: type === 'checkbox' ? checked : value });
     }
@@ -1706,7 +1913,9 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       'niveauFormation'
     ].includes(name)) {
       setLockCoursModifier(false);
-      handleFormationChangeModifier(name, type === 'checkbox' ? checked : value);
+      // Ne pas passer de valeurs vides pour les champs enum
+      const cleanValue = type === 'checkbox' ? checked : (value || undefined);
+      handleFormationChangeModifier(name, cleanValue);
     } else {
       setFormModifier({ ...formModifier, [name]: type === 'checkbox' ? checked : value });
     }
@@ -1724,11 +1933,19 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
     setImageFile(e.target.files[0]);
   };
 
-  const handleFileChangeAjout = (e) => {
+  const handleDocumentChangeAjout = (e) => {
     const { name, files } = e.target;
-    setFilesAjout(prev => ({
+    setDocumentsAjout(prev => ({
       ...prev,
       [name]: files[0] || null
+    }));
+  };
+
+  const handleCommentaireChangeAjout = (e) => {
+    const { name, value } = e.target;
+    setCommentairesAjout(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
 
@@ -1748,11 +1965,49 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
     try {
       const token = localStorage.getItem('token');
       const formData = new FormData();
-      Object.keys(formAjout).forEach(key => {
+      
+      // NETTOYER les données avant l'envoi
+      const formAjoutClean = { ...formAjout };
+      
+      // Supprimer les champs non pertinents selon la filière
+      if (formAjoutClean.filiere === 'MASI' || formAjoutClean.filiere === 'IRM') {
+        delete formAjoutClean.cycle;
+        delete formAjoutClean.specialiteIngenieur;
+        delete formAjoutClean.optionIngenieur;
+        delete formAjoutClean.specialiteLicencePro;
+        delete formAjoutClean.optionLicencePro;
+        delete formAjoutClean.specialiteMasterPro;
+        delete formAjoutClean.optionMasterPro;
+      } else if (formAjoutClean.filiere === 'CYCLE_INGENIEUR') {
+        delete formAjoutClean.specialiteLicencePro;
+        delete formAjoutClean.optionLicencePro;
+        delete formAjoutClean.specialiteMasterPro;
+        delete formAjoutClean.optionMasterPro;
+        delete formAjoutClean.specialite;
+        delete formAjoutClean.option;
+      } else if (formAjoutClean.filiere === 'LICENCE_PRO') {
+        delete formAjoutClean.cycle;
+        delete formAjoutClean.specialiteIngenieur;
+        delete formAjoutClean.optionIngenieur;
+        delete formAjoutClean.specialiteMasterPro;
+        delete formAjoutClean.optionMasterPro;
+        delete formAjoutClean.specialite;
+        delete formAjoutClean.option;
+      } else if (formAjoutClean.filiere === 'MASTER_PRO') {
+        delete formAjoutClean.cycle;
+        delete formAjoutClean.specialiteIngenieur;
+        delete formAjoutClean.optionIngenieur;
+        delete formAjoutClean.specialiteLicencePro;
+        delete formAjoutClean.optionLicencePro;
+        delete formAjoutClean.specialite;
+        delete formAjoutClean.option;
+      }
+      
+      Object.keys(formAjoutClean).forEach(key => {
         if (key === 'cours') {
-          formAjout[key].forEach(c => formData.append('cours[]', c));
+          formAjoutClean[key].forEach(c => formData.append('cours[]', c));
         } else {
-          const valeur = formAjout[key];
+          const valeur = formAjoutClean[key];
           const valeurAEnvoyer = (valeur !== undefined && valeur !== null)
             ? (typeof valeur === 'boolean' ? valeur.toString() : valeur.toString())
             : '';
@@ -1760,12 +2015,20 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
         }
       });
       if (imageFile) formData.append('image', imageFile);
-      Object.keys(filesAjout).forEach(key => {
-        if (filesAjout[key]) {
-          formData.append(key, filesAjout[key]);
+      
+      // Nouveaux documents avec commentaires
+      Object.keys(documentsAjout).forEach(key => {
+        if (documentsAjout[key]) {
+          formData.append(key, documentsAjout[key]);
         }
       });
-      const response = await axios.post('http://localhost:5000/api/etudiants', formData, {
+      
+      // Commentaires des documents
+      Object.keys(commentairesAjout).forEach(key => {
+        formData.append(key, commentairesAjout[key]);
+      });
+      
+      const response = await axios.post('http://195.179.229.230:5000/api/etudiants', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -1798,11 +2061,19 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
     setImageFileModifier(e.target.files[0]);
   };
 
-  const handleFileChangeModifier = (e) => {
+  const handleDocumentChangeModifier = (e) => {
     const { name, files } = e.target;
-    setFilesModifier(prev => ({
+    setDocumentsModifier(prev => ({
       ...prev,
       [name]: files[0] || null
+    }));
+  };
+
+  const handleCommentaireChangeModifier = (e) => {
+    const { name, value } = e.target;
+    setCommentairesModifier(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
 
@@ -1828,13 +2099,50 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       const token = localStorage.getItem('token');
       const formData = new FormData();
       
-      Object.keys(formModifier).forEach(key => {
+      // NETTOYER les données avant l'envoi
+      const formModifierClean = { ...formModifier };
+      
+      // Supprimer les champs non pertinents selon la filière
+      if (formModifierClean.filiere === 'MASI' || formModifierClean.filiere === 'IRM') {
+        delete formModifierClean.cycle;
+        delete formModifierClean.specialiteIngenieur;
+        delete formModifierClean.optionIngenieur;
+        delete formModifierClean.specialiteLicencePro;
+        delete formModifierClean.optionLicencePro;
+        delete formModifierClean.specialiteMasterPro;
+        delete formModifierClean.optionMasterPro;
+      } else if (formModifierClean.filiere === 'CYCLE_INGENIEUR') {
+        delete formModifierClean.specialiteLicencePro;
+        delete formModifierClean.optionLicencePro;
+        delete formModifierClean.specialiteMasterPro;
+        delete formModifierClean.optionMasterPro;
+        delete formModifierClean.specialite;
+        delete formModifierClean.option;
+      } else if (formModifierClean.filiere === 'LICENCE_PRO') {
+        delete formModifierClean.cycle;
+        delete formModifierClean.specialiteIngenieur;
+        delete formModifierClean.optionIngenieur;
+        delete formModifierClean.specialiteMasterPro;
+        delete formModifierClean.optionMasterPro;
+        delete formModifierClean.specialite;
+        delete formModifierClean.option;
+      } else if (formModifierClean.filiere === 'MASTER_PRO') {
+        delete formModifierClean.cycle;
+        delete formModifierClean.specialiteIngenieur;
+        delete formModifierClean.optionIngenieur;
+        delete formModifierClean.specialiteLicencePro;
+        delete formModifierClean.optionLicencePro;
+        delete formModifierClean.specialite;
+        delete formModifierClean.option;
+      }
+      
+      Object.keys(formModifierClean).forEach(key => {
         if (key === 'cours') {
-          formModifier[key].forEach(c => formData.append('cours[]', c));
-        } else if (key === 'motDePasse' && formModifier[key].trim() === '') {
+          formModifierClean[key].forEach(c => formData.append('cours[]', c));
+        } else if (key === 'motDePasse' && formModifierClean[key].trim() === '') {
           return; // Ne pas envoyer mot de passe vide
         } else {
-          const valeur = formModifier[key];
+          const valeur = formModifierClean[key];
           formData.append(
             key,
             typeof valeur === 'boolean'
@@ -1845,12 +2153,20 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
       });
 
       if (imageFileModifier) formData.append('image', imageFileModifier);
-      Object.keys(filesModifier).forEach(key => {
-        if (filesModifier[key]) {
-          formData.append(key, filesModifier[key]);
+      
+      // Nouveaux documents avec commentaires
+      Object.keys(documentsModifier).forEach(key => {
+        if (documentsModifier[key]) {
+          formData.append(key, documentsModifier[key]);
         }
       });
-      const response = await axios.put(`http://localhost:5000/api/etudiants/${etudiantAModifier._id}`, formData, {
+      
+      // Commentaires des documents
+      Object.keys(commentairesModifier).forEach(key => {
+        formData.append(key, commentairesModifier[key]);
+      });
+      
+      const response = await axios.put(`http://195.179.229.230:5000/api/etudiants/${etudiantAModifier._id}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -1859,7 +2175,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
 
       setMessageModifier('✅ Étudiant modifié avec succès');
       setEtudiants(etudiants.map(e => e._id === etudiantAModifier._id ? response.data : e));
-                   await fetchEtudiants();
+          await fetchEtudiants();
 
       setTimeout(() => {
         closeEditModal();
@@ -1875,7 +2191,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
   const handleToggleActif = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.patch(`http://localhost:5000/api/etudiants/${id}/actif`, {}, {
+      const res = await axios.patch(`http://195.179.229.230:5000/api/etudiants/${id}/actif`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(etudiants.map(e => e._id === id ? res.data : e));
@@ -1889,7 +2205,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/etudiants/${id}`, {
+      await axios.delete(`http://195.179.229.230:5000/api/etudiants/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(etudiants.filter(e => e._id !== id));
@@ -1917,7 +2233,9 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
     setFiltreGenre('');
     setFiltreCours('');
     setFiltreActif('');
+    setFiltreCommercial('');
     setFiltreAnneeScolaire('');
+    setFiltrePartner('');
   };
 
   const formatDate = (isoDate) => {
@@ -1955,93 +2273,100 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
     localStorage.removeItem('token');
     window.location.href = '/';
   };
-const exportToExcel = async () => {
-  if (!exportAnneeScolaire) {
-    alert('Veuillez sélectionner une année scolaire pour l\'export');
-    return;
-  }
 
-  setLoadingExport(true);
-  
-  try {
-    const token = localStorage.getItem('token');
-    
-    // Filtrer les étudiants par année scolaire sélectionnée
-    const etudiantsAExporter = etudiants.filter(e => e.anneeScolaire === exportAnneeScolaire);
-    
-    if (etudiantsAExporter.length === 0) {
-      alert(`Aucun étudiant trouvé pour l'année scolaire ${exportAnneeScolaire}`);
-      setLoadingExport(false);
+  // Fonction d'export Excel
+  const exportToExcel = async () => {
+    if (!exportAnneeScolaire) {
+      alert('Veuillez sélectionner une année scolaire pour l\'export');
       return;
     }
 
-    // Préparer les données pour l'export
-    const donneesExport = etudiantsAExporter.map(etudiant => ({
-      'Code Étudiant': etudiant.codeEtudiant || 'N/A',
-      'Prénom': etudiant.prenom || '',
-      'Nom de Famille': etudiant.nomDeFamille || '',
-      'Genre': etudiant.genre || '',
-      'Date de Naissance': etudiant.dateNaissance ? new Date(etudiant.dateNaissance).toLocaleDateString('fr-FR') : 'N/A',
-      'Téléphone': etudiant.telephone || '',
-      'Email': etudiant.email || '',
-      'CIN': etudiant.cin || 'N/A',
-      'Passeport': etudiant.passeport || 'N/A',
-      'Année Scolaire': etudiant.anneeScolaire || 'N/A',
-      'Niveau Formation': etudiant.niveauFormation || 'N/A',
-      'Filière': etudiant.filiere || 'N/A',
-      'Niveau': etudiant.niveau || 'N/A',
-      'Spécialité': etudiant.specialite || etudiant.specialiteIngenieur || etudiant.specialiteLicencePro || etudiant.specialiteMasterPro || 'N/A',
-      'Option': etudiant.option || etudiant.optionIngenieur || etudiant.optionLicencePro || etudiant.optionMasterPro || 'N/A',
-      'Cycle': etudiant.cycle || 'N/A',
-      'Classes': etudiant.cours ? etudiant.cours.join(', ') : 'Aucune',
-      'Commercial': getNomCommercial(etudiant.commercial),
-      'Lieu de Naissance': etudiant.lieuNaissance || 'N/A',
-      'Pays': etudiant.pays || 'N/A',
-      'Diplôme d\'Accès': etudiant.diplomeAcces || 'N/A',
-      'Spécialité Diplôme': etudiant.specialiteDiplomeAcces || 'N/A',
-      'Mention': etudiant.mention || 'N/A',
-      'Série Bac': etudiant.serieBaccalaureat || 'N/A',
-      'Année Bac': etudiant.anneeBaccalaureat || 'N/A',
-      'Date d\'Inscription': etudiant.dateInscription ? new Date(etudiant.dateInscription).toLocaleDateString('fr-FR') : 'N/A',
-      'Prix Total': etudiant.prixTotal || '0',
-      'Pourcentage Bourse': etudiant.pourcentageBourse || '0',
-      'Type Paiement': etudiant.typePaiement || 'N/A',
-      'Situation': etudiant.situation || 'N/A',
-      'Statut': etudiant.actif ? 'Actif' : 'Inactif',
-      'Payé': etudiant.paye ? 'Oui' : 'Non',
-      'Nouvelle Inscription': etudiant.nouvelleInscription ? 'Oui' : 'Non',
-      'Handicapé': etudiant.handicape ? 'Oui' : 'Non',
-      'Résident': etudiant.resident ? 'Oui' : 'Non',
-      'Fonctionnaire': etudiant.fonctionnaire ? 'Oui' : 'Non',
-      'Mobilité': etudiant.mobilite ? 'Oui' : 'Non',
-      'Date de Création': etudiant.createdAt ? new Date(etudiant.createdAt).toLocaleDateString('fr-FR') : 'N/A'
-    }));
+    setLoadingExport(true);
+    
+    try {
+      // Filtrer les étudiants par année scolaire sélectionnée
+      const etudiantsAExporter = etudiants.filter(e => e.anneeScolaire === exportAnneeScolaire);
+      
+      if (etudiantsAExporter.length === 0) {
+        alert(`Aucun étudiant trouvé pour l'année scolaire ${exportAnneeScolaire}`);
+        setLoadingExport(false);
+        return;
+      }
 
-    // Créer le fichier Excel
-    const ws = XLSX.utils.json_to_sheet(donneesExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `Étudiants_${exportAnneeScolaire.replace('/', '-')}`);
-    
-    // Ajuster la largeur des colonnes
-    const maxWidth = donneesExport.reduce((w, r) => Math.max(w, Object.keys(r).length), 0);
-    ws['!cols'] = Array(maxWidth).fill({ wch: 15 });
-    
-    // Télécharger le fichier
-    const fileName = `Etudiants_${exportAnneeScolaire.replace('/', '-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    
-    // Fermer le modal et réinitialiser
-    setShowExportModal(false);
-    setExportAnneeScolaire('');
-    alert(`Export réussi ! ${etudiantsAExporter.length} étudiants exportés dans ${fileName}`);
-    
-  } catch (error) {
-    console.error('Erreur lors de l\'export:', error);
-    alert('Erreur lors de l\'export. Veuillez réessayer.');
-  } finally {
-    setLoadingExport(false);
-  }
-};
+      // Préparer les données pour l'export
+      const donneesExport = etudiantsAExporter.map(etudiant => ({
+        'Code Étudiant': etudiant.codeEtudiant || 'N/A',
+        'Prénom': etudiant.prenom || '',
+        'Nom de Famille': etudiant.nomDeFamille || '',
+        'Genre': etudiant.genre || '',
+        'Date de Naissance': etudiant.dateNaissance ? new Date(etudiant.dateNaissance).toLocaleDateString('fr-FR') : 'N/A',
+        'Téléphone': etudiant.telephone || '',
+        'Email': etudiant.email || '',
+        'CIN': etudiant.cin || 'N/A',
+        'Passeport': etudiant.passeport || 'N/A',
+        'Code Massar': etudiant.codeMassar || 'N/A',
+        'Année Scolaire': etudiant.anneeScolaire || 'N/A',
+        'Niveau Formation': etudiant.niveauFormation || 'N/A',
+        'Filière': etudiant.filiere || 'N/A',
+        'Niveau': etudiant.niveau || 'N/A',
+        'Spécialité': etudiant.specialite || etudiant.specialiteIngenieur || etudiant.specialiteLicencePro || etudiant.specialiteMasterPro || 'N/A',
+        'Option': etudiant.option || etudiant.optionIngenieur || etudiant.optionLicencePro || etudiant.optionMasterPro || 'N/A',
+        'Cycle': etudiant.cycle || 'N/A',
+        'Classes': etudiant.cours ? etudiant.cours.join(', ') : 'Aucune',
+        'Type': etudiant.isPartner ? 'Partner' : 'Normal',
+        'Prix Total': etudiant.prixTotal || '0',
+        'Prix Partner': etudiant.prixTotalPartner || 'N/A',
+        'Commercial': getNomCommercial(etudiant.commercial),
+        'Lieu de Naissance': etudiant.lieuNaissance || 'N/A',
+        'Pays': etudiant.pays || 'N/A',
+        'Téléphone Responsable': etudiant.telephoneResponsable || 'N/A',
+        'Code Baccalauréat': etudiant.codeBaccalaureat || 'N/A',
+        'Diplôme d\'Accès': etudiant.diplomeAcces || 'N/A',
+        'Spécialité Diplôme': etudiant.specialiteDiplomeAcces || 'N/A',
+        'Mention': etudiant.mention || 'N/A',
+        'Série Bac': etudiant.serieBaccalaureat || 'N/A',
+        'Année Bac': etudiant.anneeBaccalaureat || 'N/A',
+        'Date d\'Inscription': etudiant.dateInscription ? new Date(etudiant.dateInscription).toLocaleDateString('fr-FR') : 'N/A',
+        'Mode Paiement': etudiant.modePaiement || 'N/A',
+        'Pourcentage Bourse': etudiant.pourcentageBourse || '0',
+        'Type Paiement': etudiant.typePaiement || 'N/A',
+        'Situation': etudiant.situation || 'N/A',
+        'Statut': etudiant.actif ? 'Actif' : 'Inactif',
+        'Payé': etudiant.paye ? 'Oui' : 'Non',
+        'Nouvelle Inscription': etudiant.nouvelleInscription ? 'Oui' : 'Non',
+        'Handicapé': etudiant.handicape ? 'Oui' : 'Non',
+        'Résident': etudiant.resident ? 'Oui' : 'Non',
+        'Fonctionnaire': etudiant.fonctionnaire ? 'Oui' : 'Non',
+        'Mobilité': etudiant.mobilite ? 'Oui' : 'Non',
+        'Date de Création': etudiant.createdAt ? new Date(etudiant.createdAt).toLocaleDateString('fr-FR') : 'N/A'
+      }));
+
+      // Créer le fichier Excel
+      const ws = XLSX.utils.json_to_sheet(donneesExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Étudiants_${exportAnneeScolaire.replace('/', '-')}`);
+      
+      // Ajuster la largeur des colonnes
+      const maxWidth = donneesExport.reduce((w, r) => Math.max(w, Object.keys(r).length), 0);
+      ws['!cols'] = Array(maxWidth).fill({ wch: 15 });
+      
+      // Télécharger le fichier
+      const fileName = `Etudiants_${exportAnneeScolaire.replace('/', '-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      // Fermer le modal et réinitialiser
+      setShowExportModal(false);
+      setExportAnneeScolaire('');
+      alert(`Export réussi ! ${etudiantsAExporter.length} étudiants exportés dans ${fileName}`);
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'export:', error);
+      alert('Erreur lors de l\'export. Veuillez réessayer.');
+    } finally {
+      setLoadingExport(false);
+    }
+  };
+
   // Pagination
   const indexDernierEtudiant = pageActuelle * etudiantsParPage;
   const indexPremierEtudiant = indexDernierEtudiant - etudiantsParPage;
@@ -2055,11 +2380,8 @@ const exportToExcel = async () => {
   // Obtenir tous les cours uniques pour le filtre
   const coursUniques = [...new Set(etudiants.flatMap(e => e.cours || []))];
 
-  // Add function to get unique academic years
-  const annesScolairesUniques = [...new Set(etudiants
-    .map(e => e.anneeScolaire)
-    .filter(annee => annee && annee.trim() !== '')
-  )].sort();
+  // Obtenir toutes les années scolaires uniques pour le filtre
+  const annesScolairesUniques = [...new Set(etudiants.map(e => e.anneeScolaire).filter(Boolean))];
 
   if (loading) {
     return <div className="loading">Chargement des étudiants...</div>;
@@ -2092,13 +2414,14 @@ const exportToExcel = async () => {
               Cartes
             </button>
           </div>
+          
           <button onClick={openModal} className="btn-ajouter-etudiant">
-  Ajouter un étudiant
-</button>
-<button onClick={() => setShowExportModal(true)} className="btn-export-excel">
-  📊 Exporter Excel
-</button>
-         
+            Ajouter un étudiant
+          </button>
+          
+          <button onClick={() => setShowExportModal(true)} className="btn-export-excel">
+            📊 Exporter Excel
+          </button>
         </div>
       </div>
 
@@ -2156,7 +2479,22 @@ const exportToExcel = async () => {
             </select>
           </div>
 
-          {/* Add Academic Year Filter */}
+          <div className="filtre-groupe">
+            <label>Commercial:</label>
+            <select
+              value={filtreCommercial}
+              onChange={(e) => setFiltreCommercial(e.target.value)}
+              className="select-filtre"
+            >
+              <option value="">Tous les commerciaux</option>
+              {listeCommerciaux.map(commercial => (
+                <option key={commercial._id} value={commercial._id}>
+                  {commercial.nomComplet || commercial.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="filtre-groupe">
             <label>Année Scolaire:</label>
             <select
@@ -2168,6 +2506,19 @@ const exportToExcel = async () => {
               {annesScolairesUniques.map(annee => (
                 <option key={annee} value={annee}>{annee}</option>
               ))}
+            </select>
+          </div>
+
+          <div className="filtre-groupe">
+            <label>Type:</label>
+            <select
+              value={filtrePartner}
+              onChange={(e) => setFiltrePartner(e.target.value)}
+              className="select-filtre"
+            >
+              <option value="">Tous les types</option>
+              <option value="true">Partners</option>
+              <option value="false">Normaux</option>
             </select>
           </div>
 
@@ -2189,8 +2540,13 @@ const exportToExcel = async () => {
                 <th>Date de Naissance</th>
                 <th>Téléphone</th>
                 <th>Email</th>
+                                <th>Validation Pédagogique</th>
+
                 <th>CIN</th>
+                <th>Code Massar</th>
                 <th>Code Étudiant</th>
+                <th>Type</th>
+                <th>Validation Pédagogique</th>
                 <th>Commercial</th>
                 <th>Classe</th>
                 <th>Statut</th>
@@ -2201,7 +2557,7 @@ const exportToExcel = async () => {
             <tbody>
               {etudiantsActuels.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="aucun-resultat">
+                  <td colSpan="15" className="aucun-resultat">
                     Aucun étudiant trouvé
                   </td>
                 </tr>
@@ -2213,8 +2569,29 @@ const exportToExcel = async () => {
                     <td>{formatDate(e.dateNaissance)}</td>
                     <td>{e.telephone}</td>
                     <td>{e.email}</td>
+                          <td className="validation-colonne">
+                      <span className={`validation-badge ${
+                        e.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                        e.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                        e.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                      }`}>
+                        {e.validationPedagogique?.statut || 'En attente'}
+                      </span>
+                      {e.validationPedagogique?.commentaire && (
+                        <div className="validation-commentaire" title={e.validationPedagogique.commentaire}>
+                          💬 {e.validationPedagogique.commentaire.substring(0, 20)}...
+                        </div>
+                      )}
+                    </td>
                     <td>{e.cin || 'N/A'}</td>
+                    <td>{e.codeMassar || 'N/A'}</td>
                     <td>{e.codeEtudiant || 'N/A'}</td>
+                    <td className="type-colonne">
+                      <span className={`type-badge ${e.isPartner ? 'partner' : 'normal'}`}>
+                        {e.isPartner ? '🤝 Partner' : '👤 Normal'}
+                      </span>
+                    </td>
+              
                     <td className="commercial-colonne">
                       {getNomCommercial(e.commercial)}
                     </td>
@@ -2239,8 +2616,8 @@ const exportToExcel = async () => {
                     <td className="image-colonne">
                       {e.image ? (
                         <img 
-                          src={`http://localhost:5000${e.image}`} 
-                          alt="etudiant" 
+                          src={`http://195.179.229.230:5000${e.image}`} 
+                          alt={getNomComplet(e)} 
                           className="image-etudiant"
                         />
                       ) : (
@@ -2288,7 +2665,7 @@ const exportToExcel = async () => {
                     <div className="carte-image">
                       {e.image ? (
                         <img 
-                          src={`http://localhost:5000${e.image}`} 
+                          src={`http://195.179.229.230:5000${e.image}`} 
                           alt="etudiant" 
                           className="carte-photo"
                         />
@@ -2343,10 +2720,36 @@ const exportToExcel = async () => {
                           </span>
                         </div>
                       )}
+                      {e.codeMassar && (
+                        <div className="carte-detail">
+                          <span className="carte-label">Code Massar:</span>
+                          <span>
+                            <IdCard size={16} className="inline mr-1" /> {e.codeMassar}
+                          </span>
+                        </div>
+                      )}
                       {e.codeEtudiant && (
                         <div className="carte-detail">
                           <span className="carte-label">Code:</span>
                           <span>{e.codeEtudiant}</span>
+                        </div>
+                      )}
+                      <div className="carte-detail">
+                        <span className="carte-label">Type:</span>
+                        <span className={`type-badge-card ${e.isPartner ? 'partner' : 'normal'}`}>
+                          {e.isPartner ? '🤝 Partner' : '👤 Normal'}
+                        </span>
+                      </div>
+                      {e.isPartner && e.nomPartner && (
+                        <div className="carte-detail">
+                          <span className="carte-label">Partenaire:</span>
+                          <span>{e.nomPartner}</span>
+                        </div>
+                      )}
+                      {e.isPartner && e.prixTotalPartner && (
+                        <div className="carte-detail">
+                          <span className="carte-label">Prix Partner:</span>
+                          <span>{e.prixTotalPartner} DH</span>
                         </div>
                       )}
                       <div className="carte-detail">
@@ -2558,11 +2961,47 @@ const exportToExcel = async () => {
                   </div>
                   <div className="form-group">
                     <label>Pays</label>
+                    <select
+                      name="pays"
+                      value={formAjout.pays}
+                      onChange={handleChangeAjout}
+                    >
+                      <option value="">Sélectionner un pays...</option>
+                      {PAYS_LISTE.map((pays) => (
+                        <option key={pays} value={pays}>{pays}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Téléphone du Responsable</label>
                     <input
                       type="text"
-                      name="pays"
-                      placeholder="Pays"
-                      value={formAjout.pays}
+                      name="telephoneResponsable"
+                      placeholder="Téléphone du responsable"
+                      value={formAjout.telephoneResponsable}
+                      onChange={handleChangeAjout}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Code du Baccalauréat</label>
+                    <input
+                      type="text"
+                      name="codeBaccalaureat"
+                      placeholder="Code du baccalauréat"
+                      value={formAjout.codeBaccalaureat}
+                      onChange={handleChangeAjout}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Code Massar</label>
+                    <input
+                      type="text"
+                      name="codeMassar"
+                      placeholder="Code Massar"
+                      value={formAjout.codeMassar}
                       onChange={handleChangeAjout}
                     />
                   </div>
@@ -2771,6 +3210,64 @@ const exportToExcel = async () => {
                 </div>
               </div>
 
+              {/* Section Système Partner */}
+              <div className="form-section">
+                <h4>🤝 Système Partner</h4>
+                
+                <div className="form-row">
+                  <div className="form-group checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="isPartner"
+                        checked={formAjout.isPartner}
+                        onChange={handleChangeAjout}
+                      />
+                      Étudiant Partenaire
+                    </label>
+                    <small style={{color: '#666', fontSize: '12px'}}>
+                      Cocher si cet étudiant fait partie du programme partenaire
+                    </small>
+                  </div>
+                </div>
+
+                {formAjout.isPartner && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nom du Partenaire *</label>
+                      <input
+                        type="text"
+                        name="nomPartner"
+                        placeholder="Nom du partenaire"
+                        value={formAjout.nomPartner}
+                        onChange={handleChangeAjout}
+                        required={formAjout.isPartner}
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Nom de l'organisation partenaire
+                      </small>
+                    </div>
+                    <div className="form-group">
+                      <label>Prix Total Partner *</label>
+                      <input
+                        type="number"
+                        name="prixTotalPartner"
+                        placeholder="Prix total pour partner"
+                        value={formAjout.prixTotalPartner}
+                        onChange={handleChangeAjout}
+                        required={formAjout.isPartner}
+                        min="1000"
+                        max="99999"
+                        step="1"
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Prix spécial pour les étudiants partenaires (séparé du prix normal)
+                      </small>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Section Inscription et Paiement */}
               <div className="form-section">
                 <h4><CreditCard size={20} className="inline mr-2" />Inscription et Paiement</h4>
@@ -2809,19 +3306,43 @@ const exportToExcel = async () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Prix Total</label>
-                    <input
-                      type="number"
-                      name="prixTotal"
-                      placeholder="Prix total"
-                      value={formAjout.prixTotal}
+                    <label>Mode de Paiement *</label>
+                    <select
+                      name="modePaiement"
+                      value={formAjout.modePaiement}
                       onChange={handleChangeAjout}
                       required
-                      min="10000"
-                      max="99999"
-                      step="1"
-                    />
+                    >
+                      <option value="semestriel">Semestriel (2 tranches)</option>
+                      <option value="trimestriel">Trimestriel (3 tranches)</option>
+                      <option value="mensuel">Mensuel (10 tranches)</option>
+                      <option value="annuel">Annuel (paiement complet)</option>
+                    </select>
+                    <small style={{color: '#666', fontSize: '12px'}}>
+                      Semestriel par défaut. Annuel = paiement immédiat complet.
+                    </small>
                   </div>
+                  {!formAjout.isPartner && (
+                    <div className="form-group">
+                      <label>Prix Total</label>
+                      <input
+                        type="number"
+                        name="prixTotal"
+                        placeholder="Prix total (optionnel)"
+                        value={formAjout.prixTotal}
+                        onChange={handleChangeAjout}
+                        min="0"
+                        max="99999"
+                        step="1"
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Champ optionnel - peut être rempli plus tard
+                      </small>
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Pourcentage Bourse (%)</label>
                     <input
@@ -2834,9 +3355,6 @@ const exportToExcel = async () => {
                       max="100"
                     />
                   </div>
-                </div>
-
-                <div className="form-row">
                   <div className="form-group">
                     <label>Type de Paiement</label>
                     <input
@@ -2847,6 +3365,9 @@ const exportToExcel = async () => {
                       onChange={handleChangeAjout}
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Situation</label>
                     <input
@@ -2885,80 +3406,261 @@ const exportToExcel = async () => {
                   />
                 </div>
 
-                {/* Section Documents */}
+                {/* Section Documents avec commentaires */}
                 <div className="documents-section">
-                  <h5>Documents</h5>
+                  <h5>Documents avec Commentaires</h5>
+                  
+                  {/* CIN */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Fichier d'Inscription</label>
+                      <label>Document CIN</label>
                       <input
                         type="file"
-                        name="fichierInscrit"
+                        name="documentCin"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        onChange={handleDocumentChangeAjout}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Original Bac</label>
+                      <label>Commentaire CIN</label>
                       <input
-                        type="file"
-                        name="originalBac"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        type="text"
+                        name="commentaireCin"
+                        placeholder="Commentaire pour le CIN"
+                        value={commentairesAjout.commentaireCin}
+                        onChange={handleCommentaireChangeAjout}
                       />
                     </div>
                   </div>
 
+                  {/* Bac avec commentaire */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Relevé de Notes</label>
+                      <label>Document Bac</label>
                       <input
                         type="file"
-                        name="releveNotes"
+                        name="documentBacCommentaire"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        onChange={handleDocumentChangeAjout}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Copie CNI</label>
+                      <label>Commentaire Bac</label>
                       <input
-                        type="file"
-                        name="copieCni"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        type="text"
+                        name="commentaireBacCommentaire"
+                        placeholder="Commentaire pour le Bac"
+                        value={commentairesAjout.commentaireBacCommentaire}
+                        onChange={handleCommentaireChangeAjout}
                       />
                     </div>
                   </div>
 
+                  {/* Relevé de Notes Bac */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Passeport</label>
+                      <label>Relevé de Notes Bac</label>
                       <input
                         type="file"
-                        name="passport"
+                        name="documentReleveNoteBac"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        onChange={handleDocumentChangeAjout}
                       />
                     </div>
                     <div className="form-group">
-                      <label>DTS Bac+2</label>
+                      <label>Commentaire Relevé Notes Bac</label>
                       <input
-                        type="file"
-                        name="dtsBac2"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        type="text"
+                        name="commentaireReleveNoteBac"
+                        placeholder="Commentaire pour le relevé de notes bac"
+                        value={commentairesAjout.commentaireReleveNoteBac}
+                        onChange={handleCommentaireChangeAjout}
                       />
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Licence</label>
-                    <input
-                      type="file"
-                      name="licence"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      onChange={handleFileChangeAjout}
-                    />
+                  {/* Bac ou Attestation Bac avec commentaire - NOUVEAU */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Bac ou Attestation Bac</label>
+                      <input
+                        type="file"
+                        name="documentBacOuAttestationBacCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Bac/Attestation</label>
+                      <input
+                        type="text"
+                        name="commentaireBacOuAttestationBacCommentaire"
+                        placeholder="Commentaire pour le bac ou attestation"
+                        value={commentairesAjout.commentaireBacOuAttestationBacCommentaire}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentification Bac - NOUVEAU */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Authentification Bac</label>
+                      <input
+                        type="file"
+                        name="documentAuthentificationBac"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentification Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthentificationBac"
+                        placeholder="Commentaire pour l'authentification bac"
+                        value={commentairesAjout.commentaireAuthentificationBac}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Diplôme avec commentaire */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Document Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentDiplomeCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireDiplomeCommentaire"
+                        placeholder="Commentaire pour le diplôme"
+                        value={commentairesAjout.commentaireDiplomeCommentaire}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentication Diplôme - NOUVEAU */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Authentication Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentAuthenticationDiplome"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentication Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthenticationDiplome"
+                        placeholder="Commentaire pour l'authentication diplôme"
+                        value={commentairesAjout.commentaireAuthenticationDiplome}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Attestation de Réussite avec commentaire - NOUVEAU */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Attestation de Réussite</label>
+                      <input
+                        type="file"
+                        name="documentAttestationReussiteCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Attestation de Réussite</label>
+                      <input
+                        type="text"
+                        name="commentaireAttestationReussiteCommentaire"
+                        placeholder="Commentaire pour l'attestation de réussite"
+                        value={commentairesAjout.commentaireAttestationReussiteCommentaire}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Relevé de Notes Formation avec commentaire - NOUVEAU */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Relevé de Notes Formation</label>
+                      <input
+                        type="file"
+                        name="documentReleveNotesFormationCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Relevé Notes Formation</label>
+                      <input
+                        type="text"
+                        name="commentaireReleveNotesFormationCommentaire"
+                        placeholder="Commentaire pour le relevé de notes formation"
+                        value={commentairesAjout.commentaireReleveNotesFormationCommentaire}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Passeport */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Document Passeport</label>
+                      <input
+                        type="file"
+                        name="documentPasseport"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Passeport</label>
+                      <input
+                        type="text"
+                        name="commentairePasseport"
+                        placeholder="Commentaire pour le passeport"
+                        value={commentairesAjout.commentairePasseport}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Engagement avec commentaire */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Document Engagement</label>
+                      <input
+                        type="file"
+                        name="documentEngagementCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Engagement</label>
+                      <input
+                        type="text"
+                        name="commentaireEngagementCommentaire"
+                        placeholder="Commentaire pour l'engagement"
+                        value={commentairesAjout.commentaireEngagementCommentaire}
+                        onChange={handleCommentaireChangeAjout}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3187,11 +3889,47 @@ const exportToExcel = async () => {
                   </div>
                   <div className="form-group">
                     <label>Pays</label>
+                    <select
+                      name="pays"
+                      value={formModifier.pays}
+                      onChange={handleChangeModifier}
+                    >
+                      <option value="">Sélectionner un pays...</option>
+                      {PAYS_LISTE.map((pays) => (
+                        <option key={pays} value={pays}>{pays}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Téléphone du Responsable</label>
                     <input
                       type="text"
-                      name="pays"
-                      placeholder="Pays"
-                      value={formModifier.pays}
+                      name="telephoneResponsable"
+                      placeholder="Téléphone du responsable"
+                      value={formModifier.telephoneResponsable}
+                      onChange={handleChangeModifier}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Code du Baccalauréat</label>
+                    <input
+                      type="text"
+                      name="codeBaccalaureat"
+                      placeholder="Code du baccalauréat"
+                      value={formModifier.codeBaccalaureat}
+                      onChange={handleChangeModifier}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Code Massar</label>
+                    <input
+                      type="text"
+                      name="codeMassar"
+                      placeholder="Code Massar"
+                      value={formModifier.codeMassar}
                       onChange={handleChangeModifier}
                     />
                   </div>
@@ -3406,6 +4144,64 @@ const exportToExcel = async () => {
                 </div>
               </div>
 
+              {/* Section Système Partner */}
+              <div className="form-section">
+                <h4>🤝 Système Partner</h4>
+                
+                <div className="form-row">
+                  <div className="form-group checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="isPartner"
+                        checked={formModifier.isPartner}
+                        onChange={handleChangeModifier}
+                      />
+                      Étudiant Partenaire
+                    </label>
+                    <small style={{color: '#666', fontSize: '12px'}}>
+                      Cocher si cet étudiant fait partie du programme partenaire
+                    </small>
+                  </div>
+                </div>
+
+                {formModifier.isPartner && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nom du Partenaire *</label>
+                      <input
+                        type="text"
+                        name="nomPartner"
+                        placeholder="Nom du partenaire"
+                        value={formModifier.nomPartner}
+                        onChange={handleChangeModifier}
+                        required={formModifier.isPartner}
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Nom de l'organisation partenaire
+                      </small>
+                    </div>
+                    <div className="form-group">
+                      <label>Prix Total Partner *</label>
+                      <input
+                        type="number"
+                        name="prixTotalPartner"
+                        placeholder="Prix total pour partner"
+                        value={formModifier.prixTotalPartner}
+                        onChange={handleChangeModifier}
+                        required={formModifier.isPartner}
+                        min="1000"
+                        max="99999"
+                        step="1"
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Prix spécial pour les étudiants partenaires (séparé du prix normal)
+                      </small>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Section Inscription et Paiement */}
               <div className="form-section">
                 <h4><CreditCard size={20} className="inline mr-2" />Inscription et Paiement</h4>
@@ -3439,19 +4235,43 @@ const exportToExcel = async () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Prix Total</label>
-                    <input
-                      type="number"
-                      name="prixTotal"
-                      placeholder="Prix total"
-                      value={formModifier.prixTotal}
+                    <label>Mode de Paiement *</label>
+                    <select
+                      name="modePaiement"
+                      value={formModifier.modePaiement}
                       onChange={handleChangeModifier}
                       required
-                      min="10000"
-                      max="99999"
-                      step="1"
-                    />
+                    >
+                      <option value="semestriel">Semestriel (2 tranches)</option>
+                      <option value="trimestriel">Trimestriel (3 tranches)</option>
+                      <option value="mensuel">Mensuel (10 tranches)</option>
+                      <option value="annuel">Annuel (paiement complet)</option>
+                    </select>
+                    <small style={{color: '#666', fontSize: '12px'}}>
+                      Semestriel par défaut. Annuel = paiement immédiat complet.
+                    </small>
                   </div>
+                  {!formModifier.isPartner && (
+                    <div className="form-group">
+                      <label>Prix Total</label>
+                      <input
+                        type="number"
+                        name="prixTotal"
+                        placeholder="Prix total (optionnel)"
+                        value={formModifier.prixTotal}
+                        onChange={handleChangeModifier}
+                        min="0"
+                        max="99999"
+                        step="1"
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Champ optionnel - peut être rempli plus tard
+                      </small>
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Pourcentage Bourse (%)</label>
                     <input
@@ -3464,9 +4284,6 @@ const exportToExcel = async () => {
                       max="100"
                     />
                   </div>
-                </div>
-
-                <div className="form-row">
                   <div className="form-group">
                     <label>Type de Paiement</label>
                     <input
@@ -3477,6 +4294,9 @@ const exportToExcel = async () => {
                       onChange={handleChangeModifier}
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Situation</label>
                     <input
@@ -3515,80 +4335,261 @@ const exportToExcel = async () => {
                   />
                 </div>
 
-                {/* Section Documents */}
+                {/* Section Documents avec commentaires */}
                 <div className="documents-section">
-                  <h5>Documents</h5>
+                  <h5>Documents avec Commentaires</h5>
+                  
+                  {/* CIN */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Fichier d'Inscription</label>
+                      <label>Document CIN</label>
                       <input
                         type="file"
-                        name="fichierInscrit"
+                        name="documentCin"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        onChange={handleDocumentChangeModifier}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Original Bac</label>
+                      <label>Commentaire CIN</label>
                       <input
-                        type="file"
-                        name="originalBac"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        type="text"
+                        name="commentaireCin"
+                        placeholder="Commentaire pour le CIN"
+                        value={commentairesModifier.commentaireCin}
+                        onChange={handleCommentaireChangeModifier}
                       />
                     </div>
                   </div>
 
+                  {/* Bac avec commentaire */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Relevé de Notes</label>
+                      <label>Document Bac</label>
                       <input
                         type="file"
-                        name="releveNotes"
+                        name="documentBacCommentaire"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        onChange={handleDocumentChangeModifier}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Copie CNI</label>
+                      <label>Commentaire Bac</label>
                       <input
-                        type="file"
-                        name="copieCni"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        type="text"
+                        name="commentaireBacCommentaire"
+                        placeholder="Commentaire pour le Bac"
+                        value={commentairesModifier.commentaireBacCommentaire}
+                        onChange={handleCommentaireChangeModifier}
                       />
                     </div>
                   </div>
 
+                  {/* Relevé de Notes Bac */}
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Passeport</label>
+                      <label>Relevé de Notes Bac</label>
                       <input
                         type="file"
-                        name="passport"
+                        name="documentReleveNoteBac"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        onChange={handleDocumentChangeModifier}
                       />
                     </div>
                     <div className="form-group">
-                      <label>DTS Bac+2</label>
+                      <label>Commentaire Relevé Notes Bac</label>
                       <input
-                        type="file"
-                        name="dtsBac2"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        type="text"
+                        name="commentaireReleveNoteBac"
+                        placeholder="Commentaire pour le relevé de notes bac"
+                        value={commentairesModifier.commentaireReleveNoteBac}
+                        onChange={handleCommentaireChangeModifier}
                       />
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Licence</label>
-                    <input
-                      type="file"
-                      name="licence"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      onChange={handleFileChangeModifier}
-                    />
+                  {/* Bac ou Attestation Bac avec commentaire */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Bac ou Attestation Bac</label>
+                      <input
+                        type="file"
+                        name="documentBacOuAttestationBacCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Bac/Attestation</label>
+                      <input
+                        type="text"
+                        name="commentaireBacOuAttestationBacCommentaire"
+                        placeholder="Commentaire pour le bac ou attestation"
+                        value={commentairesModifier.commentaireBacOuAttestationBacCommentaire}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentification Bac */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Authentification Bac</label>
+                      <input
+                        type="file"
+                        name="documentAuthentificationBac"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentification Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthentificationBac"
+                        placeholder="Commentaire pour l'authentification bac"
+                        value={commentairesModifier.commentaireAuthentificationBac}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Diplôme avec commentaire */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Document Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentDiplomeCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireDiplomeCommentaire"
+                        placeholder="Commentaire pour le diplôme"
+                        value={commentairesModifier.commentaireDiplomeCommentaire}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentication Diplôme */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Authentication Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentAuthenticationDiplome"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentication Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthenticationDiplome"
+                        placeholder="Commentaire pour l'authentication diplôme"
+                        value={commentairesModifier.commentaireAuthenticationDiplome}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Attestation de Réussite avec commentaire */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Attestation de Réussite</label>
+                      <input
+                        type="file"
+                        name="documentAttestationReussiteCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Attestation de Réussite</label>
+                      <input
+                        type="text"
+                        name="commentaireAttestationReussiteCommentaire"
+                        placeholder="Commentaire pour l'attestation de réussite"
+                        value={commentairesModifier.commentaireAttestationReussiteCommentaire}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Relevé de Notes Formation avec commentaire */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Relevé de Notes Formation</label>
+                      <input
+                        type="file"
+                        name="documentReleveNotesFormationCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Relevé Notes Formation</label>
+                      <input
+                        type="text"
+                        name="commentaireReleveNotesFormationCommentaire"
+                        placeholder="Commentaire pour le relevé de notes formation"
+                        value={commentairesModifier.commentaireReleveNotesFormationCommentaire}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Passeport */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Document Passeport</label>
+                      <input
+                        type="file"
+                        name="documentPasseport"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Passeport</label>
+                      <input
+                        type="text"
+                        name="commentairePasseport"
+                        placeholder="Commentaire pour le passeport"
+                        value={commentairesModifier.commentairePasseport}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Engagement avec commentaire */}
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Document Engagement</label>
+                      <input
+                        type="file"
+                        name="documentEngagementCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleDocumentChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Engagement</label>
+                      <input
+                        type="text"
+                        name="commentaireEngagementCommentaire"
+                        placeholder="Commentaire pour l'engagement"
+                        value={commentairesModifier.commentaireEngagementCommentaire}
+                        onChange={handleCommentaireChangeModifier}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3706,7 +4707,39 @@ const exportToExcel = async () => {
               <h3>Détails de l'étudiant</h3>
               <button className="btn-fermer-modal" onClick={closeViewModal}>×</button>
             </div>
-            
+            {/* Section Validation Pédagogique */}
+<div className="view-section">
+  <h4><Shield size={20} className="section-icon" />Validation Pédagogique</h4>
+  <div className="info-grid">
+    <div className="info-row">
+      <span className="info-label">Statut:</span>
+      <span className="info-value">
+        <span className={`validation-badge-view ${
+          etudiantSelectionne.validationPedagogique?.statut === 'Validé' ? 'valide' :
+          etudiantSelectionne.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+          etudiantSelectionne.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+        }`}>
+          {etudiantSelectionne.validationPedagogique?.statut || 'En attente'}
+        </span>
+      </span>
+    </div>
+    {etudiantSelectionne.validationPedagogique?.commentaire && (
+      <div className="info-row">
+        <span className="info-label">Commentaire pédagogique:</span>
+        <span className="info-value">{etudiantSelectionne.validationPedagogique.commentaire}</span>
+      </div>
+    )}
+    {etudiantSelectionne.validationPedagogique?.dateValidation && (
+      <div className="info-row">
+        <span className="info-label">Date de validation:</span>
+        <span className="info-value">
+          <Calendar size={16} className="info-icon" />
+          {formatDate(etudiantSelectionne.validationPedagogique.dateValidation)}
+        </span>
+      </div>
+    )}
+  </div>
+</div>
             <div className="view-content">
               {/* Section Informations personnelles */}
               <div className="view-section">
@@ -3715,8 +4748,8 @@ const exportToExcel = async () => {
                   <div className="student-photo">
                     {etudiantSelectionne.image ? (
                       <img 
-                        src={`http://localhost:5000${etudiantSelectionne.image}`} 
-                        alt="Photo étudiant" 
+                        src={`http://195.179.229.230:5000${etudiantSelectionne.image}`} 
+                        alt={getNomComplet(etudiantSelectionne)} 
                         className="view-photo"
                       />
                     ) : (
@@ -3776,6 +4809,14 @@ const exportToExcel = async () => {
                       </span>
                     </div>
                   )}
+                  {etudiantSelectionne.codeMassar && (
+                    <div className="info-row">
+                      <span className="info-label">Code Massar:</span>
+                      <span>
+                        <IdCard size={16} className="inline mr-1" /> {etudiantSelectionne.codeMassar}
+                      </span>
+                    </div>
+                  )}
                   {etudiantSelectionne.passeport && (
                     <div className="info-row">
                       <span className="info-label">Passeport:</span>
@@ -3795,6 +4836,21 @@ const exportToExcel = async () => {
                     <div className="info-row">
                       <span className="info-label">Pays:</span>
                       <span className="info-value">{etudiantSelectionne.pays}</span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.telephoneResponsable && (
+                    <div className="info-row">
+                      <span className="info-label">Téléphone du Responsable:</span>
+                      <span className="info-value">
+                        <Phone size={16} className="info-icon" />
+                        {etudiantSelectionne.telephoneResponsable}
+                      </span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.codeBaccalaureat && (
+                    <div className="info-row">
+                      <span className="info-label">Code du Baccalauréat:</span>
+                      <span className="info-value">{etudiantSelectionne.codeBaccalaureat}</span>
                     </div>
                   )}
                 </div>
@@ -3907,7 +4963,7 @@ const exportToExcel = async () => {
                 </div>
               </div>
 
-            {/* Section Diplôme et Parcours */}
+              {/* Section Diplôme et Parcours */}
               <div className="view-section">
                 <h4><Award size={20} className="section-icon" />Diplôme et Parcours antérieur</h4>
                 <div className="info-grid">
@@ -3970,10 +5026,39 @@ const exportToExcel = async () => {
                       {getNomCommercial(etudiantSelectionne.commercial)}
                     </span>
                   </div>
+                  <div className="info-row">
+                    <span className="info-label">Type d'étudiant:</span>
+                    <span className="info-value">
+                      <span className={`type-badge ${etudiantSelectionne.isPartner ? 'partner' : 'normal'}`}>
+                        {etudiantSelectionne.isPartner ? '🤝 Partner' : '👤 Normal'}
+                      </span>
+                    </span>
+                  </div>
+                  {etudiantSelectionne.isPartner && etudiantSelectionne.nomPartner && (
+                    <div className="info-row">
+                      <span className="info-label">Nom du Partenaire:</span>
+                      <span className="info-value">{etudiantSelectionne.nomPartner}</span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.isPartner && etudiantSelectionne.prixTotalPartner && (
+                    <div className="info-row">
+                      <span className="info-label">Prix Partner:</span>
+                      <span className="info-value">{etudiantSelectionne.prixTotalPartner} DH</span>
+                    </div>
+                  )}
                   {etudiantSelectionne.sourceInscription && (
                     <div className="info-row">
                       <span className="info-label">Source d'inscription:</span>
                       <span className="info-value">{etudiantSelectionne.sourceInscription}</span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.modePaiement && (
+                    <div className="info-row">
+                      <span className="info-label">Mode de paiement:</span>
+                      <span className="info-value">
+                        <CreditCard size={16} className="info-icon" />
+                        {etudiantSelectionne.modePaiement}
+                      </span>
                     </div>
                   )}
                   {etudiantSelectionne.prixTotal && (
@@ -4004,77 +5089,70 @@ const exportToExcel = async () => {
               </div>
 
               {/* Section Documents */}
-              {(etudiantSelectionne.fichierInscrit || etudiantSelectionne.originalBac || 
-                etudiantSelectionne.releveNotes || etudiantSelectionne.copieCni || 
-                etudiantSelectionne.passport || etudiantSelectionne.dtsBac2 || 
-                etudiantSelectionne.licence) && (
+              {etudiantSelectionne.documents && Object.keys(etudiantSelectionne.documents).length > 0 && (
                 <div className="view-section">
-                  <h4><FileText size={20} className="section-icon" />Documents</h4>
-                  <div className="documents-grid">
-                    {etudiantSelectionne.fichierInscrit && (
-                      <div className="document-item">
-                        <FileText size={16} className="info-icon" />
-                        <span>Fichier d'inscription</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.fichierInscrit}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
-                          Voir
-                        </a>
-                      </div>
-                    )}
-                    {etudiantSelectionne.originalBac && (
-                      <div className="document-item">
-                        <FileText size={16} className="info-icon" />
-                        <span>Original Bac</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.originalBac}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
-                          Voir
-                        </a>
-                      </div>
-                    )}
-                    {etudiantSelectionne.releveNotes && (
-                      <div className="document-item">
-                        <FileText size={16} className="info-icon" />
-                        <span>Relevé de notes</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.releveNotes}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
-                          Voir
-                        </a>
-                      </div>
-                    )}
-                    {etudiantSelectionne.copieCni && (
-                      <div className="document-item">
-                        <IdCard size={16} className="info-icon" />
-                        <span>Copie CNI</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.copieCni}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
-                          Voir
-                        </a>
-                      </div>
-                    )}
-                    {etudiantSelectionne.passport && (
-                      <div className="document-item">
-                        <FileText size={16} className="info-icon" />
-                        <span>Passeport</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.passport}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
-                          Voir
-                        </a>
-                      </div>
-                    )}
-                    {etudiantSelectionne.dtsBac2 && (
-                      <div className="document-item">
-                        <FileText size={16} className="info-icon" />
-                        <span>DTS Bac+2</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.dtsBac2}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
-                          Voir
-                        </a>
-                      </div>
-                    )}
-                    {etudiantSelectionne.licence && (
-                      <div className="document-item">
-                        <GraduationCap size={16} className="info-icon" />
-                        <span>Licence</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.licence}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
-                          Voir
-                        </a>
-                      </div>
-                    )}
+                  <h4><FileText size={20} className="section-icon" />Documents et Pièces Justificatives</h4>
+                  <div className="documents-professional-grid">
+                    {Object.entries(etudiantSelectionne.documents).map(([key, doc]) => {
+                      if (doc && doc.fichier) {
+                        // Convertir le nom du champ en libellé lisible
+                        const getDocumentLabel = (key) => {
+                          const labels = {
+                            'cin': 'CIN',
+                            'bacCommentaire': 'Baccalauréat',
+                            'releveNoteBac': 'Relevé de Notes Bac',
+                            'diplomeCommentaire': 'Diplôme',
+                            'attestationReussiteCommentaire': 'Attestation de Réussite',
+                            'releveNotesFormationCommentaire': 'Relevé de Notes Formation',
+                            'passeport': 'Passeport',
+                            'bacOuAttestationBacCommentaire': 'Bac ou Attestation Bac',
+                            'authentificationBac': 'Authentification Bac',
+                            'authenticationDiplome': 'Authentication Diplôme',
+                            'engagementCommentaire': 'Engagement'
+                          };
+                          return labels[key] || key.replace(/([A-Z])/g, ' $1').trim();
+                        };
+
+                        return (
+                          <div key={key} className="document-item">
+                            <div className="document-info">
+                              <FileText size={16} className="info-icon" />
+                              <div className="document-details">
+                                <span className="document-name">{getDocumentLabel(key)}</span>
+                                {doc.commentaire && (
+                                  <small className="document-comment">� {doc.commentaire}</small>
+                                )}
+                                {doc.dateUpload && (
+                                  <small className="document-date">
+                                    Ajouté le {formatDate(doc.dateUpload)}
+                                  </small>
+                                )}
+                              </div>
+                            </div>
+                            <a 
+                              href={`http://195.179.229.230:5000${doc.fichier}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="btn-voir-document"
+                            >
+                              Voir
+                            </a>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
                   </div>
+                  
+                  {Object.keys(etudiantSelectionne.documents).filter(key => 
+                    etudiantSelectionne.documents[key] && etudiantSelectionne.documents[key].fichier
+                  ).length === 0 && (
+                    <div className="no-documents-message">
+                      <FileText size={48} className="no-docs-icon" />
+                      <h4>Aucun document disponible</h4>
+                      <p>Aucune pièce justificative n'a été téléchargée pour cet étudiant.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -4171,71 +5249,68 @@ const exportToExcel = async () => {
                 Fermer
               </button>
             </div>
-
           </div>
         </div>
       )}
 
-
-
-
+      {/* Modal d'export Excel */}
       {showExportModal && (
-  <div className="modal-overlay" onClick={() => setShowExportModal(false)}>
-    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-        <h3>Exporter vers Excel</h3>
-        <button className="btn-fermer-modal" onClick={() => setShowExportModal(false)}>×</button>
-      </div>
-      
-      <div className="export-content">
-        <p>Sélectionnez l'année scolaire pour l'export des étudiants :</p>
-        
-        <div className="form-group">
-          <label>Année Scolaire *</label>
-          <select
-            value={exportAnneeScolaire}
-            onChange={(e) => setExportAnneeScolaire(e.target.value)}
-            className="select-filtre"
-            required
-          >
-            <option value="">Sélectionner une année...</option>
-            {annesScolairesUniques.map(annee => (
-              <option key={annee} value={annee}>{annee}</option>
-            ))}
-          </select>
-        </div>
+        <div className="modal-overlay" onClick={() => setShowExportModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Exporter vers Excel</h3>
+              <button className="btn-fermer-modal" onClick={() => setShowExportModal(false)}>×</button>
+            </div>
+            
+            <div className="export-content">
+              <p>Sélectionnez l'année scolaire pour l'export des étudiants :</p>
+              
+              <div className="form-group">
+                <label>Année Scolaire *</label>
+                <select
+                  value={exportAnneeScolaire}
+                  onChange={(e) => setExportAnneeScolaire(e.target.value)}
+                  className="select-filtre"
+                  required
+                >
+                  <option value="">Sélectionner une année...</option>
+                  {annesScolairesUniques.map(annee => (
+                    <option key={annee} value={annee}>{annee}</option>
+                  ))}
+                </select>
+              </div>
 
-        {exportAnneeScolaire && (
-          <div className="export-preview">
-            <p>
-              <strong>Aperçu :</strong> {etudiants.filter(e => e.anneeScolaire === exportAnneeScolaire).length} étudiant(s) 
-              trouvé(s) pour l'année {exportAnneeScolaire}
-            </p>
+              {exportAnneeScolaire && (
+                <div className="export-preview">
+                  <p>
+                    <strong>Aperçu :</strong> {etudiants.filter(e => e.anneeScolaire === exportAnneeScolaire).length} étudiant(s) 
+                    trouvé(s) pour l'année {exportAnneeScolaire}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                type="button" 
+                onClick={() => setShowExportModal(false)} 
+                className="btn-annuler"
+                disabled={loadingExport}
+              >
+                Annuler
+              </button>
+              <button 
+                type="button" 
+                onClick={exportToExcel} 
+                className="btn-export"
+                disabled={loadingExport || !exportAnneeScolaire}
+              >
+                {loadingExport ? '📥 Export en cours...' : '📊 Exporter'}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-
-      <div className="modal-actions">
-        <button 
-          type="button" 
-          onClick={() => setShowExportModal(false)} 
-          className="btn-annuler"
-          disabled={loadingExport}
-        >
-          Annuler
-        </button>
-        <button 
-          type="button" 
-          onClick={exportToExcel} 
-          className="btn-export"
-          disabled={loadingExport || !exportAnneeScolaire}
-        >
-          {loadingExport ? '📥 Export en cours...' : '📊 Exporter'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        </div>
+      )}
     </div>
   );
 };

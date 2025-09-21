@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   BookOpen, 
   Calendar, 
@@ -12,7 +12,8 @@ import {
   Sun,
   Moon,
   UserCheck,
-  UserX
+  UserX,
+  AlertTriangle
 } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,8 @@ const AjouterPresence = () => {
   const [periode, setPeriode] = useState('matin');
   const [presences, setPresences] = useState([]);
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [seanceId, setSeanceId] = useState(''); // Ajouter ce state
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,24 +39,102 @@ const AjouterPresence = () => {
         const token = localStorage.getItem('token');
         const role = localStorage.getItem('role');
 
-        // 🔒 التحقق من الصلاحيات
         if (!token || role !== 'prof') {
           navigate('/');
           return;
         }
 
-        const res = await axios.get('http://localhost:5000/api/professeur/mes-cours', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        try {
+                    // ✅ Récupérer d'abord la liste des cours
+          const resCours = await axios.get('http://195.179.229.230:5000/api/professeur/mes-cours', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setCours(resCours.data);
 
-        setCours(res.data);
+          // ✅ Essayer de chercher la séance actuelle
+          const res = await axios.get('http://195.179.229.230:5000/api/seances/actuelle', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          const seanceActuelle = res.data;
+          console.log('🔍 Séance actuelle trouvée:', seanceActuelle);
+          
+          // ✅ DÉBOGAGE DÉTAILLÉ
+          console.log('=== DONNÉES SÉANCE ACTUELLE ===');
+          console.log('seanceActuelle.cours:', seanceActuelle.cours);
+          console.log('seanceActuelle.matiere:', seanceActuelle.matiere);
+          console.log('seanceActuelle.type:', seanceActuelle.type);
+          console.log('===============================');
+          
+          // Auto-remplir tous les champs
+          setSelectedCours(seanceActuelle.cours); // Maintenant c'est le nom, pas l'ID
+          setDateSession(seanceActuelle.dateSeance.split('T')[0]);
+          setHeureDebut(seanceActuelle.heureDebut);
+          setHeureFin(seanceActuelle.heureFin);
+          setSeanceId(seanceActuelle._id);
+          
+          setSeanceId(seanceActuelle._id);
+          
+          // ✅ DÉBOGAGE: Afficher la matière reçue
+          console.log('=== MATIÈRE REÇUE ===');
+          console.log('seanceActuelle.matiere:', seanceActuelle.matiere);
+          console.log('seanceActuelle.type:', seanceActuelle.type);
+          console.log('==================');
+          
+          // ✅ CORRECTION : Récupérer les étudiants avec toutes les infos nécessaires
+          const resEtudiants = await axios.get(`http://195.179.229.230:5000/api/seances/${seanceActuelle._id}/etudiants`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          // ✅ CORRECTION: Utiliser directement la matière de la séance
+          const matiereSeance = seanceActuelle.matiere; // Pas de fallback vers "Séance manuelle"
+          
+          console.log('=== INITIALISATION PRÉSENCES ===');
+          console.log('Matière utilisée:', matiereSeance);
+          console.log('Professeur:', seanceActuelle.nomProfesseur);
+          console.log('================================');
+          
+          const initialPresences = resEtudiants.data.map(et => ({
+            etudiant: et._id,
+            nom: et.nomComplet,
+            statut: 'present',
+            retardMinutes: '',
+            remarque: '',
+            seanceId: seanceActuelle._id,
+            matiere: matiereSeance, // ✅ Utiliser directement la matière reçue
+            nomProfesseur: seanceActuelle.nomProfesseur
+          }));
+          
+          setPresences(initialPresences);
+          
+          console.log('✅ Présences initialisées avec matière:', matiereSeance);
+          console.log('Nombre d\'étudiants:', initialPresences.length);
+
+        } catch (error) {
+          if (error.response?.status === 404) {
+            // ✅ NOUVEAU: Gérer les différents types de 404
+            const errorMessage = error.response?.data?.message || error.response?.data?.error;
+            
+            if (errorMessage?.includes('Toutes les séances du jour sont terminées')) {
+              setMessage('all_sessions_completed');
+            } else {
+              setMessage('no_session_today');
+            }
+            
+            console.log('📝 Aucune séance disponible:', errorMessage);
+          } else {
+            console.error('Erreur:', error);
+            setMessage('error');
+          }
+        }
       } catch (error) {
-        console.error('❌ Erreur lors du chargement des cours:', error);
+        console.error('Erreur globale:', error);
+        setMessage('error');
       }
     };
 
     fetchCours();
-  }, []);
+  }, [navigate]);
 
   // Move the CSS class addition useEffect inside the component
   useEffect(() => {
@@ -85,9 +166,20 @@ const AjouterPresence = () => {
         background-color: #f8fafc !important;
       }
       
-      .remarque-input:focus {
+      .remarque-input:focus, .retard-input:focus {
         border-color: #3b82f6 !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+      }
+      
+      /* Animation de rotation pour l'icône de chargement */
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Style pour bouton désactivé */
+      button:disabled {
+        pointer-events: none;
       }
       
       /* Responsive Design */
@@ -138,7 +230,7 @@ const AjouterPresence = () => {
           padding: 12px 8px !important;
         }
         
-        .remarque-container {
+        .remarque-container, .retard-container {
           flex-direction: column !important;
           align-items: stretch !important;
           gap: 6px !important;
@@ -256,9 +348,9 @@ const AjouterPresence = () => {
   }, [heureDebut]);
 
   // 🆕 Fonction pour vérifier si tous les champs requis sont remplis
-  const areAllFieldsFilled = () => {
+  const areAllFieldsFilled = useCallback(() => {
     return selectedCours && dateSession && heureDebut && heureFin;
-  };
+  }, [selectedCours, dateSession, heureDebut, heureFin]);
 
   // 🆕 useEffect pour charger les étudiants uniquement quand tous les champs sont remplis
   useEffect(() => {
@@ -271,7 +363,7 @@ const AjouterPresence = () => {
       try {
         const token = localStorage.getItem('token');
         
-        const res = await axios.get('http://localhost:5000/api/professeur/etudiants', {
+        const res = await axios.get('http://195.179.229.230:5000/api/professeur/etudiants', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -281,7 +373,8 @@ const AjouterPresence = () => {
         const initialPresences = filtered.map(et => ({
           etudiant: et._id,
           nom: et.nomComplet,
-          present: true,
+          statut: 'present', // 🆕 'present', 'absent', 'retard'
+          retardMinutes: '', // 🆕 Temps de retard en minutes
           remarque: '',
         }));
         setPresences(initialPresences);
@@ -292,7 +385,7 @@ const AjouterPresence = () => {
     };
 
     loadStudents();
-  }, [selectedCours, dateSession, heureDebut, heureFin]); // 🆕 Déclencher quand un de ces champs change
+  }, [selectedCours, dateSession, heureDebut, heureFin, areAllFieldsFilled]); // 🆕 Déclencher quand un de ces champs change
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -308,53 +401,132 @@ const AjouterPresence = () => {
   const handlePresenceChange = (index, field, value) => {
     const updated = [...presences];
     updated[index][field] = value;
+    
+    // 🆕 Si le statut change de 'retard' à autre chose, effacer les minutes de retard
+    if (field === 'statut' && value !== 'retard') {
+      updated[index]['retardMinutes'] = '';
+    }
+    
     setPresences(updated);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem('token');
+// SOLUTION SIMPLE : Dans AjouterPresence.js, modifiez juste la fonction handleSubmit
 
-    // Validation des champs requis
-    if (!selectedCours || !dateSession || !heureDebut || !heureFin) {
-      setMessage('error');
-      return;
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (isSubmitting) {
+    return;
+  }
 
-    // Validation que l'heure de fin est après l'heure de début
-    if (heureFin <= heureDebut) {
-      setMessage('error');
-      return;
-    }
+  const token = localStorage.getItem('token');
 
-    // Création du format d'heure pour l'envoi
-    const heure = `${heureDebut}-${heureFin}`;
+  // Validations
+  if (!selectedCours || !dateSession || !heureDebut || !heureFin) {
+    setMessage('error');
+    return;
+  }
 
-    try {
-      for (const pres of presences) {
-        await axios.post('http://localhost:5000/api/presences', {
-          etudiant: pres.etudiant,
-          cours: selectedCours,
-          dateSession,
-          present: pres.present,
-          remarque: pres.remarque,
-          heure,        // 🆕 Ajout du champ heure
-          periode       // 🆕 Ajout du champ periode
-        }, {
-          headers: { Authorization: `Bearer ${token}` },
+  if (heureFin <= heureDebut) {
+    setMessage('error');
+    return;
+  }
+
+  const retardsInvalides = presences.some(p => 
+    p.statut === 'retard' && (!p.retardMinutes || p.retardMinutes <= 0)
+  );
+  
+  if (retardsInvalides) {
+    setMessage('retard_error');
+    return;
+  }
+
+  setIsSubmitting(true);
+  setMessage('loading');
+
+  const heure = `${heureDebut}-${heureFin}`;
+
+  try {
+    // Obtenir infos professeur
+    const resProfesseur = await axios.get('http://195.179.229.230:5000/api/professeur/profil', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const professeurInfo = resProfesseur.data;
+
+    // ✅ CORRECTION : Déterminer la vraie matière à envoyer
+    let matiereAEnvoyer = 'Matière non spécifiée';
+    
+    // Si on a un seanceId (séance automatique), récupérer sa matière
+    if (seanceId) {
+      try {
+        const resSeance = await axios.get(`http://195.179.229.230:5000/api/seances/${seanceId}`, {
+          headers: { Authorization: `Bearer ${token}` }
         });
+        if (resSeance.data && resSeance.data.matiere) {
+          matiereAEnvoyer = resSeance.data.matiere;
+          console.log('✅ Matière récupérée de la séance:', matiereAEnvoyer);
+        }
+      } catch (seanceError) {
+        console.warn('Erreur récupération matière séance:', seanceError);
+        // Fallback sur la matière du professeur
+        matiereAEnvoyer = professeurInfo.matiere || selectedCours;
       }
-      setMessage('success');
-      
-      // 🆕 Rafraîchir la page après 2 secondes pour éviter les doublons
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    } catch (err) {
-      console.error('Erreur:', err);
-      setMessage('error');
+    } else {
+      // Séance manuelle : utiliser la matière du professeur
+      matiereAEnvoyer = professeurInfo.matiere || selectedCours;
     }
-  };
+
+    console.log('=== ENVOI PRÉSENCES ===');
+    console.log('Matière qui sera envoyée:', matiereAEnvoyer);
+    console.log('seanceId:', seanceId);
+    console.log('======================');
+
+    // Enregistrer toutes les présences
+    const promises = presences.map(pres => 
+      axios.post('http://195.179.229.230:5000/api/presences', {
+        etudiant: pres.etudiant,
+        cours: selectedCours,
+        seanceId: seanceId || null,
+        dateSession,
+        present: pres.statut === 'present',
+        absent: pres.statut === 'absent',
+        retard: pres.statut === 'retard',
+        retardMinutes: pres.statut === 'retard' ? parseInt(pres.retardMinutes) : 0,
+        remarque: pres.remarque,
+        heure,
+        periode,
+        matiere: matiereAEnvoyer, // ✅ Utiliser la vraie matière déterminée
+        nomProfesseur: professeurInfo.nom || 'Non spécifié'
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
+
+    await Promise.all(promises);
+    setMessage('success');
+    
+    // SIMPLE : Recharger après 2 secondes
+    setTimeout(() => {
+      // Reset complet
+      setSelectedCours('');
+      setDateSession('');
+      setHeureDebut('');
+      setHeureFin('');
+      setPresences([]);
+      setSeanceId('');
+      setMessage('');
+      setIsSubmitting(false);
+      
+      // Déclencher le rechargement de la prochaine séance
+      window.location.reload();
+    }, 2000);
+    
+  } catch (err) {
+    console.error('Erreur:', err);
+    setMessage('error');
+    setIsSubmitting(false);
+  }
+};
 
   // Fonction pour convertir l'heure en format 12h avec AM/PM
   const formatTimeToAMPM = (time24) => {
@@ -377,6 +549,32 @@ const AjouterPresence = () => {
     if (!heureDebut) return <Clock style={styles.labelIcon} />;
     const hour = parseInt(heureDebut.split(':')[0]);
     return hour < 12 ? <Sun style={styles.labelIcon} /> : <Moon style={styles.labelIcon} />;
+  };
+
+  // 🆕 Fonction pour obtenir le style du statut
+  const getStatusStyle = (statut) => {
+    switch (statut) {
+      case 'present':
+        return {
+          backgroundColor: '#dcfce7',
+          color: '#166534',
+          borderColor: '#bbf7d0'
+        };
+      case 'absent':
+        return {
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          borderColor: '#fecaca'
+        };
+      case 'retard':
+        return {
+          backgroundColor: '#fef3c7',
+          color: '#d97706',
+          borderColor: '#fcd34d'
+        };
+      default:
+        return {};
+    }
   };
 
   return (
@@ -572,6 +770,7 @@ const AjouterPresence = () => {
                       <tr style={styles.tableHeader}>
                         <th style={styles.th}>Étudiant</th>
                         <th style={styles.th}>Statut</th>
+                        <th style={styles.th}>Temps de retard</th>
                         <th style={styles.th}>Remarque</th>
                       </tr>
                     </thead>
@@ -592,20 +791,42 @@ const AjouterPresence = () => {
                             <select 
                               style={{
                                 ...styles.statusSelect,
-                                backgroundColor: p.present ? '#dcfce7' : '#fee2e2',
-                                color: p.present ? '#166534' : '#991b1b',
-                                borderColor: p.present ? '#bbf7d0' : '#fecaca'
+                                ...getStatusStyle(p.statut)
                               }}
-                              value={p.present} 
-                              onChange={(e) => handlePresenceChange(i, 'present', e.target.value === 'true')}
+                              value={p.statut} 
+                              onChange={(e) => handlePresenceChange(i, 'statut', e.target.value)}
                             >
-                              <option value="true">
+                              <option value="present">
                                 ✓ Présent
                               </option>
-                              <option value="false">
+                              <option value="absent">
                                 ✗ Absent
                               </option>
+                              <option value="retard">
+                                ⏰ En retard
+                              </option>
                             </select>
+                          </td>
+                          <td style={styles.td}>
+                            {/* 🆕 Champ pour les minutes de retard - visible seulement si "retard" est sélectionné */}
+                            {p.statut === 'retard' ? (
+                              <div style={styles.retardContainer}>
+                                <AlertTriangle style={styles.retardIcon} />
+                                <input 
+                                  type="number" 
+                                  style={styles.retardInput}
+                                  value={p.retardMinutes} 
+                                  onChange={(e) => handlePresenceChange(i, 'retardMinutes', e.target.value)}
+                                  placeholder="Minutes..."
+                                  min="1"
+                                  max="120"
+                                  className="retard-input"
+                                />
+                                <span style={styles.retardLabel}>min</span>
+                              </div>
+                            ) : (
+                              <span style={styles.notApplicable}>—</span>
+                            )}
                           </td>
                           <td style={styles.td}>
                             <div style={styles.remarqueContainer}>
@@ -630,39 +851,151 @@ const AjouterPresence = () => {
                 <div style={styles.submitContainer}>
                   <button 
                     type="submit" 
-                    style={styles.submitButton}
+                    style={{
+                      ...styles.submitButton,
+                      opacity: isSubmitting ? 0.6 : 1,
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      background: isSubmitting 
+                        ? 'linear-gradient(135deg, #9ca3af, #6b7280)' 
+                        : 'linear-gradient(135deg, #3b82f6, #4f46e5)'
+                    }}
                     onClick={handleSubmit}
+                    disabled={isSubmitting}
                     className="submit-button"
                     onMouseEnter={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #1e40af, #3730a3)';
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)';
+                      if (!isSubmitting) {
+                        e.target.style.background = 'linear-gradient(135deg, #1e40af, #3730a3)';
+                        e.target.style.transform = 'translateY(-2px)';
+                        e.target.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.target.style.background = 'linear-gradient(135deg, #3b82f6, #4f46e5)';
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)';
+                      if (!isSubmitting) {
+                        e.target.style.background = 'linear-gradient(135deg, #3b82f6, #4f46e5)';
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)';
+                      }
                     }}
                   >
-                    <Save style={styles.buttonIcon} />
-                    Enregistrer la présence
+                    {isSubmitting ? (
+                      <>
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          border: '2px solid #ffffff',
+                          borderTop: '2px solid transparent',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }} />
+                        Enregistrement en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Save style={styles.buttonIcon} />
+                        Enregistrer la présence
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
             )}
 
             {/* Message de statut */}
-            {message && (
+            {message === 'all_sessions_completed' ? (
               <div style={{
                 ...styles.messageContainer,
-                backgroundColor: message === 'success' ? '#dcfce7' : '#fee2e2',
-                borderColor: message === 'success' ? '#16a34a' : '#dc2626',
-                color: message === 'success' ? '#166534' : '#991b1b'
+                backgroundColor: '#dcfce7',
+                borderColor: '#16a34a',
+                color: '#166534'
+              }}>
+                <CheckCircle style={styles.messageIcon} />
+                Félicitations ! Toutes vos séances du jour sont terminées. 
+                Revenez demain pour de nouvelles séances.
+              </div>
+            ) : message === 'no_session_today' ? (
+              <div style={{
+                ...styles.messageContainer,
+                backgroundColor: '#fef3c7',
+                borderColor: '#d97706',
+                color: '#92400e'
+              }}>
+                <Clock style={styles.messageIcon} />
+                Aucune séance programmée aujourd'hui. Vous pouvez saisir manuellement si nécessaire.
+              </div>
+            ) : message && (
+              <div style={{
+                ...styles.messageContainer,
+                backgroundColor: message === 'success' ? '#dcfce7' : 
+                                message === 'partial_success' ? '#fef3c7' :
+                                message === 'loading' ? '#eff6ff' : 
+                                message === 'retard_error' ? '#fef3c7' : 
+                                message === 'validation_error' ? '#fee2e2' :
+                                message === 'permission_error' ? '#fef2f2' :
+                                message === 'server_error' ? '#fee2e2' :
+                                message === 'network_error' ? '#f3f4f6' : '#fee2e2',
+                borderColor: message === 'success' ? '#16a34a' : 
+                           message === 'partial_success' ? '#d97706' :
+                           message === 'loading' ? '#3b82f6' : 
+                           message === 'retard_error' ? '#d97706' : 
+                           message === 'validation_error' ? '#dc2626' :
+                           message === 'permission_error' ? '#dc2626' :
+                           message === 'server_error' ? '#dc2626' :
+                           message === 'network_error' ? '#6b7280' : '#dc2626',
+                color: message === 'success' ? '#166534' : 
+                      message === 'partial_success' ? '#d97706' :
+                      message === 'loading' ? '#1e40af' : 
+                      message === 'retard_error' ? '#d97706' : 
+                      message === 'validation_error' ? '#991b1b' :
+                      message === 'permission_error' ? '#991b1b' :
+                      message === 'server_error' ? '#991b1b' :
+                      message === 'network_error' ? '#374151' : '#991b1b'
               }}>
                 {message === 'success' ? (
                   <>
                     <CheckCircle style={styles.messageIcon} />
-                    Présence enregistrée avec succès ! Redirection en cours...
+                    Toutes les présences enregistrées avec succès ! Redirection en cours...
+                  </>
+                ) : message === 'partial_success' ? (
+                  <>
+                    <AlertTriangle style={styles.messageIcon} />
+                    Présences enregistrées avec quelques erreurs. Vérifiez les détails dans la console.
+                  </>
+                ) : message === 'loading' ? (
+                  <>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      border: '2px solid #3b82f6',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    Enregistrement en cours, veuillez patienter...
+                  </>
+                ) : message === 'retard_error' ? (
+                  <>
+                    <AlertTriangle style={styles.messageIcon} />
+                    Erreur: Veuillez saisir le temps de retard pour tous les étudiants marqués "En retard".
+                  </>
+                ) : message === 'validation_error' ? (
+                  <>
+                    <XCircle style={styles.messageIcon} />
+                    Erreur de validation: Vérifiez que tous les champs requis sont remplis correctement.
+                  </>
+                ) : message === 'permission_error' ? (
+                  <>
+                    <XCircle style={styles.messageIcon} />
+                    Erreur: Vous n'avez pas l'autorisation d'enregistrer la présence pour ce cours.
+                  </>
+                ) : message === 'server_error' ? (
+                  <>
+                    <XCircle style={styles.messageIcon} />
+                    Erreur serveur: Problème lors de l'enregistrement. Veuillez réessayer.
+                  </>
+                ) : message === 'network_error' ? (
+                  <>
+                    <XCircle style={styles.messageIcon} />
+                    Erreur réseau: Vérifiez votre connexion internet et réessayez.
                   </>
                 ) : (
                   <>
@@ -670,6 +1003,38 @@ const AjouterPresence = () => {
                     Erreur: Veuillez vérifier tous les champs requis et que l'heure de fin soit après l'heure de début.
                   </>
                 )}
+              </div>
+            )}
+
+            {/* ✅ BONUS: Affichage spécial quand toutes les séances sont terminées */}
+            {message === 'all_sessions_completed' && (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px',
+                backgroundColor: '#f0fdf4',
+                borderRadius: '12px',
+                border: '2px solid #bbf7d0',
+                marginTop: '20px'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '15px' }}>✅</div>
+                <div style={{ fontSize: '24px', marginBottom: '10px', color: '#166534', fontWeight: '600' }}>
+                  Journée terminée !
+                </div>
+                <div style={{ fontSize: '16px', color: '#166534', marginBottom: '20px' }}>
+                  Toutes vos séances du jour ont été complétées avec succès.
+                </div>
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: '#059669',
+                  backgroundColor: '#ecfdf5',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #a7f3d0'
+                }}>
+                  💡 <strong>Astuce :</strong> Les nouvelles séances apparaîtront automatiquement demain.
+                  <br />
+                  Si vous devez ajouter une séance exceptionnelle, utilisez la saisie manuelle ci-dessous.
+                </div>
               </div>
             )}
           </div>
@@ -706,8 +1071,6 @@ const styles = {
     gap: '12px',
     padding: '24px 0'
   },
- 
- 
   title: {
     fontSize: '32px',
     fontWeight: '700',
@@ -874,7 +1237,6 @@ const styles = {
     width: '18px',
     height: '18px'
   },
-  // 🆕 Styles pour le message d'instruction
   instructionMessage: {
     background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
     border: '2px solid #93c5fd',
@@ -997,6 +1359,42 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     minWidth: '120px'
+  },
+  // 🆕 Styles pour la gestion des retards
+  retardContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    maxWidth: '150px'
+  },
+  retardIcon: {
+    width: '16px',
+    height: '16px',
+    color: '#d97706',
+    flexShrink: 0
+  },
+  retardInput: {
+    flex: 1,
+    padding: '8px 12px',
+    border: '2px solid #fcd34d',
+    borderRadius: '6px',
+    fontSize: '14px',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    backgroundColor: '#fefcbf',
+    color: '#d97706',
+    textAlign: 'center'
+  },
+  retardLabel: {
+    fontSize: '12px',
+    color: '#d97706',
+    fontWeight: '500'
+  },
+  notApplicable: {
+    color: '#9ca3af',
+    fontSize: '18px',
+    textAlign: 'center',
+    fontWeight: '500'
   },
   remarqueContainer: {
     display: 'flex',

@@ -26,7 +26,30 @@ import {
   CreditCard,
   FileText
 } from "lucide-react";
-
+const PAYS_LIST = [
+  'Afghanistan', 'Afrique du Sud', 'Albanie', 'Algérie', 'Allemagne', 'Andorre', 'Angola', 'Antigua-et-Barbuda',
+  'Arabie Saoudite', 'Argentine', 'Arménie', 'Australie', 'Autriche', 'Azerbaïdjan', 'Bahamas', 'Bahreïn',
+  'Bangladesh', 'Barbade', 'Belgique', 'Belize', 'Bénin', 'Bhoutan', 'Biélorussie', 'Birmanie', 'Bolivie',
+  'Bosnie-Herzégovine', 'Botswana', 'Brésil', 'Brunei', 'Bulgarie', 'Burkina Faso', 'Burundi', 'Cambodge',
+  'Cameroun', 'Canada', 'Cap-Vert', 'Chili', 'Chine', 'Chypre', 'Colombie', 'Comores', 'Congo', 'Corée du Sud',
+  'Costa Rica', 'Côte d’Ivoire', 'Croatie', 'Cuba', 'Danemark', 'Djibouti', 'Dominique', 'Égypte', 'El Salvador',
+  'Émirats arabes unis', 'Équateur', 'Érythrée', 'Espagne', 'Estonie', 'Eswatini', 'États-Unis', 'Éthiopie',
+  'Fidji', 'Finlande', 'France', 'Gabon', 'Gambie', 'Géorgie', 'Ghana', 'Grèce', 'Grenade', 'Guatemala',
+  'Guinée', 'Guinée équatoriale', 'Guinée-Bissau', 'Guyana', 'Haïti', 'Honduras', 'Hongrie', 'Îles Cook',
+  'Îles Marshall', 'Îles Salomon', 'Inde', 'Indonésie', 'Irak', 'Iran', 'Irlande', 'Islande', 'Israël', 'Italie',
+  'Jamaïque', 'Japon', 'Jordanie', 'Kazakhstan', 'Kenya', 'Kirghizistan', 'Kiribati', 'Koweït', 'Laos', 'Lesotho',
+  'Lettonie', 'Liban', 'Libéria', 'Libye', 'Liechtenstein', 'Lituanie', 'Luxembourg', 'Macédoine', 'Madagascar',
+  'Malaisie', 'Malawi', 'Maldives', 'Mali', 'Malte', 'Maroc', 'Maurice', 'Mauritanie', 'Mexique', 'Micronésie',
+  'Moldavie', 'Monaco', 'Mongolie', 'Monténégro', 'Mozambique', 'Namibie', 'Nauru', 'Népal', 'Nicaragua',
+  'Niger', 'Nigéria', 'Norvège', 'Nouvelle-Zélande', 'Oman', 'Ouganda', 'Ouzbékistan', 'Pakistan', 'Palaos',
+  'Palestine', 'Panama', 'Papouasie-Nouvelle-Guinée', 'Paraguay', 'Pays-Bas', 'Pérou', 'Philippines', 'Pologne',
+  'Portugal', 'Qatar', 'Roumanie', 'Royaume-Uni', 'Russie', 'Rwanda', 'Saint-Kitts-et-Nevis', 'Saint-Marin',
+  'Saint-Vincent-et-les-Grenadines', 'Sainte-Lucie', 'Samoa', 'Sao Tomé-et-Principe', 'Sénégal', 'Serbie',
+  'Seychelles', 'Sierra Leone', 'Singapour', 'Slovaquie', 'Slovénie', 'Somalie', 'Soudan', 'Soudan du Sud',
+  'Sri Lanka', 'Suède', 'Suisse', 'Suriname', 'Syrie', 'Tadjikistan', 'Tanzanie', 'Tchad', 'Thaïlande',
+  'Timor oriental', 'Togo', 'Tonga', 'Trinité-et-Tobago', 'Tunisie', 'Turkménistan', 'Turquie', 'Tuvalu',
+  'Ukraine', 'Uruguay', 'Vanuatu', 'Vatican', 'Venezuela', 'Viêt Nam', 'Yémen', 'Zambie', 'Zimbabwe'
+];
 // ====== Utils auto-cours ======
 const normalize = (s = "") =>
   s
@@ -268,7 +291,9 @@ const STRUCTURE_FORMATION = {
       'Développement Commercial et Marketing Digital',
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
-      'Informatique – Cnam'
+       'Informatique – Cnam',
+      'Achat & Logistique'
+      
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {
@@ -1106,7 +1131,27 @@ const Commercialetudiants = () => {
     specialiteLicencePro: '',
     optionLicencePro: '',
     specialiteMasterPro: '',
-    optionMasterPro: ''
+    optionMasterPro: '',
+    // NOUVEAUX CHAMPS
+    modePaiement: 'mensuel',
+    telephoneResponsable: '',
+    codeBaccalaureat: '',
+    // NOUVEAUX CHAMPS PARTNER  
+    isPartner: false,
+    nomPartner: '',
+    prixTotalPartner: '',
+    // COMMENTAIRES POUR LES DOCUMENTS
+    commentaireCin: '',
+    commentaireBacCommentaire: '',
+    commentaireReleveNoteBac: '',
+    commentaireDiplomeCommentaire: '',
+    commentaireAttestationReussiteCommentaire: '',
+    commentaireReleveNotesFormationCommentaire: '',
+    commentairePasseport: '',
+    commentaireBacOuAttestationBacCommentaire: '',
+    commentaireAuthentificationBac: '',
+    commentaireAuthenticationDiplome: '',
+    commentaireEngagementCommentaire: ''
   });
   
   const [vueMode, setVueMode] = useState('tableau');
@@ -1171,7 +1216,27 @@ const Commercialetudiants = () => {
     specialiteLicencePro: '',
     optionLicencePro: '',
     specialiteMasterPro: '',
-    optionMasterPro: ''
+    optionMasterPro: '',
+    // NOUVEAUX CHAMPS
+    modePaiement: 'mensuel',
+    telephoneResponsable: '',
+    codeBaccalaureat: '',
+    // NOUVEAUX CHAMPS PARTNER  
+    isPartner: false,
+    nomPartner: '',
+    prixTotalPartner: '',
+    // COMMENTAIRES POUR LES DOCUMENTS
+    commentaireCin: '',
+    commentaireBacCommentaire: '',
+    commentaireReleveNoteBac: '',
+    commentaireDiplomeCommentaire: '',
+    commentaireAttestationReussiteCommentaire: '',
+    commentaireReleveNotesFormationCommentaire: '',
+    commentairePasseport: '',
+    commentaireBacOuAttestationBacCommentaire: '',
+    commentaireAuthentificationBac: '',
+    commentaireAuthenticationDiplome: '',
+    commentaireEngagementCommentaire: ''
   });
   
   const [imageFileModifier, setImageFileModifier] = useState(null);
@@ -1186,7 +1251,19 @@ const Commercialetudiants = () => {
     copieCni: null,
     passport: null,
     dtsBac2: null,
-    licence: null
+    licence: null,
+    // NOUVEAUX DOCUMENTS
+    documentCin: null,
+    documentBacCommentaire: null,
+    documentReleveNoteBac: null,
+    documentDiplomeCommentaire: null,
+    documentAttestationReussiteCommentaire: null,
+    documentReleveNotesFormationCommentaire: null,
+    documentPasseport: null,
+    documentBacOuAttestationBacCommentaire: null,
+    documentAuthentificationBac: null,
+    documentAuthenticationDiplome: null,
+    documentEngagementCommentaire: null
   });
   const [filesModifier, setFilesModifier] = useState({
     fichierInscrit: null,
@@ -1195,7 +1272,19 @@ const Commercialetudiants = () => {
     copieCni: null,
     passport: null,
     dtsBac2: null,
-    licence: null
+    licence: null,
+    // NOUVEAUX DOCUMENTS
+    documentCin: null,
+    documentBacCommentaire: null,
+    documentReleveNoteBac: null,
+    documentDiplomeCommentaire: null,
+    documentAttestationReussiteCommentaire: null,
+    documentReleveNotesFormationCommentaire: null,
+    documentPasseport: null,
+    documentBacOuAttestationBacCommentaire: null,
+    documentAuthentificationBac: null,
+    documentAuthenticationDiplome: null,
+    documentEngagementCommentaire: null
   });
   
   // États pour la visibilité des mots de passe
@@ -1266,7 +1355,7 @@ const Commercialetudiants = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/commercial/etudiants', {
+      const res = await axios.get('http://195.179.229.230:5000/api/commercial/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);
@@ -1282,7 +1371,7 @@ const Commercialetudiants = () => {
       const token = localStorage.getItem('token');
       
       // Utiliser la route spécifique aux commerciaux
-      const res = await axios.get('http://localhost:5000/api/commercial/cours', {
+      const res = await axios.get('http://195.179.229.230:5000/api/commercial/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -1294,7 +1383,7 @@ const Commercialetudiants = () => {
       if (err.response?.status === 404) {
         try {
           const token = localStorage.getItem('token');
-          const res = await axios.get('http://localhost:5000/api/cours', {
+          const res = await axios.get('http://195.179.229.230:5000/api/cours', {
             headers: { Authorization: `Bearer ${token}` }
           });
           setListeCours(res.data);
@@ -1311,7 +1400,7 @@ const Commercialetudiants = () => {
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/commerciaux', {
+      const res = await axios.get('http://195.179.229.230:5000/api/commerciaux', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCommerciaux(res.data);
@@ -1431,7 +1520,27 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       specialiteLicencePro: '',
       optionLicencePro: '',
       specialiteMasterPro: '',
-      optionMasterPro: ''
+      optionMasterPro: '',
+      // NOUVEAUX CHAMPS
+      modePaiement: 'mensuel',
+      telephoneResponsable: '',
+      codeBaccalaureat: '',
+      // NOUVEAUX CHAMPS PARTNER  
+      isPartner: false,
+      nomPartner: '',
+      prixTotalPartner: '',
+      // COMMENTAIRES POUR LES DOCUMENTS
+      commentaireCin: '',
+      commentaireBacCommentaire: '',
+      commentaireReleveNoteBac: '',
+      commentaireDiplomeCommentaire: '',
+      commentaireAttestationReussiteCommentaire: '',
+      commentaireReleveNotesFormationCommentaire: '',
+      commentairePasseport: '',
+      commentaireBacOuAttestationBacCommentaire: '',
+      commentaireAuthentificationBac: '',
+      commentaireAuthenticationDiplome: '',
+      commentaireEngagementCommentaire: ''
     });
     setFilesAjout({
       fichierInscrit: null,
@@ -1440,7 +1549,19 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       copieCni: null,
       passport: null,
       dtsBac2: null,
-      licence: null
+      licence: null,
+      // NOUVEAUX DOCUMENTS
+      documentCin: null,
+      documentBacCommentaire: null,
+      documentReleveNoteBac: null,
+      documentDiplomeCommentaire: null,
+      documentAttestationReussiteCommentaire: null,
+      documentReleveNotesFormationCommentaire: null,
+      documentPasseport: null,
+      documentBacOuAttestationBacCommentaire: null,
+      documentAuthentificationBac: null,
+      documentAuthenticationDiplome: null,
+      documentEngagementCommentaire: null
     });
     setImageFile(null);
     setMessageAjout('');
@@ -1472,7 +1593,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       diplomeAcces: etudiant.diplomeAcces || '',
       specialiteDiplomeAcces: etudiant.specialiteDiplomeAcces || '',
       mention: etudiant.mention || '',
-      anneeScolaire: etudiant.anneeScolaire || genererAnneeScolaireActuelle(),
       lieuObtentionDiplome: etudiant.lieuObtentionDiplome || '',
       serieBaccalaureat: etudiant.serieBaccalaureat || '',
       anneeBaccalaureat: etudiant.anneeBaccalaureat || '',
@@ -1499,7 +1619,27 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       specialiteLicencePro: etudiant.specialiteLicencePro || '',
       optionLicencePro: etudiant.optionLicencePro || '',
       specialiteMasterPro: etudiant.specialiteMasterPro || '',
-      optionMasterPro: etudiant.optionMasterPro || ''
+      optionMasterPro: etudiant.optionMasterPro || '',
+      // NOUVEAUX CHAMPS
+      modePaiement: etudiant.modePaiement || 'mensuel',
+      telephoneResponsable: etudiant.telephoneResponsable || '',
+      codeBaccalaureat: etudiant.codeBaccalaureat || '',
+      // NOUVEAUX CHAMPS PARTNER
+      isPartner: etudiant.isPartner ?? false,
+      nomPartner: etudiant.nomPartner || '',
+      prixTotalPartner: etudiant.prixTotalPartner || '',
+      // COMMENTAIRES DOCUMENTS
+      commentaireCin: etudiant.documents?.cin?.commentaire || '',
+      commentaireBacCommentaire: etudiant.documents?.bacCommentaire?.commentaire || '',
+      commentaireReleveNoteBac: etudiant.documents?.releveNoteBac?.commentaire || '',
+      commentaireDiplomeCommentaire: etudiant.documents?.diplomeCommentaire?.commentaire || '',
+      commentaireAttestationReussiteCommentaire: etudiant.documents?.attestationReussiteCommentaire?.commentaire || '',
+      commentaireReleveNotesFormationCommentaire: etudiant.documents?.releveNotesFormationCommentaire?.commentaire || '',
+      commentairePasseport: etudiant.documents?.passeport?.commentaire || '',
+      commentaireBacOuAttestationBacCommentaire: etudiant.documents?.bacOuAttestationBacCommentaire?.commentaire || '',
+      commentaireAuthentificationBac: etudiant.documents?.authentificationBac?.commentaire || '',
+      commentaireAuthenticationDiplome: etudiant.documents?.authenticationDiplome?.commentaire || '',
+      commentaireEngagementCommentaire: etudiant.documents?.engagementCommentaire?.commentaire || ''
     });
     setImageFileModifier(null);
     setMessageModifier('');
@@ -1560,7 +1700,27 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       specialiteLicencePro: '',
       optionLicencePro: '',
       specialiteMasterPro: '',
-      optionMasterPro: ''
+      optionMasterPro: '',
+      // NOUVEAUX CHAMPS
+      modePaiement: 'mensuel',
+      telephoneResponsable: '',
+      codeBaccalaureat: '',
+      // NOUVEAUX CHAMPS PARTNER  
+      isPartner: false,
+      nomPartner: '',
+      prixTotalPartner: '',
+      // COMMENTAIRES POUR LES DOCUMENTS
+      commentaireCin: '',
+      commentaireBacCommentaire: '',
+      commentaireReleveNoteBac: '',
+      commentaireDiplomeCommentaire: '',
+      commentaireAttestationReussiteCommentaire: '',
+      commentaireReleveNotesFormationCommentaire: '',
+      commentairePasseport: '',
+      commentaireBacOuAttestationBacCommentaire: '',
+      commentaireAuthentificationBac: '',
+      commentaireAuthenticationDiplome: '',
+      commentaireEngagementCommentaire: ''
     });
     setFilesModifier({
       fichierInscrit: null,
@@ -1569,7 +1729,19 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       copieCni: null,
       passport: null,
       dtsBac2: null,
-      licence: null
+      licence: null,
+      // NOUVEAUX DOCUMENTS
+      documentCin: null,
+      documentBacCommentaire: null,
+      documentReleveNoteBac: null,
+      documentDiplomeCommentaire: null,
+      documentAttestationReussiteCommentaire: null,
+      documentReleveNotesFormationCommentaire: null,
+      documentPasseport: null,
+      documentBacOuAttestationBacCommentaire: null,
+      documentAuthentificationBac: null,
+      documentAuthenticationDiplome: null,
+      documentEngagementCommentaire: null
     });
     setImageFileModifier(null);
     setMessageModifier('');
@@ -1589,7 +1761,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       setLockCoursAjout(false);
       handleFormationChangeAjout(name, type === 'checkbox' ? checked : value);
     } else {
-      setFormAjout({ ...formAjout, [name]: type === 'checkbox' ? checked : value });
+      // Handle boolean fields
+      const booleanFields = ['isPartner', 'actif', 'paye', 'handicape', 'resident', 'fonctionnaire', 'mobilite', 'nouvelleInscription'];
+      const newValue = booleanFields.includes(name) ? (type === 'checkbox' ? checked : value === 'true') : value;
+      
+      setFormAjout({ ...formAjout, [name]: newValue });
+      
+      // Auto-set paye to true if modePaiement is 'annuel'
+      if (name === 'modePaiement' && value === 'annuel') {
+        setFormAjout(prev => ({ ...prev, [name]: value, paye: true }));
+      }
     }
   };
 
@@ -1605,7 +1786,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       setLockCoursModifier(false);
       handleFormationChangeModifier(name, type === 'checkbox' ? checked : value);
     } else {
-      setFormModifier({ ...formModifier, [name]: type === 'checkbox' ? checked : value });
+      // Handle boolean fields
+      const booleanFields = ['isPartner', 'actif', 'paye', 'handicape', 'resident', 'fonctionnaire', 'mobilite', 'nouvelleInscription'];
+      const newValue = booleanFields.includes(name) ? (type === 'checkbox' ? checked : value === 'true') : value;
+      
+      setFormModifier({ ...formModifier, [name]: newValue });
+      
+      // Auto-set paye to true if modePaiement is 'annuel'
+      if (name === 'modePaiement' && value === 'annuel') {
+        setFormModifier(prev => ({ ...prev, [name]: value, paye: true }));
+      }
     }
   };
 
@@ -1662,7 +1852,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
           formData.append(key, filesAjout[key]);
         }
       });
-      const response = await axios.post('http://localhost:5000/api/commercial/etudiants', formData, {
+      const response = await axios.post('http://195.179.229.230:5000/api/commercial/etudiants', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -1747,7 +1937,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
         }
       });
       
-      const response = await axios.put(`http://localhost:5000/api/commercial/etudiants/${etudiantAModifier._id}`, formData, {
+      const response = await axios.put(`http://195.179.229.230:5000/api/commercial/etudiants/${etudiantAModifier._id}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -1772,7 +1962,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
   const handleToggleActif = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.patch(`http://localhost:5000/api/commercial/etudiants/${id}/actif`, {}, {
+      const res = await axios.patch(`http://195.179.229.230:5000/api/commercial/etudiants/${id}/actif`, {}, {
 
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1787,7 +1977,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/commercial/etudiants/${id}`, {
+      await axios.delete(`http://195.179.229.230:5000/api/commercial/etudiants/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(etudiants.filter(e => e._id !== id));
@@ -1977,8 +2167,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                 <th>Date de Naissance</th>
                 <th>Téléphone</th>
                 <th>Email</th>
-                <th>CIN</th>
-                <th>Code Étudiant</th>
+                <th>Validation Pédagogique</th>
                 <th>Prix Total</th>
                 <th>Classe</th>
                 <th>Statut</th>
@@ -1989,7 +2178,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
             <tbody>
               {etudiantsActuels.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="aucun-resultat">
+                  <td colSpan="10" className="aucun-resultat">
                     Aucun étudiant trouvé
                   </td>
                 </tr>
@@ -2001,8 +2190,20 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     <td>{formatDate(e.dateNaissance)}</td>
                     <td>{e.telephone}</td>
                     <td>{e.email}</td>
-                    <td>{e.cin || 'N/A'}</td>
-                    <td>{e.codeEtudiant || 'N/A'}</td>
+                    <td className="validation-colonne">
+                      <span className={`validation-badge ${
+                        e.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                        e.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                        e.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                      }`}>
+                        {e.validationPedagogique?.statut || 'En attente'}
+                      </span>
+                      {e.validationPedagogique?.commentaire && (
+                        <div className="validation-commentaire">
+                          {e.validationPedagogique.commentaire.substring(0, 30)}...
+                        </div>
+                      )}
+                    </td>
                     <td className="prix-colonne">
                       {e.prixTotal ? `${e.prixTotal} DH` : 'N/A'}
                     </td>
@@ -2027,7 +2228,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     <td className="image-colonne">
                       {e.image ? (
                         <img 
-                          src={`http://localhost:5000${e.image}`} 
+                          src={`http://195.179.229.230:5000${e.image}`} 
                           alt="etudiant" 
                           className="image-etudiant"
                         />
@@ -2076,7 +2277,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     <div className="carte-image">
                       {e.image ? (
                         <img 
-                          src={`http://localhost:5000${e.image}`} 
+                          src={`http://195.179.229.230:5000${e.image}`} 
                           alt="etudiant" 
                           className="carte-photo"
                         />
@@ -2131,31 +2332,39 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                           </span>
                         </div>
                       )}
-                      {e.codeEtudiant && (
+                      {e.passport && (
                         <div className="carte-detail">
-                          <span className="carte-label">Code:</span>
-                          <span>{e.codeEtudiant}</span>
+                          <span className="carte-label">Passeport:</span>
+                          <span className="carte-value">{e.passport}</span>
                         </div>
                       )}
-                      <div className="carte-detail">
-                        <span className="carte-label">Commercial:</span>
-                        <span>
-                          <UserCheck size={16} className="inline mr-1" /> 
-                          {getNomCommercial(e.commercial)}
-                        </span>
-                      </div>
-                      <div className="carte-detail cours-detail">
-                        <span className="carte-label">Classe:</span>
-                        <div className="carte-cours">
-                          {e.cours && e.cours.length > 0 ? (
-                            e.cours.map((cours, index) => (
-                              <span key={index} className="cours-tag">{cours}</span>
-                            ))
-                          ) : (
-                            <span className="no-cours">Aucun classe</span>
-                          )}
+                      {e.lieuNaissance && (
+                        <div className="carte-detail">
+                          <span className="carte-label">Lieu de naissance:</span>
+                          <span className="carte-value">
+                            <MapPin size={16} className="inline mr-1" />
+                            {e.lieuNaissance}
+                          </span>
                         </div>
-                      </div>
+                      )}
+                      {e.pays && (
+                        <div className="carte-detail">
+                          <span className="carte-label">Pays:</span>
+                          <span className="carte-value">{e.pays}</span>
+                        </div>
+                      )}
+                      {e.validationPedagogique && (
+                        <div className="carte-detail">
+                          <span className="carte-label">Validation:</span>
+                          <span className={`validation-badge-card ${
+                            e.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                            e.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                            e.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                          }`}>
+                            {e.validationPedagogique?.statut || 'En attente'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -2298,6 +2507,19 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     />
                   </div>
                   <div className="form-group">
+                    <label>Téléphone Responsable</label>
+                    <input
+                      type="text"
+                      name="telephoneResponsable"
+                      placeholder="Téléphone du responsable"
+                      value={formAjout.telephoneResponsable}
+                      onChange={handleChangeAjout}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
                     <label>Email *</label>
                     <input
                       type="email"
@@ -2308,9 +2530,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       required
                     />
                   </div>
-                </div>
-
-                <div className="form-row">
                   <div className="form-group">
                     <label>CIN</label>
                     <input
@@ -2321,6 +2540,9 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       onChange={handleChangeAjout}
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Passeport</label>
                     <input
@@ -2346,13 +2568,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   </div>
                   <div className="form-group">
                     <label>Pays</label>
-                    <input
-                      type="text"
+                    <select
                       name="pays"
-                      placeholder="Pays"
                       value={formAjout.pays}
                       onChange={handleChangeAjout}
-                    />
+                    >
+                      <option value="">Sélectionner le pays...</option>
+                      {PAYS_LIST.map((pays) => (
+                        <option key={pays} value={pays}>{pays}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -2548,6 +2773,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
 
                 <div className="form-row">
                   <div className="form-group">
+                    <label>Code Baccalauréat</label>
+                    <input
+                      type="text"
+                      name="codeBaccalaureat"
+                      placeholder="Code baccalauréat"
+                      value={formAjout.codeBaccalaureat}
+                      onChange={handleChangeAjout}
+                    />
+                  </div>
+                  <div className="form-group">
                     <label>Première Année d'Inscription</label>
                     <input
                       type="number"
@@ -2580,6 +2815,55 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     onChange={handleChangeAjout}
                   />
                 </div>
+              </div>
+
+              {/* Section Étudiant Partenaire */}
+              <div className="form-section">
+                <h4><Shield size={20} className="inline mr-2" />Étudiant Partenaire</h4>
+                
+                <div className="form-group checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="isPartner"
+                      checked={formAjout.isPartner}
+                      onChange={handleChangeAjout}
+                    />
+                    Étudiant Partenaire
+                  </label>
+                </div>
+
+                {formAjout.isPartner && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nom du Partenaire *</label>
+                      <input
+                        type="text"
+                        name="nomPartner"
+                        placeholder="Nom du partenaire"
+                        value={formAjout.nomPartner}
+                        onChange={handleChangeAjout}
+                        required={formAjout.isPartner}
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Nom de l'organisation partenaire
+                      </small>
+                    </div>
+                    <div className="form-group">
+                      <label>Prix Total Partner *</label>
+                      <input
+                        type="number"
+                        name="prixTotalPartner"
+                        placeholder="Prix total pour étudiant partenaire"
+                        value={formAjout.prixTotalPartner}
+                        onChange={handleChangeAjout}
+                        required={formAjout.isPartner}
+                        min="1"
+                        step="1"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Section Inscription et Paiement */}
@@ -2619,20 +2903,22 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                 </div>
 
                 <div className="form-row">
-                  <div className="form-group">
-                    <label>Prix Total</label>
-                    <input
-                      type="number"
-                      name="prixTotal"
-                      placeholder="Prix total"
-                      value={formAjout.prixTotal}
-                      onChange={handleChangeAjout}
-                      required
-                      min="10000"
-                      max="99999"
-                      step="1"
-                    />
-                  </div>
+                  {!formAjout.isPartner && (
+                    <div className="form-group">
+                      <label>Prix Total</label>
+                      <input
+                        type="number"
+                        name="prixTotal"
+                        placeholder="Prix total"
+                        value={formAjout.prixTotal}
+                        onChange={handleChangeAjout}
+                        required={!formAjout.isPartner}
+                        min="10000"
+                        max="99999"
+                        step="1"
+                      />
+                    </div>
+                  )}
                   <div className="form-group">
                     <label>Pourcentage Bourse (%)</label>
                     <input
@@ -2646,18 +2932,42 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     />
                   </div>
                 </div>
+<div className="form-row">
+  <div className="form-group">
+    <label>Mode de Paiement</label>
+    <select
+      name="modePaiement"
+      value={formModifier.modePaiement}
+      onChange={handleChangeModifier}
+    >
+      <option value="semestriel">Semestriel</option>
+      <option value="trimestriel">Trimestriel</option>
+      <option value="mensuel">Mensuel</option>
+      <option value="annuel">Annuel</option>
+    </select>
+  </div>
+  <div className="form-group">
+    <label>Type de Paiement</label>
+    <input
+      type="text"
+      name="typePaiement"
+      placeholder="Type de paiement"
+      value={formModifier.typePaiement}
+      onChange={handleChangeModifier}
+    />
+  </div>
+</div>
+<div className="form-group">
+  <label>Image</label>
+  <input
+    type="file"
+    name="image"
+    accept="image/*"
+    onChange={handleImageChangeModifier}
+  />
+</div>
 
                 <div className="form-row">
-                  <div className="form-group">
-                    <label>Type de Paiement</label>
-                    <input
-                      type="text"
-                      name="typePaiement"
-                      placeholder="Type de paiement"
-                      value={formAjout.typePaiement}
-                      onChange={handleChangeAjout}
-                    />
-                  </div>
                   <div className="form-group">
                     <label>Situation</label>
                     <input
@@ -2698,78 +3008,259 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
 
                 {/* Section Documents */}
                 <div className="documents-section">
-                  <h5>Documents</h5>
-                  <div className="form-row">
+                  <h5>Documents avec Commentaires</h5>
+                  
+                  {/* CIN Document */}
+                  <div className="document-row">
                     <div className="form-group">
-                      <label>Fichier d'Inscription</label>
+                      <label>Document CIN</label>
                       <input
                         type="file"
-                        name="fichierInscrit"
+                        name="documentCin"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         onChange={handleFileChangeAjout}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Original Bac</label>
+                      <label>Commentaire CIN</label>
                       <input
-                        type="file"
-                        name="originalBac"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Relevé de Notes</label>
-                      <input
-                        type="file"
-                        name="releveNotes"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Copie CNI</label>
-                      <input
-                        type="file"
-                        name="copieCni"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        type="text"
+                        name="commentaireCin"
+                        placeholder="Commentaire pour le document CIN"
+                        value={formAjout.commentaireCin}
+                        onChange={handleChangeAjout}
                       />
                     </div>
                   </div>
 
-                  <div className="form-row">
+                  {/* Bac Document */}
+                  <div className="document-row">
                     <div className="form-group">
-                      <label>Passeport</label>
+                      <label>Document Bac</label>
                       <input
                         type="file"
-                        name="passport"
+                        name="documentBacCommentaire"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         onChange={handleFileChangeAjout}
                       />
                     </div>
                     <div className="form-group">
-                      <label>DTS Bac+2</label>
+                      <label>Commentaire Bac</label>
                       <input
-                        type="file"
-                        name="dtsBac2"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeAjout}
+                        type="text"
+                        name="commentaireBacCommentaire"
+                        placeholder="Commentaire pour le document Bac"
+                        value={formAjout.commentaireBacCommentaire}
+                        onChange={handleChangeAjout}
                       />
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Licence</label>
-                    <input
-                      type="file"
-                      name="licence"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      onChange={handleFileChangeAjout}
-                    />
+                  {/* Relevé Notes Bac */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Relevé Notes Bac</label>
+                      <input
+                        type="file"
+                        name="documentReleveNoteBac"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Relevé Notes Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireReleveNoteBac"
+                        placeholder="Commentaire pour le relevé notes Bac"
+                        value={formAjout.commentaireReleveNoteBac}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Passeport Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Document Passeport</label>
+                      <input
+                        type="file"
+                        name="documentPasseport"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Passeport</label>
+                      <input
+                        type="text"
+                        name="commentairePasseport"
+                        placeholder="Commentaire pour le passeport"
+                        value={formAjout.commentairePasseport}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Diplôme Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Document Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentDiplomeCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireDiplomeCommentaire"
+                        placeholder="Commentaire pour le diplôme"
+                        value={formAjout.commentaireDiplomeCommentaire}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Attestation Réussite Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Attestation Réussite</label>
+                      <input
+                        type="file"
+                        name="documentAttestationReussiteCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Attestation Réussite</label>
+                      <input
+                        type="text"
+                        name="commentaireAttestationReussiteCommentaire"
+                        placeholder="Commentaire pour l'attestation de réussite"
+                        value={formAjout.commentaireAttestationReussiteCommentaire}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Relevé Notes Formation Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Relevé Notes Formation</label>
+                      <input
+                        type="file"
+                        name="documentReleveNotesFormationCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Relevé Notes Formation</label>
+                      <input
+                        type="text"
+                        name="commentaireReleveNotesFormationCommentaire"
+                        placeholder="Commentaire pour le relevé notes formation"
+                        value={formAjout.commentaireReleveNotesFormationCommentaire}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bac ou Attestation Bac Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Bac ou Attestation Bac</label>
+                      <input
+                        type="file"
+                        name="documentBacOuAttestationBacCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Bac ou Attestation Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireBacOuAttestationBacCommentaire"
+                        placeholder="Commentaire pour bac ou attestation bac"
+                        value={formAjout.commentaireBacOuAttestationBacCommentaire}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentification Bac Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Authentification Bac</label>
+                      <input
+                        type="file"
+                        name="documentAuthentificationBac"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentification Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthentificationBac"
+                        placeholder="Commentaire pour l'authentification bac"
+                        value={formAjout.commentaireAuthentificationBac}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentication Diplôme Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Authentication Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentAuthenticationDiplome"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentication Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthenticationDiplome"
+                        placeholder="Commentaire pour l'authentication diplôme"
+                        value={formAjout.commentaireAuthenticationDiplome}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Engagement Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Engagement</label>
+                      <input
+                        type="file"
+                        name="documentEngagementCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeAjout}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Engagement</label>
+                      <input
+                        type="text"
+                        name="commentaireEngagementCommentaire"
+                        placeholder="Commentaire pour l'engagement"
+                        value={formAjout.commentaireEngagementCommentaire}
+                        onChange={handleChangeAjout}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -2950,6 +3441,19 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     />
                   </div>
                   <div className="form-group">
+                    <label>Téléphone Responsable</label>
+                    <input
+                      type="text"
+                      name="telephoneResponsable"
+                      placeholder="Téléphone du responsable"
+                      value={formModifier.telephoneResponsable}
+                      onChange={handleChangeModifier}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
                     <label>Email *</label>
                     <input
                       type="email"
@@ -2960,9 +3464,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       required
                     />
                   </div>
-                </div>
-
-                <div className="form-row">
                   <div className="form-group">
                     <label>CIN</label>
                     <input
@@ -2973,6 +3474,9 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       onChange={handleChangeModifier}
                     />
                   </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label>Passeport</label>
                     <input
@@ -2998,13 +3502,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   </div>
                   <div className="form-group">
                     <label>Pays</label>
-                    <input
-                      type="text"
+                    <select
                       name="pays"
-                      placeholder="Pays"
                       value={formModifier.pays}
                       onChange={handleChangeModifier}
-                    />
+                    >
+                      <option value="">Sélectionner le pays...</option>
+                      {PAYS_LIST.map((pays) => (
+                        <option key={pays} value={pays}>{pays}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -3206,6 +3713,16 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
 
                 <div className="form-row">
                   <div className="form-group">
+                    <label>Code Baccalauréat</label>
+                    <input
+                      type="text"
+                      name="codeBaccalaureat"
+                      placeholder="Code baccalauréat"
+                      value={formModifier.codeBaccalaureat}
+                      onChange={handleChangeModifier}
+                    />
+                  </div>
+                  <div className="form-group">
                     <label>Première Année d'Inscription</label>
                     <input
                       type="number"
@@ -3240,6 +3757,55 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                 </div>
               </div>
 
+              {/* Section Étudiant Partenaire */}
+              <div className="form-section">
+                <h4><Shield size={20} className="inline mr-2" />Étudiant Partenaire</h4>
+                
+                <div className="form-group checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="isPartner"
+                      checked={formModifier.isPartner}
+                      onChange={handleChangeModifier}
+                    />
+                    Étudiant Partenaire
+                  </label>
+                </div>
+
+                {formModifier.isPartner && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Nom du Partenaire *</label>
+                      <input
+                        type="text"
+                        name="nomPartner"
+                        placeholder="Nom du partenaire"
+                        value={formModifier.nomPartner}
+                        onChange={handleChangeModifier}
+                        required={formModifier.isPartner}
+                      />
+                      <small style={{color: '#666', fontSize: '12px'}}>
+                        Nom de l'organisation partenaire
+                      </small>
+                    </div>
+                    <div className="form-group">
+                      <label>Prix Total Partner *</label>
+                      <input
+                        type="number"
+                        name="prixTotalPartner"
+                        placeholder="Prix total pour étudiant partenaire"
+                        value={formModifier.prixTotalPartner}
+                        onChange={handleChangeModifier}
+                        required={formModifier.isPartner}
+                        min="1"
+                        step="1"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Section Inscription et Paiement */}
               <div className="form-section">
                 <h4><CreditCard size={20} className="inline mr-2" />Inscription et Paiement</h4>
@@ -3272,20 +3838,22 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                 </div>
 
                 <div className="form-row">
-                  <div className="form-group">
-                    <label>Prix Total</label>
-                    <input
-                      type="number"
-                      name="prixTotal"
-                      placeholder="Prix total"
-                      value={formModifier.prixTotal}
-                      onChange={handleChangeModifier}
-                      required
-                      min="10000"
-                      max="99999"
-                      step="1"
-                    />
-                  </div>
+                  {!formModifier.isPartner && (
+                    <div className="form-group">
+                      <label>Prix Total</label>
+                      <input
+                        type="number"
+                        name="prixTotal"
+                        placeholder="Prix total"
+                        value={formModifier.prixTotal}
+                        onChange={handleChangeModifier}
+                        required={!formModifier.isPartner}
+                        min="10000"
+                        max="99999"
+                        step="1"
+                      />
+                    </div>
+                  )}
                   <div className="form-group">
                     <label>Pourcentage Bourse (%)</label>
                     <input
@@ -3299,18 +3867,42 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     />
                   </div>
                 </div>
+<div className="form-row">
+  <div className="form-group">
+    <label>Mode de Paiement</label>
+    <select
+      name="modePaiement"
+      value={formModifier.modePaiement}
+      onChange={handleChangeModifier}
+    >
+      <option value="semestriel">Semestriel</option>
+      <option value="trimestriel">Trimestriel</option>
+      <option value="mensuel">Mensuel</option>
+      <option value="annuel">Annuel</option>
+    </select>
+  </div>
+  <div className="form-group">
+    <label>Type de Paiement</label>
+    <input
+      type="text"
+      name="typePaiement"
+      placeholder="Type de paiement"
+      value={formModifier.typePaiement}
+      onChange={handleChangeModifier}
+    />
+  </div>
+</div>
+<div className="form-group">
+  <label>Image</label>
+  <input
+    type="file"
+    name="image"
+    accept="image/*"
+    onChange={handleImageChangeModifier}
+  />
+</div>
 
                 <div className="form-row">
-                  <div className="form-group">
-                    <label>Type de Paiement</label>
-                    <input
-                      type="text"
-                      name="typePaiement"
-                      placeholder="Type de paiement"
-                      value={formModifier.typePaiement}
-                      onChange={handleChangeModifier}
-                    />
-                  </div>
                   <div className="form-group">
                     <label>Situation</label>
                     <input
@@ -3351,78 +3943,260 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
 
                 {/* Section Documents */}
                 <div className="documents-section">
-                  <h5>Documents</h5>
-                  <div className="form-row">
+                  <h5>Documents avec Commentaires</h5>
+                  
+                  {/* CIN Document */}
+                  <div className="document-row">
                     <div className="form-group">
-                      <label>Fichier d'Inscription</label>
+                      <label>Document CIN</label>
                       <input
                         type="file"
-                        name="fichierInscrit"
+
+                        name="documentCin"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         onChange={handleFileChangeModifier}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Original Bac</label>
+                      <label>Commentaire CIN</label>
                       <input
-                        type="file"
-                        name="originalBac"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        type="text"
+                        name="commentaireCin"
+                        placeholder="Commentaire pour le document CIN"
+                        value={formModifier.commentaireCin}
+                        onChange={handleChangeModifier}
                       />
                     </div>
                   </div>
 
-                  <div className="form-row">
+                  {/* Bac Document */}
+                  <div className="document-row">
                     <div className="form-group">
-                      <label>Relevé de Notes</label>
+                      <label>Document Bac</label>
                       <input
                         type="file"
-                        name="releveNotes"
+                        name="documentBacCommentaire"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         onChange={handleFileChangeModifier}
                       />
                     </div>
                     <div className="form-group">
-                      <label>Copie CNI</label>
+                      <label>Commentaire Bac</label>
                       <input
-                        type="file"
-                        name="copieCni"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Passeport</label>
-                      <input
-                        type="file"
-                        name="passport"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>DTS Bac+2</label>
-                      <input
-                        type="file"
-                        name="dtsBac2"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        onChange={handleFileChangeModifier}
+                        type="text"
+                        name="commentaireBacCommentaire"
+                        placeholder="Commentaire pour le document Bac"
+                        value={formModifier.commentaireBacCommentaire}
+                        onChange={handleChangeModifier}
                       />
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Licence</label>
-                    <input
-                      type="file"
-                      name="licence"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      onChange={handleFileChangeModifier}
-                    />
+                  {/* Relevé Notes Bac */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Relevé Notes Bac</label>
+                      <input
+                        type="file"
+                        name="documentReleveNoteBac"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Relevé Notes Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireReleveNoteBac"
+                        placeholder="Commentaire pour le relevé notes Bac"
+                        value={formModifier.commentaireReleveNoteBac}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Passeport Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Document Passeport</label>
+                      <input
+                        type="file"
+                        name="documentPasseport"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Passeport</label>
+                      <input
+                        type="text"
+                        name="commentairePasseport"
+                        placeholder="Commentaire pour le passeport"
+                        value={formModifier.commentairePasseport}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Diplôme Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Document Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentDiplomeCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireDiplomeCommentaire"
+                        placeholder="Commentaire pour le diplôme"
+                        value={formModifier.commentaireDiplomeCommentaire}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Attestation Réussite Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Attestation Réussite</label>
+                      <input
+                        type="file"
+                        name="documentAttestationReussiteCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Attestation Réussite</label>
+                      <input
+                        type="text"
+                        name="commentaireAttestationReussiteCommentaire"
+                        placeholder="Commentaire pour l'attestation de réussite"
+                        value={formModifier.commentaireAttestationReussiteCommentaire}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Relevé Notes Formation Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Relevé Notes Formation</label>
+                      <input
+                        type="file"
+                        name="documentReleveNotesFormationCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Relevé Notes Formation</label>
+                      <input
+                        type="text"
+                        name="commentaireReleveNotesFormationCommentaire"
+                        placeholder="Commentaire pour le relevé notes formation"
+                        value={formModifier.commentaireReleveNotesFormationCommentaire}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bac ou Attestation Bac Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Bac ou Attestation Bac</label>
+                      <input
+                        type="file"
+                        name="documentBacOuAttestationBacCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Bac ou Attestation Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireBacOuAttestationBacCommentaire"
+                        placeholder="Commentaire pour bac ou attestation bac"
+                        value={formModifier.commentaireBacOuAttestationBacCommentaire}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentification Bac Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Authentification Bac</label>
+                      <input
+                        type="file"
+                        name="documentAuthentificationBac"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentification Bac</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthentificationBac"
+                        placeholder="Commentaire pour l'authentification bac"
+                        value={formModifier.commentaireAuthentificationBac}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Authentication Diplôme Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Authentication Diplôme</label>
+                      <input
+                        type="file"
+                        name="documentAuthenticationDiplome"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Authentication Diplôme</label>
+                      <input
+                        type="text"
+                        name="commentaireAuthenticationDiplome"
+                        placeholder="Commentaire pour l'authentication diplôme"
+                        value={formModifier.commentaireAuthenticationDiplome}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Engagement Document */}
+                  <div className="document-row">
+                    <div className="form-group">
+                      <label>Engagement</label>
+                      <input
+                        type="file"
+                        name="documentEngagementCommentaire"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        onChange={handleFileChangeModifier}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Commentaire Engagement</label>
+                      <input
+                        type="text"
+                        name="commentaireEngagementCommentaire"
+                        placeholder="Commentaire pour l'engagement"
+                        value={formModifier.commentaireEngagementCommentaire}
+                        onChange={handleChangeModifier}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3549,8 +4323,8 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   <div className="student-photo">
                     {etudiantSelectionne.image ? (
                       <img 
-                        src={`http://localhost:5000${etudiantSelectionne.image}`} 
-                        alt="Photo étudiant" 
+                        src={`http://195.179.229.230:5000${etudiantSelectionne.image}`} 
+                        alt="étudiant" 
                         className="view-photo"
                       />
                     ) : (
@@ -3598,6 +4372,15 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       {etudiantSelectionne.telephone || 'N/A'}
                     </span>
                   </div>
+                  {etudiantSelectionne.telephoneResponsable && (
+                    <div className="info-row">
+                      <span className="info-label">Téléphone Responsable:</span>
+                      <span className="info-value">
+                        <Phone size={16} className="info-icon" />
+                        {etudiantSelectionne.telephoneResponsable}
+                      </span>
+                    </div>
+                  )}
                   <div className="info-row">
                     <span className="info-label">Email:</span>
                     <span className="info-value">{etudiantSelectionne.email}</span>
@@ -3605,9 +4388,8 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   {etudiantSelectionne.cin && (
                     <div className="info-row">
                       <span className="info-label">CIN:</span>
-                      <span className="info-value">
-                        <IdCard size={16} className="info-icon" />
-                        {etudiantSelectionne.cin}
+                      <span>
+                        <IdCard size={16} className="inline mr-1" /> {etudiantSelectionne.cin}
                       </span>
                     </div>
                   )}
@@ -3785,6 +4567,12 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <span className="info-value">{etudiantSelectionne.anneeBaccalaureat}</span>
                     </div>
                   )}
+                  {etudiantSelectionne.codeBaccalaureat && (
+                    <div className="info-row">
+                      <span className="info-label">Code Baccalauréat:</span>
+                      <span className="info-value">{etudiantSelectionne.codeBaccalaureat}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3829,10 +4617,51 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <span className="info-value">{etudiantSelectionne.typePaiement}</span>
                     </div>
                   )}
+                  {etudiantSelectionne.modePaiement && (
+                    <div className="info-row">
+                      <span className="info-label">Mode de paiement:</span>
+                      <span className="info-value">{etudiantSelectionne.modePaiement}</span>
+                    </div>
+                  )}
                   {etudiantSelectionne.situation && (
                     <div className="info-row">
                       <span className="info-label">Situation:</span>
                       <span className="info-value">{etudiantSelectionne.situation}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Section Étudiant Partenaire */}
+              <div className="view-section">
+                <h4><Shield size={20} className="section-icon" />Étudiant Partenaire</h4>
+                <div className="info-grid">
+                  <div className="info-row">
+                    <span className="info-label">Statut Partenaire:</span>
+                    <span className="info-value">
+                      {etudiantSelectionne.isPartner ? (
+                        <span className="status-badge partner">
+                          <Shield size={16} />
+                          Étudiant Partenaire
+                        </span>
+                      ) : (
+                        <span className="status-badge regular">
+                          <User size={16} />
+                          Étudiant Régulier
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {etudiantSelectionne.isPartner && etudiantSelectionne.nomPartner && (
+                    <div className="info-row">
+                      <span className="info-label">Nom du Partenaire:</span>
+                      <span className="info-value">{etudiantSelectionne.nomPartner}</span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.isPartner && etudiantSelectionne.prixTotalPartner && (
+                    <div className="info-row">
+                      <span className="info-label">Prix Total Partner:</span>
+                      <span className="info-value">{etudiantSelectionne.prixTotalPartner} DH</span>
                     </div>
                   )}
                 </div>
@@ -3850,7 +4679,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <div className="document-item">
                         <FileText size={16} className="info-icon" />
                         <span>Fichier d'inscription</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.fichierInscrit}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
+                        <a href={`http://195.179.229.230:5000${etudiantSelectionne.fichierInscrit}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
                           Voir
                         </a>
                       </div>
@@ -3859,7 +4688,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <div className="document-item">
                         <FileText size={16} className="info-icon" />
                         <span>Original Bac</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.originalBac}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
+                        <a href={`http://195.179.229.230:5000${etudiantSelectionne.originalBac}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
                           Voir
                         </a>
                       </div>
@@ -3868,7 +4697,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <div className="document-item">
                         <FileText size={16} className="info-icon" />
                         <span>Relevé de notes</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.releveNotes}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
+                        <a href={`http://195.179.229.230:5000${etudiantSelectionne.releveNotes}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
                           Voir
                         </a>
                       </div>
@@ -3877,7 +4706,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <div className="document-item">
                         <IdCard size={16} className="info-icon" />
                         <span>Copie CNI</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.copieCni}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
+                        <a href={`http://195.179.229.230:5000${etudiantSelectionne.copieCni}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
                           Voir
                         </a>
                       </div>
@@ -3886,7 +4715,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <div className="document-item">
                         <FileText size={16} className="info-icon" />
                         <span>Passeport</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.passport}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
+                        <a href={`http://195.179.229.230:5000${etudiantSelectionne.passport}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
                           Voir
                         </a>
                       </div>
@@ -3895,7 +4724,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <div className="document-item">
                         <FileText size={16} className="info-icon" />
                         <span>DTS Bac+2</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.dtsBac2}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
+                        <a href={`http://195.179.229.230:5000${etudiantSelectionne.dtsBac2}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
                           Voir
                         </a>
                       </div>
@@ -3904,7 +4733,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <div className="document-item">
                         <GraduationCap size={16} className="info-icon" />
                         <span>Licence</span>
-                        <a href={`http://localhost:5000${etudiantSelectionne.licence}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
+                        <a href={`http://195.179.229.230:5000${etudiantSelectionne.licence}`} target="_blank" rel="noopener noreferrer" className="btn-voir-document">
                           Voir
                         </a>
                       </div>
@@ -3934,6 +4763,39 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                  !etudiantSelectionne.fonctionnaire && !etudiantSelectionne.mobilite && (
                   <p className="no-statut">Aucun statut spécial</p>
                 )}
+              </div>
+              {/* Section Validation Pédagogique */}
+              <div className="view-section">
+                <h4><Shield size={20} className="section-icon" />Validation Pédagogique</h4>
+                <div className="info-grid">
+                  <div className="info-row">
+                    <span className="info-label">Statut:</span>
+                    <span className="info-value">
+                      <span className={`validation-badge-view ${
+                        etudiantSelectionne.validationPedagogique?.statut === 'Validé' ? 'valide' :
+                        etudiantSelectionne.validationPedagogique?.statut === 'Pas Validé' ? 'pas-valide' :
+                        etudiantSelectionne.validationPedagogique?.statut === 'En cours' ? 'en-cours' : 'en-attente'
+                      }`}>
+                        {etudiantSelectionne.validationPedagogique?.statut || 'En attente'}
+                      </span>
+                    </span>
+                  </div>
+                  {etudiantSelectionne.validationPedagogique?.commentaire && (
+                    <div className="info-row">
+                      <span className="info-label">Commentaire pédagogique:</span>
+                      <span className="info-value">{etudiantSelectionne.validationPedagogique.commentaire}</span>
+                    </div>
+                  )}
+                  {etudiantSelectionne.validationPedagogique?.dateValidation && (
+                    <div className="info-row">
+                      <span className="info-label">Date de validation:</span>
+                      <span className="info-value">
+                        <Calendar size={16} className="info-icon" />
+                        {formatDate(etudiantSelectionne.validationPedagogique.dateValidation)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Section Dates importantes */}

@@ -39,7 +39,7 @@ const EvenementsEtudiant = () => {
     const fetchEvenements = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/evenements/public', {
+        const res = await axios.get('http://195.179.229.230:5000/api/evenements/public', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setEvenements(res.data);

@@ -37,7 +37,7 @@ const ListeCoursProf = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       try {
-        const res = await axios.get('http://localhost:5000/api/professeur/mes-cours', {
+        const res = await axios.get('http://195.179.229.230:5000/api/professeur/mes-cours', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setCours(res.data);
