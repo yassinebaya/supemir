@@ -202,7 +202,7 @@ const ProfAjouterBulletin = () => {
     const fetchCours = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://195.179.229.230:5000/api/professeur/mes-cours', {
+        const res = await fetch('http://localhost:5000/api/professeur/mes-cours', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -219,7 +219,7 @@ const ProfAjouterBulletin = () => {
     const fetchBulletins = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://195.179.229.230:5000/api/bulletins/professeur', {
+        const res = await fetch('http://localhost:5000/api/bulletins/professeur', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -243,7 +243,7 @@ const ProfAjouterBulletin = () => {
     const fetchEtudiants = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://195.179.229.230:5000/api/professeur/etudiants', {
+        const res = await fetch('http://localhost:5000/api/professeur/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -382,7 +382,7 @@ const ProfAjouterBulletin = () => {
               };
               
               promises.push(
-                fetch('http://195.179.229.230:5000/api/bulletins', {
+                fetch('http://localhost:5000/api/bulletins', {
                   method: 'POST',
                   headers: {
                     Authorization: `Bearer ${token}`,
@@ -408,7 +408,7 @@ const ProfAjouterBulletin = () => {
       resetForm();
       
       // Refresh bulletins list
-      const bulletinsRes = await fetch('http://195.179.229.230:5000/api/bulletins/professeur', {
+      const bulletinsRes = await fetch('http://localhost:5000/api/bulletins/professeur', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const bulletinsData = await bulletinsRes.json();
@@ -434,7 +434,7 @@ const ProfAjouterBulletin = () => {
     try {
       const token = localStorage.getItem('token');
       const promises = group.etudiants.map(etudiant => 
-        fetch(`http://195.179.229.230:5000/api/bulletins/${etudiant._id}`, {
+        fetch(`http://localhost:5000/api/bulletins/${etudiant._id}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         })
@@ -445,7 +445,7 @@ const ProfAjouterBulletin = () => {
       showNotification(`${group.etudiants.length} bulletin(s) supprimé(s) avec succès`);
       
       // Refresh bulletins
-      const bulletinsRes = await fetch('http://195.179.229.230:5000/api/bulletins/professeur', {
+      const bulletinsRes = await fetch('http://localhost:5000/api/bulletins/professeur', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const bulletinsData = await bulletinsRes.json();
@@ -468,7 +468,7 @@ const ProfAjouterBulletin = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://195.179.229.230:5000/api/bulletins/professeur', {
+      const res = await fetch('http://localhost:5000/api/bulletins/professeur', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

@@ -32,7 +32,7 @@ const EtudiantProfil = () => {
   const fetchEtudiantInfo = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://195.179.229.230:5000/api/etudiant/profile', {
+      const res = await fetch('http://localhost:5000/api/etudiant/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -76,7 +76,7 @@ const EtudiantProfil = () => {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://195.179.229.230:5000/api/etudiant/profil', {
+      const res = await fetch('http://localhost:5000/api/etudiant/profil', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

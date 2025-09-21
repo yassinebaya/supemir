@@ -47,13 +47,13 @@ const ListePresences = () => {
           return;
         }
 
-        const res = await axios.get('http://195.179.229.230:5000/api/professeur/presences', {
+        const res = await axios.get('http://localhost:5000/api/professeur/presences', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
         const data = res.data;
 
-        // ===== NOUVEAU GROUPAGE CORRIGÉ POUR RETARD =====
+        // ===== NOUVEAU GROUPAGE =====
         const grouped = {};
         for (let p of data) {
           const dateStr = new Date(p.dateSession).toDateString();
@@ -68,9 +68,7 @@ const ListePresences = () => {
 
         const sessions = Object.entries(grouped).map(([key, values]) => {
           const [date, cours, heure, periode, matiere, nomProfesseur] = key.split('_');
-          const presentCount = values.filter(p => p.present && !p.retard).length;
-          const retardCount = values.filter(p => p.retard).length;
-          const absentCount = values.filter(p => p.absent).length;
+          const presentCount = values.filter(p => p.present).length;
           const totalCount = values.length;
           return {
             date,
@@ -81,10 +79,8 @@ const ListePresences = () => {
             nomProfesseur,
             presences: values,
             presentCount,
-            retardCount,
-            absentCount,
             totalCount,
-            attendanceRate: totalCount > 0 ? Math.round(((presentCount + retardCount) / totalCount) * 100) : 0
+            attendanceRate: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
           };
         }).sort((a, b) => new Date(b.date) - new Date(a.date)); // ✅ ترتيب تنازلي حسب التاريخ
 
@@ -1000,38 +996,29 @@ const ListePresences = () => {
               {/* Modal Content */}
               <div style={{ ...styles.modalBody, overflowY: 'auto', maxHeight: 'calc(90vh - 120px)' }}>
                 {/* Statistics Cards */}
-                {sessionActive && (
-                  <div style={styles.statsGrid}>
-                    <div style={{ ...styles.statCard, ...styles.statCardGreen }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <Check size={20} />
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>Présents</span>
-                      </div>
-                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.presentCount}</p>
+                <div style={styles.statsGrid}>
+                  <div style={{ ...styles.statCard, ...styles.statCardGreen }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <Check size={20} />
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Présents</span>
                     </div>
-                    <div style={{ ...styles.statCard, backgroundColor: '#fef3c7', borderColor: '#fcd34d', color: '#d97706' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <AlertCircle size={20} />
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>En retard</span>
-                      </div>
-                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.retardCount || 0}</p>
-                    </div>
-                    <div style={{ ...styles.statCard, ...styles.statCardRed }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <X size={20} />
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>Absents</span>
-                      </div>
-                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.absentCount || 0}</p>
-                    </div>
-                    <div style={{ ...styles.statCard, ...styles.statCardBlue }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <Users size={20} />
-                        <span style={{ fontSize: '14px', fontWeight: '500' }}>Taux de présence</span>
-                      </div>
-                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.attendanceRate}%</p>
-                    </div>
+                    <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.presentCount}</p>
                   </div>
-                )}
+                  <div style={{ ...styles.statCard, ...styles.statCardRed }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <X size={20} />
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Absents</span>
+                    </div>
+                    <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.totalCount - sessionActive.presentCount}</p>
+                  </div>
+                  <div style={{ ...styles.statCard, ...styles.statCardBlue }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <Users size={20} />
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Taux de présence</span>
+                    </div>
+                    <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.attendanceRate}%</p>
+                  </div>
+                </div>
 
                 {/* Students Table */}
                 <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
@@ -1058,29 +1045,9 @@ const ListePresences = () => {
                               </span>
                             </td>
                             <td style={{ ...styles.td, padding: '12px 16px' }}>
-                              <span style={
-                                p.retard ? 
-                                  { ...styles.badge, backgroundColor: '#fef3c7', color: '#d97706', borderColor: '#fcd34d' } :
-                                p.present ? 
-                                  { ...styles.badge, ...styles.badgeGreen } : 
-                                  { ...styles.badge, ...styles.badgeRed }
-                              }>
-                                {p.retard ? (
-                                  <>
-                                    <AlertCircle size={12} />
-                                    En retard ({p.retardMinutes || 0}min)
-                                  </>
-                                ) : p.present ? (
-                                  <>
-                                    <Check size={12} />
-                                    Présent
-                                  </>
-                                ) : (
-                                  <>
-                                    <X size={12} />
-                                    Absent
-                                  </>
-                                )}
+                              <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
+                                {p.present ? <Check size={12} /> : <X size={12} />}
+                                {p.present ? 'Présent' : 'Absent'}
                               </span>
                             </td>
                             <td style={{ ...styles.td, padding: '12px 16px' }}>
@@ -1100,29 +1067,9 @@ const ListePresences = () => {
                           <h5 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0, flex: 1 }}>
                             {p.etudiant?.nomComplet || '—'}
                           </h5>
-                          <span style={
-                            p.retard ? 
-                              { ...styles.badge, backgroundColor: '#fef3c7', color: '#d97706', borderColor: '#fcd34d' } :
-                            p.present ? 
-                              { ...styles.badge, ...styles.badgeGreen } : 
-                              { ...styles.badge, ...styles.badgeRed }
-                          }>
-                            {p.retard ? (
-                              <>
-                                <AlertCircle size={12} />
-                                En retard ({p.retardMinutes || 0}min)
-                              </>
-                            ) : p.present ? (
-                              <>
-                                <Check size={12} />
-                                Présent
-                              </>
-                            ) : (
-                              <>
-                                <X size={12} />
-                                Absent
-                              </>
-                            )}
+                          <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
+                            {p.present ? <Check size={12} /> : <X size={12} />}
+                            {p.present ? 'Présent' : 'Absent'}
                           </span>
                         </div>
                         {p.remarque && (

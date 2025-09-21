@@ -1,4 +1,5 @@
-﻿const mongoose = require('mongoose');
+﻿
+const mongoose = require('mongoose');
 
 const etudiantSchema = new mongoose.Schema({
   prenom: {
@@ -25,23 +26,8 @@ const etudiantSchema = new mongoose.Schema({
     required: true
   },
   telephone: String,
-  
-  // NOUVEAU: Téléphone du responsable
-  telephoneResponsable: {
-    type: String,
-    default: ''
-  },
-  
   cin: String,
-  codeMassar: String,
   passeport: String,
-  
-  // NOUVEAU: Code du baccalauréat
-  codeBaccalaureat: {
-    type: String,
-    default: ''
-  },
-  
   dateNaissance: Date,
   lieuNaissance: String,
   pays: String,
@@ -53,121 +39,7 @@ const etudiantSchema = new mongoose.Schema({
   niveauFormation: String,
   filiere: String,
   
-  // NOUVEAU: Système de documents avec commentaires
-  documents: {
-    cin: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    bacCommentaire: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    releveNoteBac: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    diplomeCommentaire: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    attestationReussiteCommentaire: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    releveNotesFormationCommentaire: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    passeport: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    bacOuAttestationBacCommentaire: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    authentificationBac: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    authenticationDiplome: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    },
-    engagementCommentaire: {
-      fichier: {
-        type: String,
-        default: ''
-      },
-      commentaire: {
-        type: String,
-        default: ''
-      }
-    }
-  },
-  
-  // Année scolaire
+  // NOUVEAU: Année scolaire
   anneeScolaire: {
     type: String,
     required: true,
@@ -179,7 +51,7 @@ const etudiantSchema = new mongoose.Schema({
     }
   },
   
-  // Système de cycle d'ingénieur
+  // NOUVEAU: Système de cycle d'ingénieur
   cycle: {
     type: String,
     enum: [
@@ -214,7 +86,7 @@ const etudiantSchema = new mongoose.Schema({
     ]
   },
   
-  // Type de formation pour différencier les parcours
+  // NOUVEAU: Type de formation pour différencier les parcours
   typeFormation: {
     type: String,
     enum: [
@@ -226,7 +98,7 @@ const etudiantSchema = new mongoose.Schema({
     ]
   },
   
-  // Spécialités pour Licences Professionnelles
+  // NOUVEAU: Spécialités pour Licences Professionnelles
   specialiteLicencePro: {
     type: String,
     enum: [
@@ -240,12 +112,11 @@ const etudiantSchema = new mongoose.Schema({
       'Développement Commercial et Marketing Digital',
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
-      'Informatique – Cnam',
-      'Achat & Logistique'
+      'Informatique – Cnam'
     ]
   },
   
-  // Options pour Licences Professionnelles
+  // NOUVEAU: Options pour Licences Professionnelles
   optionLicencePro: {
     type: String,
     enum: [
@@ -255,10 +126,11 @@ const etudiantSchema = new mongoose.Schema({
       'Développement Gaming et VR',
       'Administration des Systèmes et Cloud Computing'
     ],
-    set: v => (v === '' ? undefined : v)
+      set: v => (v === '' ? undefined : v)   // ← ajoute ça
+
   },
   
-  // Spécialités pour Masters Professionnels
+  // NOUVEAU: Spécialités pour Masters Professionnels
   specialiteMasterPro: {
     type: String,
     enum: [
@@ -274,7 +146,7 @@ const etudiantSchema = new mongoose.Schema({
     ]
   },
   
-  // Options pour Masters Professionnels
+  // NOUVEAU: Options pour Masters Professionnels
   optionMasterPro: {
     type: String,
     enum: [
@@ -283,7 +155,8 @@ const etudiantSchema = new mongoose.Schema({
       'Génie Logiciel',
       'Intelligence Artificielle et Data Science'
     ],
-    set: v => (v === '' ? undefined : v)
+      set: v => (v === '' ? undefined : v)   // ← ajoute ça
+
   },
   
   // Champs existants
@@ -301,51 +174,6 @@ const etudiantSchema = new mongoose.Schema({
   typePaiement: String,
   prixTotal: Number,
   pourcentageBourse: Number,
-  
-  // Système Partner - Simple
-  isPartner: {
-    type: Boolean,
-    default: false
-  },
-  nomPartner: {
-  type: String,
-  default: '',
-  trim: true
-},
-// Dans votre modèle Etudiant, AJOUTER si pas encore fait :
-validationPedagogique: {
-  statut: {
-    type: String,
-    enum: ['En attente', 'En cours', 'Validé', 'Pas Validé'],
-    default: 'En attente'
-  },
-  commentaire: {
-    type: String,
-    default: ''
-  },
-  validePar: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin', // ou 'User' selon votre modèle
-    default: null
-  },
-  dateValidation: {
-    type: Date,
-    default: null
-  }
-},
-  // Prix séparé pour les partners (ne se calcule pas avec prixTotal normal)
-  prixTotalPartner: {
-    type: Number,
-    default: 0
-  },
-  
-  // Mode de paiement
-  modePaiement: {
-    type: String,
-    enum: ['annuel', 'semestriel', 'trimestriel', 'mensuel'],
-    default: 'mensuel'
-  },
-  
   situation: String,
   nouvelleInscription: {
     type: Boolean,
@@ -453,74 +281,7 @@ etudiantSchema.virtual('parcoursComplet').get(function () {
   return parcours.join(' | ');
 });
 
-// NOUVELLES MÉTHODES STATIQUES pour les documents
-etudiantSchema.statics.getTypesDocuments = function() {
-  return [
-    { key: 'cin', label: 'CIN', hasComment: false },
-    { key: 'bacCommentaire', label: 'Bac', hasComment: true },
-    { key: 'releveNoteBac', label: 'Relevé de note Bac', hasComment: false },
-    { key: 'diplomeCommentaire', label: 'Diplôme', hasComment: true },
-    { key: 'attestationReussiteCommentaire', label: 'Attestation réussite', hasComment: true },
-    { key: 'releveNotesFormationCommentaire', label: 'Relevé de notes de formation', hasComment: true },
-    { key: 'passeport', label: 'Passeport', hasComment: false },
-    { key: 'bacOuAttestationBacCommentaire', label: 'Bac ou Attestation Bac', hasComment: true },
-    { key: 'authentificationBac', label: 'Authentification bac', hasComment: false },
-    { key: 'authenticationDiplome', label: 'Authentication diplôme', hasComment: false },
-    { key: 'engagementCommentaire', label: 'Engagement', hasComment: true }
-  ];
-};
-
-// Méthode pour ajouter un document avec commentaire
-etudiantSchema.methods.ajouterDocument = function(typeDocument, cheminFichier, commentaire = '') {
-  if (!this.documents) {
-    this.documents = {};
-  }
-  
-  if (!this.documents[typeDocument]) {
-    this.documents[typeDocument] = {};
-  }
-  
-  this.documents[typeDocument].fichier = cheminFichier;
-  if (commentaire) {
-    this.documents[typeDocument].commentaire = commentaire;
-  }
-  
-  return this.save();
-};
-
-// Méthode pour obtenir un document
-etudiantSchema.methods.getDocument = function(typeDocument) {
-  return this.documents && this.documents[typeDocument] ? this.documents[typeDocument] : null;
-};
-
-// Méthode pour vérifier si un document existe
-etudiantSchema.methods.hasDocument = function(typeDocument) {
-  return this.documents && 
-         this.documents[typeDocument] && 
-         this.documents[typeDocument].fichier && 
-         this.documents[typeDocument].fichier.trim() !== '';
-};
-
-// Méthode pour obtenir tous les documents avec leur statut
-etudiantSchema.methods.getStatusDocuments = function() {
-  const typesDocuments = this.constructor.getTypesDocuments();
-  const status = {};
-  
-  typesDocuments.forEach(type => {
-    const doc = this.getDocument(type.key);
-    status[type.key] = {
-      label: type.label,
-      hasComment: type.hasComment,
-      existe: this.hasDocument(type.key),
-      fichier: doc ? doc.fichier : '',
-      commentaire: doc ? doc.commentaire : ''
-    };
-  });
-  
-  return status;
-};
-
-// ===== MÉTHODES POUR AUTO-ASSIGNATION =====
+// ===== NOUVELLES MÉTHODES POUR AUTO-ASSIGNATION =====
 
 // Méthode statique pour déterminer automatiquement le niveau selon le type de formation
 etudiantSchema.statics.determinerNiveauAutomatique = function(typeFormation, niveauFourni) {
@@ -587,7 +348,7 @@ etudiantSchema.methods.determinerCycle = function() {
   return this.cycle;
 };
 
-// Méthode pour valider la cohérence du parcours
+// Méthode pour valider la cohérence du parcours (MODIFIÉE)
 etudiantSchema.methods.validerParcours = function() {
   const erreurs = [];
   
@@ -646,6 +407,7 @@ etudiantSchema.methods.validerParcours = function() {
     }
     
   } else if (this.typeFormation === 'LICENCE_PRO') {
+    // NIVEAU AUTO-ASSIGNÉ À 3 - PAS DE VALIDATION DE NIVEAU REQUIS
     if (!this.specialiteLicencePro) {
       erreurs.push('Une spécialité est obligatoire pour Licence Professionnelle');
     }
@@ -674,6 +436,7 @@ etudiantSchema.methods.validerParcours = function() {
     }
     
   } else if (this.typeFormation === 'MASTER_PRO') {
+    // NIVEAU AUTO-ASSIGNÉ À 4 - PAS DE VALIDATION DE NIVEAU REQUIS
     if (!this.specialiteMasterPro) {
       erreurs.push('Une spécialité est obligatoire pour Master Professionnel');
     }
@@ -744,11 +507,6 @@ etudiantSchema.pre('save', function(next) {
     this.anneeScolaire = this.constructor.getAnneeScolaireActuelle();
   }
   
-  // Si mode annuel, mettre paye = true automatiquement
-  if (this.modePaiement === 'annuel') {
-    this.paye = true;
-  }
-  
   // ===== AUTO-ASSIGNATION DU NIVEAU SELON LE TYPE DE FORMATION =====
   if (this.typeFormation) {
     this.niveau = this.constructor.determinerNiveauAutomatique(this.typeFormation, this.niveau);
@@ -768,91 +526,7 @@ etudiantSchema.pre('save', function(next) {
   next();
 });
 
-// ===== MÉTHODES STATIQUES EXISTANTES =====
-
-// Méthode pour obtenir les informations de paiement selon le mode
-etudiantSchema.statics.getInfosPaiement = function(modePaiement, prixTotal) {
-  const modes = {
-    annuel: {
-      nombreTranches: 1,
-      montantParTranche: prixTotal,
-      moisParTranche: 12,
-      description: "Paiement annuel complet"
-    },
-    semestriel: {
-      nombreTranches: 2,
-      montantParTranche: Math.round(prixTotal / 2),
-      moisParTranche: 5,
-      description: "2 tranches semestrielles"
-    },
-    trimestriel: {
-      nombreTranches: 3,
-      montantParTranche: Math.round(prixTotal / 3),
-      moisParTranche: 3,
-      description: "3 tranches trimestrielles"
-    },
-    mensuel: {
-      nombreTranches: 10,
-      montantParTranche: Math.round(prixTotal / 10),
-      moisParTranche: 1,
-      description: "10 tranches mensuelles"
-    }
-  };
-
-  return modes[modePaiement] || modes.annuel;
-};
-
-// Méthode pour vérifier si l'étudiant a terminé ses paiements
-etudiantSchema.methods.verifierPaiementComplet = function(totalPaye) {
-  if (this.modePaiement === 'annuel') {
-    return this.paye;
-  } else {
-    return totalPaye >= this.prixTotal;
-  }
-};
-
-// ===== MÉTHODES POUR LE SYSTÈME PARTNER =====
-
-// Méthode pour obtenir le prix effectif selon le type d'étudiant
-etudiantSchema.methods.getPrixEffectif = function() {
-  return this.isPartner ? this.prixTotalPartner : this.prixTotal;
-};
-
-// Méthode statique pour les statistiques Partners
-etudiantSchema.statics.getStatsPartners = async function() {
-  const stats = await this.aggregate([
-    {
-      $group: {
-        _id: "$isPartner",
-        count: { $sum: 1 },
-        totalChiffreAffaire: { 
-          $sum: { 
-            $cond: [
-              "$isPartner", 
-              "$prixTotalPartner", 
-              "$prixTotal"
-            ] 
-          } 
-        }
-      }
-    }
-  ]);
-  
-  const partnersStats = stats.find(s => s._id === true) || { count: 0, totalChiffreAffaire: 0 };
-  const normalStats = stats.find(s => s._id === false) || { count: 0, totalChiffreAffaire: 0 };
-  
-  return {
-    partners: {
-      nombre: partnersStats.count,
-      chiffreAffaire: partnersStats.totalChiffreAffaire
-    },
-    normal: {
-      nombre: normalStats.count,
-      chiffreAffaire: normalStats.totalChiffreAffaire
-    }
-  };
-};
-
+// Méthodes statiques existantes...
 etudiantSchema.statics.getOptionsParSpecialiteIngenieur = function(specialite) {
   const optionsParSpecialite = {
     'Génie Informatique': [
@@ -918,8 +592,7 @@ etudiantSchema.statics.getSpecialitesLicencePro = function() {
     'Développement Commercial et Marketing Digital',
     'Management et Conduite de Travaux – Cnam',
     'Electrotechnique et systèmes – Cnam',
-    'Informatique – Cnam',
-    'Achat & Logistique'
+    'Informatique – Cnam'
   ];
 };
 

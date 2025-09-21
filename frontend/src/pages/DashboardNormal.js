@@ -3,7 +3,7 @@ import {
   RotateCcw, Home, AlertCircle, Filter, Users, DollarSign, 
   TrendingUp, Eye, Phone, Mail, GraduationCap, BookOpen,
   UserCheck, Building, Calendar, Target, BarChart3, Award,
-  Shield, CheckCircle, XCircle, User, Search, Download, Clock // Ajouter Clock ici
+  Shield, CheckCircle, XCircle, User, Search, Download
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -31,27 +31,16 @@ const DashboardNormal = () => {
 
   const [tableauInscrits, setTableauInscrits] = useState({
     global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-    fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
-    executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
-    ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
+    fi: { total: 0, masi: 0, irm: 0, ca: 0 },
+    executive: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 },
+    ta: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 }
   });
 
   const [tableauReinscriptions, setTableauReinscriptions] = useState({
     global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-    fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
-    executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
-    ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
-  });
-
-  const [preinscriptions, setPreinscriptions] = useState({
-    count: 0,
-    parType: {
-      fi: 0,
-      ta: 0,
-      executive: 0
-    },
-    parFiliere: {},
-    parCommercial: {}
+    fi: { total: 0, masi: 0, irm: 0, ca: 0 },
+    executive: { total: 0, masi: 0, irm: 0, ca: 0 },
+    ta: { total: 0, masi: 0, irm: 0, ca: 0 }
   });
 
   // DONNÉES FIXES POUR 2024/2025 UNIQUEMENT
@@ -64,91 +53,16 @@ const DashboardNormal = () => {
     },
     tableauInscrits: {
       global: { total: 202, fi: 59, ta: 53, executive: 90, ca: 5410608.98 },
-      fi: { total: 59, masi: 15, irm: 44, cycleIngenieur: 0, ca: 1731608.98 },
-      executive: { total: 90, masi: 19, irm: 42, autre: 29, licencePro: 0, masterPro: 0, ca: 2299000.0 },
-      ta: { total: 53, masi: 26, irm: 27, cycleIngenieur: 0, ca: 1380000.0 }
+      fi: { total: 59, masi: 15, irm: 44, ca: 1731608.98 },
+      executive: { total: 90, masi: 19, irm: 42, autre: 29, ca: 2299000.0 },
+      ta: { total: 53, masi: 26, irm: 27, autre: 0, ca: 1380000.0 }
     },
     tableauReinscriptions: {
       global: { total: 47, fi: 33, ta: 14, executive: 0, ca: 1306440.0 },
-      fi: { total: 33, masi: 7, irm: 26, cycleIngenieur: 0, ca: 928440.0 },
-      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0.0 },
-      ta: { total: 14, masi: 10, irm: 4, cycleIngenieur: 0, ca: 378000.0 }
+      fi: { total: 33, masi: 7, irm: 26, ca: 928440.0 },
+      executive: { total: 0, masi: 0, irm: 0, ca: 0.0 },
+      ta: { total: 14, masi: 10, irm: 4, ca: 378000.0 }
     }
-  };
-
-  // Fonction pour récupérer les statistiques commerciales
-  const fetchStatistiques = async (anneeFilter = null) => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Utiliser l'année passée en paramètre ou celle du state
-      const anneeActuelle = anneeFilter || anneeScolaireFilter;
-      
-      // Si c'est pour 2024/2025, ne pas afficher de commerciaux (ils n'existaient pas encore)
-      if (anneeActuelle === '2024/2025') {
-        setStatistiques([]);
-        return;
-      }
-      
-      // Pour les autres années, calculer depuis les données des étudiants
-      calculerStatistiquesCommerciaux(anneeActuelle);
-      
-    } catch (error) {
-      console.error('Erreur lors du chargement des statistiques:', error);
-      setStatistiques([]);
-    }
-  };
-
-  // Nouvelle fonction pour calculer les statistiques des commerciaux depuis les données étudiants
-  const calculerStatistiquesCommerciaux = (anneeFilter) => {
-    // Filtrer les étudiants selon l'année
-    const etudiantsFiltres = anneeFilter === 'toutes' 
-      ? etudiants 
-      : etudiants.filter(e => e.anneeScolaire === anneeFilter);
-
-    // Grouper par commercial
-    const statsParCommercial = {};
-    
-    etudiantsFiltres.forEach(etudiant => {
-      // Utiliser 'commercial' au lieu de 'commercialId' selon votre modèle
-      const commercialId = etudiant.commercial || 'inconnu';
-      
-      if (!statsParCommercial[commercialId]) {
-        // Trouver les infos du commercial
-        const commercial = commerciaux.find(c => c._id === commercialId);
-        
-        statsParCommercial[commercialId] = {
-          nom: commercial ? commercial.nom : 'Commercial inconnu',
-          email: commercial ? commercial.email : '',
-          telephone: commercial ? commercial.telephone : '',
-          chiffreAffaire: 0,
-          totalRecu: 0,
-          reste: 0,
-          countEtudiants: 0,
-          actif: commercial ? commercial.actif !== false : true,
-          estAdminInscription: commercial ? commercial.estAdminInscription || false : false
-        };
-      }
-      
-      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
-      statsParCommercial[commercialId].chiffreAffaire += prixTotal;
-      statsParCommercial[commercialId].countEtudiants += 1;
-      
-      // Si l'étudiant a payé, ajouter au total reçu, sinon au reste
-      if (etudiant.paye) {
-        statsParCommercial[commercialId].totalRecu += prixTotal;
-      } else {
-        statsParCommercial[commercialId].reste += prixTotal;
-      }
-    });
-
-    // Convertir en array, filtrer les commerciaux inconnus et trier par chiffre d'affaires décroissant
-    const statistiquesCalculees = Object.entries(statsParCommercial)
-      .filter(([commercialId, stats]) => commercialId !== 'inconnu') // Exclure les étudiants sans commercial
-      .map(([commercialId, stats]) => stats)
-      .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
-
-    setStatistiques(statistiquesCalculees);
   };
 
   // Récupération des données
@@ -158,10 +72,10 @@ const DashboardNormal = () => {
       const token = localStorage.getItem('token');
 
       const [etudiantsRes, commerciauxRes] = await Promise.all([
-        fetch('http://195.179.229.230:5000/api/etudiant', {
+        fetch('http://localhost:5000/api/etudiant', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://195.179.229.230:5000/api/commerciaux', {
+        fetch('http://localhost:5000/api/commerciaux', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -194,14 +108,7 @@ const DashboardNormal = () => {
 
       // Calculer les statistiques immédiatement avec l'année sélectionnée
       calculerStatistiquesAvecAnnee(etudiantsData, anneeASelectionner || anneeScolaireFilter);
-      
-      // IMPORTANT: Calculer les statistiques des commerciaux immédiatement après avoir défini les données
-      // Utiliser directement les données chargées au lieu d'attendre que les states soient mis à jour
-      calculerStatistiquesCommerciauxDirectement(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
-      
-      // Nouvelle fonction pour calculer les préinscriptions
-      calculerPreinscriptionsDirectement(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
-      
+      await fetchStatistiques();
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
       setError('Impossible de charger les données');
@@ -212,56 +119,37 @@ const DashboardNormal = () => {
     }
   };
 
-  // Nouvelle fonction qui utilise directement les données passées en paramètres
-  const calculerStatistiquesCommerciauxDirectement = (etudiantsData, commerciauxData, anneeFilter) => {
-    // Filtrer les étudiants selon l'année
-    const etudiantsFiltres = anneeFilter === 'toutes' 
-      ? etudiantsData 
-      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
-
-    // Grouper par commercial
-    const statsParCommercial = {};
-    
-    etudiantsFiltres.forEach(etudiant => {
-      // Utiliser 'commercial' au lieu de 'commercialId' selon votre modèle
-      const commercialId = etudiant.commercial || 'inconnu';
+  // Fonction pour récupérer les statistiques commerciales
+  const fetchStatistiques = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/commerciaux/statistiques', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
-      if (!statsParCommercial[commercialId]) {
-        // Trouver les infos du commercial
-        const commercial = commerciauxData.find(c => c._id === commercialId);
-        
-        statsParCommercial[commercialId] = {
-          nom: commercial ? commercial.nom : 'Commercial inconnu',
-          email: commercial ? commercial.email : '',
-          telephone: commercial ? commercial.telephone : '',
-          chiffreAffaire: 0,
-          totalRecu: 0,
-          reste: 0,
-          countEtudiants: 0,
-          actif: commercial ? commercial.actif !== false : true,
-          estAdminInscription: commercial ? commercial.estAdminInscription || false : false
-        };
+      if (!res.ok) {
+        throw new Error(`Erreur HTTP: ${res.status}`);
       }
       
-      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
-      statsParCommercial[commercialId].chiffreAffaire += prixTotal;
-      statsParCommercial[commercialId].countEtudiants += 1;
+      const data = await res.json();
       
-      // Si l'étudiant a payé, ajouter au total reçu, sinon au reste
-      if (etudiant.paye) {
-        statsParCommercial[commercialId].totalRecu += prixTotal;
-      } else {
-        statsParCommercial[commercialId].reste += prixTotal;
-      }
-    });
-
-    // Convertir en array, filtrer les commerciaux inconnus et trier par chiffre d'affaires décroissant
-    const statistiquesCalculees = Object.entries(statsParCommercial)
-      .filter(([commercialId, stats]) => commercialId !== 'inconnu') // Exclure les étudiants sans commercial
-      .map(([commercialId, stats]) => stats)
-      .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
-
-    setStatistiques(statistiquesCalculees);
+      const transformedData = data.map(stat => ({
+        nom: stat.commercialInfo?.nom || 'Commercial inconnu',
+        email: stat.commercialInfo?.email || '',
+        telephone: stat.commercialInfo?.telephone || '',
+        chiffreAffaire: stat.chiffreAffaire || 0,
+        totalRecu: stat.totalRecu || 0,
+        reste: stat.reste || 0,
+        countEtudiants: stat.countEtudiants || 0,
+        actif: stat.commercialInfo?.actif !== false,
+        estAdminInscription: stat.commercialInfo?.estAdminInscription || false
+      }));
+      
+      setStatistiques(transformedData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error);
+      setStatistiques([]);
+    }
   };
 
   // Fonction d'analyse des filières
@@ -370,63 +258,39 @@ const DashboardNormal = () => {
   const calculerTableauInscrits = (inscrits, toNum) => {
     const stats = {
       global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-      fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
-      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
-      ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
+      fi: { total: 0, masi: 0, irm: 0, ca: 0 },
+      executive: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 },
+      ta: { total: 0, masi: 0, irm: 0, autre: 0, ca: 0 }
     };
 
     inscrits.forEach((etudiant) => {
       const type = determinerTypeFormation(etudiant);
+      const filiere = (etudiant.filiere || '').toLowerCase();
       const ca = toNum(etudiant.prixTotal);
-      const typeFormation = etudiant.typeFormation;
 
-      // Global
       stats.global.total += 1;
       stats.global.ca += ca;
 
-      // Classification par type
       if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
         stats.global.fi += 1;
         stats.fi.total += 1;
         stats.fi.ca += ca;
-        
-        if (typeFormation === 'MASI') {
-          stats.fi.masi += 1;
-        } else if (typeFormation === 'IRM') {
-          stats.fi.irm += 1;
-        } else if (typeFormation === 'CYCLE_INGENIEUR') {
-          stats.fi.cycleIngenieur += 1;
-        }
-        
+        if (filiere.includes('masi')) stats.fi.masi += 1;
+        else if (filiere.includes('irm')) stats.fi.irm += 1;
       } else if (type === 'Executive') {
         stats.global.executive += 1;
         stats.executive.total += 1;
         stats.executive.ca += ca;
-        
-        if (typeFormation === 'MASI') {
-          stats.executive.masi += 1;
-        } else if (typeFormation === 'IRM') {
-          stats.executive.irm += 1;
-        } else if (typeFormation === 'LICENCE_PRO') {
-          stats.executive.licencePro += 1;
-        } else if (typeFormation === 'MASTER_PRO') {
-          stats.executive.masterPro += 1;
-        } else {
-          stats.executive.autre += 1;
-        }
-        
+        if (filiere.includes('masi')) stats.executive.masi += 1;
+        else if (filiere.includes('irm')) stats.executive.irm += 1;
+        else stats.executive.autre += 1;
       } else if (type === 'TA') {
         stats.global.ta += 1;
         stats.ta.total += 1;
         stats.ta.ca += ca;
-        
-        if (typeFormation === 'MASI') {
-          stats.ta.masi += 1;
-        } else if (typeFormation === 'IRM') {
-          stats.ta.irm += 1;
-        } else if (typeFormation === 'CYCLE_INGENIEUR') {
-          stats.ta.cycleIngenieur += 1;
-        }
+        if (filiere.includes('masi')) stats.ta.masi += 1;
+        else if (filiere.includes('irm')) stats.ta.irm += 1;
+        else stats.ta.autre += 1;
       }
     });
 
@@ -436,15 +300,15 @@ const DashboardNormal = () => {
   const calculerTableauReinscriptions = (reinscriptions, toNum) => {
     const stats = {
       global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
-      fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
-      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
-      ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
+      fi: { total: 0, masi: 0, irm: 0, ca: 0 },
+      executive: { total: 0, masi: 0, irm: 0, ca: 0 },
+      ta: { total: 0, masi: 0, irm: 0, ca: 0 }
     };
 
     reinscriptions.forEach((etudiant) => {
       const type = determinerTypeFormation(etudiant);
+      const filiere = (etudiant.filiere || '').toLowerCase();
       const ca = toNum(etudiant.prixTotal);
-      const typeFormation = etudiant.typeFormation;
 
       stats.global.total += 1;
       stats.global.ca += ca;
@@ -453,294 +317,54 @@ const DashboardNormal = () => {
         stats.global.fi += 1;
         stats.fi.total += 1;
         stats.fi.ca += ca;
-        
-        if (typeFormation === 'MASI') {
-          stats.fi.masi += 1;
-        } else if (typeFormation === 'IRM') {
-          stats.fi.irm += 1;
-        } else if (typeFormation === 'CYCLE_INGENIEUR') {
-          stats.fi.cycleIngenieur += 1;
-        }
-        
+        if (filiere.includes('masi')) stats.fi.masi += 1;
+        else if (filiere.includes('irm')) stats.fi.irm += 1;
       } else if (type === 'Executive') {
         stats.global.executive += 1;
         stats.executive.total += 1;
         stats.executive.ca += ca;
-        
-        if (typeFormation === 'MASI') {
-          stats.executive.masi += 1;
-        } else if (typeFormation === 'IRM') {
-          stats.executive.irm += 1;
-        } else if (typeFormation === 'LICENCE_PRO') {
-          stats.executive.licencePro += 1;
-        } else if (typeFormation === 'MASTER_PRO') {
-          stats.executive.masterPro += 1;
-        } else {
-          stats.executive.autre += 1;
-        }
-        
+        if (filiere.includes('masi')) stats.executive.masi += 1;
+        else if (filiere.includes('irm')) stats.executive.irm += 1;
       } else if (type === 'TA') {
         stats.global.ta += 1;
         stats.ta.total += 1;
         stats.ta.ca += ca;
-        
-        if (typeFormation === 'MASI') {
-          stats.ta.masi += 1;
-        } else if (typeFormation === 'IRM') {
-          stats.ta.irm += 1;
-        } else if (typeFormation === 'CYCLE_INGENIEUR') {
-          stats.ta.cycleIngenieur += 1;
-        }
+        if (filiere.includes('masi')) stats.ta.masi += 1;
+        else if (filiere.includes('irm')) stats.ta.irm += 1;
       }
     });
 
     setTableauReinscriptions(stats);
   };
-  
 
-
-  // Nouvelle fonction qui utilise directement les données passées en paramètres
-const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anneeFilter) => {
-  // Ne pas calculer pour 2024/2025
-  if (anneeFilter === '2024/2025') {
-    setPreinscriptions({
-      count: 0,
-      parType: { fi: 0, ta: 0, executive: 0 },
-      parFiliere: {},
-      parCommercial: {}
-    });
-    return;
-  }
-
-  const etudiantsFiltres = anneeFilter === 'toutes' 
-    ? etudiantsData 
-    : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
-
-  // Filtrer les étudiants avec prixTotal = 0 ou null/undefined
-  const preinscrits = etudiantsFiltres.filter(e => {
-    const prix = parseFloat(e.prixTotal) || 0;
-    return prix === 0;
-  });
-
-  const stats = {
-    count: preinscrits.length,
-    parType: { fi: 0, ta: 0, executive: 0 },
-    parFiliere: {},
-    parCommercial: {}
-  };
-
-  preinscrits.forEach(etudiant => {
-    // Par type de formation
-    const type = determinerTypeFormation(etudiant);
-    if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
-      stats.parType.fi += 1;
-    } else if (type === 'Executive') {
-      stats.parType.executive += 1;
-    } else if (type === 'TA') {
-      stats.parType.ta += 1;
-    }
-
-    // Par filière
-    const filiere = etudiant.filiere || 'Non définie';
-    stats.parFiliere[filiere] = (stats.parFiliere[filiere] || 0) + 1;
-
-    // Par commercial - utiliser commerciauxData passé en paramètre
-    const commercial = etudiant.commercial;
-    if (commercial) {
-      const commercialInfo = commerciauxData.find(c => c._id === commercial);
-      const nomCommercial = commercialInfo ? commercialInfo.nom : 'Commercial inconnu';
-      stats.parCommercial[nomCommercial] = (stats.parCommercial[nomCommercial] || 0) + 1;
-    }
-  });
-
-  setPreinscriptions(stats);
-};
-  // Nouvelle fonction pour calculer les préinscriptions
-  const calculerPreinscriptions = (etudiantsData, anneeFilter) => {
-    // Ne pas calculer pour 2024/2025
-    if (anneeFilter === '2024/2025') {
-      setPreinscriptions({
-        count: 0,
-        parType: { fi: 0, ta: 0, executive: 0 },
-        parFiliere: {},
-        parCommercial: {}
-      });
-      return;
-    }
-
-    const etudiantsFiltres = anneeFilter === 'toutes' 
-      ? etudiantsData 
-      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
-
-    // Filtrer les étudiants avec prixTotal = 0 ou null/undefined
-    const preinscrits = etudiantsFiltres.filter(e => {
-      const prix = parseFloat(e.prixTotal) || 0;
-      return prix === 0;
-    });
-
-    const stats = {
-      count: preinscrits.length,
-      parType: { fi: 0, ta: 0, executive: 0 },
-      parFiliere: {},
-      parCommercial: {}
-    };
-
-    preinscrits.forEach(etudiant => {
-      // Par type de formation
-      const type = determinerTypeFormation(etudiant);
-      if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
-        stats.parType.fi += 1;
-      } else if (type === 'Executive') {
-        stats.parType.executive += 1;
-      } else if (type === 'TA') {
-        stats.parType.ta += 1;
-      }
-
-      // Par filière
-      const filiere = etudiant.filiere || 'Non définie';
-      stats.parFiliere[filiere] = (stats.parFiliere[filiere] || 0) + 1;
-
-      // Par commercial
-      const commercial = etudiant.commercial;
-      if (commercial) {
-        const commercialInfo = commerciaux.find(c => c._id === commercial);
-        const nomCommercial = commercialInfo ? commercialInfo.nom : 'Commercial inconnu';
-        stats.parCommercial[nomCommercial] = (stats.parCommercial[nomCommercial] || 0) + 1;
-      }
-    });
-
-    setPreinscriptions(stats);
-  };
-
-  // Fonction de classification basée sur STRUCTURE_FORMATION
+  // ✅ Détermination robuste du type de formation, adaptée à votre modèle
   const determinerTypeFormation = (etudiant) => {
     const tf = etudiant.typeFormation;
-    
     if (tf) {
-      // Nouvelles formations avec classification claire
-      if (tf === 'LICENCE_PRO') return 'Executive';
-      if (tf === 'MASTER_PRO') return 'Executive';
-      
+      // Map explicite du modèle -> catégories Dashboard
+      if (tf === 'LICENCE_PRO' || tf === 'MASTER_PRO') return 'Executive';
       if (tf === 'CYCLE_INGENIEUR') {
-        const niveau = (etudiant.niveauFormation || '').toLowerCase();
-        const cycle = (etudiant.cycle || '').toLowerCase();
-        
-        // Si c'est explicitement marqué comme executive dans le niveau/cycle
-        if (niveau.includes('executive') || cycle.includes('executive')) return 'Executive';
-        
-        // Si c'est marqué comme TA/alternance
-        if (niveau.includes('ta') || niveau.includes('altern') || cycle.includes('ta') || cycle.includes('altern') || niveau === 'ta') {
-          return 'TA';
-        }
-        
-        // Par défaut, CYCLE_INGENIEUR = FI
-        return 'FI';
-      }
-      
-      // Anciennes formations MASI/IRM
-      if (tf === 'MASI' || tf === 'IRM') {
         const niveau = (etudiant.niveauFormation || '').toLowerCase();
         if (niveau.includes('executive')) return 'Executive';
         if (niveau.includes('ta') || niveau.includes('altern') || niveau === 'ta') return 'TA';
         return 'FI';
       }
-      
-      // Fallback direct
-      if (tf === 'Executive' || tf === 'TA' || tf === 'FI') return tf;
+      if (tf === 'Executive' || tf === 'TA' || tf === 'FI') return tf; // au cas où
     }
 
-    // Fallback: utiliser niveauFormation + cycle (logique existante)
+    // Fallback: utiliser niveauFormation + cycle
     const niveau = (etudiant.niveauFormation || '').toLowerCase();
     const cycle = (etudiant.cycle || '').toLowerCase();
-    
     if (niveau.includes('executive') || cycle.includes('executive')) return 'Executive';
-    if (niveau.includes('ta') || niveau.includes('altern') || cycle.includes('ta') || cycle.includes('altern') || niveau === 'ta') {
+    if (
+      niveau.includes('ta') ||
+      niveau.includes('altern') ||
+      cycle.includes('ta') ||
+      cycle.includes('altern') ||
+      niveau === 'ta'
+    )
       return 'TA';
-    }
-    
     return 'FI';
-  };
-
-  // ✅ Classification MASI/IRM/Autre basée sur STRUCTURE_FORMATION
-  const determinerFiliereClassification = (etudiant) => {
-    const tf = etudiant.typeFormation;
-    
-    // Pour LICENCE_PRO
-    if (tf === 'LICENCE_PRO') {
-      const specialite = etudiant.specialiteLicencePro || '';
-      
-      // Spécialités IRM (informatique/technique)
-      const specialitesIRM = [
-        'Tests Logiciels avec Tests Automatisés',
-        'Développement Informatique Full Stack',
-        'Administration des Systèmes, Bases de Données, Cybersécurité et Cloud Computing',
-        'Réseaux et Cybersécurité',
-        'Electrotechnique et systèmes – Cnam',
-        'Informatique – Cnam'
-      ];
-      
-      // Spécialités MASI (business/management)
-      const specialitesIMASI = [
-        'Marketing digital e-business Casablanca',
-        'Gestion de la Qualité',
-        'Finance, Audit & Entrepreneuriat',
-        'Développement Commercial et Marketing Digital',
-        'Management et Conduite de Travaux – Cnam',
-        'Achat & Logistique'
-      ];
-      
-      if (specialitesIRM.includes(specialite)) return 'irm';
-      if (specialitesIMASI.includes(specialite)) return 'masi';
-      return 'autre';
-    }
-    
-    // Pour MASTER_PRO
-    if (tf === 'MASTER_PRO') {
-      const specialite = etudiant.specialiteMasterPro || '';
-      
-      // Spécialités IRM (informatique/technique)
-      const specialitesIRM = [
-        'Informatique, Data Sciences, Cloud, Cybersécurité & Intelligence Artificielle (DU IDCIA)',
-        'Management des Systèmes d\'Information',
-        'Big Data et Intelligence Artificielle',
-        'Cybersécurité et Transformation Digitale',
-        'Génie Informatique et Innovation Technologique'
-      ];
-      
-      // Spécialités MASI (business/management)
-      const specialitesIMASI = [
-        'QHSSE & Performance Durable',
-        'Achat, Logistique et Supply Chain Management',
-        'Finance, Audit & Entrepreneuriat',
-        'Développement Commercial et Marketing Digital'
-      ];
-      
-      if (specialitesIRM.includes(specialite)) return 'irm';
-      if (specialitesIMASI.includes(specialite)) return 'masi';
-      return 'autre';
-    }
-    
-    // Pour CYCLE_INGENIEUR
-    if (tf === 'CYCLE_INGENIEUR') {
-      const specialite = etudiant.specialiteIngenieur || '';
-      
-      if (specialite === 'Génie Informatique') return 'irm';
-      if (specialite === 'Génie Mécatronique' || specialite === 'Génie Civil') return 'autre';
-      return 'autre';
-    }
-    
-    // Pour anciennes formations MASI/IRM
-    if (tf === 'MASI') return 'masi';
-    if (tf === 'IRM') return 'irm';
-    
-    // Fallback avec logique existante
-    const filiere = (etudiant.filiere || '').toLowerCase();
-    const specialite = (etudiant.specialite || '').toLowerCase();
-    
-    if (filiere.includes('masi') || specialite.includes('masi')) return 'masi';
-    if (filiere.includes('irm') || specialite.includes('irm')) return 'irm';
-    
-    return 'autre';
   };
 
   const formatMoney = (amount) =>
@@ -756,8 +380,6 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
     // Calculer immédiatement les statistiques avec la nouvelle année
     if (etudiants.length > 0) {
       calculerStatistiquesAvecAnnee(etudiants, nouvelleAnnee);
-      fetchStatistiques(nouvelleAnnee);
-      calculerPreinscriptionsDirectement(etudiants, commerciaux, nouvelleAnnee); // Ajouter cette ligne
     }
   };
 
@@ -955,143 +577,6 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
             </table>
           </div>
 
-          {/* Section Préinscriptions - Seulement si ce n'est pas 2024/2025 */}
-          {anneeScolaireFilter !== '2024/2025' && preinscriptions.count > 0 && (
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: '8px',
-                padding: '2rem',
-                marginBottom: '2rem',
-                border: '1px solid #e5e7eb'
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'bold',
-                  color: '#1f2937',
-                  marginBottom: '2rem',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                <Clock size={24} />
-                Préinscriptions  - {anneeScolaireFilter}
-              </h2>
-
-              {/* Résumé global */}
-              <div style={{ 
-                background: '#fef3c7', 
-                borderRadius: '8px', 
-                padding: '1.5rem', 
-                marginBottom: '2rem',
-                border: '1px solid #f59e0b',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#92400e' }}>
-                  {preinscriptions.count}
-                </div>
-                <div style={{ color: '#92400e', fontWeight: '600' }}>
-                  Étudiants en préinscription
-                </div>
-              </div>
-
-              {/* Répartition par type */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #0ea5e9' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0c4a6e' }}>
-                    {preinscriptions.parType.fi}
-                  </div>
-                  <div style={{ color: '#0c4a6e', fontSize: '0.9rem' }}>FI</div>
-                </div>
-                <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #22c55e' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#14532d' }}>
-                    {preinscriptions.parType.ta}
-                  </div>
-                  <div style={{ color: '#14532d', fontSize: '0.9rem' }}>TA</div>
-                </div>
-                <div style={{ background: '#fdf4ff', padding: '1rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #a855f7' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#581c87' }}>
-                    {preinscriptions.parType.executive}
-                  </div>
-                  <div style={{ color: '#581c87', fontSize: '0.9rem' }}>Executive</div>
-                </div>
-              </div>
-
-              {/* Répartition par filière */}
-              {Object.keys(preinscriptions.parFiliere).length > 0 && (
-                <div style={{ marginBottom: '2rem' }}>
-                  <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>
-                    Répartition par filière
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                    {Object.entries(preinscriptions.parFiliere).map(([filiere, count]) => (
-                      <div key={filiere} style={{
-                        background: '#f8fafc',
-                        padding: '1rem',
-                        borderRadius: '6px',
-                        border: '1px solid #e2e8f0',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{ fontSize: '0.9rem', color: '#475569' }}>{filiere}</span>
-                        <span style={{ 
-                          background: '#3b82f6',
-                          color: 'white',
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '999px',
-                          fontSize: '0.8rem',
-                          fontWeight: '600'
-                        }}>
-                          {count}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Répartition par commercial */}
-              {Object.keys(preinscriptions.parCommercial).length > 0 && (
-                <div>
-                  <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>
-                    Répartition par commercial
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-                    {Object.entries(preinscriptions.parCommercial).map(([commercial, count]) => (
-                      <div key={commercial} style={{
-                        background: '#f8fafc',
-                        padding: '1rem',
-                        borderRadius: '6px',
-                        border: '1px solid #e2e8f0',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{ fontSize: '0.9rem', color: '#475569' }}>{commercial}</span>
-                        <span style={{ 
-                          background: '#10b981',
-                          color: 'white',
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '999px',
-                          fontSize: '0.8rem',
-                          fontWeight: '600'
-                        }}>
-                          {count}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Tableau des Inscrits */}
           <div
             style={{
@@ -1136,10 +621,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>FI</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.fi.total}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.fi.masi}</strong></div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.fi.irm}</strong></div>
-                {anneeScolaireFilter !== '2024/2025' && (
-                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauInscrits.fi.cycleIngenieur}</strong></div>
-                )}
+                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.fi.irm}</strong></div>
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauInscrits.fi.ca)} MAD
                 </div>
@@ -1149,30 +631,9 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
               <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Exécutive</h3>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.executive.total}</strong></div>
-                
-                {/* Affichage conditionnel selon l'année */}
-                {anneeScolaireFilter === '2024/2025' ? (
-                  <>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
-                    <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
-                  </>
-                ) : (
-                  <>
-                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.masi > 0 && (
-                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
-                    )}
-                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.irm > 0 && (
-                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
-                    )}
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Licence Pro <strong>{tableauInscrits.executive.licencePro}</strong></div>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Master Pro <strong>{tableauInscrits.executive.masterPro}</strong></div>
-                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.autre > 0 && (
-                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
-                    )}
-                  </>
-                )}
-                
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauInscrits.executive.ca)} MAD
                 </div>
@@ -1184,9 +645,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.ta.total}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.ta.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.ta.irm}</strong></div>
-                {anneeScolaireFilter !== '2024/2025' && (
-                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauInscrits.ta.cycleIngenieur}</strong></div>
-                )}
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.ta.autre}</strong></div>
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauInscrits.ta.ca)} MAD
                 </div>
@@ -1241,9 +700,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.fi.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.fi.irm}</strong></div>
-                {anneeScolaireFilter !== '2024/2025' && (
-                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauReinscriptions.fi.cycleIngenieur}</strong></div>
-                )}
+                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>G-C <strong>0</strong></div>
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauReinscriptions.fi.ca)} MAD
                 </div>
@@ -1255,30 +712,9 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                   Total Executive <strong>{tableauReinscriptions.executive.total}</strong>
                 </div>
-                
-                {/* Affichage conditionnel selon l'année */}
-                {anneeScolaireFilter === '2024/2025' ? (
-                  <>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
-                    <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Autre <strong>{tableauReinscriptions.executive.autre}</strong></div>
-                  </>
-                ) : (
-                  <>
-                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.masi > 0 && (
-                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
-                    )}
-                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.irm > 0 && (
-                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
-                    )}
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Licence Pro <strong>{tableauReinscriptions.executive.licencePro}</strong></div>
-                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Master Pro <strong>{tableauReinscriptions.executive.masterPro}</strong></div>
-                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.autre > 0 && (
-                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauReinscriptions.executive.autre}</strong></div>
-                    )}
-                  </>
-                )}
-                
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
+                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>G-C <strong>0</strong></div>
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauReinscriptions.executive.ca)} MAD
                 </div>
@@ -1292,9 +728,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                 </div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.ta.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.ta.irm}</strong></div>
-                {anneeScolaireFilter !== '2024/2025' && (
-                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauReinscriptions.ta.cycleIngenieur}</strong></div>
-                )}
+                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>G-C <strong>0</strong></div>
                 <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
                   {formatMoney(tableauReinscriptions.ta.ca)} MAD
                 </div>
@@ -1326,74 +760,74 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
               }}
             >
               <Users size={24} />
-              Performance des Commerciaux {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
+              Performance des Commerciaux
             </h2>
             
-            {statistiques.length > 0 ? (
-              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
-                  <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
-                    <tr>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Commercial</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Contact</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Étudiants</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Chiffre d'Affaires</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Montant Reçu</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Reste à Payer</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Taux Recouvrement</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {statistiques.map((stat, index) => {
+            <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+                <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                  <tr>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Commercial</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Contact</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Étudiants</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Chiffre d'Affaires</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Montant Reçu</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Reste à Payer</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Taux Recouvrement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statistiques.length > 0 ? (
+                    statistiques.map((stat, index) => {
                       const tauxRecouvrement = stat.chiffreAffaire > 0 
                         ? ((stat.totalRecu / stat.chiffreAffaire) * 100).toFixed(1)
                         : 0;
@@ -1467,7 +901,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                               color: 'white',
                               background: '#3b82f6',
                               minWidth: '2rem'
-                                                       }}>
+                            }}>
                               {stat.countEtudiants || 0}
                             </span>
                           </td>
@@ -1544,20 +978,22 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                           </td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#94a3b8', 
-                fontStyle: 'italic', 
-                padding: '2rem' 
-              }}>
-                Aucune donnée commerciale disponible pour cette année
-              </div>
-            )}
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="7" style={{ 
+                        textAlign: 'center', 
+                        color: '#94a3b8', 
+                        fontStyle: 'italic', 
+                        padding: '2rem' 
+                      }}>
+                        Aucune donnée disponible
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Analyse Détaillée par Filière */}

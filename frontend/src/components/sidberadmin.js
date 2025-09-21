@@ -9,7 +9,6 @@ import {
   FileText,
   ClipboardList,
   LogOut,
-   Calendar,
   Menu,
   X,
   Shield
@@ -82,18 +81,7 @@ const AdministratifSidebar = ({ onLogout }) => {
       path: '/administratif/bulletins',
       label: 'Bulletins',
       icon: FileText
-    },
-    {
-      path: '/administratif/evaluation-etudiants',
-      label: 'Évaluation des Étudiants',
-      icon: ClipboardList
     }
-    ,
-        {
-          path: '/calendrier',
-          label: 'Calendrier',
-          icon: Calendar
-        },
   ];
 
   const toggleSidebar = () => {
@@ -565,7 +553,8 @@ const AdministratifSidebar = ({ onLogout }) => {
               <Shield size={20} />
             </div>
             <div>
-Scolarité              <div className="admin-badge">GESTION</div>
+              Administratif
+              <div className="admin-badge">GESTION</div>
             </div>
           </h3>
         </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Upload, BookOpen, FileText, GraduationCap, Hash, Send, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import Sidebaretudiant from '../components/sidebaretudiant';
+import Sidebaretudiant from '../components/sidebaretudiant.js';
  const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/';
@@ -22,7 +22,7 @@ const TeleverserExerciceEtudiant = () => {
     const fetchCours = async () => {
       const token = localStorage.getItem('token');
       try {
-        const res = await axios.get('http://195.179.229.230:5000/api/etudiant/mes-cours', {
+        const res = await axios.get('http://localhost:5000/api/etudiant/mes-cours', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -71,7 +71,7 @@ const TeleverserExerciceEtudiant = () => {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.post('http://195.179.229.230:5000/api/etudiant/exercices', formData, {
+      const res = await axios.post('http://localhost:5000/api/etudiant/exercices', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'

@@ -1,7 +1,7 @@
 // middlewares/authAdministratif.js
 
 const jwt = require('jsonwebtoken');
-const Administratif = require('../models/Administratif');
+const Administratif = require('../models/administratifModel');
 
 const authAdministratif = async (req, res, next) => {
   try {

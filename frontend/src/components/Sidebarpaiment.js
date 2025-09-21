@@ -9,7 +9,6 @@ import {
   BookOpen,
   CreditCard,
   Plus,
-  CheckCircle,
   BarChart3,
   Calendar,
   AlertTriangle,
@@ -88,12 +87,6 @@ const Sidebar = ({ onLogout }) => {
       label: 'Paiements Exp.',
       icon: AlertTriangle
     },
-    
-        {
-          path: '/admin/validation-paiement',
-          label: 'Validation Paiement',
-          icon: CheckCircle
-        }
   ];
 
   // Utiliser location.pathname au lieu d'un state local

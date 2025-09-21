@@ -42,7 +42,7 @@ const EtudiantsProfesseur = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://195.179.229.230:5000/api/professeur/etudiants', {
+      const res = await axios.get('http://localhost:5000/api/professeur/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);
@@ -96,7 +96,7 @@ const EtudiantsProfesseur = () => {
       const config = {
         headers: { Authorization: `Bearer ${token}` }
       };
-      const resEtudiant = await axios.get(`http://195.179.229.230:5000/api/etudiants/${etudiant._id}`, config);
+      const resEtudiant = await axios.get(`http://localhost:5000/api/etudiants/${etudiant._id}`, config);
       setEtudiantSelectionne(resEtudiant.data);
       setShowViewModal(true);
     } catch (err) {
@@ -293,7 +293,7 @@ const EtudiantsProfesseur = () => {
                     <td className="image-colonne">
                       {e.image ? (
                         <img 
-                          src={`http://195.179.229.230:5000${e.image}`} 
+                          src={`http://localhost:5000${e.image}`} 
                           alt="etudiant" 
                           className="image-etudiant"
                         />
@@ -330,7 +330,7 @@ const EtudiantsProfesseur = () => {
                     <div className="carte-image">
                       {e.image ? (
                         <img 
-                          src={`http://195.179.229.230:5000${e.image}`} 
+                          src={`http://localhost:5000${e.image}`} 
                           alt="etudiant" 
                           className="carte-photo"
                         />
@@ -455,7 +455,7 @@ const EtudiantsProfesseur = () => {
                 <div className="etudiant-image-section">
                   {etudiantSelectionne.image ? (
                     <img 
-                      src={`http://195.179.229.230:5000${etudiantSelectionne.image}`} 
+                      src={`http://localhost:5000${etudiantSelectionne.image}`} 
                       alt="Photo de l'étudiant" 
                       className="etudiant-image-large"
                     />

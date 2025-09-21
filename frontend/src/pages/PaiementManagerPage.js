@@ -37,7 +37,7 @@ const PaymentManagerPage = () => {
 
   const fetchManagers = async () => {
     try {
-      const res = await fetch('http://195.179.229.230:5000/api/admin/paiement-managers', { headers });
+      const res = await fetch('http://localhost:5000/api/admin/paiement-managers', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des gestionnaires');
       const data = await res.json();
       setManagers(data);
@@ -102,8 +102,8 @@ const PaymentManagerPage = () => {
     setLoading(true);
     try {
       const url = editingManager 
-        ? `http://195.179.229.230:5000/api/admin/paiement-managers/${editingManager._id}`
-        : 'http://195.179.229.230:5000/api/admin/paiement-managers';
+        ? `http://localhost:5000/api/admin/paiement-managers/${editingManager._id}`
+        : 'http://localhost:5000/api/admin/paiement-managers';
       
       const method = editingManager ? 'PUT' : 'POST';
       
@@ -148,7 +148,7 @@ const PaymentManagerPage = () => {
     
     setLoading(true);
     try {
-      const res = await fetch(`http://195.179.229.230:5000/api/admin/paiement-managers/${managerToDelete._id}`, {
+      const res = await fetch(`http://localhost:5000/api/admin/paiement-managers/${managerToDelete._id}`, {
         method: 'DELETE',
         headers
       });
@@ -173,7 +173,7 @@ const PaymentManagerPage = () => {
   const handleToggleActive = async (manager) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://195.179.229.230:5000/api/admin/paiement-managers/${manager._id}/toggle-active`, {
+      const res = await fetch(`http://localhost:5000/api/admin/paiement-managers/${manager._id}/toggle-active`, {
         method: 'PATCH',
         headers
       });

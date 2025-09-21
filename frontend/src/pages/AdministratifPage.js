@@ -37,7 +37,7 @@ const AdministratifPage = () => {
 
   const fetchAdministratifs = async () => {
     try {
-      const res = await fetch('http://195.179.229.230:5000/api/administratifs', { headers });
+      const res = await fetch('http://localhost:5000/api/administratifs', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des administratifs');
       const data = await res.json();
       setAdministratifs(data);
@@ -97,8 +97,8 @@ const AdministratifPage = () => {
     setLoading(true);
     try {
       const url = editingAdministratif 
-        ? `http://195.179.229.230:5000/api/administratifs/${editingAdministratif._id}`
-        : 'http://195.179.229.230:5000/api/administratifs';
+        ? `http://localhost:5000/api/administratifs/${editingAdministratif._id}`
+        : 'http://localhost:5000/api/administratifs';
       
       const method = editingAdministratif ? 'PUT' : 'POST';
       
@@ -143,7 +143,7 @@ const AdministratifPage = () => {
     
     setLoading(true);
     try {
-      const res = await fetch(`http://195.179.229.230:5000/api/administratifs/${administratifToDelete._id}`, {
+      const res = await fetch(`http://localhost:5000/api/administratifs/${administratifToDelete._id}`, {
         method: 'DELETE',
         headers
       });
@@ -168,7 +168,7 @@ const AdministratifPage = () => {
   const handleToggleActive = async (administratif) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://195.179.229.230:5000/api/administratifs/${administratif._id}/actif`, {
+      const res = await fetch(`http://localhost:5000/api/administratifs/${administratif._id}/actif`, {
         method: 'PATCH',
         headers
       });
@@ -233,11 +233,11 @@ const AdministratifPage = () => {
         <div className="header-card">
           <div className="header-content">
             <div className="header-info">
-              <h1 className="page-title">Gestion des Scolarité</h1>
+              <h1 className="page-title">Gestion des Administratifs</h1>
             </div>
             <button className="btn btn-primary" onClick={openAddModal}>
               <Plus size={20} />
-              Nouvelle Scolarité
+              Nouvel Administratif
             </button>
           </div>
         </div>
@@ -261,7 +261,7 @@ const AdministratifPage = () => {
         <div className="commercials-card">
           <h2 className="section-title">
             <Shield size={24} className="icon-green" />
-            Scolarité ({administratifs.length})
+            Administratifs ({administratifs.length})
           </h2>
           
           {loading ? (
@@ -359,7 +359,7 @@ const AdministratifPage = () => {
             <div className="modal">
               <div className="modal-header">
                 <h3 className="modal-title">
-                  {editingAdministratif ? 'Modifier Scolarité' : 'Nouvelle Scolarité'}
+                  {editingAdministratif ? 'Modifier Administratif' : 'Nouvel Administratif'}
                 </h3>
                 <button
                   onClick={() => {

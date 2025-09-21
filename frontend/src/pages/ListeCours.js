@@ -35,9 +35,9 @@ const ListeCours = () => {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        const resCours = await fetch('http://195.179.229.230:5000/api/cours', config);
-        const resEtudiants = await fetch('http://195.179.229.230:5000/api/etudiants', config);
-        const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', config);
+        const resCours = await fetch('http://localhost:5000/api/cours', config);
+        const resEtudiants = await fetch('http://localhost:5000/api/etudiants', config);
+        const resProfs = await fetch('http://localhost:5000/api/professeurs', config);
 
         if (resCours.ok && resEtudiants.ok && resProfs.ok) {
           const coursData = await resCours.json();
@@ -108,7 +108,7 @@ const ListeCours = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://195.179.229.230:5000/api/cours', {
+      const response = await fetch('http://localhost:5000/api/cours', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ const ListeCours = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://195.179.229.230:5000/api/cours/${coursASupprimer._id}`, {
+      const response = await fetch(`http://localhost:5000/api/cours/${coursASupprimer._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -223,8 +223,8 @@ const ListeCours = () => {
     ? etudiants.filter(e => e.cours.includes(coursActuel.nom))
     : [];
 
-  // Fonction pour exporter les cours en Excel
-  const exportCoursToExcel = () => {
+  // Fonction pour exporter les cours en CSV
+  const exportCoursToCSV = () => {
     const getEtudiantsForCourse = (courseName) =>
       etudiants.filter(e => {
         const c = e.cours;
@@ -235,65 +235,36 @@ const ListeCours = () => {
         return false;
       });
 
-    // Préparer les données pour Excel
-    const worksheetData = [
-      ["Nom de la Classe", "Professeurs", "Nombre d'Étudiants", "Liste des Étudiants"]
+    const rows = [
+      ["Nom du classe", "Professeurs", "Nombre d'étudiants", "Étudiants"]
     ];
 
     coursFiltres.forEach(c => {
       const profs = Array.isArray(c.professeur)
         ? c.professeur.join(', ')
-        : (c.professeur || 'Non assigné');
+        : (c.professeur || '');
       const etuds = getEtudiantsForCourse(c.nom);
-      const etudsNames = etuds.map(e => e.nomComplet || e.nom || '').join(', ');
-      
-      worksheetData.push([
-        c.nom,
-        profs,
-        etuds.length,
-        etudsNames
-      ]);
+      const etudsNames = etuds.map(e => e.nomComplet || e.nom || '').join(' | ');
+      rows.push([c.nom, profs, String(etuds.length), etudsNames]);
     });
 
-    try {
-      // Vérifier si XLSX est disponible
-      if (typeof window.XLSX === 'undefined') {
-        alert('La bibliothèque Excel n\'est pas chargée. Veuillez rafraîchir la page.');
-        return;
-      }
+    const csv = '\uFEFF' + rows
+      .map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
 
-      // Créer un nouveau workbook
-      const wb = window.XLSX.utils.book_new();
-      
-      // Convertir les données en worksheet
-      const ws = window.XLSX.utils.aoa_to_sheet(worksheetData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
 
-      // Définir les largeurs de colonnes
-      ws['!cols'] = [
-        { wch: 30 }, // Nom de la classe
-        { wch: 40 }, // Professeurs
-        { wch: 20 }, // Nombre d'étudiants
-        { wch: 60 }  // Liste des étudiants
-      ];
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    a.href = url;
+    a.download = `cours_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.csv`;
 
-      // Ajouter le worksheet au workbook
-      window.XLSX.utils.book_append_sheet(wb, ws, 'Classes');
-
-      // Générer le nom du fichier avec la date
-      const date = new Date();
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      const fileName = `classes_${dateStr}.xlsx`;
-
-      // Écrire le fichier
-      window.XLSX.writeFile(wb, fileName);
-
-      // Message de succès
-      console.log('Fichier Excel exporté avec succès:', fileName);
-
-    } catch (error) {
-      console.error('Erreur lors de l\'exportation Excel:', error);
-      alert('Erreur lors de l\'exportation du fichier Excel. Veuillez réessayer.');
-    }
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const styles = {
@@ -951,7 +922,7 @@ const ListeCours = () => {
             </div>
             <div style={styles.headerButtons}>
               <button
-                onClick={exportCoursToExcel}
+                onClick={exportCoursToCSV}
                 style={styles.exportButton}
                 onMouseEnter={(e) => {
                   e.target.style.transform = 'translateY(-2px)';
