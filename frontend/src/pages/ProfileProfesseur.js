@@ -104,7 +104,11 @@ const ProfileProfesseur = () => {
     if (!docPath) return;
     
     const link = document.createElement('a');
+<<<<<<< HEAD
     link.href = `https://vmi1977988.contaboserver.net/${docPath}`;
+=======
+    link.href = `http://195.179.229.230:5000${docPath}`;
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     link.download = docName;
     link.target = '_blank';
     document.body.appendChild(link);

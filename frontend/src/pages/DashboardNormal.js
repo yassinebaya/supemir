@@ -3,7 +3,11 @@ import {
   RotateCcw, Home, AlertCircle, Filter, Users, DollarSign, 
   TrendingUp, Eye, Phone, Mail, GraduationCap, BookOpen,
   UserCheck, Building, Calendar, Target, BarChart3, Award,
+<<<<<<< HEAD
   Shield, CheckCircle, XCircle, User, Search, Download, Handshake,Clock // Ajouter Clock ici
+=======
+  Shield, CheckCircle, XCircle, User, Search, Download, Clock // Ajouter Clock ici
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -12,9 +16,13 @@ const DashboardNormal = () => {
   const [etudiants, setEtudiants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+<<<<<<< HEAD
 // Ajouter après les états existants
 const [partners, setPartners] = useState([]);
 const [statsPartners, setStatsPartners] = useState([]);
+=======
+
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   // Filtre par année scolaire - commencer vide pour sélection auto de 2025/2026
   const [anneeScolaireFilter, setAnneeScolaireFilter] = useState('');
   const [anneesDisponibles, setAnneesDisponibles] = useState([]);
@@ -105,8 +113,13 @@ const [statsPartners, setStatsPartners] = useState([]);
   const calculerStatistiquesCommerciaux = (anneeFilter) => {
     // Filtrer les étudiants selon l'année
     const etudiantsFiltres = anneeFilter === 'toutes' 
+<<<<<<< HEAD
       ? etudiants.filter(e => e.isPartner !== true)
       : etudiants.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+=======
+      ? etudiants 
+      : etudiants.filter(e => e.anneeScolaire === anneeFilter);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
     // Grouper par commercial
     const statsParCommercial = {};
@@ -153,6 +166,7 @@ const [statsPartners, setStatsPartners] = useState([]);
     setStatistiques(statistiquesCalculees);
   };
 
+<<<<<<< HEAD
 // Fixed fetchData function with proper error handling
 const fetchData = async () => {
   try {
@@ -328,6 +342,75 @@ const calculerStatistiquesPartnersDirectement = (etudiantsData, partnersData, an
     const etudiantsFiltres = anneeFilter === 'toutes' 
       ? etudiantsData.filter(e => e.isPartner !== true)
       : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+=======
+  // Récupération des données
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+
+      const [etudiantsRes, commerciauxRes] = await Promise.all([
+        fetch('http://195.179.229.230:5000/api/etudiant', {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch('http://195.179.229.230:5000/api/commerciaux', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      if (!etudiantsRes.ok || !commerciauxRes.ok) {
+        throw new Error('Erreur lors du chargement des données');
+      }
+
+      const etudiantsData = await etudiantsRes.json();
+      const commerciauxData = await commerciauxRes.json();
+
+      setEtudiants(etudiantsData);
+      setCommerciaux(commerciauxData);
+
+      const annees = [...new Set(etudiantsData.map((e) => e.anneeScolaire).filter(Boolean))]
+        .sort()
+        .reverse();
+      setAnneesDisponibles(annees);
+
+      // Déterminer l'année scolaire à sélectionner
+      let anneeASelectionner = anneeScolaireFilter;
+      if (!anneeASelectionner && annees.length > 0) {
+        if (annees.includes('2025/2026')) {
+          anneeASelectionner = '2025/2026';
+        } else {
+          anneeASelectionner = annees[0];
+        }
+        setAnneeScolaireFilter(anneeASelectionner);
+      }
+
+      // Calculer les statistiques immédiatement avec l'année sélectionnée
+      calculerStatistiquesAvecAnnee(etudiantsData, anneeASelectionner || anneeScolaireFilter);
+      
+      // IMPORTANT: Calculer les statistiques des commerciaux immédiatement après avoir défini les données
+      // Utiliser directement les données chargées au lieu d'attendre que les states soient mis à jour
+      calculerStatistiquesCommerciauxDirectement(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
+      
+      // Nouvelle fonction pour calculer les préinscriptions
+      calculerPreinscriptionsDirectement(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
+      
+    } catch (err) {
+      console.error('Erreur lors du chargement des données:', err);
+      setError('Impossible de charger les données');
+      setEtudiants([]);
+      setCommerciaux([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Nouvelle fonction qui utilise directement les données passées en paramètres
+  const calculerStatistiquesCommerciauxDirectement = (etudiantsData, commerciauxData, anneeFilter) => {
+    // Filtrer les étudiants selon l'année
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? etudiantsData 
+      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
     // Grouper par commercial
     const statsParCommercial = {};
@@ -377,8 +460,13 @@ const calculerStatistiquesPartnersDirectement = (etudiantsData, partnersData, an
   // Fonction d'analyse des filières
   const analyseFilieres = () => {
     const etudiantsFiltres = anneeScolaireFilter === 'toutes' 
+<<<<<<< HEAD
       ? etudiants.filter(e => e.isPartner !== true)
       : etudiants.filter(e => e.anneeScolaire === anneeScolaireFilter && e.isPartner !== true);
+=======
+      ? etudiants 
+      : etudiants.filter(e => e.anneeScolaire === anneeScolaireFilter);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
     const filieresStats = {};
     
@@ -435,6 +523,7 @@ const calculerStatistiquesPartnersDirectement = (etudiantsData, partnersData, an
     calculerStatistiquesAvecAnnee(data, anneeScolaireFilter);
   };
 
+<<<<<<< HEAD
 // Nouvelle fonction pour calculer les statistiques avec une année spécifique
 const calculerStatistiquesAvecAnnee = (data, anneeFilter, partnersData = []) => {
   // Garder les données fixes pour 2024/2025
@@ -524,6 +613,58 @@ const calculerStatistiquesAvecAnnee = (data, anneeFilter, partnersData = []) => 
   calculerTableauInscrits(nouveauxInscrits, toNum);
   calculerTableauReinscriptions(reinscriptions, toNum);
 };
+=======
+  // Nouvelle fonction pour calculer les statistiques avec une année spécifique
+  const calculerStatistiquesAvecAnnee = (data, anneeFilter) => {
+    // Garder les données fixes pour 2024/2025
+    if (anneeFilter === '2024/2025') {
+      setChiffreAffaire(donneesFixes2024_2025.chiffreAffaire);
+      setTableauInscrits(donneesFixes2024_2025.tableauInscrits);
+      setTableauReinscriptions(donneesFixes2024_2025.tableauReinscriptions);
+      return;
+    }
+
+    const etudiantsFiltres = data.filter(
+      (e) => anneeFilter === 'toutes' || e.anneeScolaire === anneeFilter
+    );
+
+    const toNum = (v) => (v === null || v === undefined || v === '' ? 0 : parseFloat(v) || 0);
+    
+    // Nouveaux inscrits: nouvelleInscription = true ET prixTotal > 0
+    const nouveauxInscrits = etudiantsFiltres.filter((e) => 
+      e.nouvelleInscription === true && toNum(e.prixTotal) > 0
+    );
+    
+    // Réinscriptions: nouvelleInscription = false ET prixTotal > 0  
+    const reinscriptions = etudiantsFiltres.filter((e) => 
+      e.nouvelleInscription === false && toNum(e.prixTotal) > 0
+    );
+    
+    const caNouveau = nouveauxInscrits.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
+    const caReinscription = reinscriptions.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
+    const caTotal = caNouveau + caReinscription;
+
+    // Pour le recouvrement, considérer TOUS les étudiants payés (nouveaux + réinscriptions)
+    const tousEtudiantsPayes = [...nouveauxInscrits, ...reinscriptions].filter((e) => e.paye === true);
+    const caRecouvre = tousEtudiantsPayes.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
+
+    setChiffreAffaire({
+      nouveauxInscrits: { count: nouveauxInscrits.length, ca: caNouveau },
+      reinscriptions: { count: reinscriptions.length, ca: caReinscription },
+      total: { 
+        count: nouveauxInscrits.length + reinscriptions.length, 
+        ca: caTotal 
+      },
+      recouvrement: {
+        percentage: caTotal > 0 ? (caRecouvre / caTotal) * 100 : 0,
+        ca: caRecouvre
+      }
+    });
+
+    calculerTableauInscrits(nouveauxInscrits, toNum);
+    calculerTableauReinscriptions(reinscriptions, toNum);
+  };
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
   const calculerTableauInscrits = (inscrits, toNum) => {
     const stats = {
@@ -671,10 +812,16 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
     return;
   }
 
+<<<<<<< HEAD
   // EXCLUSION DES PARTNERS
   const etudiantsFiltres = anneeFilter === 'toutes' 
     ? etudiantsData.filter(e => e.isPartner !== true)
     : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+=======
+  const etudiantsFiltres = anneeFilter === 'toutes' 
+    ? etudiantsData 
+    : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
   // Préinscriptions : prixTotal = 0 (peu importe nouvelleInscription)
   const preinscrits = etudiantsFiltres.filter(e => {
@@ -728,10 +875,16 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
       return;
     }
 
+<<<<<<< HEAD
     // EXCLUSION DES PARTNERS
     const etudiantsFiltres = anneeFilter === 'toutes' 
       ? etudiantsData.filter(e => e.isPartner !== true)
       : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+=======
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? etudiantsData 
+      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
     // Filtrer les étudiants avec prixTotal = 0 ou null/undefined
     const preinscrits = etudiantsFiltres.filter(e => {
@@ -912,6 +1065,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
     window.location.href = '/';
   };
 
+<<<<<<< HEAD
   
 
 
@@ -924,6 +1078,18 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
     calculerStatistiquesPartnersDirectement(etudiants, partners, nouvelleAnnee);
   }
 };
+=======
+  const handleAnneeChange = (nouvelleAnnee) => {
+    setAnneeScolaireFilter(nouvelleAnnee);
+    // Calculer immédiatement les statistiques avec la nouvelle année
+    if (etudiants.length > 0) {
+      calculerStatistiquesAvecAnnee(etudiants, nouvelleAnnee);
+      fetchStatistiques(nouvelleAnnee);
+      calculerPreinscriptionsDirectement(etudiants, commerciaux, nouvelleAnnee); // Ajouter cette ligne
+    }
+  };
+
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   useEffect(() => {
     fetchData();
   }, []);
@@ -1050,6 +1216,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
             </div>
           </div>
 
+<<<<<<< HEAD
 
        {/* Chiffre d'Affaire */}
 <div
@@ -1155,6 +1322,75 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
     </tbody>
   </table>
 </div>
+=======
+          {/* Chiffre d'Affaire */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
+                    Total Inscrit
+                  </th>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
+                    Chiffre d'affaire
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong>Nouveaux Inscrits</strong>
+                    <br />
+                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{chiffreAffaire.nouveauxInscrits.count}</span>
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong>{formatMoney(chiffreAffaire.nouveauxInscrits.ca)} MAD</strong>
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong>Réinscriptions</strong>
+                    <br />
+                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{chiffreAffaire.reinscriptions.count}</span>
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong>{formatMoney(chiffreAffaire.reinscriptions.ca)} MAD</strong>
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong>Total</strong>
+                    <br />
+                    <span style={{ fontSize: '1.5rem', color: '#1f2937', fontWeight: 'bold' }}>{chiffreAffaire.total.count}</span>
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong style={{ fontSize: '1.1rem' }}>{formatMoney(chiffreAffaire.total.ca)} MAD</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong>Recouvrement</strong>
+                    <br />
+                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>
+                      {chiffreAffaire.recouvrement.percentage.toFixed(2)} %
+                    </span>
+                  </td>
+                  <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <strong>{formatMoney(chiffreAffaire.recouvrement.ca)} MAD</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
           {/* Section Préinscriptions - Seulement si ce n'est pas 2024/2025 */}
           {anneeScolaireFilter !== '2024/2025' && preinscriptions.count > 0 && (
@@ -1488,7 +1724,13 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
               {/* TA */}
               <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
                 <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>TA</h3>
+<<<<<<< HEAD
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total TA <strong>{tableauReinscriptions.ta.total}</strong></div>
+=======
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Total TA <strong>{tableauReinscriptions.ta.total}</strong>
+                </div>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.ta.masi}</strong></div>
                 <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.ta.irm}</strong></div>
                 {anneeScolaireFilter !== '2024/2025' && (
@@ -1565,7 +1807,10 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
                         fontSize: '0.875rem',
                         borderBottom: '2px solid #e5e7eb'
                       }}>Chiffre d'Affaires</th>
+<<<<<<< HEAD
                       
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                       <th style={{ 
                         padding: '1rem 1.25rem', 
                         textAlign: 'left', 

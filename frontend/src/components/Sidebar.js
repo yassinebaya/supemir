@@ -7,7 +7,10 @@ import {
   DollarSign,
   Briefcase,
   Users,
+<<<<<<< HEAD
   Handshake,
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   AlertTriangle,
   BookOpen,
   CreditCard,
@@ -86,11 +89,14 @@ const Sidebar = ({ onLogout }) => {
       icon: BarChart3
     },
     {
+<<<<<<< HEAD
       path: '/admin/partners',
       label: 'Partenaires',
       icon: Handshake
     },
     {
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       path: '/admin/dashboard-partners',
       label: 'Partenaires',
       icon: Home

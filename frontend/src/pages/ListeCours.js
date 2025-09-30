@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
+<<<<<<< HEAD
 import { BookOpen, Users, Download } from 'lucide-react';
+=======
+import { Plus, BookOpen, User, Eye, X, Users, GraduationCap, Trash2, Filter, Search, Download } from 'lucide-react';
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 import Sidebar from '../components/Sidebar';
 
 const TableCours = () => {
@@ -101,6 +105,123 @@ const TableCours = () => {
     }
   };
 
+<<<<<<< HEAD
+=======
+  // Fonction pour fermer le modal d'ajout
+  const fermerModalAjout = () => {
+    setShowAjoutModal(false);
+    setNom('');
+    setProfesseursSelectionnes([]);
+    setMessage('');
+    setProfesseurSearch('');
+    setShowProfesseurDropdown(false);
+  };
+
+  // Filtrer les professeurs selon la recherche
+  const professeursFiltres = professeurs.filter(p =>
+    p.nom.toLowerCase().includes(professeurSearch.toLowerCase()) ||
+    p.matiere.toLowerCase().includes(professeurSearch.toLowerCase())
+  );
+
+  // Fonction pour ajouter un professeur à la sélection
+  const ajouterProfesseur = (professeur) => {
+    if (!professeurs_selectionnes.includes(professeur.nom)) {
+      setProfesseursSelectionnes([...professeurs_selectionnes, professeur.nom]);
+    }
+    setProfesseurSearch('');
+    setShowProfesseurDropdown(false);
+  };
+
+  // Fonction pour retirer un professeur de la sélection
+  const retirerProfesseur = (nomProfesseur) => {
+    setProfesseursSelectionnes(professeurs_selectionnes.filter(nom => nom !== nomProfesseur));
+  };
+
+  // Fonction pour fermer le modal de suppression
+  const fermerModalSuppression = () => {
+    setShowDeleteModal(false);
+    setCoursASupprimer(null);
+    setDeleteMessage('');
+  };
+
+  const etudiantsDansCours = coursActuel
+    ? etudiants.filter(e => e.cours.includes(coursActuel.nom))
+    : [];
+
+  // Fonction pour exporter les cours en Excel
+  const exportCoursToExcel = () => {
+    const getEtudiantsForCourse = (courseName) =>
+      etudiants.filter(e => {
+        const c = e.cours;
+        if (Array.isArray(c)) return c.includes(courseName);
+        if (typeof c === 'string') {
+          return c.split(',').map(s => s.trim()).includes(courseName);
+        }
+        return false;
+      });
+
+    // Préparer les données pour Excel
+    const worksheetData = [
+      ["Nom de la Classe", "Professeurs", "Nombre d'Étudiants", "Liste des Étudiants"]
+    ];
+
+    coursFiltres.forEach(c => {
+      const profs = Array.isArray(c.professeur)
+        ? c.professeur.join(', ')
+        : (c.professeur || 'Non assigné');
+      const etuds = getEtudiantsForCourse(c.nom);
+      const etudsNames = etuds.map(e => e.nomComplet || e.nom || '').join(', ');
+      
+      worksheetData.push([
+        c.nom,
+        profs,
+        etuds.length,
+        etudsNames
+      ]);
+    });
+
+    try {
+      // Vérifier si XLSX est disponible
+      if (typeof window.XLSX === 'undefined') {
+        alert('La bibliothèque Excel n\'est pas chargée. Veuillez rafraîchir la page.');
+        return;
+      }
+
+      // Créer un nouveau workbook
+      const wb = window.XLSX.utils.book_new();
+      
+      // Convertir les données en worksheet
+      const ws = window.XLSX.utils.aoa_to_sheet(worksheetData);
+
+      // Définir les largeurs de colonnes
+      ws['!cols'] = [
+        { wch: 30 }, // Nom de la classe
+        { wch: 40 }, // Professeurs
+        { wch: 20 }, // Nombre d'étudiants
+        { wch: 60 }  // Liste des étudiants
+      ];
+
+      // Ajouter le worksheet au workbook
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Classes');
+
+      // Générer le nom du fichier avec la date
+      const date = new Date();
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const fileName = `classes_${dateStr}.xlsx`;
+
+      // Écrire le fichier
+      window.XLSX.writeFile(wb, fileName);
+
+      // Message de succès
+      console.log('Fichier Excel exporté avec succès:', fileName);
+
+    } catch (error) {
+      console.error('Erreur lors de l\'exportation Excel:', error);
+      alert('Erreur lors de l\'exportation du fichier Excel. Veuillez réessayer.');
+    }
+  };
+
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   const styles = {
     container: {
       minHeight: '100vh',
@@ -120,8 +241,9 @@ const TableCours = () => {
       justifyContent: 'space-between',
       alignItems: 'center'
     },
-    headerLeft: {
+    headerButtons: {
       display: 'flex',
+<<<<<<< HEAD
       alignItems: 'center',
       gap: '1rem'
     },
@@ -132,6 +254,10 @@ const TableCours = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center'
+=======
+      gap: '1rem',
+      alignItems: 'center'
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     },
     title: {
       fontSize: '1.875rem',
@@ -156,7 +282,27 @@ const TableCours = () => {
       transition: 'all 0.2s ease',
       fontSize: '1rem'
     },
+<<<<<<< HEAD
     tableContainer: {
+=======
+    exportButton: {
+      background: 'linear-gradient(135deg, #10b981, #059669)',
+      color: 'white',
+      border: 'none',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '0.75rem',
+      fontWeight: '600',
+      cursor: 'pointer',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      transition: 'all 0.2s ease',
+      fontSize: '1rem'
+    },
+    // Styles pour la section des filtres
+    filterSection: {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       backdropFilter: 'blur(10px)',
       backgroundColor: 'white',
       borderRadius: '1rem',
@@ -277,7 +423,42 @@ const TableCours = () => {
             <div style={styles.iconContainer}>
               <BookOpen size={24} color="white" />
             </div>
+<<<<<<< HEAD
             <h1 style={styles.title}>Table des Cours</h1>
+=======
+            <div style={styles.headerButtons}>
+              <button
+                onClick={exportCoursToExcel}
+                style={styles.exportButton}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <Download size={20} />
+                Exporter (Excel)
+              </button>
+              <button
+                onClick={() => setShowAjoutModal(true)}
+                style={styles.addButton}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                <Plus size={20} />
+                Nouveau Classe
+              </button>
+            </div>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           </div>
           <button
             onClick={exportToExcel}

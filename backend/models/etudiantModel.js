@@ -241,9 +241,13 @@ const etudiantSchema = new mongoose.Schema({
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
       'Informatique – Cnam',
+<<<<<<< HEAD
       'Ingénierie QHSE',
       'Achat & Logistique',
       'Ingénierie industrielle'
+=======
+      'Achat & Logistique'
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     ]
   },
   
@@ -310,9 +314,15 @@ const etudiantSchema = new mongoose.Schema({
     default: false
   },
   nomPartner: {
+<<<<<<< HEAD
   type: mongoose.Schema.Types.ObjectId,
   ref: 'Partner',
   default: null
+=======
+  type: String,
+  default: '',
+  trim: true
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 },
 // Dans votre modèle Etudiant, AJOUTER si pas encore fait :
 validationPedagogique: {
@@ -825,6 +835,7 @@ etudiantSchema.methods.getPrixEffectif = function() {
   return this.isPartner ? this.prixTotalPartner : this.prixTotal;
 };
 
+<<<<<<< HEAD
 // Méthode pour obtenir les infos du partner
 etudiantSchema.methods.getPartnerInfo = async function() {
   if (!this.nomPartner) return null;
@@ -872,6 +883,41 @@ etudiantSchema.statics.getStatsPartners = async function() {
     }
   ]);
   return stats;
+=======
+// Méthode statique pour les statistiques Partners
+etudiantSchema.statics.getStatsPartners = async function() {
+  const stats = await this.aggregate([
+    {
+      $group: {
+        _id: "$isPartner",
+        count: { $sum: 1 },
+        totalChiffreAffaire: { 
+          $sum: { 
+            $cond: [
+              "$isPartner", 
+              "$prixTotalPartner", 
+              "$prixTotal"
+            ] 
+          } 
+        }
+      }
+    }
+  ]);
+  
+  const partnersStats = stats.find(s => s._id === true) || { count: 0, totalChiffreAffaire: 0 };
+  const normalStats = stats.find(s => s._id === false) || { count: 0, totalChiffreAffaire: 0 };
+  
+  return {
+    partners: {
+      nombre: partnersStats.count,
+      chiffreAffaire: partnersStats.totalChiffreAffaire
+    },
+    normal: {
+      nombre: normalStats.count,
+      chiffreAffaire: normalStats.totalChiffreAffaire
+    }
+  };
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 };
 
 etudiantSchema.statics.getOptionsParSpecialiteIngenieur = function(specialite) {
@@ -940,9 +986,13 @@ etudiantSchema.statics.getSpecialitesLicencePro = function() {
     'Management et Conduite de Travaux – Cnam',
     'Electrotechnique et systèmes – Cnam',
     'Informatique – Cnam',
+<<<<<<< HEAD
 'Ingénierie QHSE',
       'Achat & Logistique',
       'Ingénierie industrielle'    
+=======
+    'Achat & Logistique'
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   ];
 };
 

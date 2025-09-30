@@ -106,7 +106,11 @@ const EvaluationEtudiants = () => {
       const token = localStorage.getItem('token');
       
       // Récupérer les étudiants avec évaluations
+<<<<<<< HEAD
       const resEtudiants = await axios.get('https://vmi1977988.contaboserver.net//api2/etudiants-evaluation', {
+=======
+      const resEtudiants = await axios.get('http://195.179.229.230:5000/api/etudiants-evaluation', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -118,7 +122,11 @@ const EvaluationEtudiants = () => {
       setEtudiants(etudiantsFiltered);
 
       // Récupérer les commerciaux
+<<<<<<< HEAD
       const resCommerciaux = await axios.get('https://vmi1977988.contaboserver.net//api2/commerciaux', {
+=======
+      const resCommerciaux = await axios.get('http://195.179.229.230:5000/api/commerciaux', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       setCommerciaux(resCommerciaux.data);
@@ -139,7 +147,11 @@ const EvaluationEtudiants = () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(
+<<<<<<< HEAD
         `https://vmi1977988.contaboserver.net//api2/evaluation/${etudiant.evaluationExistante._id}`,
+=======
+        `http://195.179.229.230:5000/api/evaluation/${etudiant.evaluationExistante._id}`,
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -161,7 +173,11 @@ const EvaluationEtudiants = () => {
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get(
+<<<<<<< HEAD
           `https://vmi1977988.contaboserver.net//api2/evaluation/${etudiant.evaluationExistante._id}`,
+=======
+          `http://195.179.229.230:5000/api/evaluation/${etudiant.evaluationExistante._id}`,
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
@@ -213,11 +229,19 @@ const EvaluationEtudiants = () => {
       let url, method;
       if (etudiantSelectionne.evaluationExistante && etudiantSelectionne.evaluationExistante.statutEvaluation === 'en_cours') {
         // Mettre à jour évaluation existante
+<<<<<<< HEAD
         url = `https://vmi1977988.contaboserver.net//api2/evaluation/${etudiantSelectionne.evaluationExistante._id}`;
         method = 'put';
       } else {
         // Créer nouvelle évaluation
         url = `https://vmi1977988.contaboserver.net//api2/evaluations/${etudiantSelectionne._id}`;
+=======
+        url = `http://195.179.229.230:5000/api/evaluation/${etudiantSelectionne.evaluationExistante._id}`;
+        method = 'put';
+      } else {
+        // Créer nouvelle évaluation
+        url = `http://195.179.229.230:5000/api/evaluations/${etudiantSelectionne._id}`;
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method = 'post';
       }
 
@@ -252,7 +276,11 @@ const EvaluationEtudiants = () => {
       // Si pas d'évaluation existante, la créer d'abord
       if (!evaluationId) {
         const createRes = await axios.post(
+<<<<<<< HEAD
           `https://vmi1977988.contaboserver.net//api2/evaluations/${etudiantSelectionne._id}`,
+=======
+          `http://195.179.229.230:5000/api/evaluations/${etudiantSelectionne._id}`,
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           evaluationForm,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -260,7 +288,11 @@ const EvaluationEtudiants = () => {
       } else if (etudiantSelectionne.evaluationExistante.statutEvaluation === 'en_cours') {
         // Sauvegarder les changements d'abord
         await axios.put(
+<<<<<<< HEAD
           `https://vmi1977988.contaboserver.net//api2/evaluation/${evaluationId}`,
+=======
+          `http://195.179.229.230:5000/api/evaluation/${evaluationId}`,
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           evaluationForm,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -268,7 +300,11 @@ const EvaluationEtudiants = () => {
 
       // Finaliser l'évaluation
       await axios.put(
+<<<<<<< HEAD
         `https://vmi1977988.contaboserver.net//api2/evaluation/${evaluationId}/finaliser`,
+=======
+        `http://195.179.229.230:5000/api/evaluation/${evaluationId}/finaliser`,
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         { 
           statut,
           commentaireGeneral: evaluationForm.commentaireGeneral 
@@ -900,7 +936,11 @@ const EvaluationEtudiants = () => {
                     }}>
                       {etudiant.image ? (
                         <img 
+<<<<<<< HEAD
                           src={`https://vmi1977988.contaboserver.net/${etudiant.image}`}
+=======
+                          src={`http://195.179.229.230:5000${etudiant.image}`}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           alt={`${etudiant.prenom} ${etudiant.nomDeFamille}`}
                           style={{
                             width: '100%',

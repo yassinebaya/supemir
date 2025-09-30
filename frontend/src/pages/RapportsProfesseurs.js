@@ -47,7 +47,11 @@ const RapportsProfesseurs = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/seances/periodes-disponibles', {
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/seances/periodes-disponibles', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -116,7 +120,11 @@ const RapportsProfesseurs = () => {
         return;
       }
 
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/professeurs', {
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/professeurs', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -154,7 +162,11 @@ const RapportsProfesseurs = () => {
       }
 
       const res = await fetch(
+<<<<<<< HEAD
         `https://vmi1977988.contaboserver.net//api2/professeurs/rapports/mensuel?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`,
+=======
+        `http://195.179.229.230:5000/api/professeurs/rapports/mensuel?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`,
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -212,8 +224,13 @@ const RapportsProfesseurs = () => {
       }
 
       const url = viewMode === 'annuel' 
+<<<<<<< HEAD
         ? `https://vmi1977988.contaboserver.net//api2/professeurs/${professeurId}/rapport/annuel?annee=${selectedPeriod.annee}`
         : `https://vmi1977988.contaboserver.net//api2/professeurs/${professeurId}/rapport?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`;
+=======
+        ? `http://195.179.229.230:5000/api/professeurs/${professeurId}/rapport/annuel?annee=${selectedPeriod.annee}`
+        : `http://195.179.229.230:5000/api/professeurs/${professeurId}/rapport?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`;
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }

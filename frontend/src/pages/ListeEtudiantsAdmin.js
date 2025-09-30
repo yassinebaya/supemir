@@ -150,6 +150,7 @@ const pickBestCours = (listeCours, candidates) => {
 };
 
 const autoAssignCours = (form, setForm, listeCours, isLockedByUser) => {
+<<<<<<< HEAD
   // Ne rien faire si verrouillé ou données insuffisantes
   if (isLockedByUser) return;
   
@@ -175,6 +176,17 @@ const autoAssignCours = (form, setForm, listeCours, isLockedByUser) => {
       // ✅ Optionnel : marquer qu'un cours a été auto-suggéré
       autoSuggestedCours: best
     };
+=======
+  const cands = buildCoursCandidates(form);
+  if (!cands.length || isLockedByUser) return;
+  const best = pickBestCours(listeCours, cands);
+  if (!best) return;
+  setForm(prev => {
+    const current = prev.cours || [];
+    if (current.includes(best)) return prev;
+    // on remplace par la meilleure suggestion (l'utilisateur peut toujours re-cliquer les chips)
+    return { ...prev, cours: [best] };
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   });
 };
 
@@ -312,9 +324,14 @@ const STRUCTURE_FORMATION = {
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
       'Informatique – Cnam',
+<<<<<<< HEAD
 'Ingénierie QHSE',
       'Achat & Logistique',
       'Ingénierie industrielle'    ],
+=======
+      'Achat & Logistique'
+    ],
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {
       'Développement Informatique Full Stack': [
@@ -1520,7 +1537,11 @@ const ListeEtudiants = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await axios.get('https://vmi1977988.contaboserver.net//api2/etudiants', {
+=======
+      const res = await axios.get('http://195.179.229.230:5000/api/etudiants', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);
@@ -1534,7 +1555,11 @@ const ListeEtudiants = () => {
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await axios.get('https://vmi1977988.contaboserver.net//api2/cours', {
+=======
+      const res = await axios.get('http://195.179.229.230:5000/api/cours', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCours(res.data);
@@ -1546,7 +1571,11 @@ const ListeEtudiants = () => {
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await axios.get('https://vmi1977988.contaboserver.net//api2/commerciaux', {
+=======
+      const res = await axios.get('http://195.179.229.230:5000/api/commerciaux', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCommerciaux(res.data);
@@ -2045,7 +2074,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
         formData.append(key, commentairesAjout[key]);
       });
       
+<<<<<<< HEAD
       const response = await axios.post('https://vmi1977988.contaboserver.net//api2/etudiants', formData, {
+=======
+      const response = await axios.post('http://195.179.229.230:5000/api/etudiants', formData, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -2183,7 +2216,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
         formData.append(key, commentairesModifier[key]);
       });
       
+<<<<<<< HEAD
       const response = await axios.put(`https://vmi1977988.contaboserver.net//api2/etudiants/${etudiantAModifier._id}`, formData, {
+=======
+      const response = await axios.put(`http://195.179.229.230:5000/api/etudiants/${etudiantAModifier._id}`, formData, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -2208,7 +2245,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
   const handleToggleActif = async (id) => {
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await axios.patch(`https://vmi1977988.contaboserver.net//api2/etudiants/${id}/actif`, {}, {
+=======
+      const res = await axios.patch(`http://195.179.229.230:5000/api/etudiants/${id}/actif`, {}, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(etudiants.map(e => e._id === id ? res.data : e));
@@ -2222,7 +2263,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
 
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       await axios.delete(`https://vmi1977988.contaboserver.net//api2/etudiants/${id}`, {
+=======
+      await axios.delete(`http://195.179.229.230:5000/api/etudiants/${id}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(etudiants.filter(e => e._id !== id));
@@ -2633,7 +2678,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <td className="image-colonne">
                       {e.image ? (
                         <img 
+<<<<<<< HEAD
                           src={`https://vmi1977988.contaboserver.net/${e.image}`} 
+=======
+                          src={`http://195.179.229.230:5000${e.image}`} 
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           alt={getNomComplet(e)} 
                           className="image-etudiant"
                         />
@@ -2682,7 +2731,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <div className="carte-image">
                       {e.image ? (
                         <img 
+<<<<<<< HEAD
                           src={`https://vmi1977988.contaboserver.net/${e.image}`} 
+=======
+                          src={`http://195.179.229.230:5000${e.image}`} 
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           alt="etudiant" 
                           className="carte-photo"
                         />
@@ -4765,7 +4818,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                   <div className="student-photo">
                     {etudiantSelectionne.image ? (
                       <img 
+<<<<<<< HEAD
                         src={`https://vmi1977988.contaboserver.net/${etudiantSelectionne.image}`} 
+=======
+                        src={`http://195.179.229.230:5000${etudiantSelectionne.image}`} 
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                         alt={getNomComplet(etudiantSelectionne)} 
                         className="view-photo"
                       />
@@ -5147,7 +5204,11 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                               </div>
                             </div>
                             <a 
+<<<<<<< HEAD
                               href={`https://vmi1977988.contaboserver.net/${doc.fichier}`} 
+=======
+                              href={`http://195.179.229.230:5000${doc.fichier}`} 
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                               target="_blank" 
                               rel="noopener noreferrer" 
                               className="btn-voir-document"

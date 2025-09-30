@@ -91,7 +91,11 @@ const EtudiantsPedagogiquePage = () => {
         throw new Error('Token d\'authentification manquant');
       }
 
+<<<<<<< HEAD
       const response = await fetch('https://vmi1977988.contaboserver.net//api2/pedagogique/etudiants', {
+=======
+      const response = await fetch('http://195.179.229.230:5000/api/pedagogique/etudiants', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -113,7 +117,11 @@ const EtudiantsPedagogiquePage = () => {
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const response = await fetch('https://vmi1977988.contaboserver.net//api2/commerciaux', {
+=======
+      const response = await fetch('http://195.179.229.230:5000/api/commerciaux', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -523,7 +531,11 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
     try {
       const token = localStorage.getItem('token');
       
+<<<<<<< HEAD
       const response = await fetch(`https://vmi1977988.contaboserver.net//api2/etudiants/${etudiantId}/documents/${typeDocument}/download`, {
+=======
+      const response = await fetch(`http://195.179.229.230:5000/api/etudiants/${etudiantId}/documents/${typeDocument}/download`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -601,7 +613,11 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
   const handleValidation = async (etudiantId, statut, commentaire = '') => {
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const response = await fetch(`https://vmi1977988.contaboserver.net//api2/etudiants/${etudiantId}/validation-pedagogique`, {
+=======
+      const response = await fetch(`http://195.179.229.230:5000/api/etudiants/${etudiantId}/validation-pedagogique`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1542,7 +1558,11 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                         }}>
                           {etudiant.image ? (
                             <img
+<<<<<<< HEAD
                               src={`https://vmi1977988.contaboserver.net/${etudiant.image}`}
+=======
+                              src={`http://195.179.229.230:5000${etudiant.image}`}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                               alt={`${etudiant.prenom} ${etudiant.nomDeFamille}`}
                               style={{
                                 width: '40px',
@@ -1802,7 +1822,11 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                     <div>
                       {etudiant.image ? (
                         <img
+<<<<<<< HEAD
                           src={`https://vmi1977988.contaboserver.net/${etudiant.image}`}
+=======
+                          src={`http://195.179.229.230:5000${etudiant.image}`}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           alt={`${etudiant.prenom} ${etudiant.nomDeFamille}`}
                           style={{
                             width: '80px',
@@ -2236,7 +2260,11 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                 <div style={{ flexShrink: 0 }}>
                   {selectedStudent.image ? (
                     <img
+<<<<<<< HEAD
                       src={`https://vmi1977988.contaboserver.net/${selectedStudent.image}`}
+=======
+                      src={`http://195.179.229.230:5000${selectedStudent.image}`}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                       alt={`${selectedStudent.prenom} ${selectedStudent.nomDeFamille}`}
                       style={{
                         width: '130px',
@@ -3063,7 +3091,11 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                               docInfo.fichier.toLowerCase().includes('.png') || 
                               docInfo.fichier.toLowerCase().includes('.gif')) && (
                               <button 
+<<<<<<< HEAD
                                 onClick={() => window.open(`https://vmi1977988.contaboserver.net/${docInfo.fichier}`, '_blank')}
+=======
+                                onClick={() => window.open(`http://195.179.229.230:5000${docInfo.fichier}`, '_blank')}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',

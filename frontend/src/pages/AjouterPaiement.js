@@ -104,7 +104,11 @@ const AjouterPaiement = () => {
       
       // Récupérer les infos détaillées de paiement
       try {
+<<<<<<< HEAD
         const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}/info`, {
+=======
+        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}/info`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -130,7 +134,11 @@ const AjouterPaiement = () => {
         console.warn('API /info non disponible, utilisation de l\'ancienne méthode:', infoErr);
         
         // Fallback vers l'ancienne méthode
+<<<<<<< HEAD
         const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}`, {
+=======
+        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -245,7 +253,11 @@ const AjouterPaiement = () => {
     };
 
     try {
+<<<<<<< HEAD
       await axios.post('https://vmi1977988.contaboserver.net//api2/paiements', paiementData, {
+=======
+      await axios.post('http://195.179.229.230:5000/api/paiements', paiementData, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('✅ Paiement ajouté avec succès');

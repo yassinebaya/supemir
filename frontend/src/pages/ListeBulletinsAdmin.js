@@ -132,7 +132,11 @@ const AdminBulletins = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins', {
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/bulletins', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -331,7 +335,11 @@ const AdminBulletins = () => {
     try {
       const token = localStorage.getItem('token');
       const promises = group.etudiants.map(etudiant => 
+<<<<<<< HEAD
         fetch(`https://vmi1977988.contaboserver.net//api2/bulletins/${etudiant._id}`, {
+=======
+        fetch(`http://195.179.229.230:5000/api/bulletins/${etudiant._id}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         })

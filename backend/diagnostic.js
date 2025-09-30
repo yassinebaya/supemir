@@ -10,7 +10,11 @@ function getActorFromReq(req, type) {
   };
 }
 
+<<<<<<< HEAD
 app.post('/api2/seances', authAdmin, async (req, res) => {
+=======
+app.post('/api/seances', authAdmin, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { jour, heureDebut, heureFin, cours, professeur, matiere, salle } = req.body;
     if (!jour || !heureDebut || !heureFin || !cours || !professeur) {
@@ -39,7 +43,11 @@ app.post('/api2/seances', authAdmin, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 app.post('/api2/seances/exception', authAdmin, async (req, res) => {
+=======
+app.post('/api/seances/exception', authAdmin, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { cours, professeur, matiere, salle, dateSeance, jour, heureDebut, heureFin } = req.body;
     if (!dateSeance) {
@@ -85,7 +93,11 @@ app.post('/api2/seances/exception', authAdmin, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 app.post('/api2/pedagogique/seances/exception', authPedagogique, async (req, res) => {
+=======
+app.post('/api/pedagogique/seances/exception', authPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { cours, professeur, matiere, salle, dateSeance, jour, heureDebut, heureFin } = req.body;
     if (!dateSeance) {
@@ -138,7 +150,11 @@ app.post('/api2/pedagogique/seances/exception', authPedagogique, async (req, res
   }
 });
 
+<<<<<<< HEAD
 app.put('/api2/seances/:id', authAdmin, async (req, res) => {
+=======
+app.put('/api/seances/:id', authAdmin, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { jour, heureDebut, heureFin, cours, professeur, matiere, salle } = req.body;
     const coursDoc = await Cours.findById(cours);
@@ -171,7 +187,11 @@ app.put('/api2/seances/:id', authAdmin, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 app.put('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) => {
+=======
+app.put('/api/pedagogique/seances/:id', authPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { jour, heureDebut, heureFin, cours, professeur, matiere, salle } = req.body;
     const seanceExistante = await Seance.findById(req.params.id);
@@ -237,7 +257,11 @@ app.put('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) => {
     });
   }
 });
+<<<<<<< HEAD
 app.put('/api2/seances/:id/rattrapage', authAdmin, async (req, res) => {
+=======
+app.put('/api/seances/:id/rattrapage', authAdmin, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { id } = req.params;
     const userId = req.user.id;
@@ -262,7 +286,11 @@ app.put('/api2/seances/:id/rattrapage', authAdmin, async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur lors du marquage rattrapage' });
   }
 });
+<<<<<<< HEAD
 app.put('/api2/pedagogique/seances/:id/rattrapage', authPedagogique, async (req, res) => {
+=======
+app.put('/api/pedagogique/seances/:id/rattrapage', authPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { id } = req.params;
     const userId = req.user.id;
@@ -287,7 +315,11 @@ app.put('/api2/pedagogique/seances/:id/rattrapage', authPedagogique, async (req,
     res.status(500).json({ error: 'Erreur serveur lors du marquage rattrapage' });
   }
 });
+<<<<<<< HEAD
 app.delete('/api2/seances/:id', authAdmin, async (req, res) => {
+=======
+app.delete('/api/seances/:id', authAdmin, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { id } = req.params;
     const doc = await Seance.findById(id).lean();
@@ -312,7 +344,11 @@ app.delete('/api2/seances/:id', authAdmin, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 app.delete('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) => {
+=======
+app.delete('/api/pedagogique/seances/:id', authPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { id } = req.params;
     const doc = await Seance.findById(id).lean();
@@ -343,7 +379,11 @@ app.delete('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) =>
   }
 });
 
+<<<<<<< HEAD
 app.post('/api2/seances/copier-semaine', authAdminOrPedagogique, async (req, res) => {
+=======
+app.post('/api/seances/copier-semaine', authAdminOrPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { lundiSource, lundiDestination } = req.body;
     if (!lundiSource || !lundiDestination) {
@@ -420,7 +460,11 @@ app.post('/api2/seances/copier-semaine', authAdminOrPedagogique, async (req, res
   }
 });
 
+<<<<<<< HEAD
 app.post('/api2/seances/copier-semaine-precedente', authAdminOrPedagogique, async (req, res) => {
+=======
+app.post('/api/seances/copier-semaine-precedente', authAdminOrPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { lundiDestination } = req.body;
     if (!lundiDestination) {
@@ -481,7 +525,11 @@ app.post('/api2/seances/copier-semaine-precedente', authAdminOrPedagogique, asyn
   }
 });
 
+<<<<<<< HEAD
 app.post('/api2/pedagogique/seances/copier-semaine', authPedagogique, async (req, res) => {
+=======
+app.post('/api/pedagogique/seances/copier-semaine', authPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { lundiSource, lundiDestination } = req.body;
     if (!lundiSource || !lundiDestination) {
@@ -559,7 +607,11 @@ app.post('/api2/pedagogique/seances/copier-semaine', authPedagogique, async (req
     });
   }
 });
+<<<<<<< HEAD
 app.post('/api2/pedagogique/seances/copier-semaine-precedente', authPedagogique, async (req, res) => {
+=======
+app.post('/api/pedagogique/seances/copier-semaine-precedente', authPedagogique, async (req, res) => {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   try {
     const { lundiDestination } = req.body;
     if (!lundiDestination) {

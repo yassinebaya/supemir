@@ -45,7 +45,11 @@ const EtudiantPresencesAbsences = () => {
         const absencesData = await absencesRes.json();
         setAbsences(absencesData);
         // 🆕 Récupérer les retards
+<<<<<<< HEAD
         const retardsRes = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/retards', {
+=======
+        const retardsRes = await fetch('http://195.179.229.230:5000/api/etudiant/retards', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           headers: { Authorization: `Bearer ${token}` }
         });
         const retardsData = await retardsRes.json();

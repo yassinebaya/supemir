@@ -83,11 +83,17 @@ import GestionFinanciere from './pages/GestionFinanciere';
 import PageValidationPaiement from './pages/PageValidationPaiement';
 import ValidationPaiement from './pages/ValidationPaiement';
 import HistoriquePaiements from './pages/HistoriquePaiements';
+<<<<<<< HEAD
 import DashboardPartners from './pages/DashboardPartners';
 import PartnersCreateEtudiant
  from './pages/PartnersCreateEtudiant';
 
 import PartnersPage from './pages/PartnersPage';
+=======
+import DashboardPartners
+ from './pages/DashboardPartners';
+
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
    function AppContent() {
      const location = useLocation();
@@ -180,7 +186,10 @@ import PartnersPage from './pages/PartnersPage';
         <Route path="/etudiants/:id" element={<ProfilEtudiant />} />
                 <Route path="/etudiant/:id" element={<ProfilEtudiantadmin />} />
 
+<<<<<<< HEAD
                 <Route path="/partners/create-etudiant" element={<PartnersCreateEtudiant />} />
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         <Route path="/ajouter-professeur" element={<AjouterProfesseur />} />
         <Route path="/liste-professeurs" element={<ListeProfesseurs />} />
         <Route path="/ajouter-presence" element={<AjouterPresence />} />
@@ -205,7 +214,11 @@ import PartnersPage from './pages/PartnersPage';
 <Route path="/professeur/AjouterBulletin" element={<ProfAjouterBulletin />} />
 <Route path="/finance/validation-paiement" element={<PageValidationPaiement />} />
 
+<<<<<<< HEAD
 <Route path="/manager/validation-paiement" element={<ValidationPaiement />} />
+=======
+<Route path="/admin/validation-paiement" element={<ValidationPaiement />} />
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 <Route path="/professeur/profil" element={<ProfesseurProfil />} />
 <Route path="/pedagogique" element={<PedagogiqueDashboard />} />
 <Route path="/finance/historique-paiements" element={<HistoriquePaiements />} />
@@ -222,9 +235,12 @@ import PartnersPage from './pages/PartnersPage';
 <Route path="/admin/PaiementManager" element={< PaiementManagerPage />} />
 
 <Route path="/admin/pedagogiques" element={<PedagogiePage />} />
+<<<<<<< HEAD
 
 <Route path="/admin/partners" element={<PartnersPage />} />
 
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
 <Route path="/commercial/etudiant" element={<Commercialetudiants />} />
 <Route path="/admin/administratifs" element={<AdministratifPage />} />

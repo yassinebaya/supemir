@@ -15,17 +15,28 @@ import {
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import HistoriqueModal from '../components/HistoriqueModal';
+<<<<<<< HEAD
 import './EmploiPedagogique.css';
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
 const EmploiPedagogique = () => {
   const [jours] = useState(['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']);
   
+<<<<<<< HEAD
   // MODIFICATION: Structure des créneaux par jour
   const [creneauxCours, setCreneauxCours] = useState({});
   const [coursCreneauxSelectionne, setCoursCreneauxSelectionne] = useState('');
   const [showCreneauxModal, setShowCreneauxModal] = useState(false);
   const [tempCreneaux, setTempCreneaux] = useState({}); // CHANGÉ: {} au lieu de []
   const [jourActif, setJourActif] = useState('Lundi'); // NOUVEAU: jour actif dans le modal
+=======
+  // Remplacer la gestion des créneaux par cours
+  const [creneauxCours, setCreneauxCours] = useState({});
+  const [coursCreneauxSelectionne, setCoursCreneauxSelectionne] = useState('');
+  const [showCreneauxModal, setShowCreneauxModal] = useState(false);
+  const [tempCreneaux, setTempCreneaux] = useState([]);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   
   const [coursList, setCoursList] = useState([]);
   const [profList, setProfList] = useState([]);
@@ -57,6 +68,7 @@ const EmploiPedagogique = () => {
   const [showHistorique, setShowHistorique] = useState(false);
   const [selectedSeanceForHistory, setSelectedSeanceForHistory] = useState(null);
 
+<<<<<<< HEAD
   // NOUVELLE FONCTION: Obtenir la clé de la semaine
   const getSemaineKey = (currentWeek) => {
     const weekDates = getWeekDates(currentWeek);
@@ -67,14 +79,22 @@ const EmploiPedagogique = () => {
     return `${y}-${m}-${d}`;
   };
 
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/';
   };
 
+<<<<<<< HEAD
   // FONCTIONS POUR GÉRER LES CRÉNEAUX PAR JOUR
 
   // Charger les créneaux personnalisés depuis localStorage
+=======
+  // ✅ FONCTIONS POUR GÉRER LES CRÉNEAUX PERSONNALISÉS
+
+  // Charger les créneaux personnalisés par cours depuis le localStorage
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   useEffect(() => {
     const saved = localStorage.getItem('creneauxCoursPersonnalises');
     if (saved) {
@@ -99,6 +119,7 @@ const EmploiPedagogique = () => {
     return `${formatTime(debut)} - ${formatTime(fin)}`;
   };
 
+<<<<<<< HEAD
   // MODIFIÉ: Ouvrir le modal de gestion des créneaux pour un cours et une semaine
   const ouvrirModalCreneaux = (coursId) => {
     setCoursCreneauxSelectionne(coursId);
@@ -270,10 +291,75 @@ const EmploiPedagogique = () => {
     
     if (erreurs.length > 0) {
       setMessage({ type: 'error', text: erreurs.slice(0, 3).join('. ') + (erreurs.length > 3 ? '...' : '') });
+=======
+  // Ouvrir le modal de gestion des créneaux pour un cours
+  const ouvrirModalCreneaux = (coursId) => {
+    setCoursCreneauxSelectionne(coursId);
+    setTempCreneaux([...creneauxCours[coursId] || []]);
+    setShowCreneauxModal(true);
+  };
+
+  // Ajouter un créneau pour le cours sélectionné
+  const ajouterCreneau = () => {
+    const nouveauId = Math.max(...tempCreneaux.map(c => c.id), 0) + 1;
+    setTempCreneaux([...tempCreneaux, {
+      id: nouveauId,
+      debut: '08:00',
+      fin: '10:00'
+    }]);
+  };
+
+  // Supprimer un créneau pour le cours sélectionné
+  const supprimerCreneau = (id) => {
+    if (tempCreneaux.length <= 1) {
+      setMessage({ type: 'error', text: 'Il faut au moins un créneau horaire' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+    setTempCreneaux(tempCreneaux.filter(c => c.id !== id));
+  };
+
+  // Modifier un créneau pour le cours sélectionné
+  const modifierCreneau = (id, field, value) => {
+    setTempCreneaux(tempCreneaux.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
+  // Valider et sauvegarder les créneaux
+  const sauvegarderCreneaux = () => {
+    // Validation des créneaux
+    const erreurs = [];
+    
+    for (let i = 0; i < tempCreneaux.length; i++) {
+      const creneau = tempCreneaux[i];
+      
+      if (!creneau.debut || !creneau.fin) {
+        erreurs.push(`Créneau ${i + 1}: Heures de début et fin obligatoires`);
+        continue;
+      }
+      
+      if (creneau.debut >= creneau.fin) {
+        erreurs.push(`Créneau ${i + 1}: L'heure de fin doit être après l'heure de début`);
+      }
+      
+      // Vérifier les chevauchements
+      for (let j = i + 1; j < tempCreneaux.length; j++) {
+        const autreCreneau = tempCreneaux[j];
+        if (creneau.debut < autreCreneau.fin && creneau.fin > autreCreneau.debut) {
+          erreurs.push(`Chevauchement entre les créneaux ${i + 1} et ${j + 1}`);
+        }
+      }
+    }
+    
+    if (erreurs.length > 0) {
+      setMessage({ type: 'error', text: erreurs.join('. ') });
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       setTimeout(() => setMessage({ type: '', text: '' }), 5000);
       return;
     }
     
+<<<<<<< HEAD
     // Trier les créneaux de chaque jour
     const creneauxTries = {};
     jours.forEach(jour => {
@@ -300,12 +386,24 @@ const EmploiPedagogique = () => {
       type: 'success', 
       text: `Créneaux mis à jour pour la semaine du ${formatDate(weekDates[0])}: ${totalCreneaux} créneaux` 
     });
+=======
+    // Trier les créneaux par heure de début
+    const creneauxTries = [...tempCreneaux].sort((a, b) => a.debut.localeCompare(b.debut));
+    
+    // Sauvegarder
+    const newCreneauxCours = { ...creneauxCours, [coursCreneauxSelectionne]: [...creneauxTries] };
+    localStorage.setItem('creneauxCoursPersonnalises', JSON.stringify(newCreneauxCours));
+    setCreneauxCours(newCreneauxCours);
+    setShowCreneauxModal(false);
+    setMessage({ type: 'success', text: 'Créneaux horaires mis à jour pour ce cours' });
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     
     // Recharger les données avec les nouveaux créneaux
     fetchSeancesReelles();
   };
 
+<<<<<<< HEAD
   // MODIFIÉ: Fonction pour obtenir les créneaux d'un jour spécifique pour la semaine actuelle
   const getCreneauxPourJour = (coursId, jour) => {
     const semaineKey = getSemaineKey(currentWeek);
@@ -320,6 +418,8 @@ const EmploiPedagogique = () => {
     return creneauxCoursData[jour] || [];
   };
 
+=======
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   // Fonction pour obtenir les dates de la semaine
   const getWeekDates = (date) => {
     const start = new Date(date);
@@ -358,6 +458,10 @@ const EmploiPedagogique = () => {
     }
   }, [coursList.length]);
 
+<<<<<<< HEAD
+=======
+  // Corriger le useEffect pour ne pas utiliser 'creneaux' global
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   useEffect(() => {
     if (coursList.length > 0 && userInfo) {
       fetchSeancesReelles();
@@ -367,7 +471,11 @@ const EmploiPedagogique = () => {
   const fetchUserInfo = async () => {
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/auth/me', {
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/auth/me', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -375,6 +483,10 @@ const EmploiPedagogique = () => {
         const userData = await res.json();
         setUserInfo(userData);
         
+<<<<<<< HEAD
+=======
+        // Déterminer les permissions selon le type de pédagogique
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         const isGeneral = userData.filiere === 'GENERAL' || userData.role === 'pedagogique_general';
         setPermissions({
           canModify: true,
@@ -383,6 +495,16 @@ const EmploiPedagogique = () => {
           filiere: userData.filiere,
           isGeneral: isGeneral
         });
+<<<<<<< HEAD
+=======
+        
+        console.log('👤 Pédagogique connecté:', {
+          nom: userData.nom,
+          filiere: userData.filiere,
+          role: userData.role,
+          isGeneral
+        });
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       } else {
         setMessage({ type: 'error', text: 'Erreur lors de la récupération des informations utilisateur' });
       }
@@ -397,10 +519,20 @@ const EmploiPedagogique = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
+<<<<<<< HEAD
       const coursUrl = permissions.isGeneral 
         ? 'https://vmi1977988.contaboserver.net//api2/cours'
         : 'https://vmi1977988.contaboserver.net//api2/pedagogique/cours';
         
+=======
+      // ✅ UTILISER LA ROUTE SPÉCIFIQUE POUR LES PÉDAGOGIQUES
+      const coursUrl = permissions.isGeneral 
+        ? 'http://195.179.229.230:5000/api/cours'
+        : 'http://195.179.229.230:5000/api/pedagogique/cours';
+        
+      console.log(`📚 Chargement cours depuis: ${coursUrl}`);
+      
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       const resCours = await fetch(coursUrl, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -408,9 +540,17 @@ const EmploiPedagogique = () => {
       if (resCours.ok) {
         const coursData = await resCours.json();
         setCoursList(coursData);
+<<<<<<< HEAD
       }
 
       const resProfs = await fetch('https://vmi1977988.contaboserver.net//api2/professeurs', {
+=======
+        console.log(`✅ ${coursData.length} cours chargés pour ${permissions.isGeneral ? 'toutes filières' : 'filière ' + userInfo.filiere}`);
+      }
+
+      // Récupérer les professeurs
+      const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resProfs.ok) {
@@ -434,12 +574,22 @@ const EmploiPedagogique = () => {
       const day = String(d.getDate()).padStart(2,'0');
       const lundiSemaine = `${y}-${m}-${day}`;
       
+<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/semaine/${lundiSemaine}`, {
+=======
+      console.log('🔍 Récupération séances pour la semaine du:', lundiSemaine);
+      
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/semaine/${lundiSemaine}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (res.ok) {
         const data = await res.json();
+<<<<<<< HEAD
+=======
+        console.log('✅ Données reçues du backend:', data.length, 'séances');
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         setSeancesReelles(data);
         
         if (coursList.length > 0 && data.length > 0) {
@@ -462,7 +612,11 @@ const EmploiPedagogique = () => {
         });
       }
     } catch (err) {
+<<<<<<< HEAD
       console.error('Erreur réseau:', err);
+=======
+      console.error('❌ Erreur réseau:', err);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       setMessage({ 
         type: 'error', 
         text: 'Erreur de connexion. Vérifiez que le serveur backend est démarré.' 
@@ -490,7 +644,11 @@ const EmploiPedagogique = () => {
       }
 
       if (!coursObj) {
+<<<<<<< HEAD
         console.warn(`Cours non trouvé pour la séance:`, seance);
+=======
+        console.warn(`⚠️ Cours non trouvé pour la séance:`, seance);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         return;
       }
 
@@ -661,13 +819,21 @@ const EmploiPedagogique = () => {
 
       let res;
       if (s.typeSeance === 'exception' && s.seanceId) {
+<<<<<<< HEAD
         res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${s.seanceId}`, {
+=======
+        res = await fetch(`http://195.179.229.230:5000/api/seances/${s.seanceId}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload)
         });
       } else {
+<<<<<<< HEAD
         res = await fetch('https://vmi1977988.contaboserver.net//api2/seances/exception', {
+=======
+        res = await fetch('http://195.179.229.230:5000/api/seances/exception', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload)
@@ -685,7 +851,11 @@ const EmploiPedagogique = () => {
       await fetchSeancesReelles();
 
     } catch (e) {
+<<<<<<< HEAD
       console.error('Erreur:', e);
+=======
+      console.error('❌ Erreur:', e);
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       setMessage({ type: 'error', text: 'Erreur lors de la sauvegarde' });
     } finally {
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
@@ -705,7 +875,11 @@ const EmploiPedagogique = () => {
 
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${seanceId}`, {
+=======
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/${seanceId}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -747,7 +921,11 @@ const EmploiPedagogique = () => {
 
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/pedagogique/seances/${seanceId}/rattrapage`, {
+=======
+      const res = await fetch(`http://195.179.229.230:5000/api/pedagogique/seances/${seanceId}/rattrapage`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -771,7 +949,11 @@ const EmploiPedagogique = () => {
     try {
       setLoadingStats(true);
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/pedagogique/rattrapages/statistiques', {
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/pedagogique/rattrapages/statistiques', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -823,7 +1005,11 @@ const EmploiPedagogique = () => {
     setCopyLoading(true);
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/seances/copier-semaine-precedente', {
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/seances/copier-semaine-precedente', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -848,6 +1034,7 @@ const EmploiPedagogique = () => {
     }
   };
 
+<<<<<<< HEAD
   // COMPOSANT MODAL MODIFIÉ POUR CRÉNEAUX SEMAINE PAR SEMAINE
   const ModalCreneaux = () => {
     if (!showCreneauxModal) return null;
@@ -916,36 +1103,134 @@ const EmploiPedagogique = () => {
                 </span>
                 
                 <div className="creneau-inputs">
+=======
+  // ✅ COMPOSANT MODAL POUR GÉRER LES CRÉNEAUX
+  const ModalCreneaux = () => {
+    if (!showCreneauxModal) return null;
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '30px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+          width: '90%',
+          maxWidth: '600px',
+          maxHeight: '80vh',
+          overflow: 'auto'
+        }}>
+          <h3 style={{ margin: '0 0 20px 0', color: '#1f2937', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <Clock size={24} />
+            Configurer les créneaux horaires pour {coursList.find(c => c._id === coursCreneauxSelectionne)?.nom}
+          </h3>
+          
+          <div style={{ marginBottom: '20px' }}>
+            {tempCreneaux.map((creneau, index) => (
+              <div key={creneau.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '10px',
+                padding: '10px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <span style={{ minWidth: '70px', fontWeight: '600', color: '#374151' }}>
+                  Créneau {index + 1}:
+                </span>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                   <input
                     type="time"
                     value={creneau.debut}
                     onChange={(e) => modifierCreneau(creneau.id, 'debut', e.target.value)}
+<<<<<<< HEAD
                     className="creneau-time-input"
                   />
                   
                   <span className="creneau-separator">à</span>
+=======
+                    style={{
+                      padding: '8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  
+                  <span style={{ color: '#6b7280' }}>à</span>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                   
                   <input
                     type="time"
                     value={creneau.fin}
                     onChange={(e) => modifierCreneau(creneau.id, 'fin', e.target.value)}
+<<<<<<< HEAD
                     className="creneau-time-input"
                   />
                 </div>
                 
                 <div className="creneau-preview">
+=======
+                    style={{
+                      padding: '8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                
+                <div style={{ 
+                  flex: 1, 
+                  padding: '8px 12px',
+                  backgroundColor: '#e0f2fe',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  color: '#0369a1',
+                  textAlign: 'center'
+                }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                   {genererLabel(creneau.debut, creneau.fin)}
                 </div>
                 
                 <button
                   onClick={() => supprimerCreneau(creneau.id)}
+<<<<<<< HEAD
                   className="creneau-delete"
+=======
+                  style={{
+                    padding: '6px',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                   title="Supprimer ce créneau"
                 >
                   <Trash2 size={14} />
                 </button>
               </div>
             ))}
+<<<<<<< HEAD
 
             {/* Message si aucun créneau */}
             {(!tempCreneaux[jourActif] || tempCreneaux[jourActif].length === 0) && (
@@ -1016,16 +1301,91 @@ const EmploiPedagogique = () => {
                 setJourActif('Lundi');
               }}
               className="modal-button cancel"
+=======
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <button
+              onClick={ajouterCreneau}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '14px'
+              }}
+            >
+              <Plus size={16} />
+              Ajouter un créneau
+            </button>
+          </div>
+
+          <div style={{ 
+            backgroundColor: '#fef3c7',
+            padding: '12px',
+            borderRadius: '6px',
+            marginBottom: '20px',
+            fontSize: '12px',
+            color: '#92400e'
+          }}>
+            <strong>Conseils :</strong>
+            <ul style={{ margin: '8px 0 0 16px', padding: 0 }}>
+              <li>Les créneaux ne doivent pas se chevaucher</li>
+              <li>L'heure de fin doit être après l'heure de début</li>
+              <li>Les créneaux seront automatiquement triés par heure</li>
+              <li>Ces modifications affecteront tous les emplois du temps</li>
+            </ul>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => {
+                setShowCreneauxModal(false);
+                setTempCreneaux([]);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             >
               Annuler
             </button>
             
             <button
               onClick={sauvegarderCreneaux}
+<<<<<<< HEAD
               className="modal-button save"
             >
               <Save size={16} />
               Sauvegarder la configuration
+=======
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Save size={16} />
+              Sauvegarder
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             </button>
           </div>
         </div>
@@ -1033,6 +1393,7 @@ const EmploiPedagogique = () => {
     );
   };
 
+<<<<<<< HEAD
   if (loading) {
     return (
       <div className="container">
@@ -1040,12 +1401,264 @@ const EmploiPedagogique = () => {
         <div className="loading">
           <div>Chargement de l'emploi du temps...</div>
           <div>Récupération des données depuis la base de données</div>
+=======
+  const styles = {
+    container: {
+      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+      maxWidth: '1400px',
+      margin: '20px auto',
+      padding: '0 20px',
+      fontFamily: 'Arial, sans-serif'
+    },
+    header: {
+      backgroundColor: '#fff',
+      padding: '20px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+      marginBottom: '20px',
+      textAlign: 'center'
+    },
+    controls: {
+      backgroundColor: '#fff',
+      padding: '20px',
+      borderRadius: '8px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+      marginBottom: '20px'
+    },
+    coursSelection: {
+      marginBottom: '20px'
+    },
+    coursGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+      gap: '10px',
+      marginTop: '10px'
+    },
+    coursCard: {
+      padding: '12px',
+      border: '2px solid #e5e7eb',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      textAlign: 'center',
+      transition: 'all 0.2s'
+    },
+    coursCardSelected: {
+      backgroundColor: '#dbeafe',
+      borderColor: '#3b82f6',
+      color: '#1e40af'
+    },
+    weekNavigation: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '20px',
+      marginTop: '20px',
+      flexWrap: 'wrap'
+    },
+    weekButton: {
+      padding: '8px 12px',
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '5px'
+    },
+    weekInfo: {
+      fontSize: '16px',
+      fontWeight: '600',
+      color: '#374151'
+    },
+    creneauxButton: {
+      padding: '12px 24px',
+      backgroundColor: '#8b5cf6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '14px',
+      fontWeight: '600',
+      transition: 'all 0.3s ease',
+      boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
+    },
+    downloadButton: {
+      padding: '12px 24px',
+      backgroundColor: '#f59e0b',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '14px',
+      fontWeight: '600',
+      transition: 'all 0.3s ease',
+      boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
+    },
+    tableContainer: {
+      backgroundColor: '#fff',
+      borderRadius: '8px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+      overflow: 'hidden',
+      marginBottom: '30px'
+    },
+    tableActions: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: '#f8fafc',
+      padding: '15px',
+      borderBottom: '2px solid #e5e7eb'
+    },
+    courseTitle: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#374151',
+      margin: 0,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    refreshButton: {
+      padding: '8px 16px',
+      backgroundColor: '#6b7280',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      fontSize: '12px'
+    },
+    table: {
+      width: '100%',
+      borderCollapse: 'collapse',
+      fontSize: '14px'
+    },
+    headerCell: {
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      padding: '15px 8px',
+      textAlign: 'center',
+      fontWeight: '600',
+      border: '1px solid #2563eb'
+    },
+    timeCell: {
+      backgroundColor: '#f8fafc',
+      padding: '15px 10px',
+      textAlign: 'center',
+      fontWeight: '600',
+      color: '#374151',
+      border: '1px solid #e5e7eb',
+      minWidth: '100px'
+    },
+    cell: {
+      border: '1px solid #e5e7eb',
+      padding: '8px',
+      verticalAlign: 'top',
+      height: '130px',
+      width: 'calc(100% / 8)',
+      position: 'relative'
+    },
+    cellContent: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      height: '100%'
+    },
+    cellContentReadOnly: {
+      padding: '8px',
+      backgroundColor: '#f8fafc',
+      borderRadius: '4px',
+      height: '100%',
+      fontSize: '11px'
+    },
+    select: {
+      width: '100%',
+      padding: '4px',
+      border: '1px solid #d1d5db',
+      borderRadius: '4px',
+      fontSize: '11px',
+      backgroundColor: '#fff'
+    },
+    input: {
+      width: '100%',
+      padding: '4px',
+      border: '1px solid #d1d5db',
+      borderRadius: '4px',
+      fontSize: '11px'
+    },
+    message: {
+      padding: '12px 16px',
+      borderRadius: '6px',
+      marginBottom: '20px',
+      textAlign: 'center'
+    },
+    successMessage: {
+      backgroundColor: '#dcfce7',
+      color: '#166534',
+      border: '1px solid #bbf7d0'
+    },
+    errorMessage: {
+      backgroundColor: '#fef2f2',
+      color: '#dc2626',
+      border: '1px solid #fecaca'
+    },
+    warningMessage: {
+      backgroundColor: '#fef3c7',
+      color: '#92400e',
+      border: '1px solid #fbbf24'
+    },
+    infoMessage: {
+      backgroundColor: '#dbeafe',
+      color: '#1e40af',
+      border: '1px solid #93c5fd'
+    },
+    loading: {
+      textAlign: 'center',
+      padding: '50px',
+      fontSize: '16px',
+      color: '#6b7280'
+    },
+    statusBadge: {
+      fontSize: '10px',
+      padding: '2px 6px',
+      borderRadius: '4px',
+      fontWeight: '500'
+    },
+    statusActive: {
+      backgroundColor: '#d1fae5',
+      color: '#065f46'
+    },
+    statusInactive: {
+      backgroundColor: '#fee2e2',
+      color: '#991b1b'
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loading}>
+          <div>Chargement de l'emploi du temps...</div>
+          <div style={{ marginTop: '10px', fontSize: '14px' }}>
+            Récupération des données depuis la base de données
+          </div>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         </div>
       </div>
     );
   }
 
   return (
+<<<<<<< HEAD
     <div className="container">
       <Sidebar onLogout={handleLogout} />
       
@@ -1056,27 +1669,76 @@ const EmploiPedagogique = () => {
             <div>
               <div className="user-info-name">{userInfo.nom}</div>
               <div className="user-info-role">
+=======
+    <div style={styles.container}>
+      <Sidebar onLogout={handleLogout} />
+      
+      <div style={styles.header}>
+        {/* Informations utilisateur */}
+        {userInfo && (
+          <div style={{
+            position: 'absolute',
+            top: '15px',
+            right: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '12px',
+            color: '#059669',
+            backgroundColor: '#d1fae5',
+            padding: '6px 12px',
+            borderRadius: '6px'
+          }}>
+            <div>
+              <div style={{ fontWeight: '600' }}>{userInfo.nom}</div>
+              <div style={{ fontSize: '11px' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 {permissions.isGeneral ? 'Pédagogique Général' : `Filière ${userInfo.filiere}`}
               </div>
             </div>
           </div>
         )}
 
+<<<<<<< HEAD
         <h1>
           <Calendar size={24} />
           Interface Pédagogique - Emploi du Temps
         </h1>
         
         <div className="header-subtitle">
+=======
+        <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#1f2937' }}>
+          <Calendar size={24} style={{ verticalAlign: 'middle', marginRight: '10px' }} />
+          Interface Pédagogique - Emploi du Temps
+        </h1>
+        
+        <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           Gestion et consultation des emplois du temps
         </div>
       </div>
 
+<<<<<<< HEAD
       <div className="controls">
         {/* Information sur les permissions */}
         <div className={`permissions-info ${permissions.isGeneral ? 'general' : 'specific'}`}>
           <div className="permissions-title">Vos permissions :</div>
           <div className="permissions-details">
+=======
+      <div style={styles.controls}>
+        {/* Information sur les permissions */}
+        <div style={{
+          backgroundColor: permissions.isGeneral ? '#fef3c7' : '#e0f2fe',
+          padding: '12px',
+          borderRadius: '6px',
+          marginBottom: '20px',
+          border: `1px solid ${permissions.isGeneral ? '#fbbf24' : '#67e8f9'}`
+        }}>
+          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#374151' }}>
+            Vos permissions :
+          </div>
+          <div style={{ fontSize: '13px', color: '#6b7280' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             {permissions.isGeneral ? (
               <>Accès à toutes les filières • Modification • Création • Suppression</>
             ) : (
@@ -1086,23 +1748,43 @@ const EmploiPedagogique = () => {
         </div>
 
         {/* Sélection des cours */}
+<<<<<<< HEAD
         <div className="cours-selection">
           <h3>
+=======
+        <div style={styles.coursSelection}>
+          <h3 style={{ margin: '0 0 10px 0', color: '#374151' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             {permissions.isGeneral ? 
               'Sélectionner les classes à afficher (toutes filières) :' : 
               `Classes de votre filière (${userInfo?.filiere}) :`
             }
           </h3>
+<<<<<<< HEAD
           <div className="cours-grid">
             {coursList.map(cours => (
               <div
                 key={cours._id}
                 className={`cours-card ${selectedCours.includes(cours._id) ? 'selected' : ''}`}
+=======
+          <div style={styles.coursGrid}>
+            {coursList.map(cours => (
+              <div
+                key={cours._id}
+                style={{
+                  ...styles.coursCard,
+                  ...(selectedCours.includes(cours._id) ? styles.coursCardSelected : {})
+                }}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 onClick={() => toggleCours(cours._id)}
               >
                 {cours.nom}
                 {cours.filiere && (
+<<<<<<< HEAD
                   <div className="cours-card-filiere">
+=======
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                     {cours.filiere}
                   </div>
                 )}
@@ -1111,22 +1793,37 @@ const EmploiPedagogique = () => {
           </div>
         </div>
 
+<<<<<<< HEAD
         {/* Navigation des semaines */}
         <div className="week-navigation">
           <button className="week-button" onClick={() => changeWeek(-1)}>
+=======
+        {/* Navigation des semaines avec bouton pour configurer les créneaux */}
+        <div style={styles.weekNavigation}>
+          <button style={styles.weekButton} onClick={() => changeWeek(-1)}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             <ChevronLeft size={16} />
             Semaine précédente
           </button>
           
+<<<<<<< HEAD
           <div className="week-info">
             Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[6])}
           </div>
           
           <button className="week-button" onClick={() => changeWeek(1)}>
+=======
+          <div style={styles.weekInfo}>
+            Semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[6])}
+          </div>
+          
+          <button style={styles.weekButton} onClick={() => changeWeek(1)}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             Semaine suivante
             <ChevronRight size={16} />
           </button>
 
+<<<<<<< HEAD
           {/* Boutons pour configurer les créneaux - MODIFIÉ avec info semaine */}
           {selectedCours.map(coursId => {
             const semaineKey = getSemaineKey(currentWeek);
@@ -1150,14 +1847,45 @@ const EmploiPedagogique = () => {
 
           <button 
             className={`week-button copy ${copyLoading ? 'loading' : ''}`}
+=======
+          {/* BOUTON POUR CONFIGURER LES CRÉNEAUX */}
+          {selectedCours.map(coursId => (
+            <button 
+              key={coursId}
+              style={styles.creneauxButton}
+              onClick={() => ouvrirModalCreneaux(coursId)}
+              title={`Configurer les créneaux pour ${coursList.find(c => c._id === coursId)?.nom}`}
+            >
+              <Settings size={16} />
+              Configurer les heures ({coursList.find(c => c._id === coursId)?.nom})
+            </button>
+          ))}
+
+          {/* Bouton pour copier la semaine précédente */}
+          <button 
+            style={{
+              ...styles.weekButton,
+              backgroundColor: copyLoading ? '#9ca3af' : '#10b981',
+              cursor: copyLoading ? 'not-allowed' : 'pointer'
+            }}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             onClick={copierSemainePrecedente}
             disabled={copyLoading}
           >
             {copyLoading ? 'Copie...' : 'Copier Semaine -1'}
           </button>
 
+<<<<<<< HEAD
           <button 
             className="week-button stats"
+=======
+          {/* Bouton pour afficher les statistiques de rattrapage */}
+          <button 
+            style={{
+              ...styles.weekButton,
+              backgroundColor: '#f59e0b'
+            }}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             onClick={() => {
               setShowStatsRattrapages(true);
               fetchStatsRattrapages();
@@ -1166,8 +1894,17 @@ const EmploiPedagogique = () => {
             Stats Rattrapages
           </button>
 
+<<<<<<< HEAD
           <button 
             className="week-button history"
+=======
+          {/* Nouveau bouton Historique Général */}
+          <button 
+            style={{
+              ...styles.weekButton,
+              backgroundColor: '#6b7280'
+            }}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             onClick={() => {
               setSelectedSeanceForHistory(null);
               setShowHistorique(true);
@@ -1179,6 +1916,7 @@ const EmploiPedagogique = () => {
           </button>
         </div>
 
+<<<<<<< HEAD
         {/* MODIFIÉ: Affichage des créneaux par jour pour la semaine actuelle */}
         {selectedCours.length > 0 && (
           <div className="creneaux-display">
@@ -1227,6 +1965,47 @@ const EmploiPedagogique = () => {
         {selectedCours.length > 0 && (
           <div className="text-center" style={{ marginTop: '25px' }}>
             <button className="download-button" onClick={() => {}}>
+=======
+        {/* Affichage des créneaux actuels */}
+        <div style={{
+          marginTop: '15px',
+          padding: '15px',
+          backgroundColor: '#f0f9ff',
+          borderRadius: '8px',
+          border: '1px solid #bfdbfe'
+        }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#1e40af', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={16} />
+            Créneaux horaires actuels :
+          </h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {(creneauxCours[selectedCours[0]] || []).map((creneau, index) => (
+              <span
+                key={creneau.id}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#dbeafe',
+                  color: '#1e40af',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  border: '1px solid #93c5fd'
+                }}
+              >
+                {genererLabel(creneau.debut, creneau.fin)}
+              </span>
+            ))}
+          </div>
+          <small style={{ color: '#64748b', fontSize: '11px', marginTop: '8px', display: 'block' }}>
+            Cliquez sur "Configurer les heures" pour modifier ces créneaux
+          </small>
+        </div>
+
+        {/* Bouton de téléchargement */}
+        {selectedCours.length > 0 && (
+          <div style={{ textAlign: 'center', marginTop: '25px' }}>
+            <button style={styles.downloadButton} onClick={() => {}}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
               <Download size={18} />
               Télécharger l'emploi du temps
             </button>
@@ -1236,11 +2015,22 @@ const EmploiPedagogique = () => {
 
       {/* Message */}
       {message.text && (
+<<<<<<< HEAD
         <div className={`message ${message.type}`}>
+=======
+        <div style={{
+          ...styles.message,
+          ...(message.type === 'error' ? styles.errorMessage : 
+              message.type === 'warning' ? styles.warningMessage :
+              message.type === 'info' ? styles.infoMessage :
+              styles.successMessage)
+        }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           {message.text}
         </div>
       )}
 
+<<<<<<< HEAD
       {/* Tableaux pour chaque cours sélectionné - MODIFIÉ pour jour par jour */}
       {selectedCours.map(coursId => {
         const cours = coursList.find(c => c._id === coursId);
@@ -1250,16 +2040,37 @@ const EmploiPedagogique = () => {
           <div key={coursId} className="table-container">
             <div className="table-actions">
               <div className="course-title">
+=======
+      {/* Tableaux pour chaque cours sélectionné */}
+      {selectedCours.map(coursId => {
+        const cours = coursList.find(c => c._id === coursId);
+        if (!cours) return null;
+        const creneaux = creneauxCours[coursId] || [];
+
+        return (
+          <div key={coursId} style={styles.tableContainer}>
+            <div style={styles.tableActions}>
+              <div style={styles.courseTitle}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 <Calendar size={18} />
                 Séances: {cours.nom}
               </div>
               
+<<<<<<< HEAD
               <div className="flex" style={{alignItems: 'center', gap: '10px'}}>
                 <span className="text-sm">
                   Semaine du {formatDate(weekDates[0])}
                 </span>
                 <button 
                   className="refresh-button"
+=======
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  Semaine du {formatDate(weekDates[0])}
+                </span>
+                <button 
+                  style={styles.refreshButton}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                   onClick={fetchSeancesReelles}
                 >
                   <RefreshCw size={14} />
@@ -1268,6 +2079,7 @@ const EmploiPedagogique = () => {
               </div>
             </div>
             
+<<<<<<< HEAD
             <div className="table-scroll">
               <table className="table">
                 <thead>
@@ -1286,11 +2098,23 @@ const EmploiPedagogique = () => {
                         }}>
                           {getCreneauxPourJour(coursId, jour).length} créneaux
                         </div>
+=======
+            <div style={{ overflowX: 'auto' }}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.headerCell}>Horaires</th>
+                    {jours.map((jour, index) => (
+                      <th key={jour} style={styles.headerCell}>
+                        {jour}<br />
+                        <small>{formatDate(weekDates[index])}</small>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
+<<<<<<< HEAD
                   {(() => {
                     // NOUVEAU: Collecter tous les créneaux uniques de tous les jours
                     const tousLesCreneaux = [];
@@ -1492,6 +2316,261 @@ const EmploiPedagogique = () => {
                       </tr>
                     ));
                   })()}
+=======
+                  {creneaux.map(creneau => (
+                    <tr key={`${creneau.debut}-${creneau.fin}`}>
+                      <td style={styles.timeCell}>
+                        {genererLabel(creneau.debut, creneau.fin)}
+                      </td>
+                      {jours.map(jour => {
+                        const key = `${jour}-${creneau.debut}-${creneau.fin}`;
+                        const seanceData = emploiDuTemps[coursId]?.[key] || {};
+                        
+                        return (
+                          <td key={jour} style={styles.cell}>
+                            {/* Affichage en lecture seule avec boutons */}
+                            {((seanceData.seanceId || seanceData.typeSeance) && editing?.coursId !== coursId && editing?.key !== key) ? (
+                              <div style={styles.cellContentReadOnly}>
+                                <div style={{ fontWeight: '600', color: '#065f46', marginBottom: '4px' }}>
+                                  {profList.find(p => p._id === seanceData.professeur)?.nom || '—'}
+                                </div>
+                                {seanceData.matiere && (
+                                  <div style={{ color: '#7c3aed', marginBottom: '2px', fontSize: '10px' }}>
+                                    {seanceData.matiere}
+                                  </div>
+                                )}
+                                {seanceData.salle && (
+                                  <div style={{ color: '#dc2626', marginBottom: '2px', fontSize: '10px' }}>
+                                    Salle: {seanceData.salle}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '9px', marginTop: '4px' }}>
+                                  <span style={{
+                                    ...styles.statusBadge,
+                                    ...(seanceData.actif ? styles.statusActive : styles.statusInactive)
+                                  }}>
+                                    {seanceData.typeSeance || 'reelle'}
+                                  </span>
+                                </div>
+                                {seanceData.actif === false && (
+                                  <div style={{ fontSize: '9px', color: '#dc2626', marginTop: '2px' }}>
+                                    ANNULÉ
+                                  </div>
+                                )}
+
+                                <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  <button
+                                    style={{ 
+                                      fontSize: '10px', 
+                                      padding: '3px 6px', 
+                                      borderRadius: '3px', 
+                                      border: '1px solid #3b82f6', 
+                                      cursor: 'pointer',
+                                      backgroundColor: '#3b82f6',
+                                      color: 'white',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '3px'
+                                    }}
+                                    onClick={() => startEdit(coursId, jour, creneau)}
+                                  >
+                                    <Edit size={8} />
+                                    Modifier
+                                  </button>
+
+                                  <button
+                                    style={{
+                                      fontSize: '10px',
+                                      padding: '3px 6px',
+                                      borderRadius: '3px',
+                                      border: '1px solid #6b7280',
+                                      background: '#6b7280',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '3px'
+                                    }}
+                                    onClick={() => {
+                                      setSelectedSeanceForHistory(seanceData.seanceId);
+                                      setShowHistorique(true);
+                                    }}
+                                    title="Voir l'historique de cette séance"
+                                  >
+                                    <Clock size={8} />
+                                    Historique
+                                  </button>
+
+                                  <button
+                                    style={{
+                                      fontSize: '10px',
+                                      padding: '3px 6px',
+                                      borderRadius: '3px',
+                                      border: '1px solid #dc2626',
+                                      background: '#dc2626',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '3px'
+                                    }}
+                                    onClick={() => deleteSeance(coursId, jour, creneau, seanceData)}
+                                    title="Supprimer cette séance"
+                                  >
+                                    <Trash2 size={8} />
+                                    Supprimer
+                                  </button>
+
+                                  <button
+                                    style={{
+                                      fontSize: '10px',
+                                      padding: '3px 6px',
+                                      borderRadius: '3px',
+                                      border: '1px solid #f59e0b',
+                                      background: '#f59e0b',
+                                      color: 'white',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '3px'
+                                    }}
+                                    onClick={() => marquerRattrapage(coursId, jour, creneau, seanceData)}
+                                    title="Marquer comme rattrapage"
+                                  >
+                                    Rattrapage
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Bouton Ajouter si pas de séance */
+                              editing?.coursId !== coursId && editing?.key !== key && (
+                                <div style={{ textAlign: 'center' }}>
+                                  <button
+                                    style={{ 
+                                      fontSize: 11, 
+                                      padding: '8px 12px', 
+                                      borderRadius: 4, 
+                                      border: '2px dashed #d1d5db', 
+                                      cursor: 'pointer',
+                                      backgroundColor: '#f9fafb',
+                                      color: '#374151',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      margin: '0 auto'
+                                    }}
+                                    onClick={() => startEdit(coursId, jour, creneau)}
+                                  >
+                                    <Plus size={12} />
+                                    Ajouter séance
+                                  </button>
+                                </div>
+                              )
+                            )}
+
+                            {/* Mode édition dans la cellule */}
+                            {editing?.coursId === coursId && editing?.key === key && (
+                              <div style={styles.cellContent}>
+                                <select
+                                  style={styles.select}
+                                  value={seanceData.professeur || ''}
+                                  onChange={(e) => updateCase(coursId, jour, creneau, 'professeur', e.target.value)}
+                                >
+                                  <option value="">-- Professeur --</option>
+                                  {getProfesseursPourCours(coursId).map(prof => (
+                                    <option key={prof._id} value={prof._id}>
+                                      {prof.nom} {prof.estPermanent ? '(Permanent)' : '(Entrepreneur)'}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                {seanceData.professeur ? (
+                                  (() => {
+                                    const mats = getMatieresProfesseurPourCours(seanceData.professeur, coursId);
+                                    return mats.length > 0 ? (
+                                      <select
+                                        style={styles.select}
+                                        value={seanceData.matiere || ''}
+                                        onChange={(e) => updateCase(coursId, jour, creneau, 'matiere', e.target.value)}
+                                      >
+                                        <option value="">-- Matière --</option>
+                                        {mats.map(m => <option key={m} value={m}>{m}</option>)}
+                                      </select>
+                                    ) : (
+                                      <input
+                                        style={{...styles.input, backgroundColor: '#fff'}}
+                                        placeholder="Matière..."
+                                        value={seanceData.matiere || ''}
+                                        onChange={(e) => updateCase(coursId, jour, creneau, 'matiere', e.target.value)}
+                                      />
+                                    );
+                                  })()
+                                ) : (
+                                  <input
+                                    style={{...styles.input, backgroundColor: '#f3f4f6', cursor: 'not-allowed'}}
+                                    placeholder="Sélectionnez d'abord un professeur"
+                                    value=""
+                                    disabled
+                                  />
+                                )}
+
+                                <input
+                                  style={styles.input}
+                                  placeholder="Salle..."
+                                  value={seanceData.salle || ''}
+                                  onChange={(e) => updateCase(coursId, jour, creneau, 'salle', e.target.value)}
+                                />
+
+                                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                  <button
+                                    style={{ 
+                                      fontSize: 11, 
+                                      padding: '4px 8px', 
+                                      background: '#10b981', 
+                                      color:'#fff', 
+                                      border:'none', 
+                                      borderRadius: 4, 
+                                      cursor:'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                    onClick={() => saveEdit(coursId, jour, creneau)}
+                                  >
+                                    <Save size={10} />
+                                    Enregistrer
+                                  </button>
+                                  <button
+                                    style={{ 
+                                      fontSize: 11, 
+                                      padding: '4px 8px', 
+                                      background: '#e5e7eb', 
+                                      color:'#111827', 
+                                      border:'none', 
+                                      borderRadius: 4, 
+                                      cursor:'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                    onClick={cancelEdit}
+                                  >
+                                    <X size={10} />
+                                    Annuler
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 </tbody>
               </table>
             </div>
@@ -1501,6 +2580,7 @@ const EmploiPedagogique = () => {
 
       {/* États vides */}
       {selectedCours.length === 0 && (
+<<<<<<< HEAD
         <div className="empty-state">
           <div className="empty-state-icon">📅</div>
           <div className="empty-state-title">
@@ -1515,11 +2595,37 @@ const EmploiPedagogique = () => {
               Fonctionnalités disponibles
             </div>
             <div className="features-list">
+=======
+        <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+          <div style={{ fontSize: '48px', marginBottom: '15px' }}>📅</div>
+          <div style={{ fontSize: '18px', marginBottom: '10px' }}>
+            Consulter l'Emploi du Temps
+          </div>
+          <div>
+            Sélectionnez une classe ci-dessus pour voir ses séances programmées.
+          </div>
+          
+          <div style={{ 
+            marginTop: '20px', 
+            padding: '15px', 
+            backgroundColor: '#fef3c7',
+            borderRadius: '8px',
+            border: '1px solid #fbbf24'
+          }}>
+            <div style={{ fontWeight: '600', marginBottom: '8px' }}>
+              Fonctionnalités disponibles
+            </div>
+            <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
               • <strong>Consulter</strong> les séances de la semaine<br/>
               • <strong>Modifier</strong> une séance existante<br/>
               • <strong>Ajouter</strong> une nouvelle séance<br/>
               • <strong>Supprimer</strong> une séance<br/>
+<<<<<<< HEAD
               • <strong>Configurer</strong> les créneaux horaires par jour<br/>
+=======
+              • <strong>Configurer</strong> les créneaux horaires<br/>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
               • <strong>Télécharger</strong> l'emploi du temps
             </div>
           </div>
@@ -1528,17 +2634,36 @@ const EmploiPedagogique = () => {
 
       {/* Instructions */}
       {selectedCours.length > 0 && (
+<<<<<<< HEAD
         <div className="instructions">
           <h4>
             📋 Mode Consultation et Modification
           </h4>
           <div className="instructions-content">
             • Cliquez sur <strong>"Configurer les heures"</strong> pour personnaliser vos créneaux par jour (ex: Lundi 4 créneaux, Mardi 2 créneaux)<br/>
+=======
+        <div style={{
+          backgroundColor: '#f8fafc',
+          padding: '15px',
+          borderRadius: '8px',
+          marginTop: '20px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#374151', fontSize: '14px' }}>
+            📋 Mode Consultation et Modification
+          </h4>
+          <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.4' }}>
+            • Cliquez sur <strong>"Configurer les heures"</strong> pour personnaliser vos créneaux horaires<br/>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
             • Cliquez sur <strong>"Modifier"</strong> pour changer les détails d'une séance<br/>
             • Cliquez sur <strong>"Ajouter séance"</strong> dans une case vide pour créer une nouvelle séance<br/>
             • <strong>IMPORTANT</strong> : Professeur et matière sont OBLIGATOIRES pour sauvegarder<br/>
             • Cliquez sur <strong>"Supprimer"</strong> pour effacer définitivement une séance<br/>
+<<<<<<< HEAD
             • Les créneaux horaires sont maintenant configurables semaine par semaine
+=======
+            • Les créneaux horaires personnalisés s'appliquent à tout l'emploi du temps
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           </div>
         </div>
       )}
@@ -1548,17 +2673,47 @@ const EmploiPedagogique = () => {
 
       {/* Modal Statistiques Rattrapages */}
       {showStatsRattrapages && (
+<<<<<<< HEAD
         <div className="modal-overlay">
           <div className="modal-content-large">
             <h3>📊 Statistiques des Rattrapages</h3>
             
             {loadingStats ? (
               <div className="loading-stats">
+=======
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '25px',
+            borderRadius: '10px',
+            width: '900px',
+            maxHeight: '85vh',
+            overflow: 'auto'
+          }}>
+            <h3 style={{ margin: '0 0 20px 0', color: '#1f2937', fontSize: '20px' }}>
+              📊 Statistiques des Rattrapages
+            </h3>
+            
+            {loadingStats ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 <div>Chargement des statistiques...</div>
               </div>
             ) : (
               <div>
                 {statsRattrapages.map(stat => (
+<<<<<<< HEAD
                   <div key={stat._id} className={`stat-card ${stat.seancesRattrapage > 0 ? 'has-rattrapage' : ''}`}>
                     <div className="stat-header">
                       {stat.nomProfesseur}
@@ -1583,24 +2738,202 @@ const EmploiPedagogique = () => {
                       <div className="stat-taux">
                         <span>Taux de présence: <strong>{Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%</strong></span>
                         <span>Taux de rattrapage: <strong className="rattrapage">{stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%</strong></span>
+=======
+                  <div key={stat._id} style={{
+                    padding: '15px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    marginBottom: '15px',
+                    backgroundColor: stat.seancesRattrapage > 0 ? '#fef2f2' : '#f9fafb'
+                  }}>
+                    <div style={{ 
+                      fontWeight: 'bold', 
+                      marginBottom: '12px',
+                      fontSize: '16px',
+                      color: stat.seancesRattrapage > 0 ? '#dc2626' : '#374151'
+                    }}>
+                      {stat.nomProfesseur}
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '12px' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', color: '#6b7280' }}>Total séances:</div>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold' }}>{stat.totalSeances}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13px', color: '#10b981' }}>Séances normales:</div>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#10b981' }}>{stat.seancesNormales}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13px', color: '#dc2626' }}>Rattrapages requis:</div>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626' }}>{stat.seancesRattrapage}</div>
+                      </div>
+                    </div>
+                    
+                    {/* Affichage du taux de présence */}
+                    {stat.totalSeances > 0 && (
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#6b7280', 
+                        marginTop: '10px',
+                        marginBottom: '10px',
+                        padding: '8px',
+                        backgroundColor: '#f3f4f6',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span>Taux de présence: <strong>{Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%</strong></span>
+                        <span>Taux de rattrapage: <strong style={{ color: '#dc2626' }}>{stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%</strong></span>
+                      </div>
+                    )}
+                    
+                    {/* Détails des rattrapages SI le professeur en a */}
+                    {stat.detailsRattrapages && stat.detailsRattrapages.length > 0 && (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '12px',
+                        backgroundColor: '#fff7ed',
+                        borderRadius: '6px',
+                        border: '1px solid #fed7aa'
+                      }}>
+                        <div style={{ 
+                          fontWeight: '600', 
+                          fontSize: '13px', 
+                          marginBottom: '10px',
+                          color: '#c2410c',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <span>🔍</span>
+                          Détails des {stat.detailsRattrapages.length} rattrapage(s)
+                        </div>
+                        
+                        {stat.detailsRattrapages.map((rattrapage, idx) => (
+                          <div key={idx} style={{
+                            fontSize: '11px',
+                            padding: '8px',
+                            marginBottom: '6px',
+                            backgroundColor: 'white',
+                            borderRadius: '4px',
+                            border: '1px solid #fed7aa'
+                          }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                              <div>
+                                <strong style={{ color: '#7c2d12' }}>Séance:</strong> {rattrapage.cours} - {rattrapage.matiere}
+                                <br />
+                                <strong style={{ color: '#7c2d12' }}>Date:</strong> {new Date(rattrapage.dateSeance).toLocaleDateString('fr-FR')} 
+                                {' '}({rattrapage.jour} {rattrapage.heureDebut}-{rattrapage.heureFin})
+                                {rattrapage.salle && (
+                                  <>
+                                    <br />
+                                    <strong style={{ color: '#7c2d12' }}>Salle:</strong> {rattrapage.salle}
+                                  </>
+                                )}
+                              </div>
+                              
+                              <div style={{
+                                backgroundColor: '#fef3c7',
+                                padding: '6px',
+                                borderRadius: '4px',
+                                border: '1px solid #fde047'
+                              }}>
+                                <strong style={{ color: '#713f12' }}>📝 Marqué par:</strong>
+                                <br />
+                                <span style={{ color: '#0369a1', fontWeight: '600' }}>
+                                  {rattrapage.marqueParNom || 'Système'}
+                                </span>
+                                <br />
+                                <span style={{ fontSize: '10px', color: '#6b7280' }}>
+                                  {rattrapage.marqueParRole && `(${rattrapage.marqueParRole})`}
+                                </span>
+                                {rattrapage.marqueParEmail && (
+                                  <>
+                                    <br />
+                                    <span style={{ fontSize: '10px', color: '#6b7280' }}>
+                                      {rattrapage.marqueParEmail}
+                                    </span>
+                                  </>
+                                )}
+                                {rattrapage.dateRattrapage && (
+                                  <>
+                                    <br />
+                                    <span style={{ fontSize: '10px', color: '#6b7280' }}>
+                                      Le {new Date(rattrapage.dateRattrapage).toLocaleDateString('fr-FR')} 
+                                      {' à '}
+                                      {new Date(rattrapage.dateRattrapage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {rattrapage.notes && (
+                              <div style={{
+                                marginTop: '6px',
+                                padding: '4px',
+                                backgroundColor: '#f0f9ff',
+                                borderRadius: '3px',
+                                fontSize: '10px',
+                                color: '#075985'
+                              }}>
+                                <strong>Notes:</strong> {rattrapage.notes}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                       </div>
                     )}
                   </div>
                 ))}
                 
                 {statsRattrapages.length === 0 && (
+<<<<<<< HEAD
                   <div className="empty-stats">
                     <div>📊</div>
+=======
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px',
+                    color: '#6b7280'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '15px' }}>📊</div>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                     <div>Aucune donnée de rattrapage disponible</div>
                   </div>
                 )}
               </div>
             )}
             
+<<<<<<< HEAD
             <div className="modal-footer">
               <button
                 onClick={() => setShowStatsRattrapages(false)}
                 className="modal-button cancel"
+=======
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end',
+              marginTop: '20px',
+              paddingTop: '15px',
+              borderTop: '1px solid #e5e7eb'
+            }}>
+              <button
+                onClick={() => setShowStatsRattrapages(false)}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
               >
                 Fermer
               </button>
@@ -1615,6 +2948,19 @@ const EmploiPedagogique = () => {
         onClose={() => setShowHistorique(false)}
         seanceId={selectedSeanceForHistory}
       />
+<<<<<<< HEAD
+=======
+
+      {/* CSS pour l'animation de rotation */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     </div>
   );
 };

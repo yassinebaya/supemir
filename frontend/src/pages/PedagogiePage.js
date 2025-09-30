@@ -48,7 +48,11 @@ const PedagogiePage = () => {
 
   const fetchPedagogiques = async () => {
     try {
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/pedagogiques', { headers });
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/pedagogiques', { headers });
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       if (!res.ok) throw new Error('Erreur lors du chargement des pédagogiques');
       const data = await res.json();
       setPedagogiques(data);
@@ -113,8 +117,13 @@ const PedagogiePage = () => {
     setLoading(true);
     try {
       const url = editingPedagogique 
+<<<<<<< HEAD
         ? `https://vmi1977988.contaboserver.net//api2/pedagogiques/${editingPedagogique._id}`
         : 'https://vmi1977988.contaboserver.net//api2/pedagogiques';
+=======
+        ? `http://195.179.229.230:5000/api/pedagogiques/${editingPedagogique._id}`
+        : 'http://195.179.229.230:5000/api/pedagogiques';
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       
       const method = editingPedagogique ? 'PUT' : 'POST';
       
@@ -160,7 +169,11 @@ const PedagogiePage = () => {
     
     setLoading(true);
     try {
+<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/pedagogiques/${pedagogiqueToDelete._id}`, {
+=======
+      const res = await fetch(`http://195.179.229.230:5000/api/pedagogiques/${pedagogiqueToDelete._id}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'DELETE',
         headers
       });
@@ -185,7 +198,11 @@ const PedagogiePage = () => {
   const handleToggleActive = async (pedagogique) => {
     try {
       setLoading(true);
+<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/pedagogiques/${pedagogique._id}/toggle-actif`, {
+=======
+      const res = await fetch(`http://195.179.229.230:5000/api/pedagogiques/${pedagogique._id}/toggle-actif`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'PATCH',
         headers
       });

@@ -152,7 +152,11 @@ const SeancesProfesseur = () => {
       const day = String(d.getDate()).padStart(2, '0');
       const lundiSemaine = `${y}-${m}-${day}`;
 
+<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/professeur/semaine/${lundiSemaine}`, {
+=======
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/professeur/semaine/${lundiSemaine}`, {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -189,7 +193,11 @@ const SeancesProfesseur = () => {
   const fetchProfesseurInfo = async () => {
     try {
       const token = localStorage.getItem('token');
+<<<<<<< HEAD
       const res = await fetch('https://vmi1977988.contaboserver.net//api2/professeurs/mon-profil', {
+=======
+      const res = await fetch('http://195.179.229.230:5000/api/professeurs/mon-profil', {
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -210,7 +218,11 @@ const SeancesProfesseur = () => {
       params.append('annee', selectedPeriod.annee);
       
       const res = await fetch(
+<<<<<<< HEAD
         `https://vmi1977988.contaboserver.net//api2/professeurs/mon-rapport?${params}`,
+=======
+        `http://195.179.229.230:5000/api/professeurs/mon-rapport?${params}`,
+>>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
