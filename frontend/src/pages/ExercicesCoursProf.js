@@ -44,7 +44,7 @@ const ExercicesCoursProf = () => {
     const fetchExercices = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(`http://195.179.229.230:5000/api/professeur/exercices/${nomCours}`, {
+        const res = await axios.get(`https://vmi1977988.contaboserver.net//api2/professeur/exercices/${nomCours}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -93,7 +93,7 @@ const ExercicesCoursProf = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://195.179.229.230:5000/api/professeur/exercices/${id}/remarque`, {
+      await axios.put(`https://vmi1977988.contaboserver.net//api2/professeur/exercices/${id}/remarque`, {
         remarque
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -158,7 +158,7 @@ const ExercicesCoursProf = () => {
     container: {
       minHeight: '100vh',
       padding: '24px',
-    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+    background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     },
     header: {
@@ -560,7 +560,7 @@ const ExercicesCoursProf = () => {
                     </div>
                     <div>
                       <a 
-                        href={`http://195.179.229.230:5000${ex.fichier}`}
+                        href={`https://vmi1977988.contaboserver.net/${ex.fichier}`}
                         target="_blank" 
                         rel="noreferrer"
                         style={styles.downloadLink}

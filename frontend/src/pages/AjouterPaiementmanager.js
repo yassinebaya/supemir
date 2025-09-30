@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
-import Sidebar from '../components/Sidebarpaiment'; // ✅ استيراد صحيح
+import Sidebar from '../components/Sidebarpaiment';
 import {
   Save,
   UserRoundSearch,
@@ -17,7 +17,7 @@ const handleLogout = () => {
   window.location.href = '/';
 };
 
-const AjouterPaiementmanager = () => {
+const AjouterPaiement = () => {
   const [etudiants, setEtudiants] = useState([]);
   const [cours, setCours] = useState([]);
   const [etudiantsComplets, setEtudiantsComplets] = useState([]);
@@ -25,6 +25,8 @@ const AjouterPaiementmanager = () => {
   const [prixTotalEtudiant, setPrixTotalEtudiant] = useState(0);
   const [totalDejaPaye, setTotalDejaPaye] = useState(0);
   const [resteAPayer, setResteAPayer] = useState(0);
+  const [modePaiementEtudiant, setModePaiementEtudiant] = useState('');
+  const [infosModesPaiement, setInfosModesPaiement] = useState(null);
   
   const [form, setForm] = useState({
     etudiant: '',
@@ -33,7 +35,8 @@ const AjouterPaiementmanager = () => {
     nombreMois: 1,
     montant: '',
     note: '',
-    typePaiement: 'mensuel'
+    typePaiement: 'formation', // 'inscription' ou 'formation'
+    estInscription: false
   });
 
   const [message, setMessage] = useState('');
@@ -42,88 +45,109 @@ const AjouterPaiementmanager = () => {
   const [dateRappel, setDateRappel] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
-      const token = localStorage.getItem('token');
-      const config = { headers: { Authorization: `Bearer ${token}` } };
+  const fetchData = async () => {
+  const token = localStorage.getItem('token');
+  const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      try {
-        // ✅ Utilisation des nouvelles routes paiement-manager
-        const resEtudiants = await axios.get('http://195.179.229.230:5000/api/paiement-manager/etudiants?actif=true', config);
-        const resCours = await axios.get('http://195.179.229.230:5000/api/paiement-manager/cours', config);
+  try {
+    const resEtudiants = await axios.get('https://vmi1977988.contaboserver.net//api2/etudiants', config);
+    const resCours = await axios.get('https://vmi1977988.contaboserver.net//api2/cours', config);
 
-        const etudiantsActifs = resEtudiants.data.filter(e => e.actif);
+    // FILTRER : étudiants actifs ET avec prixTotal > 0
+    const etudiantsActifs = resEtudiants.data.filter(e => 
+      e.actif && e.prixTotal > 0
+    );
 
-        setEtudiantsComplets(etudiantsActifs);
+    setEtudiantsComplets(etudiantsActifs);
 
-        const etudiantsOptions = etudiantsActifs.map(e => ({
-          value: e._id,
-          label: `${e.prenom} ${e.nomDeFamille}`
+    const etudiantsOptions = etudiantsActifs.map(e => ({
+      value: e._id,
+      label: e.nomComplet
+    }));
+
+    setEtudiants(etudiantsOptions);
+    setCours(resCours.data.map(c => ({ value: c.nom, label: c.nom })));
+
+    const savedData = JSON.parse(localStorage.getItem('paiementPreRempli'));
+    if (savedData) {
+      const etuId = savedData.etudiant;
+      const coursSaved = savedData.cours || [];
+
+      const etudiantComplet = etudiantsActifs.find(e => e._id === etuId);
+      
+      if (etudiantComplet) {
+        setForm(prev => ({
+          ...prev,
+          etudiant: etuId,
+          cours: coursSaved
         }));
 
-        setEtudiants(etudiantsOptions);
-        setCours(resCours.data.map(c => ({ value: c.nom, label: c.nom })));
-
-        // ✅ Traitement des données pré-remplies APRÈS avoir chargé les étudiants
-        const savedData = JSON.parse(localStorage.getItem('paiementPreRempli'));
-        if (savedData) {
-          const etuId = savedData.etudiant;
-          const coursSaved = savedData.cours || [];
-
-          // ✅ Trouver l'étudiant complet avec l'ID
-          const etudiantComplet = etudiantsActifs.find(e => e._id === etuId);
-          
-          if (etudiantComplet) {
-            // ✅ Créer l'option pour le Select avec le nom complet
-            const etudiantOption = {
-              value: etuId,
-              label: `${etudiantComplet.prenom} ${etudiantComplet.nomDeFamille}`
-            };
-
-            // ✅ Mettre à jour le formulaire
-            setForm(prev => ({
-              ...prev,
-              etudiant: etuId,
-              cours: coursSaved
-            }));
-
-            // ✅ Déclencher le calcul des paiements
-            await handleEtudiantChangeInternal(etudiantComplet, etuId, coursSaved);
-          }
-
-          localStorage.removeItem('paiementPreRempli');
-        }
-
-      } catch (err) {
-        console.error('Erreur chargement données:', err);
+        await handleEtudiantChangeInternal(etudiantComplet, etuId, coursSaved);
       }
-    };
+
+      localStorage.removeItem('paiementPreRempli');
+    }
+
+  } catch (err) {
+    console.error('Erreur chargement données:', err);
+  }
+};
 
     fetchData();
   }, []);
 
-  // ✅ Fonction interne pour éviter les dépendances circulaires
   const handleEtudiantChangeInternal = async (etudiantComplet, etudiantId, coursEtudiant = null) => {
     try {
-      // ✅ Récupérer les cours de l'étudiant
       let coursFinaux = coursEtudiant;
       if (!coursFinaux) {
         coursFinaux = etudiantComplet?.cours || etudiantComplet?.coursInscrits || [];
       }
 
-      // ✅ Calculer les paiements avec la nouvelle route paiement-manager
       const token = localStorage.getItem('token');
-      const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiement-manager/paiements/etudiant/${etudiantId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      
+      // Récupérer les infos détaillées de paiement
+      try {
+        const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}/info`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-      const paiements = resPaiements.data || [];
-      const totalPaye = paiements.reduce((acc, p) => acc + (p.montant || 0), 0);
-      const prixTotal = etudiantComplet?.prixTotal || 0;
-      const reste = Math.max(0, prixTotal - totalPaye);
+        const infos = resPaiements.data;
+        
+        // Mettre à jour les états avec les nouvelles données
+        setPrixTotalEtudiant(infos.etudiant.prixTotal);
+        setTotalDejaPaye(infos.totaux.formation); // Total formation uniquement
+        setResteAPayer(infos.totaux.resteAPayer);
+        setModePaiementEtudiant(infos.etudiant.modePaiement);
+        setInfosModesPaiement(infos.infosModesPaiement);
 
-      setPrixTotalEtudiant(prixTotal);
-      setTotalDejaPaye(totalPaye);
-      setResteAPayer(reste);
+        // Auto-remplir selon le mode de paiement
+        if (infos.etudiant.modePaiement !== 'annuel' && infos.prochaineTranche) {
+          setForm(prev => ({
+            ...prev,
+            montant: infos.prochaineTranche.montant.toString(),
+            nombreMois: infos.prochaineTranche.nombreMois,
+            note: infos.prochaineTranche.description
+          }));
+        }
+      } catch (infoErr) {
+        console.warn('API /info non disponible, utilisation de l\'ancienne méthode:', infoErr);
+        
+        // Fallback vers l'ancienne méthode
+        const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const paiements = resPaiements.data || [];
+        const totalPaye = paiements.reduce((acc, p) => acc + (p.montant || 0), 0);
+        const prixTotal = etudiantComplet?.prixTotal || 0;
+        const reste = Math.max(0, prixTotal - totalPaye);
+
+        setPrixTotalEtudiant(prixTotal);
+        setTotalDejaPaye(totalPaye);
+        setResteAPayer(reste);
+        setModePaiementEtudiant(etudiantComplet?.modePaiement || 'semestriel');
+        setInfosModesPaiement(null);
+      }
 
     } catch (err) {
       console.error('Erreur lors du calcul des paiements:', err);
@@ -131,11 +155,29 @@ const AjouterPaiementmanager = () => {
       setPrixTotalEtudiant(prixTotal);
       setTotalDejaPaye(0);
       setResteAPayer(prixTotal);
+      setModePaiementEtudiant(etudiantComplet?.modePaiement || 'semestriel');
+      setInfosModesPaiement(null);
     }
   };
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Nouveau handler pour le type de paiement
+  const handleTypePaiementChange = (type) => {
+    setForm(prev => ({
+      ...prev,
+      typePaiement: type,
+      estInscription: type === 'inscription',
+      // Si inscription, masquer date et mois
+      moisDebut: type === 'inscription' ? '' : prev.moisDebut,
+      nombreMois: type === 'inscription' ? 0 : (infosModesPaiement?.moisParTranche || 1),
+      // CORRECTION : utiliser les infos du mode au lieu de prev.montant
+      montant: type === 'inscription' ? '' : (infosModesPaiement?.montantParTranche?.toString() || ''),
+      note: type === 'inscription' ? 'Frais d\'inscription' : 
+            (infosModesPaiement ? infosModesPaiement.description : '')
+    }));
   };
 
   const handleEtudiantChange = async (selectedEtudiant) => {
@@ -177,37 +219,56 @@ const AjouterPaiementmanager = () => {
   };
 
   const handleSubmit = async () => {
-    if (resteAPayer <= 0) {
+    // Si mode annuel et que l'étudiant est déjà marqué comme payé
+    if (modePaiementEtudiant === 'annuel' && etudiantsComplets.find(e => e._id === form.etudiant)?.paye) {
+      setMessage('❌ Cet étudiant en mode annuel est déjà marqué comme payé.');
+      return;
+    }
+
+    if (!form.estInscription && resteAPayer <= 0) {
       setMessage('❌ Cet étudiant a déjà payé la totalité du montant dû.');
       return;
     }
 
-    if (parseFloat(form.montant) > resteAPayer) {
+    if (!form.estInscription && parseFloat(form.montant) > resteAPayer) {
       setMessage(`❌ Le montant ne peut pas dépasser le reste à payer (${resteAPayer} MAD).`);
       return;
     }
 
     const token = localStorage.getItem('token');
+    
+    const paiementData = {
+      etudiant: form.etudiant,
+      cours: form.cours,
+      moisDebut: form.moisDebut || new Date().toISOString().split('T')[0],
+      nombreMois: form.nombreMois,
+      montant: parseFloat(form.montant),
+      note: form.note,
+      estInscription: form.estInscription
+    };
+
     try {
-      // ✅ Utilisation de la nouvelle route paiement-manager pour ajouter un paiement
-      await axios.post('http://195.179.229.230:5000/api/paiement-manager/paiements', form, {
+      await axios.post('https://vmi1977988.contaboserver.net//api2/paiements', paiementData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('✅ Paiement ajouté avec succès');
       
-      setForm({
-        etudiant: '',
-        cours: [],
+      // Recharger les données de l'étudiant
+      if (form.etudiant) {
+        const etudiantComplet = etudiantsComplets.find(e => e._id === form.etudiant);
+        await handleEtudiantChangeInternal(etudiantComplet, form.etudiant);
+      }
+      
+      // Réinitialiser seulement certains champs
+      setForm(prev => ({
+        ...prev,
         moisDebut: '',
-        nombreMois: 1,
         montant: '',
         note: '',
-        typePaiement: 'mensuel'
-      });
+        typePaiement: 'formation',
+        estInscription: false
+      }));
       
-      setPrixTotalEtudiant(0);
-      setTotalDejaPaye(0);
-      setResteAPayer(0);
     } catch (err) {
       console.error('Erreur ajout:', err);
       setMessage('❌ Erreur lors de l\'ajout du paiement');
@@ -238,14 +299,9 @@ const AjouterPaiementmanager = () => {
     };
 
     try {
-      const token = localStorage.getItem('token');
-      // ✅ Utilisation de la nouvelle route paiement-manager pour ajouter un rappel
-      const res = await fetch('http://195.179.229.230:5000/api/paiement-manager/rappels', {
+      const res = await fetch('https://vmi1977988.contaboserver.net//api2/rappels', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
 
@@ -270,16 +326,16 @@ const AjouterPaiementmanager = () => {
   }, [form.typePaiement]);
 
   useEffect(() => {
-    if (form.typePaiement === 'annuel') {
-      const montantMensuel = form.montant / (form.nombreMois || 1);
-      setForm(prev => ({ ...prev, montant: montantMensuel * 12 }));
+    if (form.typePaiement === 'annuel' && form.montant && form.nombreMois) {
+      const montantMensuel = parseFloat(form.montant) / form.nombreMois;
+      setForm(prev => ({ ...prev, montant: (montantMensuel * 12).toString() }));
     }
-  }, [form.nombreMois]);
+  }, [form.nombreMois, form.montant, form.typePaiement]);
 
   const styles = {
     container: {
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+      backgroundImage: 'linear-gradient(135deg, #f0f9ff 0%, #a6dbff 25%, #f3e8ff 100%)',
       padding: '20px'
     },
     formContainer: {
@@ -413,6 +469,26 @@ const AjouterPaiementmanager = () => {
       backgroundColor: '#fef2f2',
       borderColor: '#fecaca',
       color: '#dc2626'
+    },
+    checkboxContainer: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      marginBottom: '15px'
+    },
+    checkbox: {
+      width: '18px',
+      height: '18px',
+      cursor: 'pointer'
+    },
+    checkboxLabel: {
+      fontSize: '14px',
+      fontWeight: '500',
+      color: '#374151',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px'
     }
   };
 
@@ -469,21 +545,25 @@ const AjouterPaiementmanager = () => {
                 <div style={styles.infoValue}>{prixTotalEtudiant} MAD</div>
               </div>
               <div style={styles.infoItem}>
-                <div style={styles.infoLabel}>Déjà Payé</div>
+                <div style={styles.infoLabel}>Formation Payée</div>
                 <div style={{...styles.infoValue, ...styles.infoValuePaid}}>{totalDejaPaye} MAD</div>
               </div>
               <div style={styles.infoItem}>
                 <div style={styles.infoLabel}>Reste à Payer</div>
                 <div style={{...styles.infoValue, ...styles.infoValueRemaining}}>{resteAPayer} MAD</div>
               </div>
+              
+              {/* Affichage du mode de paiement */}
+              {modePaiementEtudiant && (
+                <div style={styles.infoItem}>
+                  <div style={styles.infoLabel}>Mode de Paiement</div>
+                  <div style={styles.infoValue}>{modePaiementEtudiant}</div>
+                </div>
+              )}
             </div>
           )}
 
           <div style={styles.formGrid}>
-            <div style={styles.formGroup}>
-             
-            </div>
-
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>
@@ -525,35 +605,84 @@ const AjouterPaiementmanager = () => {
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>
-                  <Calendar size={16} style={{color: '#8b5cf6'}} />
-                  Date de début
+                  <BadgeEuro size={16} style={{color: '#8b5cf6'}} />
+                  Type de Paiement
                 </label>
-                <input
-                  type="date"
-                  name="moisDebut"
-                  value={form.moisDebut}
-                  onChange={handleChange}
-                  required
-                  style={styles.input}
-                />
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <button
+                    type="button"
+                    onClick={() => handleTypePaiementChange('formation')}
+                    style={{
+                      ...styles.button,
+                      backgroundColor: form.typePaiement === 'formation' ? '#3b82f6' : '#e5e7eb',
+                      color: form.typePaiement === 'formation' ? 'white' : '#374151'
+                    }}
+                  >
+                    Formation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTypePaiementChange('inscription')}
+                    style={{
+                      ...styles.button,
+                      backgroundColor: form.typePaiement === 'inscription' ? '#8b5cf6' : '#e5e7eb',
+                      color: form.typePaiement === 'inscription' ? 'white' : '#374151'
+                    }}
+                  >
+                    Frais d'inscription
+                  </button>
+                </div>
               </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  <Calendar size={16} style={{color: '#f59e0b'}} />
-                  Nombre de mois
-                </label>
-                <input
-                  type="number"
-                  name="nombreMois"
-                  value={form.nombreMois}
-                  onChange={handleChange}
-                  min="1"
-                  required
-                  style={styles.input}
-                />
-              </div>
+              
+              {/* Affichage conditionnel des infos du mode */}
+              {infosModesPaiement && form.typePaiement === 'formation' && (
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Informations Mode</label>
+                  <div style={{...styles.input, backgroundColor: '#f9fafb', fontSize: '12px'}}>
+                    {infosModesPaiement.description}<br/>
+                    Montant par tranche: {infosModesPaiement.montantParTranche} MAD<br/>
+                    Mois par tranche: {infosModesPaiement.moisParTranche}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Masquer ces champs si c'est un paiement d'inscription */}
+            {!form.estInscription && (
+              <div style={styles.formRow}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>
+                    <Calendar size={16} style={{color: '#8b5cf6'}} />
+                    Date de début
+                  </label>
+                  <input
+                    type="date"
+                    name="moisDebut"
+                    value={form.moisDebut}
+                    onChange={handleChange}
+                    required
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>
+                    <Calendar size={16} style={{color: '#f59e0b'}} />
+                    Nombre de mois
+                  </label>
+                  <input
+                    type="number"
+                    name="nombreMois"
+                    value={form.nombreMois}
+                    onChange={handleChange}
+                    min="1"
+                    required
+                    style={styles.input}
+                    readOnly={infosModesPaiement} // Auto-rempli selon le mode
+                  />
+                </div>
+              </div>
+            )}
 
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
@@ -692,4 +821,4 @@ const AjouterPaiementmanager = () => {
   );
 };
 
-export default AjouterPaiementmanager;
+export default AjouterPaiement;

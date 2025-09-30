@@ -35,7 +35,7 @@ const handleLogin = async () => {
   setMessage('');
 
   try {
-    const res = await fetch('http://195.179.229.230:5000/api/login', {
+    const res = await fetch('https://vmi1977988.contaboserver.net//api2/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,21 +56,29 @@ const handleLogin = async () => {
 
       setMessage('success|Connexion réussie ! Redirection en cours...');
 
-      setTimeout(() => {
-        if (data.role === 'admin') {
-          window.location.href = '/admin';
-        } else if (data.role === 'prof') {
-          window.location.href = '/professeur';
-        } else if (data.role === 'etudiant') {
-          window.location.href = '/etudiant';
-        } else if (data.role === 'commercial') {
-          window.location.href = '/commercial';
-        } else if (data.role === 'paiement_manager') { // Nouveau cas
-          window.location.href = '/paiement-manager';
-        } else {
-          setMessage('error|Rôle utilisateur inconnu: ' + data.role);
-        }
-      }, 1500);
+setTimeout(() => {
+  if (data.role === 'admin') {
+    window.location.href = '/admin/dashboard';
+  } else if (data.role === 'administratif') { // 🆕 NOUVEAU - Administratif
+    window.location.href = '/administratif';
+    } else if (data.role === 'partner') { // 🆕 NOUVEAU - Partner
+     window.location.href = '/partners/create-etudiant';
+  } else if (data.role === 'prof') {
+    window.location.href = '/professeur';
+  } else if (data.role === 'finance_prof') { // 🆕 NOUVEAU - Professeur de Finance
+    window.location.href = '/finance-prof';
+  } else if (data.role === 'etudiant') {
+    window.location.href = '/etudiant';
+  } else if (data.role === 'commercial') {
+    window.location.href = '/commercial';
+  } else if (data.role === 'paiement_manager') {
+    window.location.href = '/paiement-manager';
+  } else if (data.role === 'pedagogique') {
+    window.location.href = '/pedagogique';
+  } else {
+    setMessage('error|Rôle utilisateur inconnu: ' + data.role);
+  }
+}, 1500);
     } else {
       setMessage('error|' + (data.message || 'Email ou mot de passe incorrect'));
     }
@@ -204,10 +212,10 @@ const handleLogin = async () => {
         }
 
         .brand-logo {
-          width: 140px;
-          height: 140px;
+          width: 280px;
+          height: 280px;
           margin: 0 auto 30px;
-          background:white;
+          background: white;
           border-radius: 28px;
           backdrop-filter: blur(20px);
           display: flex;
@@ -226,8 +234,8 @@ const handleLogin = async () => {
         }
 
         .brand-logo img {
-          width: 90px;
-          height: 90px;
+          width: 250px;
+          height: 250px;
           object-fit: contain;
           filter: brightness(1.2) contrast(1.1);
         }
@@ -496,6 +504,14 @@ const handleLogin = async () => {
             padding: 10px;
             font-size: 12px;
           }
+          .brand-logo {
+            width: 200px;
+            height: 200px;
+          }
+          .brand-logo img {
+            width: 180px;
+            height: 180px;
+          }
         }
 
         @media (max-width: 768px) {
@@ -519,13 +535,13 @@ const handleLogin = async () => {
             margin-bottom: 30px;
           }
           .brand-logo {
-            width: 80px;
-            height: 80px;
+            width: 140px;
+            height: 140px;
             margin: 0 auto 16px;
           }
           .brand-logo img {
-            width: 60px;
-            height: 60px;
+            width: 120px;
+            height: 120px;
           }
           .brand-title {
             font-size: 24px;
@@ -602,16 +618,24 @@ const handleLogin = async () => {
             padding: 14px;
             font-size: 14px;
           }
+          .brand-logo {
+            width: 100px;
+            height: 100px;
+          }
+          .brand-logo img {
+            width: 85px;
+            height: 85px;
+          }
         }
 
         @media (max-width: 360px) {
           .brand-logo {
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
           }
           .brand-logo img {
-            width: 45px;
-            height: 45px;
+            width: 70px;
+            height: 70px;
           }
           .login-icon {
             width: 48px;
@@ -640,8 +664,6 @@ const handleLogin = async () => {
           {/* Panneau gauche - Branding */}
           <div className="left-panel">
             <div className="left-panel-overlay"></div>
-            
-          
             
             <div className="brand-section">
               <div className="brand-logo">

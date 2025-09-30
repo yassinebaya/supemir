@@ -36,7 +36,7 @@ const ProfileUpdatePage = () => {
 
       console.log('🔍 Chargement du profil avec token:', token.substring(0, 20) + '...');
 
-      const response = await fetch('http://195.179.229.230:5000/api/admin/profile', {
+      const response = await fetch('https://vmi1977988.contaboserver.net//api2/admin/profile', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -169,7 +169,7 @@ const ProfileUpdatePage = () => {
 
       console.log('📤 Envoi mise à jour avec:', changes);
 
-      const response = await fetch('http://195.179.229.230:5000/api/admin/profile', {
+      const response = await fetch('https://vmi1977988.contaboserver.net//api2/admin/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

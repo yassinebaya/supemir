@@ -1,0 +1,2071 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  RotateCcw, Home, AlertCircle, Filter, Users, DollarSign, 
+  TrendingUp, Eye, Phone, Mail, GraduationCap, BookOpen,
+  UserCheck, Building, Calendar, Target, BarChart3, Award,
+  Shield, CheckCircle, XCircle, User, Search, Download, Handshake,Clock // Ajouter Clock ici
+} from 'lucide-react';
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
+
+const DashboardNormal = () => {
+  const [etudiants, setEtudiants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+// Ajouter après les états existants
+const [partners, setPartners] = useState([]);
+const [statsPartners, setStatsPartners] = useState([]);
+  // Filtre par année scolaire - commencer vide pour sélection auto de 2025/2026
+  const [anneeScolaireFilter, setAnneeScolaireFilter] = useState('');
+  const [anneesDisponibles, setAnneesDisponibles] = useState([]);
+
+  // Ajouter après les états existants
+  const [commerciaux, setCommerciaux] = useState([]);
+  const [statistiques, setStatistiques] = useState([]);
+
+  // États pour les statistiques calculées
+  const [chiffreAffaire, setChiffreAffaire] = useState({
+    nouveauxInscrits: { count: 0, ca: 0 },
+    reinscriptions: { count: 0, ca: 0 },
+    total: { count: 0, ca: 0 },
+    recouvrement: { percentage: 0, ca: 0 }
+  });
+
+  const [tableauInscrits, setTableauInscrits] = useState({
+    global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
+    fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+    executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+    ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
+  });
+
+  const [tableauReinscriptions, setTableauReinscriptions] = useState({
+    global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
+    fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+    executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+    ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
+  });
+
+  const [preinscriptions, setPreinscriptions] = useState({
+    count: 0,
+    parType: {
+      fi: 0,
+      ta: 0,
+      executive: 0
+    },
+    parFiliere: {},
+    parCommercial: {}
+  });
+
+  // DONNÉES FIXES POUR 2024/2025 UNIQUEMENT
+  const donneesFixes2024_2025 = {
+    chiffreAffaire: {
+      nouveauxInscrits: { count: 202, ca: 5410608.98 },
+      reinscriptions: { count: 47, ca: 1306440.0 },
+      total: { count: 249, ca: 6717048.98 },
+      recouvrement: { percentage: 56.64, ca: 3949767.74 }
+    },
+    tableauInscrits: {
+      global: { total: 202, fi: 59, ta: 53, executive: 90, ca: 5410608.98 },
+      fi: { total: 59, masi: 15, irm: 44, cycleIngenieur: 0, ca: 1731608.98 },
+      executive: { total: 90, masi: 19, irm: 42, autre: 29, licencePro: 0, masterPro: 0, ca: 2299000.0 },
+      ta: { total: 53, masi: 26, irm: 27, cycleIngenieur: 0, ca: 1380000.0 }
+    },
+    tableauReinscriptions: {
+      global: { total: 47, fi: 33, ta: 14, executive: 0, ca: 1306440.0 },
+      fi: { total: 33, masi: 7, irm: 26, cycleIngenieur: 0, ca: 928440.0 },
+      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0.0 },
+      ta: { total: 14, masi: 10, irm: 4, cycleIngenieur: 0, ca: 378000.0 }
+    }
+  };
+
+  // Fonction pour récupérer les statistiques commerciales
+  const fetchStatistiques = async (anneeFilter = null) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Utiliser l'année passée en paramètre ou celle du state
+      const anneeActuelle = anneeFilter || anneeScolaireFilter;
+      
+      // Si c'est pour 2024/2025, ne pas afficher de commerciaux (ils n'existaient pas encore)
+      if (anneeActuelle === '2024/2025') {
+        setStatistiques([]);
+        return;
+      }
+      
+      // Pour les autres années, calculer depuis les données des étudiants
+      calculerStatistiquesCommerciaux(anneeActuelle);
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des statistiques:', error);
+      setStatistiques([]);
+    }
+  };
+
+  // Nouvelle fonction pour calculer les statistiques des commerciaux depuis les données étudiants
+  const calculerStatistiquesCommerciaux = (anneeFilter) => {
+    // Filtrer les étudiants selon l'année
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? etudiants.filter(e => e.isPartner !== true)
+      : etudiants.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+
+    // Grouper par commercial
+    const statsParCommercial = {};
+    
+    etudiantsFiltres.forEach(etudiant => {
+      // Utiliser 'commercial' au lieu de 'commercialId' selon votre modèle
+      const commercialId = etudiant.commercial || 'inconnu';
+      
+      if (!statsParCommercial[commercialId]) {
+        // Trouver les infos du commercial
+        const commercial = commerciaux.find(c => c._id === commercialId);
+        
+        statsParCommercial[commercialId] = {
+          nom: commercial ? commercial.nom : 'Commercial inconnu',
+          email: commercial ? commercial.email : '',
+          telephone: commercial ? commercial.telephone : '',
+          chiffreAffaire: 0,
+          totalRecu: 0,
+          reste: 0,
+          countEtudiants: 0,
+          actif: commercial ? commercial.actif !== false : true,
+          estAdminInscription: commercial ? commercial.estAdminInscription || false : false
+        };
+      }
+      
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      statsParCommercial[commercialId].chiffreAffaire += prixTotal;
+      statsParCommercial[commercialId].countEtudiants += 1;
+      
+      // Si l'étudiant a payé, ajouter au total reçu, sinon au reste
+      if (etudiant.paye) {
+        statsParCommercial[commercialId].totalRecu += prixTotal;
+      } else {
+        statsParCommercial[commercialId].reste += prixTotal;
+      }
+    });
+
+    // Convertir en array, filtrer les commerciaux inconnus et trier par chiffre d'affaires décroissant
+    const statistiquesCalculees = Object.entries(statsParCommercial)
+      .filter(([commercialId, stats]) => commercialId !== 'inconnu') // Exclure les étudiants sans commercial
+      .map(([commercialId, stats]) => stats)
+      .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
+
+    setStatistiques(statistiquesCalculees);
+  };
+
+// Fixed fetchData function with proper error handling
+const fetchData = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+
+    // Fetch all data with error handling for each request
+    const [etudiantsRes, commerciauxRes, partnersRes] = await Promise.all([
+      fetch('https://vmi1977988.contaboserver.net//api2/etudiant', {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      fetch('https://vmi1977988.contaboserver.net//api2/commerciaux', {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      fetch('https://vmi1977988.contaboserver.net//api2/partners', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    ]);
+
+    // Check each response individually
+    if (!etudiantsRes.ok) {
+      throw new Error(`Erreur étudiants: ${etudiantsRes.status} ${etudiantsRes.statusText}`);
+    }
+    if (!commerciauxRes.ok) {
+      throw new Error(`Erreur commerciaux: ${commerciauxRes.status} ${commerciauxRes.statusText}`);
+    }
+    if (!partnersRes.ok) {
+      console.warn(`Partners endpoint failed: ${partnersRes.status} ${partnersRes.statusText}`);
+      // Don't throw error, just log warning and continue with empty partners
+    }
+
+    const etudiantsData = await etudiantsRes.json();
+    const commerciauxData = await commerciauxRes.json();
+    
+    // Handle partners data safely - CORRECTION ICI
+    let partnersData = [];
+    if (partnersRes.ok) {
+      try {
+        const partnersResponse = await partnersRes.json();
+        // CORRECTION IMPORTANTE: Extraire les données du format API
+        if (partnersResponse.success && Array.isArray(partnersResponse.data)) {
+          partnersData = partnersResponse.data;  // Format: {success: true, data: [...]}
+        } else if (Array.isArray(partnersResponse)) {
+          partnersData = partnersResponse;  // Format direct: [...]
+        } else {
+          console.warn('Format de données partners inattendu:', partnersResponse);
+          partnersData = [];
+        }
+        console.log('Partners data loaded:', partnersData.length, 'partners');
+      } catch (parseError) {
+        console.warn('Failed to parse partners data:', parseError);
+        partnersData = [];
+      }
+    }
+
+    // Validate that required data is arrays
+    if (!Array.isArray(etudiantsData)) {
+      throw new Error('Les données étudiants ne sont pas dans le format attendu');
+    }
+    if (!Array.isArray(commerciauxData)) {
+      throw new Error('Les données commerciaux ne sont pas dans le format attendu');
+    }
+
+    setEtudiants(etudiantsData);
+    setCommerciaux(commerciauxData);
+    setPartners(partnersData);
+
+    const annees = [...new Set(etudiantsData.map((e) => e.anneeScolaire).filter(Boolean))]
+      .sort()
+      .reverse();
+    setAnneesDisponibles(annees);
+
+    // Déterminer l'année scolaire à sélectionner
+    let anneeASelectionner = anneeScolaireFilter;
+    if (!anneeASelectionner && annees.length > 0) {
+      if (annees.includes('2025/2026')) {
+        anneeASelectionner = '2025/2026';
+      } else {
+        anneeASelectionner = annees[0];
+      }
+      setAnneeScolaireFilter(anneeASelectionner);
+    }
+
+    // Calculer les statistiques immédiatement avec l'année sélectionnée
+    calculerStatistiquesAvecAnnee(etudiantsData, anneeASelectionner || anneeScolaireFilter, partnersData);
+    
+    // Calculer les statistiques des commerciaux
+    calculerStatistiquesCommerciauxDirectement(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
+    
+    // Calculer les préinscriptions
+    calculerPreinscriptionsDirectement(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
+    
+    // Calculer les statistiques Partners seulement si on a des données partners
+    if (partnersData.length > 0) {
+      calculerStatistiquesPartnersDirectement(etudiantsData, partnersData, anneeASelectionner || anneeScolaireFilter);
+    } else {
+      setStatsPartners([]);
+    }
+    
+  } catch (err) {
+    console.error('Erreur lors du chargement des données:', err);
+    setError(`Impossible de charger les données: ${err.message}`);
+    setEtudiants([]);
+    setCommerciaux([]);
+    setPartners([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Also fix the calculerStatistiquesPartnersDirectement function
+const calculerStatistiquesPartnersDirectement = (etudiantsData, partnersData, anneeFilter) => {
+  // Add safety check
+  if (!Array.isArray(partnersData)) {
+    console.warn('partnersData is not an array:', partnersData);
+    setStatsPartners([]);
+    return;
+  }
+
+  const etudiantsFiltres = anneeFilter === 'toutes' 
+    ? etudiantsData.filter(e => e.isPartner === true)
+    : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner === true);
+
+  const statsParPartner = {};
+  
+  etudiantsFiltres.forEach(etudiant => {
+    const partnerId = etudiant.nomPartner || 'inconnu';
+    
+    if (!statsParPartner[partnerId]) {
+      const partner = partnersData.find(p => p._id === partnerId);
+      
+      statsParPartner[partnerId] = {
+        nomPartner: partner ? partner.nomPartner : 'Partner inconnu',
+        email: partner ? partner.email : '',
+        chiffreAffaire: 0,
+        totalRecu: 0,
+        reste: 0,
+        countEtudiants: 0,
+        nouveauxInscrits: 0,
+        reinscriptions: 0,
+        active: partner ? partner.active !== false : true
+      };
+    }
+    
+    const prixPartner = parseFloat(etudiant.prixTotalPartner) || 0;
+    statsParPartner[partnerId].chiffreAffaire += prixPartner;
+    statsParPartner[partnerId].countEtudiants += 1;
+    
+    if (etudiant.nouvelleInscription === true) {
+      statsParPartner[partnerId].nouveauxInscrits += 1;
+    } else {
+      statsParPartner[partnerId].reinscriptions += 1;
+    }
+    
+    if (etudiant.paye) {
+      statsParPartner[partnerId].totalRecu += prixPartner;
+    } else {
+      statsParPartner[partnerId].reste += prixPartner;
+    }
+  });
+
+  const statistiquesCalculees = Object.entries(statsParPartner)
+    .filter(([partnerId, stats]) => partnerId !== 'inconnu')
+    .map(([partnerId, stats]) => stats)
+    .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
+
+  setStatsPartners(statistiquesCalculees);
+};
+
+  // Nouvelle fonction qui utilise directement les données passées en paramètres
+  const calculerStatistiquesCommerciauxDirectement = (etudiantsData, commerciauxData, anneeFilter) => {
+    // Filtrer les étudiants selon l'année ET exclure les partners
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? etudiantsData.filter(e => e.isPartner !== true)
+      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+
+    // Grouper par commercial
+    const statsParCommercial = {};
+    
+    etudiantsFiltres.forEach(etudiant => {
+      // Utiliser 'commercial' au lieu de 'commercialId' selon votre modèle
+      const commercialId = etudiant.commercial || 'inconnu';
+      
+      if (!statsParCommercial[commercialId]) {
+        // Trouver les infos du commercial
+        const commercial = commerciauxData.find(c => c._id === commercialId);
+        
+        statsParCommercial[commercialId] = {
+          nom: commercial ? commercial.nom : 'Commercial inconnu',
+          email: commercial ? commercial.email : '',
+          telephone: commercial ? commercial.telephone : '',
+          chiffreAffaire: 0,
+          totalRecu: 0,
+          reste: 0,
+          countEtudiants: 0,
+          actif: commercial ? commercial.actif !== false : true,
+          estAdminInscription: commercial ? commercial.estAdminInscription || false : false
+        };
+      }
+      
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      statsParCommercial[commercialId].chiffreAffaire += prixTotal;
+      statsParCommercial[commercialId].countEtudiants += 1;
+      
+      // Si l'étudiant a payé, ajouter au total reçu, sinon au reste
+      if (etudiant.paye) {
+        statsParCommercial[commercialId].totalRecu += prixTotal;
+      } else {
+        statsParCommercial[commercialId].reste += prixTotal;
+      }
+    });
+
+    // Convertir en array, filtrer les commerciaux inconnus et trier par chiffre d'affaires décroissant
+    const statistiquesCalculees = Object.entries(statsParCommercial)
+      .filter(([commercialId, stats]) => commercialId !== 'inconnu') // Exclure les étudiants sans commercial
+      .map(([commercialId, stats]) => stats)
+      .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
+
+    setStatistiques(statistiquesCalculees);
+  };
+
+  // Fonction d'analyse des filières
+  const analyseFilieres = () => {
+    const etudiantsFiltres = anneeScolaireFilter === 'toutes' 
+      ? etudiants.filter(e => e.isPartner !== true)
+      : etudiants.filter(e => e.anneeScolaire === anneeScolaireFilter && e.isPartner !== true);
+
+    const filieresStats = {};
+    
+    etudiantsFiltres.forEach(e => {
+      const filiere = e.filiere || 'Non définie';
+      if (!filieresStats[filiere]) {
+        filieresStats[filiere] = { 
+          etudiants: [], 
+          total: 0, 
+          payes: 0, 
+          ca: 0, 
+          caPaye: 0, 
+          specialites: new Set(),
+          nouveaux: 0,
+          reinscriptions: 0,
+          actifs: 0,
+          residents: 0,
+          bourses: 0
+        };
+      }
+      
+      filieresStats[filiere].etudiants.push(e);
+      filieresStats[filiere].total += 1;
+      if (e.paye) filieresStats[filiere].payes += 1;
+      if (e.actif) filieresStats[filiere].actifs += 1;
+      if (e.resident) filieresStats[filiere].residents += 1;
+      if (e.pourcentageBourse && e.pourcentageBourse > 0) filieresStats[filiere].bourses += 1;
+      
+      const prixTotal = parseFloat(e.prixTotal) || 0;
+      filieresStats[filiere].ca += prixTotal;
+      if (e.paye) filieresStats[filiere].caPaye += prixTotal;
+      
+      if (e.nouvelleInscription === true) filieresStats[filiere].nouveaux += 1;
+      else filieresStats[filiere].reinscriptions += 1;
+      
+      if (e.specialite) filieresStats[filiere].specialites.add(e.specialite);
+      if (e.specialiteIngenieur) filieresStats[filiere].specialites.add(e.specialiteIngenieur);
+    });
+
+    return Object.entries(filieresStats).map(([filiere, stats]) => ({
+      filiere,
+      ...stats,
+      specialitesCount: stats.specialites.size,
+      specialitesList: Array.from(stats.specialites),
+      tauxPaiement: stats.total > 0 ? ((stats.payes / stats.total) * 100).toFixed(1) : 0,
+      tauxActivite: stats.total > 0 ? ((stats.actifs / stats.total) * 100).toFixed(1) : 0,
+      prixMoyen: stats.total > 0 ? (stats.ca / stats.total).toFixed(0) : 0,
+      tauxNouveaux: stats.total > 0 ? ((stats.nouveaux / stats.total) * 100).toFixed(1) : 0
+    })).sort((a, b) => b.total - a.total);
+  };
+
+  // Calcul des statistiques (LOGIQUE CORRIGEE selon nouvelleInscription)
+  const calculerStatistiques = (data) => {
+    calculerStatistiquesAvecAnnee(data, anneeScolaireFilter);
+  };
+
+// Nouvelle fonction pour calculer les statistiques avec une année spécifique
+const calculerStatistiquesAvecAnnee = (data, anneeFilter, partnersData = []) => {
+  // Garder les données fixes pour 2024/2025
+  if (anneeFilter === '2024/2025') {
+    setChiffreAffaire(donneesFixes2024_2025.chiffreAffaire);
+    setTableauInscrits(donneesFixes2024_2025.tableauInscrits);
+    setTableauReinscriptions(donneesFixes2024_2025.tableauReinscriptions);
+    return;
+  }
+
+  const toNum = (v) => (v === null || v === undefined || v === '' ? 0 : parseFloat(v) || 0);
+  
+  // ÉTUDIANTS NORMAUX (EXCLUSION DES PARTNERS)
+  const etudiantsFiltres = data.filter(
+    (e) => (anneeFilter === 'toutes' || e.anneeScolaire === anneeFilter) && e.isPartner !== true
+  );
+  
+  // Nouveaux inscrits: nouvelleInscription = true ET prixTotal > 0
+  const nouveauxInscrits = etudiantsFiltres.filter((e) => 
+    e.nouvelleInscription === true && toNum(e.prixTotal) > 0
+  );
+  
+  // Réinscriptions: nouvelleInscription = false ET prixTotal > 0  
+  const reinscriptions = etudiantsFiltres.filter((e) => 
+    e.nouvelleInscription === false && toNum(e.prixTotal) > 0
+  );
+  
+  const caNouveau = nouveauxInscrits.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
+  const caReinscription = reinscriptions.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
+
+  // CALCUL DES PARTNERS
+  const etudiantsPartners = data.filter(
+    (e) => (anneeFilter === 'toutes' || e.anneeScolaire === anneeFilter) && e.isPartner === true
+  );
+
+  const statsParPartner = {};
+  etudiantsPartners.forEach(etudiant => {
+    const partnerId = etudiant.nomPartner;
+    if (!partnerId) return;
+
+    if (!statsParPartner[partnerId]) {
+      const partner = partnersData.find(p => p._id === partnerId);
+      
+      // Ignorer si partner n'existe pas
+      if (!partner) {
+        console.warn(`Partner ${partnerId} non trouvé pour l'étudiant ${etudiant.prenom} ${etudiant.nomDeFamille}`);
+        return;
+      }
+      
+      statsParPartner[partnerId] = {
+        nomPartner: partner.nomPartner,
+        count: 0,
+        ca: 0
+      };
+    }
+    
+    statsParPartner[partnerId].count += 1;
+    statsParPartner[partnerId].ca += toNum(etudiant.prixTotalPartner);
+  });
+
+  const listePartners = Object.values(statsParPartner).sort((a, b) => b.ca - a.ca);
+  const totalPartnersCount = listePartners.reduce((sum, p) => sum + p.count, 0);
+  const totalPartnersCA = listePartners.reduce((sum, p) => sum + p.ca, 0);
+
+  // TOTAL GLOBAL (normaux + partners)
+  const caTotal = caNouveau + caReinscription + totalPartnersCA;
+
+  // Pour le recouvrement, considérer TOUS les étudiants payés (nouveaux + réinscriptions)
+  const tousEtudiantsPayes = [...nouveauxInscrits, ...reinscriptions].filter((e) => e.paye === true);
+  const caRecouvre = tousEtudiantsPayes.reduce((sum, e) => sum + toNum(e.prixTotal), 0);
+
+  setChiffreAffaire({
+    nouveauxInscrits: { count: nouveauxInscrits.length, ca: caNouveau },
+    reinscriptions: { count: reinscriptions.length, ca: caReinscription },
+    partners: listePartners,
+    totalPartners: { count: totalPartnersCount, ca: totalPartnersCA },
+    total: { 
+      count: nouveauxInscrits.length + reinscriptions.length + totalPartnersCount, 
+      ca: caTotal 
+    },
+    recouvrement: {
+      percentage: caTotal > 0 ? (caRecouvre / caTotal) * 100 : 0,
+      ca: caRecouvre
+    }
+  });
+
+  calculerTableauInscrits(nouveauxInscrits, toNum);
+  calculerTableauReinscriptions(reinscriptions, toNum);
+};
+
+  const calculerTableauInscrits = (inscrits, toNum) => {
+    const stats = {
+      global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
+      fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+      ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
+    };
+
+    inscrits.forEach((etudiant) => {
+      const type = determinerTypeFormation(etudiant);
+      const ca = toNum(etudiant.prixTotal);
+      const typeFormation = etudiant.typeFormation;
+
+      // Global
+      stats.global.total += 1;
+      stats.global.ca += ca;
+
+      // Classification par type
+      if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
+        stats.global.fi += 1;
+        stats.fi.total += 1;
+        stats.fi.ca += ca;
+        
+        if (typeFormation === 'MASI') {
+          stats.fi.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.fi.irm += 1;
+        } else if (typeFormation === 'CYCLE_INGENIEUR') {
+          stats.fi.cycleIngenieur += 1;
+        }
+        
+      } else if (type === 'Executive') {
+        stats.global.executive += 1;
+        stats.executive.total += 1;
+        stats.executive.ca += ca;
+        
+        if (typeFormation === 'MASI') {
+          stats.executive.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.executive.irm += 1;
+        } else if (typeFormation === 'LICENCE_PRO') {
+          stats.executive.licencePro += 1;
+        } else if (typeFormation === 'MASTER_PRO') {
+          stats.executive.masterPro += 1;
+        } else {
+          stats.executive.autre += 1;
+        }
+        
+      } else if (type === 'TA') {
+        stats.global.ta += 1;
+        stats.ta.total += 1;
+        stats.ta.ca += ca;
+        
+        if (typeFormation === 'MASI') {
+          stats.ta.masi += 1;
+        } else if (typeFormation === 'IRM') {
+          stats.ta.irm += 1;
+        } else if (typeFormation === 'CYCLE_INGENIEUR') {
+          stats.ta.cycleIngenieur += 1;
+        }
+      }
+    });
+
+    setTableauInscrits(stats);
+  };
+
+  const calculerTableauReinscriptions = (reinscriptions, toNum) => {
+    const stats = {
+      global: { total: 0, fi: 0, ta: 0, executive: 0, ca: 0 },
+      fi: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 },
+      executive: { total: 0, masi: 0, irm: 0, autre: 0, licencePro: 0, masterPro: 0, ca: 0 },
+      ta: { total: 0, masi: 0, irm: 0, cycleIngenieur: 0, ca: 0 }
+    };
+
+    // Réinscriptions : nouvelleInscription = false ET prixTotal > 0
+    reinscriptions.filter(etudiant => etudiant.nouvelleInscription === false && toNum(etudiant.prixTotal) > 0)
+      .forEach((etudiant) => {
+        const type = determinerTypeFormation(etudiant);
+        const ca = toNum(etudiant.prixTotal);
+        const typeFormation = etudiant.typeFormation;
+
+        stats.global.total += 1;
+        stats.global.ca += ca;
+
+        if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
+          stats.global.fi += 1;
+          stats.fi.total += 1;
+          stats.fi.ca += ca;
+          
+          if (typeFormation === 'MASI') {
+            stats.fi.masi += 1;
+          } else if (typeFormation === 'IRM') {
+            stats.fi.irm += 1;
+          } else if (typeFormation === 'CYCLE_INGENIEUR') {
+            stats.fi.cycleIngenieur += 1;
+          }
+          
+        } else if (type === 'Executive') {
+          stats.global.executive += 1;
+          stats.executive.total += 1;
+          stats.executive.ca += ca;
+          
+          if (typeFormation === 'MASI') {
+            stats.executive.masi += 1;
+          } else if (typeFormation === 'IRM') {
+            stats.executive.irm += 1;
+          } else if (typeFormation === 'LICENCE_PRO') {
+            stats.executive.licencePro += 1;
+          } else if (typeFormation === 'MASTER_PRO') {
+            stats.executive.masterPro += 1;
+          } else {
+            stats.executive.autre += 1;
+          }
+          
+        } else if (type === 'TA') {
+          stats.global.ta += 1;
+          stats.ta.total += 1;
+          stats.ta.ca += ca;
+          
+          if (typeFormation === 'MASI') {
+            stats.ta.masi += 1;
+          } else if (typeFormation === 'IRM') {
+            stats.ta.irm += 1;
+          } else if (typeFormation === 'CYCLE_INGENIEUR') {
+            stats.ta.cycleIngenieur += 1;
+          }
+        }
+      });
+
+    setTableauReinscriptions(stats);
+  };
+  
+
+  // Nouvelle fonction qui utilise directement les données passées en paramètres
+const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anneeFilter) => {
+  // Ne pas calculer pour 2024/2025
+  if (anneeFilter === '2024/2025') {
+    setPreinscriptions({
+      count: 0,
+      parType: { fi: 0, ta: 0, executive: 0 },
+      parFiliere: {},
+      parCommercial: {}
+    });
+    return;
+  }
+
+  // EXCLUSION DES PARTNERS
+  const etudiantsFiltres = anneeFilter === 'toutes' 
+    ? etudiantsData.filter(e => e.isPartner !== true)
+    : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+
+  // Préinscriptions : prixTotal = 0 (peu importe nouvelleInscription)
+  const preinscrits = etudiantsFiltres.filter(e => {
+    const prix = parseFloat(e.prixTotal) || 0;
+    return prix === 0;
+  });
+
+  const stats = {
+    count: preinscrits.length,
+    parType: { fi: 0, ta: 0, executive: 0 },
+    parFiliere: {},
+    parCommercial: {}
+  };
+
+  preinscrits.forEach(etudiant => {
+    // Par type de formation
+    const type = determinerTypeFormation(etudiant);
+    if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
+      stats.parType.fi += 1;
+    } else if (type === 'Executive') {
+      stats.parType.executive += 1;
+    } else if (type === 'TA') {
+      stats.parType.ta += 1;
+    }
+
+    // Par filière
+    const filiere = etudiant.filiere || 'Non définie';
+    stats.parFiliere[filiere] = (stats.parFiliere[filiere] || 0) + 1;
+
+    // Par commercial - utiliser commerciauxData passé en paramètre
+    const commercial = etudiant.commercial;
+    if (commercial) {
+      const commercialInfo = commerciauxData.find(c => c._id === commercial);
+      const nomCommercial = commercialInfo ? commercialInfo.nom : 'Commercial inconnu';
+      stats.parCommercial[nomCommercial] = (stats.parCommercial[nomCommercial] || 0) + 1;
+    }
+  });
+
+  setPreinscriptions(stats);
+};
+  // Nouvelle fonction pour calculer les préinscriptions
+  const calculerPreinscriptions = (etudiantsData, anneeFilter) => {
+    // Ne pas calculer pour 2024/2025
+    if (anneeFilter === '2024/2025') {
+      setPreinscriptions({
+        count: 0,
+        parType: { fi: 0, ta: 0, executive: 0 },
+        parFiliere: {},
+        parCommercial: {}
+      });
+      return;
+    }
+
+    // EXCLUSION DES PARTNERS
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? etudiantsData.filter(e => e.isPartner !== true)
+      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner !== true);
+
+    // Filtrer les étudiants avec prixTotal = 0 ou null/undefined
+    const preinscrits = etudiantsFiltres.filter(e => {
+      const prix = parseFloat(e.prixTotal) || 0;
+      return prix === 0;
+    });
+
+    const stats = {
+      count: preinscrits.length,
+      parType: { fi: 0, ta: 0, executive: 0 },
+      parFiliere: {},
+      parCommercial: {}
+    };
+
+    preinscrits.forEach(etudiant => {
+      // Par type de formation
+      const type = determinerTypeFormation(etudiant);
+      if (type === 'FI' || type === 'CYCLE_INGENIEUR') {
+        stats.parType.fi += 1;
+      } else if (type === 'Executive') {
+        stats.parType.executive += 1;
+      } else if (type === 'TA') {
+        stats.parType.ta += 1;
+      }
+
+      // Par filière
+      const filiere = etudiant.filiere || 'Non définie';
+      stats.parFiliere[filiere] = (stats.parFiliere[filiere] || 0) + 1;
+
+      // Par commercial
+      const commercial = etudiant.commercial;
+      if (commercial) {
+        const commercialInfo = commerciaux.find(c => c._id === commercial);
+        const nomCommercial = commercialInfo ? commercialInfo.nom : 'Commercial inconnu';
+        stats.parCommercial[nomCommercial] = (stats.parCommercial[nomCommercial] || 0) + 1;
+      }
+    });
+
+    setPreinscriptions(stats);
+  };
+
+  // Fonction de classification basée sur STRUCTURE_FORMATION
+  const determinerTypeFormation = (etudiant) => {
+    const tf = etudiant.typeFormation;
+    
+    if (tf) {
+      // Nouvelles formations avec classification claire
+      if (tf === 'LICENCE_PRO') return 'Executive';
+      if (tf === 'MASTER_PRO') return 'Executive';
+      
+      if (tf === 'CYCLE_INGENIEUR') {
+        const niveau = (etudiant.niveauFormation || '').toLowerCase();
+        const cycle = (etudiant.cycle || '').toLowerCase();
+        
+        // Si c'est explicitement marqué comme executive dans le niveau/cycle
+        if (niveau.includes('executive') || cycle.includes('executive')) return 'Executive';
+        
+        // Si c'est marqué comme TA/alternance
+        if (niveau.includes('ta') || niveau.includes('altern') || cycle.includes('ta') || cycle.includes('altern') || niveau === 'ta') {
+          return 'TA';
+        }
+        
+        // Par défaut, CYCLE_INGENIEUR = FI
+        return 'FI';
+      }
+      
+      // Anciennes formations MASI/IRM
+      if (tf === 'MASI' || tf === 'IRM') {
+        const niveau = (etudiant.niveauFormation || '').toLowerCase();
+        if (niveau.includes('executive')) return 'Executive';
+        if (niveau.includes('ta') || niveau.includes('altern') || niveau === 'ta') return 'TA';
+        return 'FI';
+      }
+      
+      // Fallback direct
+      if (tf === 'Executive' || tf === 'TA' || tf === 'FI') return tf;
+    }
+
+    // Fallback: utiliser niveauFormation + cycle (logique existante)
+    const niveau = (etudiant.niveauFormation || '').toLowerCase();
+    const cycle = (etudiant.cycle || '').toLowerCase();
+    
+    if (niveau.includes('executive') || cycle.includes('executive')) return 'Executive';
+    if (niveau.includes('ta') || niveau.includes('altern') || cycle.includes('ta') || cycle.includes('altern') || niveau === 'ta') {
+      return 'TA';
+    }
+    
+    return 'FI';
+  };
+
+  // ✅ Classification MASI/IRM/Autre basée sur STRUCTURE_FORMATION
+  const determinerFiliereClassification = (etudiant) => {
+    const tf = etudiant.typeFormation;
+    
+    // Pour LICENCE_PRO
+    if (tf === 'LICENCE_PRO') {
+      const specialite = etudiant.specialiteLicencePro || '';
+      
+      // Spécialités IRM (informatique/technique)
+      const specialitesIRM = [
+        'Tests Logiciels avec Tests Automatisés',
+        'Développement Informatique Full Stack',
+        'Administration des Systèmes, Bases de Données, Cybersécurité et Cloud Computing',
+        'Réseaux et Cybersécurité',
+        'Electrotechnique et systèmes – Cnam',
+        'Informatique – Cnam'
+      ];
+      
+      // Spécialités MASI (business/management)
+      const specialitesIMASI = [
+        'Marketing digital e-business Casablanca',
+        'Gestion de la Qualité',
+        'Finance, Audit & Entrepreneuriat',
+        'Développement Commercial et Marketing Digital',
+        'Management et Conduite de Travaux – Cnam',
+        'Achat & Logistique'
+      ];
+      
+      if (specialitesIRM.includes(specialite)) return 'irm';
+      if (specialitesIMASI.includes(specialite)) return 'masi';
+      return 'autre';
+    }
+    
+    // Pour MASTER_PRO
+    if (tf === 'MASTER_PRO') {
+      const specialite = etudiant.specialiteMasterPro || '';
+      
+      // Spécialités IRM (informatique/technique)
+      const specialitesIRM = [
+        'Informatique, Data Sciences, Cloud, Cybersécurité & Intelligence Artificielle (DU IDCIA)',
+        'Management des Systèmes d\'Information',
+        'Big Data et Intelligence Artificielle',
+        'Cybersécurité et Transformation Digitale',
+        'Génie Informatique et Innovation Technologique'
+      ];
+      
+      // Spécialités MASI (business/management)
+      const specialitesIMASI = [
+        'QHSSE & Performance Durable',
+        'Achat, Logistique et Supply Chain Management',
+        'Finance, Audit & Entrepreneuriat',
+        'Développement Commercial et Marketing Digital'
+      ];
+      
+      if (specialitesIRM.includes(specialite)) return 'irm';
+      if (specialitesIMASI.includes(specialite)) return 'masi';
+      return 'autre';
+    }
+    
+    // Pour CYCLE_INGENIEUR
+    if (tf === 'CYCLE_INGENIEUR') {
+      const specialite = etudiant.specialiteIngenieur || '';
+      
+      if (specialite === 'Génie Informatique') return 'irm';
+      if (specialite === 'Génie Mécatronique' || specialite === 'Génie Civil') return 'autre';
+      return 'autre';
+    }
+    
+    // Pour anciennes formations MASI/IRM
+    if (tf === 'MASI') return 'masi';
+    if (tf === 'IRM') return 'irm';
+    
+    // Fallback avec logique existante
+    const filiere = (etudiant.filiere || '').toLowerCase();
+    const specialite = (etudiant.specialite || '').toLowerCase();
+    
+    if (filiere.includes('masi') || specialite.includes('masi')) return 'masi';
+    if (filiere.includes('irm') || specialite.includes('irm')) return 'irm';
+    
+    return 'autre';
+  };
+
+  const formatMoney = (amount) =>
+    new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  };
+
+  
+
+
+  const handleAnneeChange = (nouvelleAnnee) => {
+  setAnneeScolaireFilter(nouvelleAnnee);
+  if (etudiants.length > 0) {
+    calculerStatistiquesAvecAnnee(etudiants, nouvelleAnnee, partners);
+    calculerStatistiquesCommerciauxDirectement(etudiants, commerciaux, nouvelleAnnee);
+    calculerPreinscriptionsDirectement(etudiants, commerciaux, nouvelleAnnee);
+    calculerStatistiquesPartnersDirectement(etudiants, partners, nouvelleAnnee);
+  }
+};
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Supprimer l'useEffect qui dépendait de anneeScolaireFilter pour éviter les recalculs inutiles
+  // Les statistiques sont maintenant calculées directement dans fetchData et handleAnneeChange
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid #e2e8f0',
+              borderTop: '4px solid #2563eb',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem'
+            }}
+          ></div>
+          <p style={{ color: '#64748b', fontSize: '1.1rem' }}>Chargement des données...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Obtenir les données d'analyse
+  const filieresData = analyseFilieres();
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      <Sidebar onLogout={handleLogout} />
+      
+      <div style={{ flex: 1, paddingLeft: '0' }}>
+        <Header />
+        
+        <div style={{ padding: '2rem' }}>
+          {/* Header */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div>
+                <h1
+                  style={{
+                    fontSize: '1.75rem',
+                    fontWeight: 'bold',
+                    color: '#1f2937',
+                    margin: '0 0 0.5rem 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem'
+                  }}
+                >
+                  <Home size={28} />
+                  Chiffre d'Affaire {anneeScolaireFilter}
+                </h1>
+              </div>
+              <button
+                onClick={fetchData}
+                style={{
+                  background: '#374151',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '0.75rem 1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                <RotateCcw size={16} />
+                Actualiser
+              </button>
+            </div>
+
+            {/* Filtre par année scolaire - 2025/2026 EN PREMIER */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                padding: '1rem',
+                background: '#f9fafb',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb'
+              }}
+            >
+              <Filter size={18} />
+              <span style={{ fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>Année scolaire:</span>
+              <select
+                value={anneeScolaireFilter}
+                onChange={(e) => handleAnneeChange(e.target.value)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: 'white',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="toutes">Toutes les années</option>
+                <option value="2025/2026">2025/2026</option>
+                <option value="2024/2025">2024/2025</option>
+                {anneesDisponibles
+                  .filter((a) => a !== '2024/2025' && a !== '2025/2026')
+                  .map((annee) => (
+                    <option key={annee} value={annee}>
+                      {annee}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+
+
+       {/* Chiffre d'Affaire */}
+<div
+  style={{
+    background: '#fff',
+    borderRadius: '8px',
+    padding: '2rem',
+    marginBottom: '2rem',
+    border: '1px solid #e5e7eb'
+  }}
+>
+  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <thead>
+      <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
+          Total Inscrit
+        </th>
+        <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
+          Chiffre d'affaire
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong>Nouveaux Inscrits</strong>
+          <br />
+          <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{chiffreAffaire.nouveauxInscrits.count}</span>
+        </td>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong>{formatMoney(chiffreAffaire.nouveauxInscrits.ca)} MAD</strong>
+        </td>
+      </tr>
+      <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong>Réinscriptions</strong>
+          <br />
+          <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{chiffreAffaire.reinscriptions.count}</span>
+        </td>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong>{formatMoney(chiffreAffaire.reinscriptions.ca)} MAD</strong>
+        </td>
+      </tr>
+      
+      {/* NOUVEAU: Ligne pour chaque partner */}
+      {chiffreAffaire.partners && chiffreAffaire.partners.length > 0 && (
+        <>
+          {chiffreAffaire.partners.map((partner, index) => (
+            <tr key={index} style={{ borderBottom: '1px solid #f3f4f6', background: '#f0f9ff' }}>
+              <td style={{ padding: '1rem', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  <Handshake size={16} style={{ color: '#1976d2' }} />
+                  <strong style={{ color: '#1976d2' }}>{partner.nomPartner}</strong>
+                </div>
+                <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{partner.count}</span>
+              </td>
+              <td style={{ padding: '1rem', textAlign: 'center' }}>
+                <strong style={{ color: '#1976d2' }}>{formatMoney(partner.ca)} MAD</strong>
+              </td>
+            </tr>
+          ))}
+          
+          {/* Total Partners */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6', background: '#e3f2fd' }}>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong style={{ color: '#1565c0' }}>Total Partners</strong>
+              <br />
+              <span style={{ fontSize: '1.25rem', color: '#1f2937', fontWeight: 'bold' }}>
+                {chiffreAffaire.totalPartners.count}
+              </span>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong style={{ fontSize: '1.1rem', color: '#1565c0' }}>
+                {formatMoney(chiffreAffaire.totalPartners.ca)} MAD
+              </strong>
+            </td>
+          </tr>
+        </>
+      )}
+
+      <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong>Total</strong>
+          <br />
+          <span style={{ fontSize: '1.5rem', color: '#1f2937', fontWeight: 'bold' }}>{chiffreAffaire.total.count}</span>
+        </td>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong style={{ fontSize: '1.1rem' }}>{formatMoney(chiffreAffaire.total.ca)} MAD</strong>
+        </td>
+      </tr>
+      <tr>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong>Recouvrement</strong>
+          <br />
+          <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>
+            {chiffreAffaire.recouvrement.percentage.toFixed(2)} %
+          </span>
+        </td>
+        <td style={{ padding: '1rem', textAlign: 'center' }}>
+          <strong>{formatMoney(chiffreAffaire.recouvrement.ca)} MAD</strong>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+          {/* Section Préinscriptions - Seulement si ce n'est pas 2024/2025 */}
+          {anneeScolaireFilter !== '2024/2025' && preinscriptions.count > 0 && (
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '8px',
+                padding: '2rem',
+                marginBottom: '2rem',
+                border: '1px solid #e5e7eb'
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '2rem',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <Clock size={24} />
+                Préinscriptions  - {anneeScolaireFilter}
+              </h2>
+
+              {/* Résumé global */}
+              <div style={{ 
+                background: '#fef3c7', 
+                borderRadius: '8px', 
+                padding: '1.5rem', 
+                marginBottom: '2rem',
+                border: '1px solid #f59e0b',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#92400e' }}>
+                  {preinscriptions.count}
+                </div>
+                <div style={{ color: '#92400e', fontWeight: '600' }}>
+                  Étudiants en préinscription
+                </div>
+              </div>
+
+              {/* Répartition par type */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ background: '#f0f9ff', padding: '1rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #0ea5e9' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0c4a6e' }}>
+                    {preinscriptions.parType.fi}
+                  </div>
+                  <div style={{ color: '#0c4a6e', fontSize: '0.9rem' }}>FI</div>
+                </div>
+                <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #22c55e' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#14532d' }}>
+                    {preinscriptions.parType.ta}
+                  </div>
+                  <div style={{ color: '#14532d', fontSize: '0.9rem' }}>TA</div>
+                </div>
+                <div style={{ background: '#fdf4ff', padding: '1rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #a855f7' }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#581c87' }}>
+                    {preinscriptions.parType.executive}
+                  </div>
+                  <div style={{ color: '#581c87', fontSize: '0.9rem' }}>Executive</div>
+                </div>
+              </div>
+
+              {/* Répartition par filière */}
+              {Object.keys(preinscriptions.parFiliere).length > 0 && (
+                <div style={{ marginBottom: '2rem' }}>
+                  <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>
+                    Répartition par filière
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    {Object.entries(preinscriptions.parFiliere).map(([filiere, count]) => (
+                      <div key={filiere} style={{
+                        background: '#f8fafc',
+                        padding: '1rem',
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ fontSize: '0.9rem', color: '#475569' }}>{filiere}</span>
+                        <span style={{ 
+                          background: '#3b82f6',
+                          color: 'white',
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '999px',
+                          fontSize: '0.8rem',
+                          fontWeight: '600'
+                        }}>
+                          {count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Répartition par commercial */}
+              {Object.keys(preinscriptions.parCommercial).length > 0 && (
+                <div>
+                  <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>
+                    Répartition par commercial
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                    {Object.entries(preinscriptions.parCommercial).map(([commercial, count]) => (
+                      <div key={commercial} style={{
+                        background: '#f8fafc',
+                        padding: '1rem',
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ fontSize: '0.9rem', color: '#475569' }}>{commercial}</span>
+                        <span style={{ 
+                          background: '#10b981',
+                          color: 'white',
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '999px',
+                          fontSize: '0.8rem',
+                          fontWeight: '600'
+                        }}>
+                          {count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tableau des Inscrits */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                marginBottom: '2rem',
+                textAlign: 'center'
+              }}
+            >
+              Tableau des Inscrits {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
+            </h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+              {/* Global */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Global</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Total d'inscrits <strong>{tableauInscrits.global.total}</strong>
+                </div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>FI <strong>{tableauInscrits.global.fi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>TA <strong>{tableauInscrits.global.ta}</strong></div>
+                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
+                  Executive <strong>{tableauInscrits.global.executive}</strong>
+                </div>
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauInscrits.global.ca)} MAD
+                </div>
+              </div>
+
+              {/* FI */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>FI</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.fi.total}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.fi.masi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.fi.irm}</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauInscrits.fi.cycleIngenieur}</strong></div>
+                )}
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauInscrits.fi.ca)} MAD
+                </div>
+              </div>
+
+              {/* Executive */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Exécutive</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.executive.total}</strong></div>
+                
+                {/* Affichage conditionnel selon l'année */}
+                {anneeScolaireFilter === '2024/2025' ? (
+                  <>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
+                    <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
+                  </>
+                ) : (
+                  <>
+                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.masi > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.executive.masi}</strong></div>
+                    )}
+                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.irm > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.executive.irm}</strong></div>
+                    )}
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Licence Pro <strong>{tableauInscrits.executive.licencePro}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Master Pro <strong>{tableauInscrits.executive.masterPro}</strong></div>
+                    {anneeScolaireFilter !== '2024/2025' && tableauInscrits.executive.autre > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauInscrits.executive.autre}</strong></div>
+                    )}
+                  </>
+                )}
+                
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauInscrits.executive.ca)} MAD
+                </div>
+              </div>
+
+              {/* TA */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>TA</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total <strong>{tableauInscrits.ta.total}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauInscrits.ta.masi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauInscrits.ta.irm}</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauInscrits.ta.cycleIngenieur}</strong></div>
+                )}
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauInscrits.ta.ca)} MAD
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tableau des réinscriptions */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                marginBottom: '2rem',
+                textAlign: 'center'
+              }}
+            >
+              Tableau des réinscriptions {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
+            </h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+              {/* Global */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Global</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Total de réinscriptions <strong>{tableauReinscriptions.global.total}</strong>
+                </div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>FI <strong>{tableauReinscriptions.global.fi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>TA <strong>{tableauReinscriptions.global.ta}</strong></div>
+                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
+                  Executive <strong>{tableauReinscriptions.global.executive}</strong>
+                </div>
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauReinscriptions.global.ca)} MAD
+                </div>
+              </div>
+
+              {/* FI */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>FI</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Total FI <strong>{tableauReinscriptions.fi.total}</strong>
+                </div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.fi.masi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.fi.irm}</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauReinscriptions.fi.cycleIngenieur}</strong></div>
+                )}
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauReinscriptions.fi.ca)} MAD
+                </div>
+              </div>
+
+              {/* Executive */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>Exécutive</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Total Executive <strong>{tableauReinscriptions.executive.total}</strong>
+                </div>
+                
+                {/* Affichage conditionnel selon l'année */}
+                {anneeScolaireFilter === '2024/2025' ? (
+                  <>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
+                    <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Autre <strong>{tableauReinscriptions.executive.autre}</strong></div>
+                  </>
+                ) : (
+                  <>
+                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.masi > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.executive.masi}</strong></div>
+                    )}
+                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.irm > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.executive.irm}</strong></div>
+                    )}
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Licence Pro <strong>{tableauReinscriptions.executive.licencePro}</strong></div>
+                    <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Master Pro <strong>{tableauReinscriptions.executive.masterPro}</strong></div>
+                    {anneeScolaireFilter !== '2024/2025' && tableauReinscriptions.executive.autre > 0 && (
+                      <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Autre <strong>{tableauReinscriptions.executive.autre}</strong></div>
+                    )}
+                  </>
+                )}
+                
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauReinscriptions.executive.ca)} MAD
+                </div>
+              </div>
+
+              {/* TA */}
+              <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#374151' }}>TA</h3>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Total TA <strong>{tableauReinscriptions.ta.total}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>MASI <strong>{tableauReinscriptions.ta.masi}</strong></div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>IRM <strong>{tableauReinscriptions.ta.irm}</strong></div>
+                {anneeScolaireFilter !== '2024/2025' && (
+                  <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>Cycle Ing. <strong>{tableauReinscriptions.ta.cycleIngenieur}</strong></div>
+                )}
+                <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.95rem' }}>
+                  {formatMoney(tableauReinscriptions.ta.ca)} MAD
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance des Commerciaux */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                marginBottom: '2rem',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Users size={24} />
+              Performance des Commerciaux {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
+            </h2>
+            
+            {statistiques.length > 0 ? (
+              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+                  <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                    <tr>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Commercial</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Contact</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Étudiants</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Chiffre d'Affaires</th>
+                      
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Montant Reçu</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Reste à Payer</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Taux Recouvrement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statistiques.map((stat, index) => {
+                      const tauxRecouvrement = stat.chiffreAffaire > 0 
+                        ? ((stat.totalRecu / stat.chiffreAffaire) * 100).toFixed(1)
+                        : 0;
+                        
+                      return (
+                        <tr key={index} style={{ 
+                          borderBottom: '1px solid #f3f4f6',
+                          opacity: stat.actif ? 1 : 0.6
+                        }}>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{
+                                width: '2.5rem',
+                                height: '2.5rem',
+                                background: '#e5e7eb',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#6b7280'
+                              }}>
+                                <User size={20} />
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: '600', color: '#1e293b' }}>{stat.nom}</div>
+                                {stat.estAdminInscription && (
+                                  <div style={{ 
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem',
+                                    background: '#dbeafe',
+                                    color: '#1e40af',
+                                    padding: '0.125rem 0.5rem',
+                                    borderRadius: '0.375rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    marginTop: '0.25rem'
+                                  }}>
+                                    <Shield size={12} />
+                                    Admin
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                              {stat.email && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                  <Mail size={14} />
+                                  <span>{stat.email}</span>
+                                </div>
+                              )}
+                              {stat.telephone && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
+                                  <Phone size={14} />
+                                  <span>{stat.telephone}</span>
+                                </div>
+                              )}
+                            </div>
+                                                   </td>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0.375rem 0.875rem',
+                              borderRadius: '9999px',
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              color: 'white',
+                              background: '#3b82f6',
+                              minWidth: '2rem'
+                                                       }}>
+                              {stat.countEtudiants || 0}
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                            <span style={{
+                              fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                              fontSize: '0.9rem',
+                              fontWeight: '600',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '0.375rem',
+                              background: 'rgba(59, 130, 246, 0.1)',
+                              color: '#1d4ed8'
+                            }}>
+                              {(stat.chiffreAffaire || 0).toLocaleString('fr-FR')} MAD
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                            <span style={{
+                              fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                              fontSize: '0.9rem',
+                              fontWeight: '600',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '0.375rem',
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              color: '#047857'
+                            }}>
+                              {(stat.totalRecu || 0).toLocaleString('fr-FR')} MAD
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                            <span style={{
+                              fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                              fontSize: '0.9rem',
+                              fontWeight: '600',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '0.375rem',
+                              background: (stat.reste || 0) > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                              color: (stat.reste || 0) > 0 ? '#dc2626' : '#047857'
+                            }}>
+                              {(stat.reste || 0).toLocaleString('fr-FR')} MAD
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <div style={{
+                                flex: 1,
+                                height: '8px',
+                                background: '#e5e7eb',
+                                borderRadius: '4px',
+                                overflow: 'hidden'
+                              }}>
+                                <div 
+                                  style={{
+                                    height: '100%',
+                                    borderRadius: '4px',
+                                    transition: 'width 0.3s ease',
+                                    width: `${Math.min(tauxRecouvrement, 100)}%`,
+                                    background: tauxRecouvrement >= 70 ? 'linear-gradient(90deg, #10b981, #059669)' : 
+                                               tauxRecouvrement >= 40 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 
+                                               'linear-gradient(90deg, #ef4444, #dc2626)'
+                                  }}
+                                ></div>
+                              </div>
+                              <span style={{
+                                fontSize: '0.875rem',
+                                fontWeight: '600',
+                                color: '#64748b',
+                                minWidth: '3rem',
+                                textAlign: 'right'
+                              }}>
+                                {tauxRecouvrement}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ 
+                textAlign: 'center', 
+                color: '#94a3b8', 
+                fontStyle: 'italic', 
+                padding: '2rem' 
+              }}>
+                Aucune donnée commerciale disponible pour cette année
+              </div>
+            )}
+          </div>
+
+          {/* Analyse Détaillée par Filière */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                marginBottom: '2rem',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <BookOpen size={24} />
+              Analyse Détaillée par Filière
+            </h2>
+            
+            <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', fontSize: '0.9rem' }}>
+                <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                  <tr>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Filière</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Étudiants</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Spécialités</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Nouveaux/Réinscr.</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Taux Paiement</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>CA Total</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>CA Payé</th>
+                    <th style={{ 
+                      padding: '1rem 1.25rem', 
+                      textAlign: 'left', 
+                      fontWeight: '700', 
+                      color: '#374151', 
+                      fontSize: '0.875rem',
+                      borderBottom: '2px solid #e5e7eb'
+                    }}>Prix Moyen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filieresData.map((filiere, index) => (
+                    <tr key={index} style={{ 
+                      borderBottom: '1px solid #f3f4f6',
+                      transition: 'background-color 0.2s'
+                    }}>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '1rem' }}>
+                            {filiere.filiere}
+                          </span>
+                          {filiere.specialitesCount > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                              {filiere.specialitesList.slice(0, 2).map((spec, i) => (
+                                <span key={i} style={{
+                                  background: '#dbeafe',
+                                  color: '#1e40af',
+                                  padding: '0.125rem 0.5rem',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '500'
+                                }}>
+                                  {spec}
+                                </span>
+                              ))}
+                              {filiere.specialitesList.length > 2 && (
+                                <span style={{
+                                  background: '#f1f5f9',
+                                  color: '#64748b',
+                                  padding: '0.125rem 0.5rem',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '500'
+                                }}>
+                                  +{filiere.specialitesList.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.375rem 0.875rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: 'white',
+                          background: '#6366f1',
+                          minWidth: '2rem'
+                        }}>
+                          {filiere.total}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.375rem 0.875rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: 'white',
+                          background: '#8b5cf6',
+                          minWidth: '2rem'
+                        }}>
+                          {filiere.specialitesCount}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#059669' }}>
+                            {filiere.nouveaux} nouveaux
+                          </span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#3b82f6' }}>
+                            {filiere.reinscriptions} réinscr.
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            ({filiere.tauxNouveaux}% nouveaux)
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{
+                            width: '100%',
+                            height: '6px',
+                            background: '#e5e7eb',
+                            borderRadius: '3px',
+                            overflow: 'hidden'
+                          }}>
+                            <div 
+                              style={{
+                                height: '100%',
+                                borderRadius: '3px',
+                                transition: 'width 0.3s ease',
+                                width: `${Math.min(filiere.tauxPaiement, 100)}%`,
+                                background: parseFloat(filiere.tauxPaiement) >= 70 ? '#10b981' : 
+                                           parseFloat(filiere.tauxPaiement) >= 40 ? '#f59e0b' : '#ef4444'
+                              }}
+                            ></div>
+                          </div>
+                          <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1e293b' }}>
+                            {filiere.tauxPaiement}%
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            ({filiere.payes} payés)
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                        <span style={{
+                          fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.375rem',
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          color: '#1d4ed8'
+                        }}>
+                          {formatMoney(filiere.ca)} MAD
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                        <span style={{
+                          fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.375rem',
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: '#047857'
+                        }}>
+                          {formatMoney(filiere.caPaye)} MAD
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                        <span style={{
+                          fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.375rem',
+                          background: 'rgba(139, 92, 246, 0.1)',
+                          color: '#7c3aed'
+                        }}>
+                          {formatMoney(filiere.prixMoyen)} MAD
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Message d'erreur */}
+          {error && (
+            <div
+              style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+                padding: '1rem',
+                borderRadius: '8px',
+                marginTop: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <AlertCircle size={20} />
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+          div[style*="grid-template-columns: repeat(4, 1fr)"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 768px) {
+          div[style*="grid-template-columns: repeat(4, 1fr)"] {
+            grid-template-columns: 1fr !important;
+          }
+          div[style*="grid-template-columns: repeat(2, 1fr)"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 640px) {
+          table { font-size: 0.8rem; }
+          th, td { padding: 0.5rem !important; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default DashboardNormal;

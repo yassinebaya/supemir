@@ -43,7 +43,7 @@ const MesExercicesEtudiant = () => {
     const fetchExercices = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://195.179.229.230:5000/api/etudiant/mes-exercices', {
+        const res = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/mes-exercices', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -68,7 +68,7 @@ const MesExercicesEtudiant = () => {
     setDeletingId(exerciceId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://195.179.229.230:5000/api/etudiant/exercices/${exerciceId}`, {
+      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/etudiant/exercices/${exerciceId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -202,7 +202,7 @@ const MesExercicesEtudiant = () => {
       margin: '0 auto',
       padding: '20px',
       fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
- background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+ background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
        minHeight: '100vh',
     },
     header: {
@@ -683,7 +683,7 @@ const MesExercicesEtudiant = () => {
 
               <div style={styles.actionsContainer}>
                 <a
-                  href={`http://195.179.229.230:5000${ex.fichier}`}
+                  href={`https://vmi1977988.contaboserver.net/${ex.fichier}`}
                   target="_blank"
                   rel="noreferrer"
                   style={styles.downloadButton}

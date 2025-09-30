@@ -3,7 +3,7 @@ import { Calendar, Views, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/sidberadmin';
 import './Calendrier.css';
 
 // Configuration de moment en français
@@ -46,7 +46,7 @@ const Calendrier = () => {
     const fetchEvenements = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://195.179.229.230:5000/api/evenements', {
+        const res = await axios.get('https://vmi1977988.contaboserver.net//api2/evenements', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -233,7 +233,7 @@ const Calendrier = () => {
     if (window.confirm(`Êtes-vous sûr de vouloir supprimer l'événement "${event.titre}" ?`)) {
       try {
         const token = localStorage.getItem('token');
-        await axios.delete(`http://195.179.229.230:5000/api/evenements/${event._id}`, {
+        await axios.delete(`https://vmi1977988.contaboserver.net//api2/evenements/${event._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -251,7 +251,7 @@ const Calendrier = () => {
   const fetchEvenements = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://195.179.229.230:5000/api/evenements', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/evenements', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -284,7 +284,7 @@ const Calendrier = () => {
       }
 
       const token = localStorage.getItem('token');
-      await axios.put(`http://195.179.229.230:5000/api/evenements/${editingEvent._id}`, {
+      await axios.put(`https://vmi1977988.contaboserver.net//api2/evenements/${editingEvent._id}`, {
         titre: editingEvent.titre,
         description: editingEvent.description,
         dateDebut: editingEvent.dateDebut,
@@ -340,7 +340,7 @@ const Calendrier = () => {
       }
 
       const token = localStorage.getItem('token');
-      await axios.post('http://195.179.229.230:5000/api/evenements', {
+      await axios.post('https://vmi1977988.contaboserver.net//api2/evenements', {
         titre: newEvent.titre,
         description: newEvent.description,
         dateDebut: newEvent.dateDebut,

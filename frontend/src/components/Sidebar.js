@@ -4,26 +4,28 @@ import {
   GraduationCap,
   Wallet,
   Clock,
-   Briefcase,
+  DollarSign,
+  Briefcase,
   Users,
+  Handshake,
+  AlertTriangle,
   BookOpen,
   CreditCard,
   Plus,
-   BarChart3,
+  BarChart3,
   Calendar,
   ClipboardList,
   LogOut,
   Menu,
   X,
-   MessageCircle,
+  MessageCircle,
   Home,
   FileText,
   User,
+  CheckCircle,
   Shield,
   QrCode,
-      Newspaper
-
-  
+  Newspaper
 } from 'lucide-react';
 
 const Sidebar = ({ onLogout }) => {
@@ -31,6 +33,27 @@ const Sidebar = ({ onLogout }) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [userInfo, setUserInfo] = useState(null);
+
+  // Récupérer les informations utilisateur du token
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role);
+        setUserInfo({
+          nom: payload.nom,
+          filiere: payload.filiere,
+          role: payload.role
+        });
+      }
+    } catch (error) {
+      console.error('Erreur extraction token:', error);
+      setUserRole('admin'); // Fallback
+    }
+  }, []);
 
   // Detect mobile screen size
   useEffect(() => {
@@ -38,7 +61,6 @@ const Sidebar = ({ onLogout }) => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
       
-      // Sur desktop, ouvrir par défaut
       if (!mobile) {
         setIsOpen(true);
       } else {
@@ -50,6 +72,160 @@ const Sidebar = ({ onLogout }) => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Navigation items pour admin (configuration actuelle)
+  const adminNavigationItems = [
+    {
+      path: '/admin/dashboard',
+      label: 'Dashboard',
+      icon: Home
+    },
+    {
+      path: '/admin/revenus-mensuels',
+      label: 'Revenus Mensuels',
+      icon: BarChart3
+    },
+    {
+      path: '/admin/partners',
+      label: 'Partenaires',
+      icon: Handshake
+    },
+    {
+      path: '/admin/dashboard-partners',
+      label: 'Partenaires',
+      icon: Home
+    },
+ 
+    {
+      path: '/liste-classes',
+      label: 'Classes',
+      icon: BookOpen
+    },
+
+     
+    {
+      path: '/admin/finance-profs',
+      label: 'Finance Professeurs',
+      icon: Wallet
+    },
+  
+    {
+      path: '/admin/commercial',
+      label: 'Commercial',
+      icon: Briefcase
+    },
+    {
+      path: '/admin/StatistiquesEtudiants',
+      label: 'Statistiques',
+      icon: BarChart3
+    },
+    
+    {
+      path: '/admin/PaiementManager',
+      label: 'Manager',
+      icon: Wallet
+    },
+    {
+      path: '/admin/pedagogiques',
+      label: 'Pédagogiques',
+      icon: GraduationCap
+    },
+
+    {
+      path: '/admin/administratifs',
+      label: 'Scolarité',
+      icon: Users
+    },
+       {
+      path: '/update-profil',
+      label: 'Profil',
+      icon: Shield,
+    },
+
+  ];
+
+  // Navigation items pour pédagogique (limitée)
+  const pedagogiqueNavigationItems = [
+    {
+      path: '/pedagogique',
+      label: 'Dashboard',
+      icon: Home
+    },
+
+    {
+      path: '/pedagogique/etudiants',
+      label: 'Étudiants',
+      icon: Users
+    },
+    {
+      path: '/pedagogique/professeurs',
+      label: 'Professeurs',
+      icon: User
+    },
+    {
+      path: '/pedagogique/emploi-pedagogique',
+      label: 'Emploi du temps',
+      icon: Calendar
+    }
+
+  ];
+
+  // Navigation items pour finance (limitée)
+  const financeNavigationItems = [
+    {
+      path: '/finance-prof',
+      label: 'Dashboard',
+      icon: Home
+    },
+    {
+      path: '/finance/listeprofesseurs',
+      label: 'Liste Professeurs',
+      icon: Users
+    },
+    {
+      path: '/finance/emploi',
+      label: 'Emploi',
+      icon: Calendar
+    },
+    
+    {
+      path: '/finance/gestion',
+      label: 'Gestion Financière',
+      icon: DollarSign
+    }
+    ,
+    {
+      path: '/finance/historique-paiements',
+      label: 'Historique Paiements',
+      icon: Clock
+    }
+
+  ];
+
+  // Sélectionner les items de navigation selon le rôle
+  const getNavigationItems = () => {
+    if (userRole === 'pedagogique') {
+      return pedagogiqueNavigationItems;
+    }
+    if (userRole === 'finance_prof' || userRole === 'finance') {
+      return financeNavigationItems;
+    }
+    return adminNavigationItems; // Par défaut pour admin et autres rôles
+  };
+
+  // Titre de la sidebar selon le rôle
+  const getSidebarTitle = () => {
+    if (userRole === 'pedagogique') {
+      const filiere = userInfo?.filiere === 'GENERAL' ? 'GÉNÉRAL' : userInfo?.filiere;
+      return `Pédagogique ${filiere || ''}`;
+    }
+    if (userRole === 'finance_prof' || userRole === 'finance') {
+      return 'Finance Prof';
+    }
+    return 'Supemir Admin';
+  };
+
+  const navigationItems = getNavigationItems();
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -68,94 +244,6 @@ const Sidebar = ({ onLogout }) => {
     }
   };
 
-  const navigationItems = [
-    {
-      path: '/admin',
-      label: 'Dashboard',
-      icon: Home
-    },
-    {
-      path: '/update-profil',
-      label: 'profil',
-      icon:  Shield,
-
-    }, {
-      path: '/liste-classes',
-      label: 'Classes',
-      icon: BookOpen
-    },
-    {
-      path: '/liste-etudiants',
-      label: 'Étudiants',
-      icon: Users
-    },
-    {
-      path: '/liste-professeurs',
-      label: 'Professeurs',
-      icon: User
-    },
- 
-    {
-      path: '/ajouter-paiement',
-      label: 'Nouveau Paiement',
-      icon: Plus
-    },
-
-    {
-      path: '/liste-paiements',
-      label: 'Paiements',
-      icon: CreditCard
-    },
-   
-        {
-      path: '/admin/seances',
-      label: 'Séances',
-      icon:  Clock
-    },
-   
-  
-    {
-      path: '/calendrier',
-      label: 'Calendrier',
-      icon: Calendar
-    },
-    {
-      path: '/liste-presences',
-      label: 'Liste présences',
-      icon: ClipboardList
-    } ,
-  
-
-    
-    {
-      path: '/admin/commercial',
-      label: 'commercial',
-      icon: Briefcase
-    },
-     {
-      path: '/admin/StatistiquesEtudiants',
-      label: 'Statistiques',
-      icon: BarChart3
-    }
-,
-     {
-      path: '/admin/Bulletin',
-      label: 'Bulletin',
-      icon: FileText
-    }
-,
-     {
-      path: '/admin/PaiementManager',
-      label: 'Manager',
-      icon: Wallet
-    }
-
-
-
-
-  ];
-
-  // Utiliser location.pathname au lieu d'un state local
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
@@ -195,7 +283,7 @@ const Sidebar = ({ onLogout }) => {
           box-sizing: border-box;
         }
 
-        /* Toggle Button - Positionné en dehors de la sidebar */
+        /* Toggle Button */
         .sidebar-toggle {
           position: fixed;
           top: 20px;
@@ -216,7 +304,6 @@ const Sidebar = ({ onLogout }) => {
           height: 48px;
         }
 
-        /* Sur mobile, le bouton reste à gauche */
         @media (max-width: 768px) {
           .sidebar-toggle {
             left: 20px !important;
@@ -313,6 +400,7 @@ const Sidebar = ({ onLogout }) => {
           margin: 0;
           position: relative;
           z-index: 1;
+          line-height: 1.2;
         }
 
         .sidebar-title .header-icon {
@@ -325,6 +413,19 @@ const Sidebar = ({ onLogout }) => {
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
+        }
+
+        /* Badge pour pédagogique général */
+        .general-badge {
+          display: inline-block;
+          background: rgba(255, 255, 255, 0.2);
+          color: #fbbf24;
+          font-size: 10px;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 4px;
+          margin-top: 4px;
         }
 
         /* Navigation */
@@ -570,7 +671,7 @@ const Sidebar = ({ onLogout }) => {
         }
       `}</style>
 
-      {/* Toggle Button - Maintenant positionné en dehors de la sidebar */}
+      {/* Toggle Button */}
       <button
         className="sidebar-toggle"
         onClick={toggleSidebar}
@@ -594,7 +695,12 @@ const Sidebar = ({ onLogout }) => {
             <div className="header-icon">
               <GraduationCap size={20} />
             </div>
-   Supemir
+            <div>
+              {getSidebarTitle()}
+              {userRole === 'pedagogique' && userInfo?.filiere === 'GENERAL' && (
+                <div className="general-badge">ACCÈS GLOBAL</div>
+              )}
+            </div>
           </h3>
         </div>
 

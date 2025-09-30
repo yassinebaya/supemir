@@ -10,7 +10,7 @@ const AjouterProfesseur = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const API_BASE = 'http://195.179.229.230:5000/api';
+  const API_BASE = 'https://vmi1977988.contaboserver.net//api2';
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');

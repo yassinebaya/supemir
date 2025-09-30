@@ -47,13 +47,13 @@ const ListePresences = () => {
           return;
         }
 
-        const res = await axios.get('http://195.179.229.230:5000/api/professeur/presences', {
+        const res = await axios.get('https://vmi1977988.contaboserver.net//api2/professeur/presences', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
         const data = res.data;
 
-        // ===== NOUVEAU GROUPAGE =====
+        // ===== NOUVEAU GROUPAGE CORRIGÉ POUR RETARD =====
         const grouped = {};
         for (let p of data) {
           const dateStr = new Date(p.dateSession).toDateString();
@@ -68,7 +68,9 @@ const ListePresences = () => {
 
         const sessions = Object.entries(grouped).map(([key, values]) => {
           const [date, cours, heure, periode, matiere, nomProfesseur] = key.split('_');
-          const presentCount = values.filter(p => p.present).length;
+          const presentCount = values.filter(p => p.present && !p.retard).length;
+          const retardCount = values.filter(p => p.retard).length;
+          const absentCount = values.filter(p => p.absent).length;
           const totalCount = values.length;
           return {
             date,
@@ -79,10 +81,12 @@ const ListePresences = () => {
             nomProfesseur,
             presences: values,
             presentCount,
+            retardCount,
+            absentCount,
             totalCount,
-            attendanceRate: totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
+            attendanceRate: totalCount > 0 ? Math.round(((presentCount + retardCount) / totalCount) * 100) : 0
           };
-        });
+        }).sort((a, b) => new Date(b.date) - new Date(a.date)); // ✅ ترتيب تنازلي حسب التاريخ
 
         const uniqueCours = [...new Set(sessions.map(s => s.cours))];
         setAvailableCours(uniqueCours);
@@ -168,7 +172,7 @@ const ListePresences = () => {
       filtered = filtered.filter(session => session.periode === periodeFilter);
     }
 
-    setFilteredSessions(filtered);
+    setFilteredSessions(filtered.sort((a, b) => new Date(b.date) - new Date(a.date))); // ✅ ترتيب النتائج المفلترة أيضًا
   }, [searchTerm, dateFilter, coursFilter, presenceRateFilter, heureFilter, periodeFilter, matiereFilter, professeurFilter, groupedSessions]);
 
   const formatDate = (d) => new Date(d).toLocaleDateString('fr-FR');
@@ -189,7 +193,7 @@ const ListePresences = () => {
   const styles = {
     container: {
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+    background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
       padding: '20px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     },
@@ -399,11 +403,9 @@ const ListePresences = () => {
       backgroundColor: 'white',
       borderRadius: '12px',
       boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      maxWidth: '900px',
+      maxWidth: '800px',
       width: '100%',
-      maxHeight: '85vh', // Réduit la hauteur max pour laisser plus de place au scroll
-      display: 'flex',
-      flexDirection: 'column',
+      maxHeight: '90vh',
       overflow: 'hidden'
     },
     modalHeader: {
@@ -411,47 +413,12 @@ const ListePresences = () => {
       borderBottom: '1px solid #e5e7eb',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      flexShrink: 0 // Empêche le header de se rétrécir
+      justifyContent: 'space-between'
     },
     modalBody: {
-      padding: '0', // Supprime le padding pour optimiser l'espace
-      flex: 1,
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column'
-    },
-    modalBodyContent: {
       padding: '24px',
-      paddingBottom: '0',
-      flexShrink: 0 // Pour les stats cards
-    },
-    studentsSection: {
-      flex: 1,
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column'
-    },
-    studentsHeader: {
-      padding: '0 24px 12px 24px',
-      borderBottom: '1px solid #e5e7eb',
-      backgroundColor: '#f9fafb',
-      flexShrink: 0
-    },
-    studentsContainer: {
-      flex: 1,
-      overflow: 'auto', // Permet le scroll vertical
-      backgroundColor: '#f9fafb'
-    },
-    studentsTable: {
-      backgroundColor: 'white',
-      margin: '0'
-    },
-    modalFooter: {
-      padding: '16px 24px',
-      borderTop: '1px solid #e5e7eb',
-      backgroundColor: '#f9fafb',
-      flexShrink: 0
+      overflowY: 'auto',
+      maxHeight: 'calc(90vh - 120px)'
     },
     statsGrid: {
       display: 'grid',
@@ -532,20 +499,6 @@ const ListePresences = () => {
     mobileCard: {
       padding: '16px',
       borderBottom: '1px solid #f3f4f6'
-    },
-    // Nouveaux styles pour améliorer le scroll
-    scrollableArea: {
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      maxHeight: '400px', // Hauteur fixe pour forcer le scroll
-      border: '1px solid #e5e7eb',
-      borderRadius: '8px'
-    },
-    studentRow: {
-      padding: '12px 16px',
-      backgroundColor: 'white',
-      borderBottom: '1px solid #f3f4f6',
-      transition: 'background-color 0.2s'
     }
   };
 
@@ -601,29 +554,6 @@ const ListePresences = () => {
             border-color: #9ca3af;
             color: #374151;
           }
-
-          /* Scrollbar styling */
-          .scrollable-area::-webkit-scrollbar {
-            width: 8px;
-          }
-          
-          .scrollable-area::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-          }
-          
-          .scrollable-area::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
-          }
-          
-          .scrollable-area::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-          }
-
-          .student-row:hover {
-            background-color: #f9fafb !important;
-          }
           
           @media (max-width: 768px) {
             .desktop-table {
@@ -643,7 +573,7 @@ const ListePresences = () => {
       </style>
 
       <div style={styles.maxWidth}>
-        <SidebarProf onLogout={handleLogout} />
+              {/* Header */} <SidebarProf onLogout={handleLogout} /> {/* ✅ Utilisation du composant SidebarProfesseur */}
 
         {/* Header */}
         <div style={styles.card}>
@@ -667,7 +597,7 @@ const ListePresences = () => {
               <Search size={20} style={styles.searchIcon} />
               <input
                 type="text"
-                placeholder="Rechercher par cours, date, heure, période..."
+                placeholder="Rechercher par classe, date, heure, période..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={styles.searchInput}
@@ -720,14 +650,14 @@ const ListePresences = () => {
                   </div>
 
                   <div style={styles.filterGroup}>
-                    <label style={styles.filterLabel}>Cours</label>
+                    <label style={styles.filterLabel}>Classe</label>
                     <select
                       value={coursFilter}
                       onChange={(e) => setCoursFilter(e.target.value)}
                       style={styles.filterSelect}
                       className="filter-select"
                     >
-                      <option value="">Tous les cours</option>
+                      <option value="">Tous les classes</option>
                       {availableCours.map(cours => (
                         <option key={cours} value={cours}>{cours}</option>
                       ))}
@@ -841,7 +771,7 @@ const ListePresences = () => {
           <div style={styles.card}>
             <div style={{ padding: '24px 24px 0 24px', borderBottom: '1px solid #e5e7eb' }}>
               <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 16px 0' }}>
-                Sessions de cours
+                Sessions de classe
               </h2>
             </div>
             
@@ -859,7 +789,7 @@ const ListePresences = () => {
                     <th style={styles.th}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Book size={16} />
-                        Cours
+                        Classe
                       </div>
                     </th>
                     <th style={styles.th}>
@@ -913,11 +843,12 @@ const ListePresences = () => {
                           {session.nomProfesseur || 'Non spécifié'}
                         </div>
                       </td>
-                      <td style={styles.td}>
-                        <div style={{ fontWeight: '500', color: '#111827' }}>
-                          {formatHoraire(session.heure, session.periode)}
-                        </div>
-                      </td>
+                    <td style={styles.td}>
+  <div style={{ fontWeight: '500', color: '#111827' }}>
+    {formatHoraire(session.heure, session.periode)}
+  </div>
+</td>
+
                       <td style={styles.td}>
                         <div style={styles.progressContainer}>
                           <div style={styles.progressBar}>
@@ -982,7 +913,7 @@ const ListePresences = () => {
                       </p>
                       <p style={{ fontSize: '12px', color: '#6b7280', margin: '2px 0 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Clock size={12} />
-                        {formatHoraire(session.heure, session.periode)}
+{formatHoraire(session.heure, session.periode)}
                       </p>
                     </div>
                     <button
@@ -1018,10 +949,10 @@ const ListePresences = () => {
           </div>
         )}
 
-        {/* Modal Détails avec scroll amélioré */}
+        {/* Modal Détails */}
         {sessionActive && (
           <div style={styles.modal}>
-            <div style={styles.modalContent}>
+            <div style={{ ...styles.modalContent, overflowY: 'auto', maxHeight: '90vh' }}>
               {/* Modal Header */}
               <div style={styles.modalHeader}>
                 <div>
@@ -1054,7 +985,7 @@ const ListePresences = () => {
                   </div>
                   <p style={{ fontSize: '14px', color: '#6b7280', margin: '2px 0 0 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Clock size={16} />
-                    {formatHoraire(sessionActive.heure, sessionActive.periode)}
+{formatHoraire(sessionActive.heure, sessionActive.periode)}
                   </p>
                 </div>
                 <button
@@ -1066,16 +997,10 @@ const ListePresences = () => {
                 </button>
               </div>
 
-              {/* Modal Body avec scroll amélioré */}
-              <div
-                style={{
-                  ...styles.modalBody,
-                  maxHeight: '65vh', // Limite la hauteur et active le scroll si besoin
-                  overflowY: 'auto'
-                }}
-              >
+              {/* Modal Content */}
+              <div style={{ ...styles.modalBody, overflowY: 'auto', maxHeight: 'calc(90vh - 120px)' }}>
                 {/* Statistics Cards */}
-                <div style={styles.modalBodyContent}>
+                {sessionActive && (
                   <div style={styles.statsGrid}>
                     <div style={{ ...styles.statCard, ...styles.statCardGreen }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -1084,12 +1009,19 @@ const ListePresences = () => {
                       </div>
                       <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.presentCount}</p>
                     </div>
+                    <div style={{ ...styles.statCard, backgroundColor: '#fef3c7', borderColor: '#fcd34d', color: '#d97706' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <AlertCircle size={20} />
+                        <span style={{ fontSize: '14px', fontWeight: '500' }}>En retard</span>
+                      </div>
+                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.retardCount || 0}</p>
+                    </div>
                     <div style={{ ...styles.statCard, ...styles.statCardRed }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                         <X size={20} />
                         <span style={{ fontSize: '14px', fontWeight: '500' }}>Absents</span>
                       </div>
-                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.totalCount - sessionActive.presentCount}</p>
+                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.absentCount || 0}</p>
                     </div>
                     <div style={{ ...styles.statCard, ...styles.statCardBlue }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -1099,93 +1031,118 @@ const ListePresences = () => {
                       <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{sessionActive.attendanceRate}%</p>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Section des étudiants avec scroll */}
-                <div style={styles.studentsSection}>
-                  <div style={styles.studentsHeader}>
-                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Users size={18} />
-                      Liste des étudiants ({sessionActive.presences.length})
-                    </h4>
-                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
-                      Faites défiler pour voir tous les étudiants
-                    </p>
+                {/* Students Table */}
+                <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f3f4f6' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0 }}>Liste des étudiants</h4>
                   </div>
                   
-                  <div style={styles.studentsContainer} className="scrollable-area">
-                    {/* Desktop Students Table */}
-                    <div className="desktop-table">
-                      <table style={{ ...styles.table, ...styles.studentsTable }}>
-                        <thead style={{ backgroundColor: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
-                          <tr>
-                            <th style={{ ...styles.th, padding: '12px 16px', borderBottom: '2px solid #e5e7eb' }}>Étudiant</th>
-                            <th style={{ ...styles.th, padding: '12px 16px', borderBottom: '2px solid #e5e7eb' }}>Statut</th>
-                            <th style={{ ...styles.th, padding: '12px 16px', borderBottom: '2px solid #e5e7eb' }}>Remarque</th>
+                  {/* Desktop Students Table */}
+                  <div className="desktop-table">
+                    <table style={styles.table}>
+                      <thead style={{ backgroundColor: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ ...styles.th, padding: '12px 16px' }}>Étudiant</th>
+                          <th style={{ ...styles.th, padding: '12px 16px' }}>Statut</th>
+                          <th style={{ ...styles.th, padding: '12px 16px' }}>Remarque</th>
+                        </tr>
+                      </thead>
+                      <tbody style={{ backgroundColor: 'white' }}>
+                        {sessionActive.presences.map(p => (
+                          <tr key={p._id} className="table-row">
+                            <td style={{ ...styles.td, padding: '12px 16px' }}>
+                              <span style={{ fontWeight: '500', color: '#111827' }}>
+                                {p.etudiant?.nomComplet || '—'}
+                              </span>
+                            </td>
+                            <td style={{ ...styles.td, padding: '12px 16px' }}>
+                              <span style={
+                                p.retard ? 
+                                  { ...styles.badge, backgroundColor: '#fef3c7', color: '#d97706', borderColor: '#fcd34d' } :
+                                p.present ? 
+                                  { ...styles.badge, ...styles.badgeGreen } : 
+                                  { ...styles.badge, ...styles.badgeRed }
+                              }>
+                                {p.retard ? (
+                                  <>
+                                    <AlertCircle size={12} />
+                                    En retard ({p.retardMinutes || 0}min)
+                                  </>
+                                ) : p.present ? (
+                                  <>
+                                    <Check size={12} />
+                                    Présent
+                                  </>
+                                ) : (
+                                  <>
+                                    <X size={12} />
+                                    Absent
+                                  </>
+                                )}
+                              </span>
+                            </td>
+                            <td style={{ ...styles.td, padding: '12px 16px' }}>
+                              <span style={{ color: '#6b7280' }}>{p.remarque || '—'}</span>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {sessionActive.presences.map((p, idx) => (
-                            <tr key={p._id} className="student-row" style={styles.studentRow}>
-                              <td style={{ ...styles.td, padding: '12px 16px' }}>
-                                <span style={{ fontWeight: '500', color: '#111827' }}>
-                                  {p.etudiant?.nomComplet || '—'}
-                                </span>
-                              </td>
-                              <td style={{ ...styles.td, padding: '12px 16px' }}>
-                                <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
-                                  {p.present ? <Check size={12} /> : <X size={12} />}
-                                  {p.present ? 'Présent' : 'Absent'}
-                                </span>
-                              </td>
-                              <td style={{ ...styles.td, padding: '12px 16px' }}>
-                                <span style={{ color: '#6b7280', fontSize: '14px' }}>{p.remarque || '—'}</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                    {/* Mobile Students Cards */}
-                    <div className="mobile-cards">
-                      {sessionActive.presences.map((p, idx) => (
-                        <div key={p._id} style={{ 
-                          padding: '16px', 
-                          backgroundColor: 'white', 
-                          borderBottom: '1px solid #f3f4f6',
-                          margin: '0 8px 8px 8px',
-                          borderRadius: '8px',
-                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                            <h5 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0, flex: 1 }}>
-                              {p.etudiant?.nomComplet || '—'}
-                            </h5>
-                            <span style={p.present ? { ...styles.badge, ...styles.badgeGreen } : { ...styles.badge, ...styles.badgeRed }}>
-                              {p.present ? <Check size={12} /> : <X size={12} />}
-                              {p.present ? 'Présent' : 'Absent'}
-                            </span>
-                          </div>
-                          {p.remarque && (
-                            <div style={{ padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '12px', color: '#6b7280' }}>
-                              <strong>Remarque:</strong> {p.remarque}
-                            </div>
-                          )}
+                  {/* Mobile Students Cards */}
+                  <div className="mobile-cards">
+                    {sessionActive.presences.map(p => (
+                      <div key={p._id} style={{ padding: '16px', backgroundColor: 'white', borderBottom: '1px solid #f3f4f6' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <h5 style={{ fontSize: '14px', fontWeight: '500', color: '#111827', margin: 0, flex: 1 }}>
+                            {p.etudiant?.nomComplet || '—'}
+                          </h5>
+                          <span style={
+                            p.retard ? 
+                              { ...styles.badge, backgroundColor: '#fef3c7', color: '#d97706', borderColor: '#fcd34d' } :
+                            p.present ? 
+                              { ...styles.badge, ...styles.badgeGreen } : 
+                              { ...styles.badge, ...styles.badgeRed }
+                          }>
+                            {p.retard ? (
+                              <>
+                                <AlertCircle size={12} />
+                                En retard ({p.retardMinutes || 0}min)
+                              </>
+                            ) : p.present ? (
+                              <>
+                                <Check size={12} />
+                                Présent
+                              </>
+                            ) : (
+                              <>
+                                <X size={12} />
+                                Absent
+                              </>
+                            )}
+                          </span>
                         </div>
-                      ))}
-                    </div>
+                        {p.remarque && (
+                          <div style={{ padding: '8px', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '12px', color: '#6b7280' }}>
+                            <strong>Remarque:</strong> {p.remarque}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div style={styles.modalFooter}>
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
                 <button
                   onClick={() => setSessionActive(null)}
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
+                    padding: '10px 16px',
                     backgroundColor: '#4b5563',
                     color: 'white',
                     border: 'none',

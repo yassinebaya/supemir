@@ -31,10 +31,10 @@ const UserAvatar = ({ user, size = 48 }) => {
     }
     
     if (imagePath.startsWith('/')) {
-      return `http://195.179.229.230:5000${imagePath}`;
+      return `https://vmi1977988.contaboserver.net/${imagePath}`;
     }
     
-    return `http://195.179.229.230:5000/${imagePath}`;
+    return `https://vmi1977988.contaboserver.net//${imagePath}`;
   };
 
   const imageUrl = getImageUrl(user?.image);
@@ -209,7 +209,7 @@ const audioChunksRef = useRef([]);
       }
 
       try {
-        const response = await fetch('http://195.179.229.230:5000/api/etudiant/me', {
+        const response = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -238,7 +238,7 @@ const audioChunksRef = useRef([]);
 
       setIsLoadingProfesseurs(true);
       try {
-        const response = await fetch('http://195.179.229.230:5000/api/etudiant/mes-professeurs-messages', {
+        const response = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/mes-professeurs-messages', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -274,7 +274,7 @@ const audioChunksRef = useRef([]);
       if (!token) return;
 
       try {
-        const response = await fetch('http://195.179.229.230:5000/api/messages/unread-by-sender', {
+        const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/unread-by-sender', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -296,7 +296,7 @@ const audioChunksRef = useRef([]);
       if (!token) return;
 
       try {
-        const response = await fetch('http://195.179.229.230:5000/api/users/online-status', {
+        const response = await fetch('https://vmi1977988.contaboserver.net//api2/users/online-status', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -324,7 +324,7 @@ const audioChunksRef = useRef([]);
 
       setIsLoadingMessages(true);
       try {
-        const response = await fetch(`http://195.179.229.230:5000/api/messages/etudiant/${selectedProf._id}`, {
+        const response = await fetch(`https://vmi1977988.contaboserver.net//api2/messages/etudiant/${selectedProf._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -336,7 +336,7 @@ const audioChunksRef = useRef([]);
         setMessages(Array.isArray(data) ? data : []);
         
         // Marquer les messages comme lus
-        await fetch('http://195.179.229.230:5000/api/messages/mark-conversation-read', {
+        await fetch('https://vmi1977988.contaboserver.net//api2/messages/mark-conversation-read', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -378,7 +378,7 @@ const audioChunksRef = useRef([]);
   if (fichier) formData.append('fichier', fichier);
 
   try {
-    const response = await fetch('http://195.179.229.230:5000/api/messages/upload', {
+    const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/upload', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData
@@ -433,7 +433,7 @@ const startRecording = async () => {
       formData.append('fichier', file);
 
       try {
-        const response = await fetch('http://195.179.229.230:5000/api/messages/upload', {
+        const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/upload', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData
@@ -483,7 +483,7 @@ const stopRecording = () => {
     }
 
     try {
-      const response = await fetch(`http://195.179.229.230:5000/api/messages/${messageToDelete}`, {
+      const response = await fetch(`https://vmi1977988.contaboserver.net//api2/messages/${messageToDelete}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -593,7 +593,7 @@ const stopRecording = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex',background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex',background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)' }}>
            {/* Header */}           <Sidebar onLogout={handleLogout} />
 
       <div style={{ flexGrow: 1, padding: '20px' }}>
@@ -908,7 +908,7 @@ const stopRecording = () => {
                                 </div>
                               )}
                               {message.fichier && getFileExtension(message.fichier) === 'webm' && (
-  <audio controls src={`http://195.179.229.230:5000${message.fichier}`} style={{ marginTop: '8px', width: '100%' }} />
+  <audio controls src={`https://vmi1977988.contaboserver.net/${message.fichier}`} style={{ marginTop: '8px', width: '100%' }} />
 )}
 
                               {message.fichier && (
@@ -940,7 +940,7 @@ const stopRecording = () => {
                                     </div>
                                   </div>
                                   <a
-                                    href={`http://195.179.229.230:5000${message.fichier}`}
+                                    href={`https://vmi1977988.contaboserver.net/${message.fichier}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{

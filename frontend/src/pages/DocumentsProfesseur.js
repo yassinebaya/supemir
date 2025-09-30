@@ -54,7 +54,7 @@ const DocumentsProfesseur = () => {
   const fetchDocuments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://195.179.229.230:5000/api/professeur/documents', {
+      const response = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/documents', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -73,7 +73,7 @@ const DocumentsProfesseur = () => {
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://195.179.229.230:5000/api/professeur/mes-cours', {
+      const response = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/mes-cours', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -143,7 +143,7 @@ const DocumentsProfesseur = () => {
     formData.append('fichier', file);
 
     try {
-      const response = await fetch('http://195.179.229.230:5000/api/documents', {
+      const response = await fetch('https://vmi1977988.contaboserver.net//api2/documents', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -186,7 +186,7 @@ const DocumentsProfesseur = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://195.179.229.230:5000/api/documents/${documentId}`, {
+      const response = await fetch(`https://vmi1977988.contaboserver.net//api2/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -232,7 +232,7 @@ const DocumentsProfesseur = () => {
   const styles = {
     container: {
       minHeight: '100vh',
-    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
+    background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
       fontFamily: 'Arial, sans-serif'
     },
     header: {
@@ -856,7 +856,7 @@ const DocumentsProfesseur = () => {
 
                     <div style={styles.buttonContainer}>
                       <a
-                        href={`http://195.179.229.230:5000${doc.fichier}`}
+                        href={`https://vmi1977988.contaboserver.net/${doc.fichier}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{...styles.button, ...styles.buttonOutline}}
@@ -917,7 +917,7 @@ const DocumentsProfesseur = () => {
                     </div>
                     <div style={styles.listButtons}>
                       <a
-                        href={`http://195.179.229.230:5000${doc.fichier}`}
+                        href={`https://vmi1977988.contaboserver.net/${doc.fichier}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{...styles.listButton, ...styles.buttonOutline}}

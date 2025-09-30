@@ -35,6 +35,7 @@ import EtudiantLiveCours from './pages/EtudiantLiveCours';
 import LiveCoursEtudiant from './pages/LiveCoursEtudiant';
 import ProfLiveCours from './pages/ProfLiveCours';
 import ProfileProfesseur from './pages/ProfileProfesseur';
+import PedagogiqueEtudiants from './pages/PedagogiqueEtudiants';
 
 import MessageProf from './pages/MessageProf';
 import MessageEtudiant from './pages/MessageEtudiant';
@@ -57,10 +58,36 @@ import PaiementsExpmanger from './pages/PaiementsExpmanger'; // Import de la pag
 import Dashboardmanager from './pages/Dashboardmanager';
 import EtudiantProfil from './pages/EtudiantProfil';
 import ProfesseurProfil from './pages/ProfesseurProfil';
+import PedagogiePage from './pages/PedagogiePage';
+import PedagogiqueDashboard from './pages/PedagogiqueDashboard';
+import PedagogiePageprof from './pages/PedagogiePageprof';
+import ListeCoursAdmin from './pages/ListeCoursAdmin';
+import PaiementsExpadmin from './pages/PaiementsExpadmin';
+import AdministratifPage from './pages/AdministratifPage';
+import DashboardAdministratif from './pages/DashboardAdministratif';
+import ListeEtudiantsAdmin from './pages/ListeEtudiantsAdmin';
+import ListePresencesAdmin from './pages/ListePresencesAdmin';
+import ListeBulletinsAdmin from './pages/ListeBulletinsAdmin';
+import ProfilEtudiantadmin from './pages/ProfilEtudiantadmin';
+import DashboardNormal from './pages/DashboardNormal';
+import RapportsProfesseurs from './pages/RapportsProfesseurs';
+import EmploiCreation from './pages/EmploiCreation';
+import EmploiPedagogique from './pages/EmploiPedagogique';
+import FinanceProfPage from './pages/FinanceProfPage';
+import RapportsFinanceProfs from './pages/RapportsFinanceProfs';
+import ListeProfesseursfinance from './pages/ListeProfesseursfinance';
+import RevenusMensuels from './pages/RevenusMensuels';
+import EvaluationEtudiants from './pages/EvaluationEtudiants';
+import Financeseance from './pages/Financeseance';
+import GestionFinanciere from './pages/GestionFinanciere';
+import PageValidationPaiement from './pages/PageValidationPaiement';
+import ValidationPaiement from './pages/ValidationPaiement';
+import HistoriquePaiements from './pages/HistoriquePaiements';
+import DashboardPartners from './pages/DashboardPartners';
+import PartnersCreateEtudiant
+ from './pages/PartnersCreateEtudiant';
 
-
-
-// Ajoutez cette route
+import PartnersPage from './pages/PartnersPage';
 
    function AppContent() {
      const location = useLocation();
@@ -137,18 +164,23 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
         {/* Routes principales */}
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
- 
+        <Route path="/administratif" element={<DashboardAdministratif />} />
 
-
-
+/
+        <Route path="/administratif/presences" element={<ListePresencesAdmin />} />
+        <Route path="/administratif/bulletins" element={<ListeBulletinsAdmin />} />
+        <Route path="/administratif/classes" element={<ListeCoursAdmin />} />
+        <Route path="/administratif/etudiants" element={<ListeEtudiantsAdmin />} />
         {/* Routes Admin */}
-        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/liste-etudiants" element={<ListeEtudiants />} />
         <Route path="/ajouter-paiement" element={<AjouterPaiement />} />
         <Route path="/liste-paiements" element={<ListePaiements />} />
         <Route path="/liste-classes" element={<ListeCours />} />
         <Route path="/calendrier" element={<Calendrier />} />
         <Route path="/etudiants/:id" element={<ProfilEtudiant />} />
+                <Route path="/etudiant/:id" element={<ProfilEtudiantadmin />} />
+
+                <Route path="/partners/create-etudiant" element={<PartnersCreateEtudiant />} />
         <Route path="/ajouter-professeur" element={<AjouterProfesseur />} />
         <Route path="/liste-professeurs" element={<ListeProfesseurs />} />
         <Route path="/ajouter-presence" element={<AjouterPresence />} />
@@ -158,16 +190,26 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
 <Route path="/admin/seances" element={<AdminAjouterSeance />} />
 <Route path="/etudiant/seances" element={<SeancesEtudiant />} />
 <Route path="/professeur/seances" element={<SeancesProfesseur />} />
+<Route path="/admin/rapports-professeurs" element={<RapportsProfesseurs />} />  
+<Route path="/admin/emploi-creation" element={<EmploiCreation />} />  
 
-<Route path="/commercial" element={<Commercial />} /> 
+<Route path="/finance/emploi" element={<Financeseance />} />  
+<Route path="/finance/gestion" element={<GestionFinanciere />} />
 
+<Route path="/administratif/evaluation-etudiants" element={<EvaluationEtudiants />} />
+<Route path="/admin/revenus-mensuels" element={<RevenusMensuels />} />
+<Route path="/commercial" element={<Commercial />} />
+
+
+<Route path="/pedagogique/etudiants" element={<PedagogiqueEtudiants />} />
 <Route path="/professeur/AjouterBulletin" element={<ProfAjouterBulletin />} />
+<Route path="/finance/validation-paiement" element={<PageValidationPaiement />} />
 
-
+<Route path="/manager/validation-paiement" element={<ValidationPaiement />} />
 <Route path="/professeur/profil" element={<ProfesseurProfil />} />
-
-
-<Route path="/manager/ListePaiement" element={<ListePaiementsmanager />} /> 
+<Route path="/pedagogique" element={<PedagogiqueDashboard />} />
+<Route path="/finance/historique-paiements" element={<HistoriquePaiements />} />
+<Route path="/manager/ListePaiement" element={<ListePaiementsmanager />} />
 
 <Route path="/paiement-manager" element={<Dashboardmanager />} /> 
 <Route path="/etudiant/profil" element={<EtudiantProfil />} />
@@ -175,23 +217,29 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
 <Route path="/manager/PaiementsExp" element={<PaiementsExpmanger />} /> 
 <Route path="/manager/AjouterPaiement" element={<AjouterPaiementmanager />} /> 
 
+<Route path="/dashboard-administratif" element={<DashboardAdministratif />} />
 
 <Route path="/admin/PaiementManager" element={< PaiementManagerPage />} />
 
+<Route path="/admin/pedagogiques" element={<PedagogiePage />} />
+
+<Route path="/admin/partners" element={<PartnersPage />} />
+
 
 <Route path="/commercial/etudiant" element={<Commercialetudiants />} />
-
+<Route path="/admin/administratifs" element={<AdministratifPage />} />
 
 <Route path="/admin/commercial" element={< CommercialPage />} />
 <Route path="/admin/Bulletin" element={< AdminBulletins />} />
 
 
 <Route path="/etudiant/Bulletin" element={< EtudiantBulletins />} />
-
-
+<Route path="/admin/dashboard" element={< DashboardNormal />} />
 
 
 <Route path="/admin/StatistiquesEtudiants" element={< StatistiquesEtudiants />} />
+<Route path="/admin/finance-profs" element={<FinanceProfPage />} />
+<Route path="/finance-prof" element={<RapportsFinanceProfs />} />
 
         {/* Routes Professeur */}
         <Route path="/professeur" element={<ProfesseurDashboard />} />
@@ -208,7 +256,13 @@ import ProfesseurProfil from './pages/ProfesseurProfil';
 
         {/* Routes Étudiant */}
         <Route path="/etudiant/messages" element={<MessageEtudiant />} />
+        <Route path="/finance/listeprofesseurs" element={<ListeProfesseursfinance />} />
 
+        <Route path="/pedagogique/professeurs" element={<PedagogiePageprof />} />
+        <Route path="/admin/dashboard-partners" element={<DashboardPartners />} />
+
+        <Route path="/pedagogique/emploi-pedagogique" element={<EmploiPedagogique />} />
+        <Route path="/admin/paiements-exp" element={<PaiementsExpadmin />} />
         <Route path="/etudiant" element={<DashboardEtudiant />} />
         <Route path="/etudiant/profile" element={<Profile />} />
         <Route path="/etudiant/presences" element={<EtudiantPresences />} />
