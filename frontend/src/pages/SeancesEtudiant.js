@@ -111,11 +111,7 @@ const SeancesEtudiant = () => {
 
       console.log('DEBUG Frontend - Récupération pour la semaine:', lundiSemaine);
 
-<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/etudiant?semaine=${lundiSemaine}`, {
-=======
-      const res = await fetch(`http://195.179.229.230:5000/api/seances/etudiant?semaine=${lundiSemaine}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: {
           Authorization: `Bearer ${token}`
         }

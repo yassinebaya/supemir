@@ -43,7 +43,7 @@ const MesExercicesEtudiant = () => {
     const fetchExercices = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/mes-exercices', {
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/mes-exercices', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

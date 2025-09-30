@@ -68,29 +68,16 @@ const PedagogiqueDashboard = () => {
       }
 
       const [etudiantsRes, coursRes, professeursRes, statsRes] = await Promise.all([
-<<<<<<< HEAD
-        fetch('https://vmi1977988.contaboserver.net//api2/pedagogique/etudiants', {
+        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('https://vmi1977988.contaboserver.net//api2/pedagogique/cours', {
+        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/cours', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('https://vmi1977988.contaboserver.net//api2/pedagogique/professeurs', {
+        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/professeurs', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('https://vmi1977988.contaboserver.net//api2/pedagogique/dashboard-stats', {
-=======
-        fetch('http://195.179.229.230:5000/api/pedagogique/etudiants', {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/cours', {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/professeurs', {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch('http://195.179.229.230:5000/api/pedagogique/dashboard-stats', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/dashboard-stats', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);

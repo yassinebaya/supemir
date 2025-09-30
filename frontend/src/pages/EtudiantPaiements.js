@@ -23,7 +23,7 @@ const EtudiantPaiements = () => {
     const fetchPaiements = async () => {
       const token = localStorage.getItem('token');
       try {
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/paiements', {
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/paiements', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error('Erreur lors du chargement');

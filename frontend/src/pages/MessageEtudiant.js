@@ -209,7 +209,7 @@ const audioChunksRef = useRef([]);
       }
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/me', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -238,7 +238,7 @@ const audioChunksRef = useRef([]);
 
       setIsLoadingProfesseurs(true);
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/mes-professeurs-messages', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/mes-professeurs-messages', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -274,7 +274,7 @@ const audioChunksRef = useRef([]);
       if (!token) return;
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/unread-by-sender', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/unread-by-sender', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -296,7 +296,7 @@ const audioChunksRef = useRef([]);
       if (!token) return;
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/users/online-status', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/users/online-status', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -336,7 +336,7 @@ const audioChunksRef = useRef([]);
         setMessages(Array.isArray(data) ? data : []);
         
         // Marquer les messages comme lus
-        await fetch('https://vmi1977988.contaboserver.net//api2/messages/mark-conversation-read', {
+        await fetch('https://vmi1977988.contaboserver.net/api2/messages/mark-conversation-read', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -378,7 +378,7 @@ const audioChunksRef = useRef([]);
   if (fichier) formData.append('fichier', fichier);
 
   try {
-    const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/upload', {
+    const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/upload', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData
@@ -433,7 +433,7 @@ const startRecording = async () => {
       formData.append('fichier', file);
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/upload', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/upload', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData

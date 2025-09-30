@@ -32,7 +32,7 @@ const [dateTo, setDateTo] = useState('');
       try {
         setLoading(true);
         const token = localStorage.getItem('token');
-        const res = await axios.get('https://vmi1977988.contaboserver.net//api2/presences', {
+        const res = await axios.get('https://vmi1977988.contaboserver.net/api2/presences', {
           headers: { Authorization: `Bearer ${token}` }
         });
 

@@ -44,11 +44,7 @@ const ValidationPaiement = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-<<<<<<< HEAD
       const res = await fetch('/api2/finance/paiements/creer-ou-recuperer', {
-=======
-      const res = await fetch('/api/finance/paiements/creer-ou-recuperer', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,11 +84,7 @@ const ValidationPaiement = () => {
     try {
       const token = localStorage.getItem('token');
       
-<<<<<<< HEAD
       const res = await fetch(`/api2/finance/paiements/historique/${professeurId}`, {
-=======
-      const res = await fetch(`/api/finance/paiements/historique/${professeurId}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -112,11 +104,7 @@ const ValidationPaiement = () => {
       setLoadingAction(true);
       const token = localStorage.getItem('token');
       
-<<<<<<< HEAD
       const res = await fetch('/api2/finance/paiements/valider', {
-=======
-      const res = await fetch('/api/finance/paiements/valider', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,11 +148,7 @@ const ValidationPaiement = () => {
       setLoadingAction(true);
       const token = localStorage.getItem('token');
       
-<<<<<<< HEAD
       const res = await fetch('/api2/finance/paiements/marquer-paye', {
-=======
-      const res = await fetch('/api/finance/paiements/marquer-paye', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,11 +202,7 @@ const ValidationPaiement = () => {
       setLoadingAction(true);
       const token = localStorage.getItem('token');
       
-<<<<<<< HEAD
       const res = await fetch('/api2/finance/paiements/annuler', {
-=======
-      const res = await fetch('/api/finance/paiements/annuler', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1365,7 +1365,7 @@ const fetchEtudiants = async () => {
     }
     
     // First, try the new partner-specific route
-    const res = await axios.get('https://vmi1977988.contaboserver.net//api2/partners/etudiants', {
+    const res = await axios.get('https://vmi1977988.contaboserver.net/api2/partners/etudiants', {
       headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -1405,7 +1405,7 @@ const fetchEtudiants = async () => {
       console.log('Partner route not found, trying fallback...');
       try {
         // Try the older commercial route as fallback
-        const fallbackRes = await axios.get('https://vmi1977988.contaboserver.net//api2/partnersetudiants', {
+        const fallbackRes = await axios.get('https://vmi1977988.contaboserver.net/api2/partnersetudiants', {
           headers: { Authorization: `Bearer ${token}` } // token is accessible here now
         });
         
@@ -1434,7 +1434,7 @@ const fetchCours = async () => {
     const token = localStorage.getItem('token');
     
     // CORRECTION 3: Try partner/admin course route first
-    const res = await axios.get('https://vmi1977988.contaboserver.net//api2/partnerscours', {
+    const res = await axios.get('https://vmi1977988.contaboserver.net/api2/partnerscours', {
       headers: { Authorization: `Bearer ${token}` }
     });
     
@@ -1445,7 +1445,7 @@ const fetchCours = async () => {
     // CORRECTION 4: Fallback to basic courses route
     if (err.response?.status === 404) {
       try {
-        const fallbackRes = await axios.get('https://vmi1977988.contaboserver.net//api2/cours', {
+        const fallbackRes = await axios.get('https://vmi1977988.contaboserver.net/api2/cours', {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         setListeCours(fallbackRes.data);
@@ -1937,7 +1937,7 @@ const handleSubmitAjout = async (e) => {
     });
     
     // Try partner creation endpoint
-    const response = await axios.post('https://vmi1977988.contaboserver.net//api2/partners/etudiants', formData, {
+    const response = await axios.post('https://vmi1977988.contaboserver.net/api2/partners/etudiants', formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data'
@@ -1984,7 +1984,7 @@ const handleSubmitAjout = async (e) => {
           }
         });
         
-        const fallbackResponse = await axios.post('https://vmi1977988.contaboserver.net//api2/partnersetudiants', fallbackFormData, {
+        const fallbackResponse = await axios.post('https://vmi1977988.contaboserver.net/api2/partnersetudiants', fallbackFormData, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'

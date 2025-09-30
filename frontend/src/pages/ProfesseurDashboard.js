@@ -62,9 +62,9 @@ const navigate = useNavigate();
       const headers = { Authorization: `Bearer ${token}` };
 
       const [resEt, resCours, resPre] = await Promise.all([
-        fetch('https://vmi1977988.contaboserver.net//api2/professeur/etudiants', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/professeur/mes-cours', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/professeur/presences', { headers })
+        fetch('https://vmi1977988.contaboserver.net/api2/professeur/etudiants', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/professeur/mes-cours', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/professeur/presences', { headers })
       ]);
 
       if (resEt.ok) {
@@ -94,7 +94,7 @@ useEffect(() => {
   const fetchProf = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/profile', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
 

@@ -32,7 +32,7 @@ const EtudiantProfil = () => {
   const fetchEtudiantInfo = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/profile', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/profile', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -76,7 +76,7 @@ const EtudiantProfil = () => {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/profil', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/profil', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -111,7 +111,7 @@ const DashboardCommercial = () => {
         params.personnel = 'true';
       }
       
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/comercial/stats?' + new URLSearchParams(params), {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/comercial/stats?' + new URLSearchParams(params), {
         method: 'GET',
         headers: { 
           'Authorization': `Bearer ${token}`,

@@ -52,37 +52,21 @@ const ProfilEtudiantadmin = () => {
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
         // Récupération des données de l'étudiant
-<<<<<<< HEAD
         const resEtudiant = await axios.get(`https://vmi1977988.contaboserver.net//api2/etudiants/${id}`, config);
         setEtudiant(resEtudiant.data);
 
         // Récupération de tous les paiements puis filtrage
         const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements`, config);
-=======
-        const resEtudiant = await axios.get(`http://195.179.229.230:5000/api/etudiants/${id}`, config);
-        setEtudiant(resEtudiant.data);
-
-        // Récupération de tous les paiements puis filtrage
-        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements`, config);
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         const paiementsEtudiant = resPaiements.data.filter(p => p.etudiant?._id === id);
         setPaiements(paiementsEtudiant);
 
         // Récupération des paiements expirés puis filtrage
-<<<<<<< HEAD
         const resExp = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/exp`, config);
-=======
-        const resExp = await axios.get(`http://195.179.229.230:5000/api/paiements/exp`, config);
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         const expirésEtudiant = resExp.data.filter(p => p.etudiant?._id === id);
         setExpirés(expirésEtudiant);
 
         // Récupération des présences pour cet étudiant
-<<<<<<< HEAD
         const resPres = await axios.get(`https://vmi1977988.contaboserver.net//api2/presences/etudiant/${id}`, config);
-=======
-        const resPres = await axios.get(`http://195.179.229.230:5000/api/presences/etudiant/${id}`, config);
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         setPresences(resPres.data);
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
@@ -167,11 +151,7 @@ const ProfilEtudiantadmin = () => {
             <div style={styles.avatarSection}>
               {etudiant.image ? (
                 <img
-<<<<<<< HEAD
                   src={`https://vmi1977988.contaboserver.net/${etudiant.image}`}
-=======
-                  src={`http://195.179.229.230:5000${etudiant.image}`}
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                   alt="Profil étudiant"
                   style={styles.avatar}
                 />

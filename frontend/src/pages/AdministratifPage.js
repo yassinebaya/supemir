@@ -37,11 +37,7 @@ const AdministratifPage = () => {
 
   const fetchAdministratifs = async () => {
     try {
-<<<<<<< HEAD
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/administratifs', { headers });
-=======
-      const res = await fetch('http://195.179.229.230:5000/api/administratifs', { headers });
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/administratifs', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des administratifs');
       const data = await res.json();
       setAdministratifs(data);
@@ -101,13 +97,8 @@ const AdministratifPage = () => {
     setLoading(true);
     try {
       const url = editingAdministratif 
-<<<<<<< HEAD
         ? `https://vmi1977988.contaboserver.net//api2/administratifs/${editingAdministratif._id}`
-        : 'https://vmi1977988.contaboserver.net//api2/administratifs';
-=======
-        ? `http://195.179.229.230:5000/api/administratifs/${editingAdministratif._id}`
-        : 'http://195.179.229.230:5000/api/administratifs';
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+        : 'https://vmi1977988.contaboserver.net/api2/administratifs';
       
       const method = editingAdministratif ? 'PUT' : 'POST';
       
@@ -152,11 +143,7 @@ const AdministratifPage = () => {
     
     setLoading(true);
     try {
-<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/administratifs/${administratifToDelete._id}`, {
-=======
-      const res = await fetch(`http://195.179.229.230:5000/api/administratifs/${administratifToDelete._id}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'DELETE',
         headers
       });
@@ -181,11 +168,7 @@ const AdministratifPage = () => {
   const handleToggleActive = async (administratif) => {
     try {
       setLoading(true);
-<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/administratifs/${administratif._id}/actif`, {
-=======
-      const res = await fetch(`http://195.179.229.230:5000/api/administratifs/${administratif._id}/actif`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'PATCH',
         headers
       });

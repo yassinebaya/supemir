@@ -121,11 +121,7 @@ const ListeProfesseurs = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-<<<<<<< HEAD
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/pedagogique/mes-professeurs', {
-=======
-      const res = await axios.get('http://195.179.229.230:5000/api/pedagogique/mes-professeurs', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/pedagogique/mes-professeurs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProfesseurs(res.data);
@@ -139,11 +135,7 @@ const ListeProfesseurs = () => {
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
-<<<<<<< HEAD
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/cours', {
-=======
-      const res = await axios.get('http://195.179.229.230:5000/api/cours', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCours(res.data);
@@ -334,11 +326,7 @@ const ListeProfesseurs = () => {
         }
       });
 
-<<<<<<< HEAD
-      await axios.post('https://vmi1977988.contaboserver.net//api2/professeurs', formData, {
-=======
-      await axios.post('http://195.179.229.230:5000/api/professeurs', formData, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      await axios.post('https://vmi1977988.contaboserver.net/api2/professeurs', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -464,11 +452,7 @@ const ListeProfesseurs = () => {
         }
       });
 
-<<<<<<< HEAD
       await axios.put(`https://vmi1977988.contaboserver.net//api2/professeurs/${professeurAModifier._id}`, formData, {
-=======
-      await axios.put(`http://195.179.229.230:5000/api/professeurs/${professeurAModifier._id}`, formData, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -492,11 +476,7 @@ const ListeProfesseurs = () => {
   const handleToggleActif = async (id) => {
     try {
       const token = localStorage.getItem('token');
-<<<<<<< HEAD
       await axios.patch(`https://vmi1977988.contaboserver.net//api2/professeurs/${id}/actif`, {}, {
-=======
-      await axios.patch(`http://195.179.229.230:5000/api/professeurs/${id}/actif`, {}, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchProfesseurs();
@@ -510,11 +490,7 @@ const ListeProfesseurs = () => {
 
     try {
       const token = localStorage.getItem('token');
-<<<<<<< HEAD
       await axios.delete(`https://vmi1977988.contaboserver.net//api2/professeurs/${id}`, {
-=======
-      await axios.delete(`http://195.179.229.230:5000/api/professeurs/${id}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchProfesseurs();
@@ -791,11 +767,7 @@ const ListeProfesseurs = () => {
                     <td className="image-colonne">
                       {p.image ? (
                         <img 
-<<<<<<< HEAD
                           src={`https://vmi1977988.contaboserver.net/${p.image}`} 
-=======
-                          src={`http://195.179.229.230:5000${p.image}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           alt="professeur" 
                           className="image-etudiant"
                         />
@@ -844,11 +816,7 @@ const ListeProfesseurs = () => {
                     <div className="carte-image">
                       {p.image ? (
                         <img 
-<<<<<<< HEAD
                           src={`https://vmi1977988.contaboserver.net/${p.image}`} 
-=======
-                          src={`http://195.179.229.230:5000${p.image}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           alt="professeur" 
                           className="carte-photo"
                         />
@@ -1345,11 +1313,7 @@ const ListeProfesseurs = () => {
                 <div className="etudiant-image-section">
                   {professeurSelectionne.image ? (
                     <img 
-<<<<<<< HEAD
                       src={`https://vmi1977988.contaboserver.net/${professeurSelectionne.image}`} 
-=======
-                      src={`http://195.179.229.230:5000${professeurSelectionne.image}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                       alt="Photo du professeur" 
                       className="etudiant-image-large"
                     />
@@ -1467,11 +1431,7 @@ const ListeProfesseurs = () => {
                         <div key={type} className="document-item">
                           <span className="document-label">{type}:</span>
                           <a 
-<<<<<<< HEAD
                             href={`https://vmi1977988.contaboserver.net/${path}`} 
-=======
-                            href={`http://195.179.229.230:5000${path}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="document-link"
@@ -1739,11 +1699,7 @@ const ListeProfesseurs = () => {
                     <div className="image-actuelle">
                       <small>Image actuelle :</small>
                       <img 
-<<<<<<< HEAD
                         src={`https://vmi1977988.contaboserver.net/${professeurAModifier.image}`} 
-=======
-                        src={`http://195.179.229.230:5000${professeurAModifier.image}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                         alt="Image actuelle" 
                         className="image-preview"
                         style={{width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px'}}
@@ -1777,11 +1733,7 @@ const ListeProfesseurs = () => {
                     {professeurAModifier.documents?.diplome && (
                       <small>
                         Document actuel: 
-<<<<<<< HEAD
                         <a href={`https://vmi1977988.contaboserver.net/${professeurAModifier.documents.diplome}`} target="_blank" rel="noopener noreferrer">
-=======
-                        <a href={`http://195.179.229.230:5000${professeurAModifier.documents.diplome}`} target="_blank" rel="noopener noreferrer">
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           Voir
                         </a>
                       </small>
@@ -1798,11 +1750,7 @@ const ListeProfesseurs = () => {
                     {professeurAModifier.documents?.cv && (
                       <small>
                         Document actuel: 
-<<<<<<< HEAD
                         <a href={`https://vmi1977988.contaboserver.net/${professeurAModifier.documents.cv}`} target="_blank" rel="noopener noreferrer">
-=======
-                        <a href={`http://195.179.229.230:5000${professeurAModifier.documents.cv}`} target="_blank" rel="noopener noreferrer">
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           Voir
                         </a>
                       </small>
@@ -1819,11 +1767,7 @@ const ListeProfesseurs = () => {
                     {professeurAModifier.documents?.rib && (
                       <small>
                         Document actuel: 
-<<<<<<< HEAD
                         <a href={`https://vmi1977988.contaboserver.net/${professeurAModifier.documents.rib}`} target="_blank" rel="noopener noreferrer">
-=======
-                        <a href={`http://195.179.229.230:5000${professeurAModifier.documents.rib}`} target="_blank" rel="noopener noreferrer">
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           Voir
                         </a>
                       </small>
@@ -1840,11 +1784,7 @@ const ListeProfesseurs = () => {
                     {professeurAModifier.documents?.copieCin && (
                       <small>
                         Document actuel: 
-<<<<<<< HEAD
                         <a href={`https://vmi1977988.contaboserver.net/${professeurAModifier.documents.copieCin}`} target="_blank" rel="noopener noreferrer">
-=======
-                        <a href={`http://195.179.229.230:5000${professeurAModifier.documents.copieCin}`} target="_blank" rel="noopener noreferrer">
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           Voir
                         </a>
                       </small>
@@ -1861,11 +1801,7 @@ const ListeProfesseurs = () => {
                     {professeurAModifier.documents?.engagement && (
                       <small>
                         Document actuel: 
-<<<<<<< HEAD
                         <a href={`https://vmi1977988.contaboserver.net/${professeurAModifier.documents.engagement}`} target="_blank" rel="noopener noreferrer">
-=======
-                        <a href={`http://195.179.229.230:5000${professeurAModifier.documents.engagement}`} target="_blank" rel="noopener noreferrer">
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           Voir
                         </a>
                       </small>
@@ -1882,11 +1818,7 @@ const ListeProfesseurs = () => {
                     {professeurAModifier.documents?.vacataire && (
                       <small>
                         Document actuel: 
-<<<<<<< HEAD
                         <a href={`https://vmi1977988.contaboserver.net/${professeurAModifier.documents.vacataire}`} target="_blank" rel="noopener noreferrer">
-=======
-                        <a href={`http://195.179.229.230:5000${professeurAModifier.documents.vacataire}`} target="_blank" rel="noopener noreferrer">
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           Voir
                         </a>
                       </small>

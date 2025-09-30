@@ -211,7 +211,7 @@ const [audioBlob, setAudioBlob] = useState(null);
       }
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/me', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -240,7 +240,7 @@ const [audioBlob, setAudioBlob] = useState(null);
 
       setIsLoadingEtudiants(true);
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/mes-etudiants-messages', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/mes-etudiants-messages', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -276,7 +276,7 @@ const [audioBlob, setAudioBlob] = useState(null);
       if (!token) return;
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/unread-by-sender', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/unread-by-sender', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -298,7 +298,7 @@ const [audioBlob, setAudioBlob] = useState(null);
       if (!token) return;
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/users/online-status', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/users/online-status', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -338,7 +338,7 @@ const [audioBlob, setAudioBlob] = useState(null);
         setMessages(Array.isArray(data) ? data : []);
         
         // Marquer les messages comme lus
-        await fetch('https://vmi1977988.contaboserver.net//api2/messages/mark-conversation-read', {
+        await fetch('https://vmi1977988.contaboserver.net/api2/messages/mark-conversation-read', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -380,7 +380,7 @@ const [audioBlob, setAudioBlob] = useState(null);
     if (fichier) formData.append('fichier', fichier);
 
     try {
-      const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/upload-prof', {
+      const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/upload-prof', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -488,7 +488,7 @@ const stopRecording = () => {
       formData.append('fichier', file);
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/messages/upload-prof', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/upload-prof', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData

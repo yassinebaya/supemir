@@ -54,11 +54,7 @@ const [editNote, setEditNote] = useState('');
         'Content-Type': 'application/json'
       };
 
-<<<<<<< HEAD
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/rappels', { headers });
-=======
-      const res = await fetch('http://195.179.229.230:5000/api/rappels', { headers });
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/rappels', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des rappels');
 
       const data = await res.json();
@@ -87,11 +83,7 @@ new Date(r.dateRappel).toDateString() <= today.toDateString()
 }, []);
 
 const handleUpdateRappel = async (id) => {
-<<<<<<< HEAD
   const res = await fetch(`https://vmi1977988.contaboserver.net//api2/rappels/${id}`, {
-=======
-  const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dateRappel: editDate, note: editNote })
@@ -103,11 +95,7 @@ const handleUpdateRappel = async (id) => {
 };
 
 const handleDeleteRappel = async (id) => {
-<<<<<<< HEAD
   const res = await fetch(`https://vmi1977988.contaboserver.net//api2/rappels/${id}`, {
-=======
-  const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     method: 'DELETE'
   });
 
@@ -135,23 +123,13 @@ const handleDeleteRappel = async (id) => {
 
       // Récupération parallèle des données - ✅ إضافة الأساتذة
       const [adminRes, etudiantsRes, coursRes, paiementsRes, evenementsRes, presencesRes, professeursRes] = await Promise.all([
-<<<<<<< HEAD
-        fetch('https://vmi1977988.contaboserver.net//api2/admin/dashboard', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/etudiants', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/cours', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/paiements', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/evenements', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/presences', { headers }),
-        fetch('https://vmi1977988.contaboserver.net//api2/professeurs', { headers }) // ✅ جديد
-=======
-        fetch('http://195.179.229.230:5000/api/admin/dashboard', { headers }),
-        fetch('http://195.179.229.230:5000/api/etudiants', { headers }),
-        fetch('http://195.179.229.230:5000/api/cours', { headers }),
-        fetch('http://195.179.229.230:5000/api/paiements', { headers }),
-        fetch('http://195.179.229.230:5000/api/evenements', { headers }),
-        fetch('http://195.179.229.230:5000/api/presences', { headers }),
-        fetch('http://195.179.229.230:5000/api/professeurs', { headers }) // ✅ جديد
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+        fetch('https://vmi1977988.contaboserver.net/api2/admin/dashboard', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/etudiants', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/cours', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/paiements', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/evenements', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/presences', { headers }),
+        fetch('https://vmi1977988.contaboserver.net/api2/professeurs', { headers }) // ✅ جديد
       ]);
 
       // Vérification des statuts de réponse
@@ -206,11 +184,7 @@ const handleDeleteRappel = async (id) => {
       // Récupération des paiements expirés
       let paiementsExpiresCount = 0;
       try {
-<<<<<<< HEAD
-        const paiementsExpRes = await fetch('https://vmi1977988.contaboserver.net//api2/paiements/exp', { headers });
-=======
-        const paiementsExpRes = await fetch('http://195.179.229.230:5000/api/paiements/exp', { headers });
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+        const paiementsExpRes = await fetch('https://vmi1977988.contaboserver.net/api2/paiements/exp', { headers });
         if (paiementsExpRes.ok) {
           const paiementsExpires = await paiementsExpRes.json();
           paiementsExpiresCount = Array.isArray(paiementsExpires) ? paiementsExpires.length : 0;

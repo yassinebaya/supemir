@@ -36,7 +36,7 @@ const ProfileEtudiant = () => {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/profile', {
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/profile', {
           headers: { Authorization: `Bearer ${token}` }
         });
 

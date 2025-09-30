@@ -54,7 +54,7 @@ const DocumentsProfesseur = () => {
   const fetchDocuments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/documents', {
+      const response = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/documents', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -73,7 +73,7 @@ const DocumentsProfesseur = () => {
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/mes-cours', {
+      const response = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/mes-cours', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -143,7 +143,7 @@ const DocumentsProfesseur = () => {
     formData.append('fichier', file);
 
     try {
-      const response = await fetch('https://vmi1977988.contaboserver.net//api2/documents', {
+      const response = await fetch('https://vmi1977988.contaboserver.net/api2/documents', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -37,7 +37,7 @@ const PaymentManagerPage = () => {
 
   const fetchManagers = async () => {
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/admin/paiement-managers', { headers });
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/admin/paiement-managers', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des gestionnaires');
       const data = await res.json();
       setManagers(data);
@@ -103,7 +103,7 @@ const PaymentManagerPage = () => {
     try {
       const url = editingManager 
         ? `https://vmi1977988.contaboserver.net//api2/admin/paiement-managers/${editingManager._id}`
-        : 'https://vmi1977988.contaboserver.net//api2/admin/paiement-managers';
+        : 'https://vmi1977988.contaboserver.net/api2/admin/paiement-managers';
       
       const method = editingManager ? 'PUT' : 'POST';
       

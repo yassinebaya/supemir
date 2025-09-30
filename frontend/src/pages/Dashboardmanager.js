@@ -38,7 +38,7 @@ const RevenusMensuels = () => {
       const token = localStorage.getItem('token');
 
       // Récupérer les étudiants pour avoir les années disponibles
-      const etudiantsRes = await fetch('https://vmi1977988.contaboserver.net//api2/etudiants', {
+      const etudiantsRes = await fetch('https://vmi1977988.contaboserver.net/api2/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -260,7 +260,7 @@ const RevenusMensuels = () => {
           'Content-Type': 'application/json'
         };
 
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/rappels', { headers });
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/rappels', { headers });
         if (!res.ok) throw new Error('Erreur lors du chargement des rappels');
 
         const data = await res.json();

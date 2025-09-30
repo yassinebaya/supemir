@@ -42,7 +42,7 @@ const EtudiantsProfesseur = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/professeur/etudiants', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/professeur/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);

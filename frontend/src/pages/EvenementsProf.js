@@ -35,7 +35,7 @@ const EvenementsProf = () => {
     const fetchEvenements = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('https://vmi1977988.contaboserver.net//api2/evenements/public', {
+        const res = await axios.get('https://vmi1977988.contaboserver.net/api2/evenements/public', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setEvenements(res.data);

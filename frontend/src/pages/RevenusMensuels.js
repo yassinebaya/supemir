@@ -30,11 +30,7 @@ const RevenusMensuels = () => {
       const token = localStorage.getItem('token');
 
       // Récupérer les étudiants pour avoir les années disponibles
-<<<<<<< HEAD
-      const etudiantsRes = await fetch('https://vmi1977988.contaboserver.net//api2/etudiants', {
-=======
-      const etudiantsRes = await fetch('http://195.179.229.230:5000/api/etudiants', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const etudiantsRes = await fetch('https://vmi1977988.contaboserver.net/api2/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -62,7 +58,6 @@ const RevenusMensuels = () => {
       }
 
       // Calculer les prévisions avec la nouvelle API
-<<<<<<< HEAD
       // Filtrer les étudiants inscrits (prixTotal > 0) pour 2025/2026
       let totalInscrits = 0;
       if ((anneeASelectionner || anneeScolaireFilter) === '2025/2026') {
@@ -71,9 +66,6 @@ const RevenusMensuels = () => {
         totalInscrits = etudiantsData.filter(e => (e.nouvelleInscription === true || e.nouvelleInscription === false) && parseFloat(e.prixTotal) > 0).length;
       }
       await fetchRevenusAPI(anneeASelectionner || anneeScolaireFilter, token, totalInscrits);
-=======
-      await fetchRevenusAPI(anneeASelectionner || anneeScolaireFilter, token);
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
@@ -85,22 +77,14 @@ const RevenusMensuels = () => {
   };
 
   // FONCTION pour utiliser l'API revenus - CORRIGÉE
-<<<<<<< HEAD
   const fetchRevenusAPI = async (anneeScolaire, token, totalInscrits) => {
-=======
-  const fetchRevenusAPI = async (anneeScolaire, token) => {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     try {
       // Encoder l'année scolaire pour l'URL (remplacer / par %2F)
       const anneeScolaireEncoded = encodeURIComponent(anneeScolaire);
       
       console.log('Appel API avec année:', anneeScolaire, 'encodée:', anneeScolaireEncoded);
       
-<<<<<<< HEAD
       const revenusRes = await fetch(`https://vmi1977988.contaboserver.net//api2/revenus/previsions/${anneeScolaireEncoded}`, {
-=======
-      const revenusRes = await fetch(`http://195.179.229.230:5000/api/revenus/previsions/${anneeScolaireEncoded}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -113,15 +97,9 @@ const RevenusMensuels = () => {
       const revenusData = await revenusRes.json();
       
       if (revenusData.success) {
-<<<<<<< HEAD
         // Utiliser le nombre d'inscrits filtrés pour Total Étudiants
         setStatistiquesAnnee({
           totalEtudiants: totalInscrits,
-=======
-        // Mettre à jour les états avec les données de l'API
-        setStatistiquesAnnee({
-          totalEtudiants: revenusData.statistiques.totalEtudiants,
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           totalInscriptions: revenusData.statistiques.totalInscriptionReel,
           totalFormation: revenusData.statistiques.totalFormationReel,
           totalCA: revenusData.statistiques.totalCAPrevisionnel,

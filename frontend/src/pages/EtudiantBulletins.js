@@ -84,7 +84,7 @@ const EtudiantBulletins = () => {
     const fetchBulletins = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins/etudiant/me', {
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/bulletins/etudiant/me', {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -189,7 +189,7 @@ const EtudiantBulletins = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins/etudiant/me', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/bulletins/etudiant/me', {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

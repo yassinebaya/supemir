@@ -131,11 +131,7 @@ const PaiementsExpadmin = () => {
         return;
       }
 
-<<<<<<< HEAD
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/paiements/exp', {
-=======
-      const res = await fetch('http://195.179.229.230:5000/api/paiements/exp', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/paiements/exp', {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -906,11 +902,7 @@ const PaiementsExpadmin = () => {
                   <div style={styles.studentInfo}>
                     {p.etudiant?.image ? (
                       <img
-<<<<<<< HEAD
                         src={`https://vmi1977988.contaboserver.net/${p.etudiant.image}`}
-=======
-                        src={`http://195.179.229.230:5000${p.etudiant.image}`}
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                         alt="Avatar"
                         style={{
                           width: '48px',
@@ -1157,11 +1149,7 @@ const PaiementsExpadmin = () => {
                       <div style={styles.studentCell}>
                         {p.etudiant?.image ? (
                           <img
-<<<<<<< HEAD
                             src={`https://vmi1977988.contaboserver.net/${p.etudiant.image}`}
-=======
-                            src={`http://195.179.229.230:5000${p.etudiant.image}`}
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                             alt="Avatar"
                             style={{
                               width: '32px',
@@ -1344,11 +1332,7 @@ const PaiementsExpadmin = () => {
             }}>
               {selectedPaiement.etudiant?.image ? (
                 <img
-<<<<<<< HEAD
                   src={`https://vmi1977988.contaboserver.net/${selectedPaiement.etudiant.image}`}
-=======
-                  src={`http://195.179.229.230:5000${selectedPaiement.etudiant.image}`}
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                   alt="Photo étudiant"
                   style={{
                     width: '80px',

@@ -46,7 +46,7 @@ const Calendrier = () => {
     const fetchEvenements = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('https://vmi1977988.contaboserver.net//api2/evenements', {
+        const res = await axios.get('https://vmi1977988.contaboserver.net/api2/evenements', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -251,7 +251,7 @@ const Calendrier = () => {
   const fetchEvenements = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/evenements', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/evenements', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -340,7 +340,7 @@ const Calendrier = () => {
       }
 
       const token = localStorage.getItem('token');
-      await axios.post('https://vmi1977988.contaboserver.net//api2/evenements', {
+      await axios.post('https://vmi1977988.contaboserver.net/api2/evenements', {
         titre: newEvent.titre,
         description: newEvent.description,
         dateDebut: newEvent.dateDebut,

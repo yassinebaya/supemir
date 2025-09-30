@@ -43,7 +43,7 @@ const PartnersPage = () => {
   const fetchPartners = async () => {
     try {
       setLoading(true);
-      let url = 'https://vmi1977988.contaboserver.net//api2/partners';
+      let url = 'https://vmi1977988.contaboserver.net/api2/partners';
       
       // Ajouter le filtre si nécessaire
       if (filterActive !== 'all') {
@@ -69,7 +69,7 @@ const PartnersPage = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/partners/stats', { headers });
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/partners/stats', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des statistiques');
       const data = await res.json();
       
@@ -135,7 +135,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;    if (!emailRegex.test(newPart
     try {
       const url = editingPartner 
         ? `https://vmi1977988.contaboserver.net//api2/partners/${editingPartner._id}`
-        : 'https://vmi1977988.contaboserver.net//api2/partners';
+        : 'https://vmi1977988.contaboserver.net/api2/partners';
       
       const method = editingPartner ? 'PUT' : 'POST';
       

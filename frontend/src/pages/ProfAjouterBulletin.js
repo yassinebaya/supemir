@@ -202,7 +202,7 @@ const ProfAjouterBulletin = () => {
     const fetchCours = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/mes-cours', {
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/mes-cours', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -219,7 +219,7 @@ const ProfAjouterBulletin = () => {
     const fetchBulletins = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins/professeur', {
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/bulletins/professeur', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -243,7 +243,7 @@ const ProfAjouterBulletin = () => {
     const fetchEtudiants = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('https://vmi1977988.contaboserver.net//api2/professeur/etudiants', {
+        const res = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -382,7 +382,7 @@ const ProfAjouterBulletin = () => {
               };
               
               promises.push(
-                fetch('https://vmi1977988.contaboserver.net//api2/bulletins', {
+                fetch('https://vmi1977988.contaboserver.net/api2/bulletins', {
                   method: 'POST',
                   headers: {
                     Authorization: `Bearer ${token}`,
@@ -408,7 +408,7 @@ const ProfAjouterBulletin = () => {
       resetForm();
       
       // Refresh bulletins list
-      const bulletinsRes = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins/professeur', {
+      const bulletinsRes = await fetch('https://vmi1977988.contaboserver.net/api2/bulletins/professeur', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const bulletinsData = await bulletinsRes.json();
@@ -445,7 +445,7 @@ const ProfAjouterBulletin = () => {
       showNotification(`${group.etudiants.length} bulletin(s) supprimé(s) avec succès`);
       
       // Refresh bulletins
-      const bulletinsRes = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins/professeur', {
+      const bulletinsRes = await fetch('https://vmi1977988.contaboserver.net/api2/bulletins/professeur', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const bulletinsData = await bulletinsRes.json();
@@ -468,7 +468,7 @@ const ProfAjouterBulletin = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins/professeur', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/bulletins/professeur', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

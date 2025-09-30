@@ -131,7 +131,7 @@ const PaiementsExp = () => {
         return;
       }
 
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/paiements/exp', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/paiements/exp', {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

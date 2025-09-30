@@ -44,7 +44,7 @@ const CommercialPage = () => {
 
   const fetchCommerciaux = async () => {
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/commerciaux', { headers });
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/commerciaux', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des commerciaux');
       const data = await res.json();
       setCommerciaux(data);
@@ -56,7 +56,7 @@ const CommercialPage = () => {
 
   const fetchAllEtudiants = async () => {
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/etudiants', { headers });
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/etudiants', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des étudiants');
       const data = await res.json();
       setAllEtudiants(data);
@@ -68,7 +68,7 @@ const CommercialPage = () => {
   const fetchStatistiques = async () => {
     try {
       setLoading(true);
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/commerciaux/statistiques', { headers });
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/commerciaux/statistiques', { headers });
       
       if (!res.ok) {
         throw new Error(`Erreur HTTP: ${res.status}`);
@@ -162,7 +162,7 @@ const CommercialPage = () => {
     try {
       const url = editingCommercial 
         ? `https://vmi1977988.contaboserver.net//api2/commerciaux/${editingCommercial._id}`
-        : 'https://vmi1977988.contaboserver.net//api2/commerciaux'; // Fixed endpoint consistency
+        : 'https://vmi1977988.contaboserver.net/api2/commerciaux'; // Fixed endpoint consistency
       
       const method = editingCommercial ? 'PUT' : 'POST';
       

@@ -292,13 +292,9 @@ const STRUCTURE_FORMATION = {
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
        'Informatique – Cnam',
-<<<<<<< HEAD
       'Ingénierie QHSE',
       'Achat & Logistique',
       'Ingénierie industrielle'
-=======
-      'Achat & Logistique'
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
       
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
@@ -1363,7 +1359,7 @@ const Commercialetudiants = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/commercial/etudiants', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/commercial/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);
@@ -1379,7 +1375,7 @@ const Commercialetudiants = () => {
       const token = localStorage.getItem('token');
       
       // Utiliser la route spécifique aux commerciaux
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/commercial/cours', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/commercial/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -1391,7 +1387,7 @@ const Commercialetudiants = () => {
       if (err.response?.status === 404) {
         try {
           const token = localStorage.getItem('token');
-          const res = await axios.get('https://vmi1977988.contaboserver.net//api2/cours', {
+          const res = await axios.get('https://vmi1977988.contaboserver.net/api2/cours', {
             headers: { Authorization: `Bearer ${token}` }
           });
           setListeCours(res.data);
@@ -1408,7 +1404,7 @@ const Commercialetudiants = () => {
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/commerciaux', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/commerciaux', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCommerciaux(res.data);
@@ -1418,11 +1414,10 @@ const Commercialetudiants = () => {
     }
   };
 
-<<<<<<< HEAD
   const fetchPartners = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/partners/active-list', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/partners/active-list', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListePartners(res.data.data || []);
@@ -1458,21 +1453,6 @@ const Commercialetudiants = () => {
       });
     });
   };
-=======
-const getCoursFiltre = (listeCours, form) => {
-  if (!form.filiere || !listeCours.length) return [];
-  const candidats = buildCoursCandidates(form);
-  if (!candidats.length) return [];
-  
-  return listeCours.filter(cours => {
-    const nomCours = normalize(cours.nom || cours);
-    return candidats.some(candidat => {
-      const nc = normalize(candidat);
-      return nomCours.includes(nc) || nc.includes(nomCours);
-    });
-  });
-};
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
   const filtrerEtudiants = () => {
     let resultats = etudiants;
@@ -1508,13 +1488,8 @@ const getCoursFiltre = (listeCours, form) => {
     setEtudiantsFiltres(resultats);
     setPageActuelle(1);
   };
-<<<<<<< HEAD
   const coursFiltres = getCoursFiltre(listeCours, formAjout);
   const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
-=======
-const coursFiltres = getCoursFiltre(listeCours, formAjout);
-const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
   // Fonctions pour le modal d'ajout
   const openModal = () => {
@@ -1671,7 +1646,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       cycle: etudiant.cycle || '',
       specialiteIngenieur: etudiant.specialiteIngenieur || '',
       optionIngenieur: etudiant.optionIngenieur || '',
-<<<<<<< HEAD
       nomPartner: etudiant.nomPartner?._id || etudiant.nomPartner || '',
       // Nouveaux champs pour le modèle backend
       specialiteLicencePro: '',
@@ -1698,32 +1672,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       commentaireAuthentificationBac: '',
       commentaireAuthenticationDiplome: '',
       commentaireEngagementCommentaire: ''
-=======
-      specialiteLicencePro: etudiant.specialiteLicencePro || '',
-      optionLicencePro: etudiant.optionLicencePro || '',
-      specialiteMasterPro: etudiant.specialiteMasterPro || '',
-      optionMasterPro: etudiant.optionMasterPro || '',
-      // NOUVEAUX CHAMPS
-      modePaiement: etudiant.modePaiement || 'mensuel',
-      telephoneResponsable: etudiant.telephoneResponsable || '',
-      codeBaccalaureat: etudiant.codeBaccalaureat || '',
-      // NOUVEAUX CHAMPS PARTNER
-      isPartner: etudiant.isPartner ?? false,
-      nomPartner: etudiant.nomPartner || '',
-      prixTotalPartner: etudiant.prixTotalPartner || '',
-      // COMMENTAIRES DOCUMENTS
-      commentaireCin: etudiant.documents?.cin?.commentaire || '',
-      commentaireBacCommentaire: etudiant.documents?.bacCommentaire?.commentaire || '',
-      commentaireReleveNoteBac: etudiant.documents?.releveNoteBac?.commentaire || '',
-      commentaireDiplomeCommentaire: etudiant.documents?.diplomeCommentaire?.commentaire || '',
-      commentaireAttestationReussiteCommentaire: etudiant.documents?.attestationReussiteCommentaire?.commentaire || '',
-      commentaireReleveNotesFormationCommentaire: etudiant.documents?.releveNotesFormationCommentaire?.commentaire || '',
-      commentairePasseport: etudiant.documents?.passeport?.commentaire || '',
-      commentaireBacOuAttestationBacCommentaire: etudiant.documents?.bacOuAttestationBacCommentaire?.commentaire || '',
-      commentaireAuthentificationBac: etudiant.documents?.authentificationBac?.commentaire || '',
-      commentaireAuthenticationDiplome: etudiant.documents?.authenticationDiplome?.commentaire || '',
-      commentaireEngagementCommentaire: etudiant.documents?.engagementCommentaire?.commentaire || ''
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     });
     setImageFileModifier(null);
     setMessageModifier('');
@@ -1937,7 +1885,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
           formData.append(key, filesAjout[key]);
         }
       });
-      const response = await axios.post('https://vmi1977988.contaboserver.net//api2/commercial/etudiants', formData, {
+      const response = await axios.post('https://vmi1977988.contaboserver.net/api2/commercial/etudiants', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -2905,7 +2853,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
               {/* Section Étudiant Partenaire */}
               <div className="form-section">
                 <h4><Shield size={20} className="inline mr-2" />Étudiant Partenaire</h4>
-<<<<<<< HEAD
                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
       <span style={{fontSize: '14px', color: '#666'}}>
         {listePartners.length} partenaire(s) disponible(s)
@@ -2925,9 +2872,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
         ↻ Actualiser
       </button>
     </div>
-=======
-                
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -2939,15 +2883,10 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     Étudiant Partenaire
                   </label>
                 </div>
-<<<<<<< HEAD
-=======
-
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 {formAjout.isPartner && (
                   <div className="form-row">
                     <div className="form-group">
                       <label>Nom du Partenaire *</label>
-<<<<<<< HEAD
                       <select
                         name="nomPartner"
                         value={formAjout.nomPartner}
@@ -2968,18 +2907,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       )}
                       <small style={{color: '#666', fontSize: '12px'}}>
                         Sélectionnez l'organisation partenaire dans la liste
-=======
-                      <input
-                        type="text"
-                        name="nomPartner"
-                        placeholder="Nom du partenaire"
-                        value={formAjout.nomPartner}
-                        onChange={handleChangeAjout}
-                        required={formAjout.isPartner}
-                      />
-                      <small style={{color: '#666', fontSize: '12px'}}>
-                        Nom de l'organisation partenaire
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                       </small>
                     </div>
                     <div className="form-group">
@@ -3070,13 +2997,8 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
     <label>Mode de Paiement</label>
     <select
       name="modePaiement"
-<<<<<<< HEAD
       value={formAjout.modePaiement}
       onChange={handleChangeAjout}
-=======
-      value={formModifier.modePaiement}
-      onChange={handleChangeModifier}
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     >
       <option value="semestriel">Semestriel</option>
       <option value="trimestriel">Trimestriel</option>
@@ -3090,13 +3012,8 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       type="text"
       name="typePaiement"
       placeholder="Type de paiement"
-<<<<<<< HEAD
       value={formAjout.typePaiement}
       onChange={handleChangeAjout}
-=======
-      value={formModifier.typePaiement}
-      onChange={handleChangeModifier}
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
     />
   </div>
 </div>
@@ -3106,11 +3023,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
     type="file"
     name="image"
     accept="image/*"
-<<<<<<< HEAD
     onChange={handleImageChangeAjout}
-=======
-    onChange={handleImageChangeModifier}
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
   />
 </div>
 
@@ -3907,7 +3820,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
               {/* Section Étudiant Partenaire */}
               <div className="form-section">
                 <h4><Shield size={20} className="inline mr-2" />Étudiant Partenaire</h4>
-<<<<<<< HEAD
                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
       <span style={{fontSize: '14px', color: '#666'}}>
         {listePartners.length} partenaire(s) disponible(s)
@@ -3927,9 +3839,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
         ↻ Actualiser
       </button>
     </div>
-=======
-                
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -3941,15 +3850,10 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     Étudiant Partenaire
                   </label>
                 </div>
-<<<<<<< HEAD
-=======
-
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                 {formModifier.isPartner && (
                   <div className="form-row">
                     <div className="form-group">
                       <label>Nom du Partenaire *</label>
-<<<<<<< HEAD
                       <select
                         name="nomPartner"
                         value={formModifier.nomPartner}
@@ -3970,18 +3874,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       )}
                       <small style={{color: '#666', fontSize: '12px'}}>
                         Sélectionnez l'organisation partenaire dans la liste
-=======
-                      <input
-                        type="text"
-                        name="nomPartner"
-                        placeholder="Nom du partenaire"
-                        value={formModifier.nomPartner}
-                        onChange={handleChangeModifier}
-                        required={formModifier.isPartner}
-                      />
-                      <small style={{color: '#666', fontSize: '12px'}}>
-                        Nom de l'organisation partenaire
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                       </small>
                     </div>
                     <div className="form-group">
@@ -4146,10 +4038,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <label>Document CIN</label>
                       <input
                         type="file"
-<<<<<<< HEAD
-=======
-
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                         name="documentCin"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         onChange={handleFileChangeModifier}
@@ -4521,11 +4409,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   <div className="student-photo">
                     {etudiantSelectionne.image ? (
                       <img 
-<<<<<<< HEAD
                         src={`https://vmi1977988.contaboserver.net/${etudiantSelectionne.image}`} 
-=======
-                        src={`http://195.179.229.230:5000${etudiantSelectionne.image}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                         alt="étudiant" 
                         className="view-photo"
                       />
@@ -4857,11 +4741,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   {etudiantSelectionne.isPartner && etudiantSelectionne.nomPartner && (
                     <div className="info-row">
                       <span className="info-label">Nom du Partenaire:</span>
-<<<<<<< HEAD
                       <span className="info-value">{getNomPartner(etudiantSelectionne.nomPartner)}</span>
-=======
-                      <span className="info-value">{etudiantSelectionne.nomPartner}</span>
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                     </div>
                   )}
                   {etudiantSelectionne.isPartner && etudiantSelectionne.prixTotalPartner && (

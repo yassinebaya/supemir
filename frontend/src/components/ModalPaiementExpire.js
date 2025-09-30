@@ -10,7 +10,7 @@ const ModalPaiementExpire = () => {
     const fetchNotifications = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('https://vmi1977988.contaboserver.net//api2/etudiant/notifications', {
+        const response = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/notifications', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,

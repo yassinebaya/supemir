@@ -118,11 +118,7 @@ const [filters, setFilters] = useState({
   const fetchPaiements = async () => {
     try {
       const token = localStorage.getItem('token');
-<<<<<<< HEAD
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/paiements', {
-=======
-      const res = await fetch('http://195.179.229.230:5000/api/paiements', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/paiements', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -140,11 +136,7 @@ const [filters, setFilters] = useState({
   const fetchExpirés = async () => {
     try {
       const token = localStorage.getItem('token');
-<<<<<<< HEAD
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/paiements/exp', {
-=======
-      const res = await fetch('http://195.179.229.230:5000/api/paiements/exp', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/paiements/exp', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

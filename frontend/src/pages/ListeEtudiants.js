@@ -3,11 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './ListeEtudiants.css';
 import '../styles/partner-styles.css';
-<<<<<<< HEAD
 import Sidebar from '../components/sidberadmin';
-=======
-import Sidebar from '../components/Sidebar';
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
 
 import { 
   User, 
@@ -1496,7 +1492,7 @@ const ListeEtudiants = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/etudiants', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);
@@ -1510,7 +1506,7 @@ const ListeEtudiants = () => {
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/cours', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCours(res.data);
@@ -1522,7 +1518,7 @@ const ListeEtudiants = () => {
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net//api2/commerciaux', {
+      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/commerciaux', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCommerciaux(res.data);
@@ -2018,11 +2014,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
         formData.append(key, commentairesAjout[key]);
       });
       
-<<<<<<< HEAD
-      const response = await axios.post('https://vmi1977988.contaboserver.net//api2/etudiants', formData, {
-=======
-      const response = await axios.post('http://195.179.229.230:5000/api/etudiants', formData, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const response = await axios.post('https://vmi1977988.contaboserver.net/api2/etudiants', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -2160,11 +2152,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
         formData.append(key, commentairesModifier[key]);
       });
       
-<<<<<<< HEAD
       const response = await axios.put(`https://vmi1977988.contaboserver.net//api2/etudiants/${etudiantAModifier._id}`, formData, {
-=======
-      const response = await axios.put(`http://195.179.229.230:5000/api/etudiants/${etudiantAModifier._id}`, formData, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -2499,11 +2487,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <td className="image-colonne">
                       {e.image ? (
                         <img 
-<<<<<<< HEAD
                           src={`https://vmi1977988.contaboserver.net/${e.image}`} 
-=======
-                          src={`http://195.179.229.230:5000${e.image}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                           alt={getNomComplet(e)} 
                           className="image-etudiant"
                         />
@@ -4569,11 +4553,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                   <div className="student-photo">
                     {etudiantSelectionne.image ? (
                       <img 
-<<<<<<< HEAD
                         src={`https://vmi1977988.contaboserver.net/${etudiantSelectionne.image}`} 
-=======
-                        src={`http://195.179.229.230:5000${etudiantSelectionne.image}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                         alt={getNomComplet(etudiantSelectionne)} 
                         className="view-photo"
                       />
@@ -4949,11 +4929,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                               </div>
                             </div>
                             <a 
-<<<<<<< HEAD
                               href={`https://vmi1977988.contaboserver.net/${doc.fichier}`} 
-=======
-                              href={`http://195.179.229.230:5000${doc.fichier}`} 
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
                               target="_blank" 
                               rel="noopener noreferrer" 
                               className="btn-voir-document"

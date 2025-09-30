@@ -37,11 +37,7 @@ const FinanceProfPage = () => {
 
   const fetchProfs = async () => {
     try {
-<<<<<<< HEAD
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/admin/financeprofs', { headers });
-=======
-      const res = await fetch('http://195.179.229.230:5000/api/admin/financeprofs', { headers });
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/admin/financeprofs', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des professeurs');
       const data = await res.json();
       setProfs(data.data || data);
@@ -106,13 +102,8 @@ const FinanceProfPage = () => {
     setLoading(true);
     try {
       const url = editingProf 
-<<<<<<< HEAD
         ? `https://vmi1977988.contaboserver.net//api2/admin/financeprofs/${editingProf._id}`
-        : 'https://vmi1977988.contaboserver.net//api2/admin/financeprofs';
-=======
-        ? `http://195.179.229.230:5000/api/admin/financeprofs/${editingProf._id}`
-        : 'http://195.179.229.230:5000/api/admin/financeprofs';
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+        : 'https://vmi1977988.contaboserver.net/api2/admin/financeprofs';
       
       const method = editingProf ? 'PUT' : 'POST';
       
@@ -157,11 +148,7 @@ const FinanceProfPage = () => {
     
     setLoading(true);
     try {
-<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/admin/financeprofs/${profToDelete._id}`, {
-=======
-      const res = await fetch(`http://195.179.229.230:5000/api/admin/financeprofs/${profToDelete._id}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'DELETE',
         headers
       });
@@ -186,11 +173,7 @@ const FinanceProfPage = () => {
   const handleToggleActive = async (prof) => {
     try {
       setLoading(true);
-<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/admin/financeprofs/${prof._id}/toggle-status`, {
-=======
-      const res = await fetch(`http://195.179.229.230:5000/api/admin/financeprofs/${prof._id}/toggle-status`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'PATCH',
         headers
       });

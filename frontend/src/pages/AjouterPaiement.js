@@ -50,8 +50,8 @@ const AjouterPaiement = () => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       try {
-        const resEtudiants = await axios.get('https://vmi1977988.contaboserver.net//api2/etudiants', config);
-        const resCours = await axios.get('https://vmi1977988.contaboserver.net//api2/cours', config);
+        const resEtudiants = await axios.get('https://vmi1977988.contaboserver.net/api2/etudiants', config);
+        const resCours = await axios.get('https://vmi1977988.contaboserver.net/api2/cours', config);
 
         const etudiantsActifs = resEtudiants.data.filter(e => e.actif);
 
@@ -104,11 +104,7 @@ const AjouterPaiement = () => {
       
       // Récupérer les infos détaillées de paiement
       try {
-<<<<<<< HEAD
         const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}/info`, {
-=======
-        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}/info`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -134,11 +130,7 @@ const AjouterPaiement = () => {
         console.warn('API /info non disponible, utilisation de l\'ancienne méthode:', infoErr);
         
         // Fallback vers l'ancienne méthode
-<<<<<<< HEAD
         const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}`, {
-=======
-        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -253,11 +245,7 @@ const AjouterPaiement = () => {
     };
 
     try {
-<<<<<<< HEAD
-      await axios.post('https://vmi1977988.contaboserver.net//api2/paiements', paiementData, {
-=======
-      await axios.post('http://195.179.229.230:5000/api/paiements', paiementData, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      await axios.post('https://vmi1977988.contaboserver.net/api2/paiements', paiementData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('✅ Paiement ajouté avec succès');
@@ -308,7 +296,7 @@ const AjouterPaiement = () => {
     };
 
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/rappels', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/rappels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

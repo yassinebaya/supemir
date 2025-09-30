@@ -132,7 +132,7 @@ const AdminBulletins = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net//api2/bulletins', {
+      const res = await fetch('https://vmi1977988.contaboserver.net/api2/bulletins', {
         headers: { Authorization: `Bearer ${token}` }
       });
       

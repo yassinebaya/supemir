@@ -40,11 +40,7 @@ const MesStatistiques = () => {
       params.append('annee', selectedPeriod.annee);
       
       const res = await fetch(
-<<<<<<< HEAD
         `https://vmi1977988.contaboserver.net//api2/professeurs/mon-rapport?${params}`,
-=======
-        `http://195.179.229.230:5000/api/professeurs/mon-rapport?${params}`,
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         { headers: { Authorization: `Bearer ${token}` } }
       );
       

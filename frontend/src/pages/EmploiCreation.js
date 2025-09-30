@@ -57,11 +57,7 @@ const EmploiCreation = () => {
       const token = localStorage.getItem('token');
       
       // Récupérer les cours
-<<<<<<< HEAD
-      const resCours = await fetch('https://vmi1977988.contaboserver.net//api2/cours', {
-=======
-      const resCours = await fetch('http://195.179.229.230:5000/api/cours', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const resCours = await fetch('https://vmi1977988.contaboserver.net/api2/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resCours.ok) {
@@ -70,11 +66,7 @@ const EmploiCreation = () => {
       }
 
       // Récupérer les professeurs
-<<<<<<< HEAD
-      const resProfs = await fetch('https://vmi1977988.contaboserver.net//api2/professeurs', {
-=======
-      const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const resProfs = await fetch('https://vmi1977988.contaboserver.net/api2/professeurs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resProfs.ok) {
@@ -83,11 +75,7 @@ const EmploiCreation = () => {
       }
 
       // Récupérer les templates
-<<<<<<< HEAD
-      const resTemplates = await fetch('https://vmi1977988.contaboserver.net//api2/seances/templates', {
-=======
-      const resTemplates = await fetch('http://195.179.229.230:5000/api/seances/templates', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+      const resTemplates = await fetch('https://vmi1977988.contaboserver.net/api2/seances/templates', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resTemplates.ok) {
@@ -304,11 +292,7 @@ const EmploiCreation = () => {
         try {
           let res;
           if (seanceData.templateId) {
-<<<<<<< HEAD
             res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${seanceData.templateId}`, {
-=======
-            res = await fetch(`http://195.179.229.230:5000/api/seances/${seanceData.templateId}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -317,11 +301,7 @@ const EmploiCreation = () => {
               body: JSON.stringify(payload)
             });
           } else {
-<<<<<<< HEAD
-            res = await fetch('https://vmi1977988.contaboserver.net//api2/seances/template', {
-=======
-            res = await fetch('http://195.179.229.230:5000/api/seances/template', {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+            res = await fetch('https://vmi1977988.contaboserver.net/api2/seances/template', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -378,11 +358,7 @@ const EmploiCreation = () => {
       setMessage({ type: 'info', text: `Génération de ${nbSemaines} semaines en cours...` });
       
       const token = localStorage.getItem('token');
-<<<<<<< HEAD
       const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/generer/${nbSemaines}`, {
-=======
-      const res = await fetch(`http://195.179.229.230:5000/api/seances/generer/${nbSemaines}`, {
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

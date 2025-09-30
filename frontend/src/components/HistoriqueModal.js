@@ -16,13 +16,8 @@ const HistoriqueModal = ({ show, onClose, seanceId = null }) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const url = seanceId 
-<<<<<<< HEAD
         ? `https://vmi1977988.contaboserver.net//api2/seances/historique/${seanceId}`
-        : 'https://vmi1977988.contaboserver.net//api2/seances/historique';
-=======
-        ? `http://195.179.229.230:5000/api/seances/historique/${seanceId}`
-        : 'http://195.179.229.230:5000/api/seances/historique';
->>>>>>> 40b442342f960141cfa700ad6785875d931a1918
+        : 'https://vmi1977988.contaboserver.net/api2/seances/historique';
       
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
