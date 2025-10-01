@@ -57,7 +57,7 @@ const EmploiCreation = () => {
       const token = localStorage.getItem('token');
       
       // Récupérer les cours
-      const resCours = await fetch('https://vmi1977988.contaboserver.net/api2/cours', {
+      const resCours = await fetch('http://195.179.229.230:5000/api/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resCours.ok) {
@@ -66,7 +66,7 @@ const EmploiCreation = () => {
       }
 
       // Récupérer les professeurs
-      const resProfs = await fetch('https://vmi1977988.contaboserver.net/api2/professeurs', {
+      const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resProfs.ok) {
@@ -75,7 +75,7 @@ const EmploiCreation = () => {
       }
 
       // Récupérer les templates
-      const resTemplates = await fetch('https://vmi1977988.contaboserver.net/api2/seances/templates', {
+      const resTemplates = await fetch('http://195.179.229.230:5000/api/seances/templates', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resTemplates.ok) {
@@ -292,7 +292,7 @@ const EmploiCreation = () => {
         try {
           let res;
           if (seanceData.templateId) {
-            res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${seanceData.templateId}`, {
+            res = await fetch(`http://195.179.229.230:5000/api/seances/${seanceData.templateId}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -301,7 +301,7 @@ const EmploiCreation = () => {
               body: JSON.stringify(payload)
             });
           } else {
-            res = await fetch('https://vmi1977988.contaboserver.net/api2/seances/template', {
+            res = await fetch('http://195.179.229.230:5000/api/seances/template', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -358,7 +358,7 @@ const EmploiCreation = () => {
       setMessage({ type: 'info', text: `Génération de ${nbSemaines} semaines en cours...` });
       
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/generer/${nbSemaines}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/generer/${nbSemaines}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

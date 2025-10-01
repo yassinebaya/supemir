@@ -150,31 +150,15 @@ const pickBestCours = (listeCours, candidates) => {
 };
 
 const autoAssignCours = (form, setForm, listeCours, isLockedByUser) => {
-  // Ne rien faire si verrouillé ou données insuffisantes
-  if (isLockedByUser) return;
-  
   const cands = buildCoursCandidates(form);
-  if (!cands.length) return;
-  
+  if (!cands.length || isLockedByUser) return;
   const best = pickBestCours(listeCours, cands);
   if (!best) return;
-  
   setForm(prev => {
     const current = prev.cours || [];
-    
-    // Si le cours suggéré est déjà présent, ne rien changer
     if (current.includes(best)) return prev;
-    
-    // ✅ AJOUTER au lieu de remplacer
-    // Éviter les doublons
-    const nouveauxCours = [...new Set([...current, best])];
-    
-    return { 
-      ...prev, 
-      cours: nouveauxCours,
-      // ✅ Optionnel : marquer qu'un cours a été auto-suggéré
-      autoSuggestedCours: best
-    };
+    // on remplace par la meilleure suggestion (l'utilisateur peut toujours re-cliquer les chips)
+    return { ...prev, cours: [best] };
   });
 };
 
@@ -312,9 +296,10 @@ const STRUCTURE_FORMATION = {
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
       'Informatique – Cnam',
-'Ingénierie QHSE',
+      'Ingénierie QHSE',
       'Achat & Logistique',
-      'Ingénierie industrielle'    ],
+      'Ingénierie industrielle'
+    ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {
       'Développement Informatique Full Stack': [
@@ -1472,30 +1457,31 @@ const ListeEtudiants = () => {
     filtrerEtudiants();
   }, [etudiants, recherche, filtreGenre, filtreCours, filtreActif, filtreCommercial, filtreAnneeScolaire, filtrePartner]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-assign pour AJOUT
-  useEffect(() => {
-    autoAssignCours(formAjout, setFormAjout, listeCours, lockCoursAjout);
-  }, [
-    formAjout.filiere, formAjout.niveau,
-    formAjout.specialite, formAjout.option,
-    formAjout.cycle, formAjout.specialiteIngenieur, formAjout.optionIngenieur,
-    formAjout.specialiteLicencePro, formAjout.optionLicencePro,
-    formAjout.specialiteMasterPro, formAjout.optionMasterPro,
-    listeCours, lockCoursAjout
-  ]);
-
-  // Auto-assign pour MODIFICATION
-  useEffect(() => {
-    autoAssignCours(formModifier, setFormModifier, listeCours, lockCoursModifier);
-  }, [
-    formModifier.filiere, formModifier.niveau,
-    formModifier.specialite, formModifier.option,
-    formModifier.cycle, formModifier.specialiteIngenieur, formModifier.optionIngenieur,
-    formModifier.specialiteLicencePro, formModifier.optionLicencePro,
-    formModifier.specialiteMasterPro, formModifier.optionMasterPro,
-    listeCours, lockCoursModifier
-  ]);
-
+ 
+   // Auto-assign pour AJOUT
+   useEffect(() => {
+     autoAssignCours(formAjout, setFormAjout, listeCours, lockCoursAjout);
+   }, [
+     formAjout.filiere, formAjout.niveau,
+     formAjout.specialite, formAjout.option,
+     formAjout.cycle, formAjout.specialiteIngenieur, formAjout.optionIngenieur,
+     formAjout.specialiteLicencePro, formAjout.optionLicencePro,
+     formAjout.specialiteMasterPro, formAjout.optionMasterPro,
+     listeCours, lockCoursAjout
+   ]);
+ 
+   // Auto-assign pour MODIFICATION
+   useEffect(() => {
+     autoAssignCours(formModifier, setFormModifier, listeCours, lockCoursModifier);
+   }, [
+     formModifier.filiere, formModifier.niveau,
+     formModifier.specialite, formModifier.option,
+     formModifier.cycle, formModifier.specialiteIngenieur, formModifier.optionIngenieur,
+     formModifier.specialiteLicencePro, formModifier.optionLicencePro,
+     formModifier.specialiteMasterPro, formModifier.optionMasterPro,
+     listeCours, lockCoursModifier
+   ]);
+ 
   // Génération automatique du code étudiant pour l'ajout
   useEffect(() => {
     if (formAjout.filiere && formAjout.prenom && formAjout.nomDeFamille) {
@@ -1520,7 +1506,7 @@ const ListeEtudiants = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/etudiants', {
+      const res = await axios.get('http://195.179.229.230:5000/api/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(res.data);
@@ -1534,7 +1520,7 @@ const ListeEtudiants = () => {
   const fetchCours = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/cours', {
+      const res = await axios.get('http://195.179.229.230:5000/api/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCours(res.data);
@@ -1546,7 +1532,7 @@ const ListeEtudiants = () => {
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://vmi1977988.contaboserver.net/api2/commerciaux', {
+      const res = await axios.get('http://195.179.229.230:5000/api/commerciaux', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setListeCommerciaux(res.data);
@@ -2045,7 +2031,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
         formData.append(key, commentairesAjout[key]);
       });
       
-      const response = await axios.post('https://vmi1977988.contaboserver.net/api2/etudiants', formData, {
+      const response = await axios.post('http://195.179.229.230:5000/api/etudiants', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -2094,121 +2080,140 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
     }));
   };
 
-  const handleSubmitModifier = async (e) => {
-    e.preventDefault();
+ const handleSubmitModifier = async (e) => {
+  e.preventDefault();
+  
+  // Validation de l'année scolaire
+  const erreurAnneeScolaire = validerAnneeScolaire(formModifier.anneeScolaire);
+  if (erreurAnneeScolaire) {
+    setMessageModifier('❌ ' + erreurAnneeScolaire);
+    return;
+  }
+  
+  // Validation de la formation
+  const erreursFormation = validerFormationComplete(formModifier);
+  if (erreursFormation.length > 0) {
+    setMessageModifier('❌ Erreurs de formation: ' + erreursFormation.join(', '));
+    return;
+  }
+  
+  setLoadingModifier(true);
+  try {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
     
-    // Validation de l'année scolaire
-    const erreurAnneeScolaire = validerAnneeScolaire(formModifier.anneeScolaire);
-    if (erreurAnneeScolaire) {
-      setMessageModifier('❌ ' + erreurAnneeScolaire);
-      return;
-    }
+    // 🔥 SOLUTION: Nettoyer TOUTES les valeurs vides/undefined avant envoi
+    const formModifierClean = { ...formModifier };
     
-    // Validation de la formation
-    const erreursFormation = validerFormationComplete(formModifier);
-    if (erreursFormation.length > 0) {
-      setMessageModifier('❌ Erreurs de formation: ' + erreursFormation.join(', '));
-      return;
-    }
-    
-    setLoadingModifier(true);
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      
-      // NETTOYER les données avant l'envoi
-      const formModifierClean = { ...formModifier };
-      
-      // Supprimer les champs non pertinents selon la filière
-      if (formModifierClean.filiere === 'MASI' || formModifierClean.filiere === 'IRM') {
-        delete formModifierClean.cycle;
-        delete formModifierClean.specialiteIngenieur;
-        delete formModifierClean.optionIngenieur;
-        delete formModifierClean.specialiteLicencePro;
-        delete formModifierClean.optionLicencePro;
-        delete formModifierClean.specialiteMasterPro;
-        delete formModifierClean.optionMasterPro;
-      } else if (formModifierClean.filiere === 'CYCLE_INGENIEUR') {
-        delete formModifierClean.specialiteLicencePro;
-        delete formModifierClean.optionLicencePro;
-        delete formModifierClean.specialiteMasterPro;
-        delete formModifierClean.optionMasterPro;
-        delete formModifierClean.specialite;
-        delete formModifierClean.option;
-      } else if (formModifierClean.filiere === 'LICENCE_PRO') {
-        delete formModifierClean.cycle;
-        delete formModifierClean.specialiteIngenieur;
-        delete formModifierClean.optionIngenieur;
-        delete formModifierClean.specialiteMasterPro;
-        delete formModifierClean.optionMasterPro;
-        delete formModifierClean.specialite;
-        delete formModifierClean.option;
-      } else if (formModifierClean.filiere === 'MASTER_PRO') {
-        delete formModifierClean.cycle;
-        delete formModifierClean.specialiteIngenieur;
-        delete formModifierClean.optionIngenieur;
-        delete formModifierClean.specialiteLicencePro;
-        delete formModifierClean.optionLicencePro;
-        delete formModifierClean.specialite;
-        delete formModifierClean.option;
+    // Fonction helper pour nettoyer les valeurs
+    const cleanValue = (value) => {
+      if (value === '' || value === undefined || value === null) {
+        return undefined;
       }
-      
-      Object.keys(formModifierClean).forEach(key => {
-        if (key === 'cours') {
-          formModifierClean[key].forEach(c => formData.append('cours[]', c));
-        } else if (key === 'motDePasse' && formModifierClean[key].trim() === '') {
-          return; // Ne pas envoyer mot de passe vide
-        } else {
-          const valeur = formModifierClean[key];
+      return value;
+    };
+    
+    // Supprimer les champs non pertinents selon la filière
+    if (formModifierClean.filiere === 'MASI' || formModifierClean.filiere === 'IRM') {
+      delete formModifierClean.cycle;
+      delete formModifierClean.specialiteIngenieur;
+      delete formModifierClean.optionIngenieur;
+      delete formModifierClean.specialiteLicencePro;
+      delete formModifierClean.optionLicencePro;
+      delete formModifierClean.specialiteMasterPro;
+      delete formModifierClean.optionMasterPro;
+    } else if (formModifierClean.filiere === 'CYCLE_INGENIEUR') {
+      delete formModifierClean.specialiteLicencePro;
+      delete formModifierClean.optionLicencePro;
+      delete formModifierClean.specialiteMasterPro;
+      delete formModifierClean.optionMasterPro;
+      delete formModifierClean.specialite;
+      delete formModifierClean.option;
+    } else if (formModifierClean.filiere === 'LICENCE_PRO') {
+      delete formModifierClean.cycle;
+      delete formModifierClean.specialiteIngenieur;
+      delete formModifierClean.optionIngenieur;
+      delete formModifierClean.specialiteMasterPro;
+      delete formModifierClean.optionMasterPro;
+      delete formModifierClean.specialite;
+      delete formModifierClean.option;
+    } else if (formModifierClean.filiere === 'MASTER_PRO') {
+      delete formModifierClean.cycle;
+      delete formModifierClean.specialiteIngenieur;
+      delete formModifierClean.optionIngenieur;
+      delete formModifierClean.specialiteLicencePro;
+      delete formModifierClean.optionLicencePro;
+      delete formModifierClean.specialite;
+      delete formModifierClean.option;
+    }
+    
+    // 🔥 IMPORTANT: N'envoyer que les champs avec des valeurs valides
+    Object.keys(formModifierClean).forEach(key => {
+      if (key === 'cours') {
+        formModifierClean[key].forEach(c => formData.append('cours[]', c));
+      } else if (key === 'motDePasse' && formModifierClean[key].trim() === '') {
+        return; // Ne pas envoyer mot de passe vide
+      } else {
+        const valeurNettoyee = cleanValue(formModifierClean[key]);
+        
+        // ✅ Ne pas ajouter au FormData si la valeur est undefined
+        if (valeurNettoyee !== undefined) {
           formData.append(
             key,
-            typeof valeur === 'boolean'
-              ? valeur.toString()
-              : (valeur !== undefined ? valeur : '')
+            typeof valeurNettoyee === 'boolean'
+              ? valeurNettoyee.toString()
+              : valeurNettoyee.toString()
           );
         }
-      });
+      }
+    });
 
-      if (imageFileModifier) formData.append('image', imageFileModifier);
-      
-      // Nouveaux documents avec commentaires
-      Object.keys(documentsModifier).forEach(key => {
-        if (documentsModifier[key]) {
-          formData.append(key, documentsModifier[key]);
-        }
-      });
-      
-      // Commentaires des documents
-      Object.keys(commentairesModifier).forEach(key => {
-        formData.append(key, commentairesModifier[key]);
-      });
-      
-      const response = await axios.put(`https://vmi1977988.contaboserver.net//api2/etudiants/${etudiantAModifier._id}`, formData, {
+    if (imageFileModifier) formData.append('image', imageFileModifier);
+    
+    // Nouveaux documents avec commentaires
+    Object.keys(documentsModifier).forEach(key => {
+      if (documentsModifier[key]) {
+        formData.append(key, documentsModifier[key]);
+      }
+    });
+    
+    // Commentaires des documents
+    Object.keys(commentairesModifier).forEach(key => {
+      const valeur = commentairesModifier[key];
+      if (valeur && valeur.trim() !== '') {
+        formData.append(key, valeur);
+      }
+    });
+    
+    const response = await axios.put(
+      `http://195.179.229.230:5000/api/etudiants/${etudiantAModifier._id}`, 
+      formData, 
+      {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
-      });
+      }
+    );
 
-      setMessageModifier('✅ Étudiant modifié avec succès');
-      setEtudiants(etudiants.map(e => e._id === etudiantAModifier._id ? response.data : e));
-          await fetchEtudiants();
-
-      setTimeout(() => {
-        closeEditModal();
-      }, 2000);
-      
-    } catch (err) {
-      setMessageModifier('❌ Erreur: ' + (err.response?.data?.message || 'Erreur inconnue'));
-    } finally {
-      setLoadingModifier(false);
-    }
-  };
+    setMessageModifier('✅ Étudiant modifié avec succès');
+    await fetchEtudiants();
+    setTimeout(() => {
+      closeEditModal();
+    }, 2000);
+    
+  } catch (err) {
+    console.error('Erreur complète:', err.response?.data); // 🔥 Ajout pour debug
+    setMessageModifier('❌ Erreur: ' + (err.response?.data?.message || err.response?.data?.error || 'Erreur inconnue'));
+  } finally {
+    setLoadingModifier(false);
+  }
+};
 
   const handleToggleActif = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.patch(`https://vmi1977988.contaboserver.net//api2/etudiants/${id}/actif`, {}, {
+      const res = await axios.patch(`http://195.179.229.230:5000/api/etudiants/${id}/actif`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(etudiants.map(e => e._id === id ? res.data : e));
@@ -2222,7 +2227,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`https://vmi1977988.contaboserver.net//api2/etudiants/${id}`, {
+      await axios.delete(`http://195.179.229.230:5000/api/etudiants/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEtudiants(etudiants.filter(e => e._id !== id));
@@ -2633,7 +2638,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <td className="image-colonne">
                       {e.image ? (
                         <img 
-                          src={`https://vmi1977988.contaboserver.net/${e.image}`} 
+                          src={`http://195.179.229.230:5000${e.image}`} 
                           alt={getNomComplet(e)} 
                           className="image-etudiant"
                         />
@@ -2682,7 +2687,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                     <div className="carte-image">
                       {e.image ? (
                         <img 
-                          src={`https://vmi1977988.contaboserver.net/${e.image}`} 
+                          src={`http://195.179.229.230:5000${e.image}`} 
                           alt="etudiant" 
                           className="carte-photo"
                         />
@@ -4765,7 +4770,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                   <div className="student-photo">
                     {etudiantSelectionne.image ? (
                       <img 
-                        src={`https://vmi1977988.contaboserver.net/${etudiantSelectionne.image}`} 
+                        src={`http://195.179.229.230:5000${etudiantSelectionne.image}`} 
                         alt={getNomComplet(etudiantSelectionne)} 
                         className="view-photo"
                       />
@@ -5147,7 +5152,7 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
                               </div>
                             </div>
                             <a 
-                              href={`https://vmi1977988.contaboserver.net/${doc.fichier}`} 
+                              href={`http://195.179.229.230:5000${doc.fichier}`} 
                               target="_blank" 
                               rel="noopener noreferrer" 
                               className="btn-voir-document"

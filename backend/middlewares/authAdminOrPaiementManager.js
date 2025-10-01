@@ -8,7 +8,7 @@ const Partner = require('../models/partner');
 
 const authAdminOrPaiementManagerOrPedagogique = async (req, res, next) => {
   try {
-    if (req.path === '/api2/login' || req.url === '/api2/login') {
+    if (req.path === '/api/login' || req.url === '/api/login') {
       return next();
     }
 

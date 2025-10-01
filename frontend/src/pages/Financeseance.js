@@ -417,7 +417,7 @@ const Financeseance = () => {
       const token = localStorage.getItem('token');
       
       // Récupérer les cours
-      const resCours = await fetch('https://vmi1977988.contaboserver.net/api2/cours', {
+      const resCours = await fetch('http://195.179.229.230:5000/api/cours', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resCours.ok) {
@@ -426,7 +426,7 @@ const Financeseance = () => {
       }
 
       // Récupérer les professeurs
-      const resProfs = await fetch('https://vmi1977988.contaboserver.net/api2/professeurs', {
+      const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resProfs.ok) {
@@ -452,7 +452,7 @@ const Financeseance = () => {
       
       console.log('🔍 Récupération séances pour la semaine du:', lundiSemaine);
       
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/semaine/${lundiSemaine}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/semaine/${lundiSemaine}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -687,13 +687,13 @@ const Financeseance = () => {
 
       let res;
       if (s.typeSeance === 'exception' && s.seanceId) {
-        res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${s.seanceId}`, {
+        res = await fetch(`http://195.179.229.230:5000/api/seances/${s.seanceId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload)
         });
       } else {
-        res = await fetch('https://vmi1977988.contaboserver.net/api2/seances/exception', {
+        res = await fetch('http://195.179.229.230:5000/api/seances/exception', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload)
@@ -731,7 +731,7 @@ const Financeseance = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${seanceId}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/${seanceId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -777,39 +777,92 @@ const Financeseance = () => {
     setCurrentWeek(newDate);
   };
 
-  const copierSemainePrecedente = async () => {
-    const lundiActuel = weekDates[0].toISOString().split('T')[0];
-    if (!window.confirm('Copier toutes les séances de la semaine précédente vers la semaine actuelle ?')) {
-      return;
-    }
-    setCopyLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/seances/copier-semaine-precedente', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          lundiDestination: lundiActuel
-        })
+const copierSemainePrecedente = async () => {
+  const lundiActuel = weekDates[0].toISOString().split('T')[0];
+  
+  // Calculer la date de la semaine précédente pour l'affichage
+  const semainePrecedente = new Date(weekDates[0]);
+  semainePrecedente.setDate(semainePrecedente.getDate() - 7);
+  
+  if (!window.confirm(`Copier toutes les séances de la semaine du ${formatDate(semainePrecedente)} vers la semaine actuelle ?`)) {
+    return;
+  }
+  
+  setCopyLoading(true);
+  
+  try {
+    const token = localStorage.getItem('token');
+    
+    console.log('📤 Envoi requête copie:', { lundiDestination: lundiActuel });
+    
+    const res = await fetch('http://195.179.229.230:5000/api/seances/copier-semaine-precedente', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        lundiDestination: lundiActuel
+      })
+    });
+    
+    console.log('📥 Statut réponse:', res.status, res.statusText);
+    
+    const result = await res.json();
+    console.log('📥 Données reçues:', result);
+    
+    if (res.ok && result.ok) {
+      // Copier aussi la configuration des créneaux de la semaine précédente
+      const semaineKeySource = getSemaineKey(semainePrecedente);
+      const semaineKeyDest = getSemaineKey(currentWeek);
+      
+      const nouveauxCreneaux = { ...creneauxCours };
+      let creneauxCopies = 0;
+      
+      selectedCours.forEach(coursId => {
+        if (creneauxCours[coursId]?.[semaineKeySource]) {
+          if (!nouveauxCreneaux[coursId]) {
+            nouveauxCreneaux[coursId] = {};
+          }
+          nouveauxCreneaux[coursId][semaineKeyDest] = {
+            ...creneauxCours[coursId][semaineKeySource]
+          };
+          creneauxCopies++;
+        }
       });
-      const result = await res.json();
-      if (result.ok) {
-        setMessage({ type: 'success', text: result.message });
-        await fetchSeancesReelles();
-      } else {
-        setMessage({ type: 'error', text: result.error });
+      
+      if (creneauxCopies > 0) {
+        localStorage.setItem('creneauxCoursPersonnalises', JSON.stringify(nouveauxCreneaux));
+        setCreneauxCours(nouveauxCreneaux);
       }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Erreur de connexion' });
-    } finally {
-      setCopyLoading(false);
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      
+      // Utiliser le bon nom de propriété
+      const nbSeances = result.seancesCrees || result.nombreSeanceCopiees || 0;
+      
+      setMessage({ 
+        type: 'success', 
+        text: `${nbSeances} séance(s) + ${creneauxCopies} configuration(s) de créneaux copiées` 
+      });
+      
+      // Recharger les données
+      await fetchSeancesReelles();
+    } else {
+      setMessage({ 
+        type: 'error', 
+        text: result.error || result.message || 'Erreur lors de la copie' 
+      });
     }
-  };
-
+  } catch (err) {
+    console.error('❌ Erreur copie semaine:', err);
+    setMessage({ 
+      type: 'error', 
+      text: `Erreur de connexion: ${err.message}` 
+    });
+  } finally {
+    setCopyLoading(false);
+    setTimeout(() => setMessage({ type: '', text: '' }), 4000);
+  }
+};
   const marquerRattrapage = async (coursId, jour, creneau, seanceData) => {
     const seanceId = seanceData.seanceId;
     
@@ -823,7 +876,7 @@ const Financeseance = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/pedagogique/seances/${seanceId}/rattrapage`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/pedagogique/seances/${seanceId}/rattrapage`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -847,7 +900,7 @@ const Financeseance = () => {
     try {
       setLoadingStats(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/rattrapages/statistiques', {
+      const res = await fetch('http://195.179.229.230:5000/api/pedagogique/rattrapages/statistiques', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -1537,133 +1590,210 @@ const Financeseance = () => {
         seanceId={selectedSeanceForHistory}
       />
 
-      {/* Modal Statistiques Rattrapages */}
-      {showStatsRattrapages && (
-        <div className="modal-overlay">
-          <div className="modal-content-large">
-            <h3>Statistiques des Rattrapages</h3>
-            
-            {loadingStats ? (
-              <div className="loading-stats">
-                <div>Chargement des statistiques...</div>
+     {/* Modal Statistiques Rattrapages - VERSION PROFESSIONNELLE */}
+{showStatsRattrapages && (
+  <div className="modal-overlay">
+    <div className="modal-content-large">
+      <div className="modal-header-pro">
+        <h3>
+          <Clock size={20} />
+          Rapport des Rattrapages
+        </h3>
+        <button 
+          onClick={() => setShowStatsRattrapages(false)}
+          className="modal-close-btn"
+          title="Fermer"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      
+      {loadingStats ? (
+        <div className="loading-stats">
+          <RefreshCw size={24} className="spin-icon" />
+          <p>Chargement des statistiques...</p>
+        </div>
+      ) : (
+        <>
+          {statsRattrapages.length > 0 ? (
+            <div className="stats-container">
+              {/* Résumé global */}
+              <div className="stats-summary">
+                <div className="summary-card">
+                  <div className="summary-label">Total professeurs</div>
+                  <div className="summary-value">{statsRattrapages.length}</div>
+                </div>
+                <div className="summary-card">
+                  <div className="summary-label">Total séances</div>
+                  <div className="summary-value">
+                    {statsRattrapages.reduce((sum, s) => sum + s.totalSeances, 0)}
+                  </div>
+                </div>
+                <div className="summary-card alert">
+                  <div className="summary-label">Total rattrapages</div>
+                  <div className="summary-value">
+                    {statsRattrapages.reduce((sum, s) => sum + s.seancesRattrapage, 0)}
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div>
+
+              {/* Liste des professeurs */}
+              <div className="stats-list">
                 {statsRattrapages.map(stat => (
-                  <div key={stat._id} className={`stat-card ${stat.seancesRattrapage > 0 ? 'has-rattrapage' : ''}`}>
-                    <div className="stat-header">
-                      {stat.nomProfesseur}
-                    </div>
-                    
-                    <div className="stat-grid">
-                      <div className="stat-item">
-                        <div className="stat-label">Total séances:</div>
-                        <div className="stat-value">{stat.totalSeances}</div>
+                  <div key={stat._id} className="stat-card-pro">
+                    <div className="stat-header-pro">
+                      <div className="prof-info">
+                        <h4>{stat.nomProfesseur}</h4>
+                        {stat.seancesRattrapage > 0 && (
+                          <span className="badge-alert">
+                            {stat.seancesRattrapage} rattrapage{stat.seancesRattrapage > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
-                      <div className="stat-item">
-                        <div className="stat-label">Séances normales:</div>
-                        <div className="stat-value normal">{stat.seancesNormales}</div>
-                      </div>
-                      <div className="stat-item">
-                        <div className="stat-label">Rattrapages requis:</div>
-                        <div className="stat-value rattrapage">{stat.seancesRattrapage}</div>
+                      
+                      <div className="stat-metrics">
+                        <div className="metric">
+                          <span className="metric-value">{stat.totalSeances}</span>
+                          <span className="metric-label">Total</span>
+                        </div>
+                        <div className="metric success">
+                          <span className="metric-value">{stat.seancesNormales}</span>
+                          <span className="metric-label">Effectuées</span>
+                        </div>
+                        <div className="metric warning">
+                          <span className="metric-value">{stat.seancesRattrapage}</span>
+                          <span className="metric-label">Rattrapages</span>
+                        </div>
                       </div>
                     </div>
                     
                     {stat.totalSeances > 0 && (
-                      <div className="stat-taux">
-                        <span>Taux de présence: <strong>{Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%</strong></span>
-                        <span>Taux de rattrapage: <strong className="rattrapage">{stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%</strong></span>
+                      <div className="stat-progress">
+                        <div className="progress-bar-container">
+                          <div 
+                            className="progress-bar-fill success"
+                            style={{ width: `${(stat.seancesNormales / stat.totalSeances) * 100}%` }}
+                          />
+                          <div 
+                            className="progress-bar-fill warning"
+                            style={{ width: `${(stat.seancesRattrapage / stat.totalSeances) * 100}%` }}
+                          />
+                        </div>
+                        <div className="progress-labels">
+                          <span className="progress-label">
+                            Présence: {Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%
+                          </span>
+                          <span className="progress-label warning-text">
+                            Rattrapage: {stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%
+                          </span>
+                        </div>
                       </div>
                     )}
 
-                    {/* Afficher détails rattrapages si disponibles */}
+                    {/* Détails des rattrapages */}
                     {stat.detailsRattrapages && stat.detailsRattrapages.length > 0 && (
-                      <div className="rattrapage-details">
-                        <div className="details-title">
-                          Détails des {stat.detailsRattrapages.length} rattrapage(s)
-                        </div>
+                      <details className="rattrapage-details-pro">
+                        <summary className="details-toggle">
+                          Voir les {stat.detailsRattrapages.length} rattrapage{stat.detailsRattrapages.length > 1 ? 's' : ''} en détail
+                        </summary>
                         
-                        {stat.detailsRattrapages.map((rattrapage, idx) => (
-                          <div key={idx} className="rattrapage-item">
-                            <div className="rattrapage-seance">
-                              <strong>Séance:</strong> {rattrapage.cours} - {rattrapage.matiere}
-                              <br />
-                              <strong>Date:</strong> {new Date(rattrapage.dateSeance).toLocaleDateString('fr-FR')} 
-                              ({rattrapage.jour} {rattrapage.heureDebut}-{rattrapage.heureFin})
-                              {rattrapage.salle && (
-                                <>
-                                  <br />
-                                  <strong>Salle:</strong> {rattrapage.salle}
-                                </>
-                              )}
-                            </div>
-                            
-                            <div className="rattrapage-marqueur">
-                              <strong>Marqué par:</strong>
-                              <br />
-                              <span className="marqueur-nom">
-                                {rattrapage.marqueParNom || 'Système'}
-                              </span>
-                              {rattrapage.marqueParRole && (
-                                <>
-                                  <br />
-                                  <span className="marqueur-role">
-                                    ({rattrapage.marqueParRole})
-                                  </span>
-                                </>
-                              )}
-                              {rattrapage.marqueParEmail && (
-                                <>
-                                  <br />
-                                  <span className="marqueur-email">
-                                    {rattrapage.marqueParEmail}
-                                  </span>
-                                </>
-                              )}
-                              {rattrapage.dateRattrapage && (
-                                <>
-                                  <br />
-                                  <span className="marqueur-date">
-                                    Le {new Date(rattrapage.dateRattrapage).toLocaleDateString('fr-FR')} 
-                                    à {new Date(rattrapage.dateRattrapage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            
-                            {rattrapage.notes && (
-                              <div className="rattrapage-notes">
-                                <strong>Notes:</strong> {rattrapage.notes}
+                        <div className="details-content">
+                          {stat.detailsRattrapages.map((rattrapage, idx) => (
+                            <div key={idx} className="rattrapage-card">
+                              <div className="rattrapage-header">
+                                <span className="rattrapage-number">#{idx + 1}</span>
+                                <span className="rattrapage-date">
+                                  {new Date(rattrapage.dateSeance).toLocaleDateString('fr-FR', {
+                                    weekday: 'long',
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric'
+                                  })}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                              
+                              <div className="rattrapage-body">
+                                <div className="rattrapage-row">
+                                  <span className="rattrapage-label">Cours:</span>
+                                  <span className="rattrapage-value">{rattrapage.cours}</span>
+                                </div>
+                                <div className="rattrapage-row">
+                                  <span className="rattrapage-label">Matière:</span>
+                                  <span className="rattrapage-value">{rattrapage.matiere}</span>
+                                </div>
+                                <div className="rattrapage-row">
+                                  <span className="rattrapage-label">Horaire:</span>
+                                  <span className="rattrapage-value">
+                                    {rattrapage.jour} {rattrapage.heureDebut} - {rattrapage.heureFin}
+                                  </span>
+                                </div>
+                                {rattrapage.salle && (
+                                  <div className="rattrapage-row">
+                                    <span className="rattrapage-label">Salle:</span>
+                                    <span className="rattrapage-value">{rattrapage.salle}</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="rattrapage-footer">
+                                <div className="marqueur-info">
+                                  <span className="marqueur-label">Marqué par:</span>
+                                  <span className="marqueur-name">
+                                    {rattrapage.marqueParNom || 'Système'}
+                                  </span>
+                                  {rattrapage.marqueParRole && (
+                                    <span className="marqueur-role">
+                                      ({rattrapage.marqueParRole})
+                                    </span>
+                                  )}
+                                </div>
+                                {rattrapage.dateRattrapage && (
+                                  <span className="marqueur-date">
+                                    {new Date(rattrapage.dateRattrapage).toLocaleDateString('fr-FR')} 
+                                    {' à '}
+                                    {new Date(rattrapage.dateRattrapage).toLocaleTimeString('fr-FR', { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {rattrapage.notes && (
+                                <div className="rattrapage-notes">
+                                  <strong>Notes:</strong> {rattrapage.notes}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     )}
                   </div>
                 ))}
-                
-                {statsRattrapages.length === 0 && (
-                  <div className="empty-stats">
-                    <div>📊</div>
-                    <div>Aucune donnée de rattrapage disponible</div>
-                  </div>
-                )}
               </div>
-            )}
-            
-            <div className="modal-footer">
-              <button
-                onClick={() => setShowStatsRattrapages(false)}
-                className="modal-button cancel"
-              >
-                Fermer
-              </button>
             </div>
-          </div>
-        </div>
+          ) : (
+            <div className="empty-state-pro">
+              <Clock size={48} />
+              <h4>Aucune donnée disponible</h4>
+              <p>Il n'y a actuellement aucun rattrapage enregistré dans le système.</p>
+            </div>
+          )}
+        </>
       )}
+      
+      <div className="modal-footer-pro">
+        <button
+          onClick={() => setShowStatsRattrapages(false)}
+          className="btn-secondary"
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

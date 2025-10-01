@@ -42,7 +42,7 @@ const ProfileProfesseur = () => {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/profile', {
+        const res = await fetch('http://195.179.229.230:5000/api/professeur/profile', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -104,7 +104,7 @@ const ProfileProfesseur = () => {
     if (!docPath) return;
     
     const link = document.createElement('a');
-    link.href = `https://vmi1977988.contaboserver.net/${docPath}`;
+    link.href = `http://195.179.229.230:5000${docPath}`;
     link.download = docName;
     link.target = '_blank';
     document.body.appendChild(link);
@@ -149,7 +149,7 @@ const ProfileProfesseur = () => {
             <div style={styles.avatarContainer}>
               {professeur.image ? (
                 <img
-                  src={`https://vmi1977988.contaboserver.net/${professeur.image}`}
+                  src={`http://195.179.229.230:5000${professeur.image}`}
                   alt="Profil"
                   style={styles.avatar}
                 />

@@ -47,12 +47,7 @@ const app = express();
 
 
 // Middlewares
-app.use(cors({
-  origin: ["http://localhost:3000", "https://test.supemir.com"],
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
-
+app.use(cors());
 app.use(express.json());
 app.use('/documents', express.static('documents'));
 function genererLienLive(nomCours) {
@@ -369,7 +364,7 @@ const authAdminOrCommercial = async (req, res, next) => {
 
 const upload = multer({ storage: storage });
 app.use('/uploads', express.static('uploads'));
-app.get('/api2/evenements/public', async (req, res) => {
+app.get('/api/evenements/public', async (req, res) => {
   try {
     const today = new Date();
     const events = await Evenement.find({
@@ -426,7 +421,7 @@ const storageVieScolaire = multer.diskStorage({
 const uploadVieScolaire = multer({ storage: storageVieScolaire });
 
 // ✅ Inscription Admin
-app.post('/api2/admin/register', async (req, res) => {
+app.post('/api/admin/register', async (req, res) => {
     try {
         const { nom, email, motDePasse } = req.body;
 
@@ -444,7 +439,7 @@ app.post('/api2/admin/register', async (req, res) => {
     }
 });
 
-app.post('/api2/documents', (req, res, next) => {
+app.post('/api/documents', (req, res, next) => {
   // التحقق من الدور
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ message: 'Token requis' });
@@ -477,7 +472,7 @@ app.post('/api2/documents', (req, res, next) => {
 });
 
 
-app.get('/api2/etudiant/notifications', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/notifications', authEtudiant, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.etudiantId);
     const aujourdHui = new Date();
@@ -563,7 +558,7 @@ app.get('/api2/etudiant/notifications', authEtudiant, async (req, res) => {
 });
 
 // ✅ Route protégée : Dashboard admin
-app.get('/api2/admin/dashboard', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/dashboard', authAdminOrPaiementManager, async (req, res) => {
   try {
     const admin = await Admin.findById(req.adminId).select('-motDePasse');
     res.json({ message: 'Bienvenue sur le tableau de bord', admin });
@@ -573,12 +568,12 @@ app.get('/api2/admin/dashboard', authAdminOrPaiementManager, async (req, res) =>
 });
 
 // ✅ Logout (le client supprime simplement le token)
-app.post('/api2/admin/logout', (req, res) => {
+app.post('/api/admin/logout', (req, res) => {
     res.json({ message: 'Déconnexion réussie' });
 });
 
 
-app.put('/api2/commercial/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
+app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -1927,7 +1922,7 @@ app.put('/api2/commercial/etudiants/:id', authCommercial, uploadEtudiants, async
   }
 });
 
-app.post('/api2/commercial/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
+app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -2516,7 +2511,7 @@ app.post('/api2/commercial/etudiants', authCommercial, uploadEtudiants, async (r
 // ===== ROUTES PARTNERS =====
 
 // 1. Route pour récupérer les étudiants partners
-app.get('/api2/partners/etudiants', authCommercial, async (req, res) => {
+app.get('/api/partners/etudiants', authCommercial, async (req, res) => {
   try {
     let etudiants;
 
@@ -2559,11 +2554,11 @@ app.get('/api2/partners/etudiants', authCommercial, async (req, res) => {
   }
 });
 
-// REMPLACEZ votre route POST /api2/partners/etudiants par celle-ci dans server.js
+// REMPLACEZ votre route POST /api/partners/etudiants par celle-ci dans server.js
 
-app.post('/api2/partners/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
+app.post('/api/partners/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
   try {
-    console.log('Route POST /api2/partners/etudiants appelée');
+    console.log('Route POST /api/partners/etudiants appelée');
     console.log('req.isPartner:', req.isPartner);
     console.log('req.partnerId:', req.partnerId);
 
@@ -2791,7 +2786,7 @@ app.post('/api2/partners/etudiants', authCommercial, uploadEtudiants, async (req
 });
 
 // 3. Route pour modifier un étudiant partner
-app.put('/api2/partners/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
+app.put('/api/partners/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
   try {
     // Trouver l'étudiant existant (doit appartenir à ce partner)
     const etudiantExistant = await Etudiant.findOne({ 
@@ -2852,7 +2847,7 @@ app.put('/api2/partners/etudiants/:id', authCommercial, uploadEtudiants, async (
 });
 
 // 4. Route pour supprimer un étudiant partner
-app.delete('/api2/partners/etudiants/:id', authCommercial, async (req, res) => {
+app.delete('/api/partners/etudiants/:id', authCommercial, async (req, res) => {
   try {
     const etudiant = await Etudiant.findOne({
       _id: req.params.id,
@@ -2876,7 +2871,7 @@ app.delete('/api2/partners/etudiants/:id', authCommercial, async (req, res) => {
 });
 
 // 5. Route pour toggle le statut actif d'un étudiant partner
-app.patch('/api2/partners/etudiants/:id/actif', authCommercial, async (req, res) => {
+app.patch('/api/partners/etudiants/:id/actif', authCommercial, async (req, res) => {
   try {
     const etudiant = await Etudiant.findOne({
       _id: req.params.id,
@@ -2903,7 +2898,7 @@ app.patch('/api2/partners/etudiants/:id/actif', authCommercial, async (req, res)
 });
 
 // 6. Route pour récupérer les cours (fallback)
-app.get('/api2/partnerscours', authCommercial, async (req, res) => {
+app.get('/api/partnerscours', authCommercial, async (req, res) => {
   try {
     // Si c'est un partner ou admin, retourner tous les cours
     if (req.isPartner || req.isAdmin) {
@@ -2923,7 +2918,7 @@ app.get('/api2/partnerscours', authCommercial, async (req, res) => {
 
 
 // Route pour obtenir les statistiques des étudiants Partners
-app.get('/api2/stats/partners', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/stats/partners', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Obtenir les statistiques avec la méthode du schéma
     const stats = await Etudiant.getStatsPartners();
@@ -2944,7 +2939,7 @@ app.get('/api2/stats/partners', authAdminOrPaiementManager, async (req, res) => 
 });
 
 // Route alternative plus détaillée pour les statistiques
-app.get('/api2/stats/partners/detailed', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/stats/partners/detailed', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Statistiques détaillées
     const partnersDetail = await Etudiant.find({ isPartner: true })
@@ -2995,7 +2990,7 @@ app.get('/api2/stats/partners/detailed', authAdminOrPaiementManager, async (req,
 });
 
 // Route pour obtenir les types de documents disponibles
-app.get('/api2/documents/types', authAdminOrPaiementManager, (req, res) => {
+app.get('/api/documents/types', authAdminOrPaiementManager, (req, res) => {
   try {
     const typesDocuments = Etudiant.getTypesDocuments();
     res.status(200).json(typesDocuments);
@@ -3006,7 +3001,7 @@ app.get('/api2/documents/types', authAdminOrPaiementManager, (req, res) => {
 });
 
 // Route pour obtenir le statut des documents d'un étudiant
-app.get('/api2/etudiants/:id/documents/status', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants/:id/documents/status', authAdmin, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.params.id);
     if (!etudiant) {
@@ -3022,7 +3017,7 @@ app.get('/api2/etudiants/:id/documents/status', authAdminOrPaiementManager, asyn
 });
 
 // Route pour ajouter/modifier un document spécifique
-app.post('/api2/etudiants/:id/documents/:typeDocument', authAdminOrPaiementManager, uploadEtudiants, async (req, res) => {
+app.post('/api/etudiants/:id/documents/:typeDocument', authAdmin, uploadEtudiants, async (req, res) => {
   try {
     const { id, typeDocument } = req.params;
     const { commentaire } = req.body;
@@ -3075,7 +3070,7 @@ app.post('/api2/etudiants/:id/documents/:typeDocument', authAdminOrPaiementManag
 });
 
 // Route pour supprimer un document spécifique
-app.delete('/api2/etudiants/:id/documents/:typeDocument', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/etudiants/:id/documents/:typeDocument', authAdmin, async (req, res) => {
   try {
     const { id, typeDocument } = req.params;
 
@@ -3108,7 +3103,7 @@ app.delete('/api2/etudiants/:id/documents/:typeDocument', authAdminOrPaiementMan
 });
 
 // Route pour télécharger un document
-app.get('/api2/etudiants/:id/documents/:typeDocument/download', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants/:id/documents/:typeDocument/download', authAdmin, async (req, res) => {
   try {
     const { id, typeDocument } = req.params;
 
@@ -3185,7 +3180,7 @@ const addTraceabilityToSeance = (seanceData, userInfo, actionType) => {
   };
 };
 // Ajoutez cette route pour que le frontend puisse récupérer les informations sans envoyer le niveau
-app.get('/api2/formations/info', authAdminOrPaiementManager, (req, res) => {
+app.get('/api/formations/info', authAdminOrPaiementManager, (req, res) => {
   try {
     const formationsInfo = {
       CYCLE_INGENIEUR: {
@@ -3252,7 +3247,7 @@ app.get('/api2/formations/info', authAdminOrPaiementManager, (req, res) => {
   }
 });
 // Route pour la mise à jour du profil étudiant (email et mot de passe uniquement)
-app.put('/api2/etudiant/profil', authEtudiant, async (req, res) => {
+app.put('/api/etudiant/profil', authEtudiant, async (req, res) => {
   try {
     const { email, motDePasse, motDePasseActuel } = req.body;
 
@@ -3354,7 +3349,7 @@ app.put('/api2/etudiant/profil', authEtudiant, async (req, res) => {
   }
 });
 // Route pour la mise à jour du profil professeur (email et mot de passe uniquement)
-app.put('/api2/professeur/profil', authProfesseur, async (req, res) => {
+app.put('/api/professeur/profil', authProfesseur, async (req, res) => {
   try {
     const { email, motDePasse, motDePasseActuel } = req.body;
 
@@ -3458,7 +3453,7 @@ app.put('/api2/professeur/profil', authProfesseur, async (req, res) => {
   }
 });
 // ===== NOUVELLE ROUTE PUT - DUPLICATION ÉTUDIANT =====
-app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, async (req, res) => {
+app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -3890,8 +3885,9 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
 // Route pour valider un étudiant (PUT)
 
 // ===== ROUTE GET MODIFIÉE POUR FILTRAGE PAR ANNÉE =====
+
 // Route POST pour créer un étudiant
-app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (req, res) => {
+app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -3925,7 +3921,7 @@ app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (
       return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
     }
 
-    // Validation du mode de paiement avec toutes les valeurs
+    // Validation du mode de paiement
     if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
       return res.status(400).json({ 
         message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
@@ -3970,9 +3966,9 @@ app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (
     let niveauFinal = parseInt(niveau) || null;
     
     if (typeFormationFinal === 'LICENCE_PRO') {
-      niveauFinal = 3; // Licence Pro = toujours niveau 3
+      niveauFinal = 3;
     } else if (typeFormationFinal === 'MASTER_PRO') {
-      niveauFinal = 4; // Master Pro = toujours niveau 4
+      niveauFinal = 4;
     }
 
     // Validation selon le type de formation
@@ -4248,7 +4244,7 @@ app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (
       }
     }
 
-    // Traitement des fichiers pour les documents (NOUVEAU)
+    // Traitement des fichiers
     const getFilePath = (fileField) => {
       return req.files && req.files[fileField] && req.files[fileField][0] 
         ? `/uploads/${req.files[fileField][0].filename}` 
@@ -4276,7 +4272,6 @@ app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (
       }
     });
 
-    // Traitement des anciens fichiers (compatibilité)
     const imagePath = getFilePath('image');
     
     // Hashage du mot de passe
@@ -4358,15 +4353,15 @@ app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (
       cours: coursArray,
       modePaiement: modePaiement || 'mensuel',
       
-      // Nouveaux champs Partner
+      // Nouveaux champs Partner - CORRIGÉ
       isPartner: req.body.isPartner || false,
-      nomPartner: nomPartner?.trim() || '',
+      nomPartner: (nomPartner && nomPartner.trim() !== '') ? nomPartner.trim() : null,
       prixTotalPartner: prixTotalPartnerNum || 0,
       
       // Système de documents
       documents: documents,
       
-      // Image (ancien système, maintenu pour compatibilité)
+      // Image
       image: imagePath,
       
       // Champs booléens
@@ -4433,7 +4428,6 @@ app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (
     const etudiant = new Etudiant(etudiantData);
     const etudiantSauve = await etudiant.save();
     
-    // Préparer la réponse sans le mot de passe
     const etudiantResponse = etudiantSauve.toObject();
     delete etudiantResponse.motDePasse;
 
@@ -4460,7 +4454,7 @@ app.post('/api2/etudiants', authAdminOrPaiementManager, uploadEtudiants, async (
 });
 
 // Route PUT pour modifier un étudiant
-app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, async (req, res) => {
+app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
   try {
     const {
       prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse, cours,
@@ -4475,13 +4469,9 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
       modePaiement,
       telephoneResponsable,
       codeBaccalaureat,
-      
-      // NOUVEAUX CHAMPS PARTNER
       isPartner,
       nomPartner,
       prixTotalPartner,
-      
-      // COMMENTAIRES POUR LES DOCUMENTS
       commentaireCin,
       commentaireBacCommentaire,
       commentaireReleveNoteBac,
@@ -4495,25 +4485,21 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
       commentaireEngagementCommentaire
     } = req.body;
 
-    // Rechercher l'étudiant existant
     const etudiantExistant = await Etudiant.findById(req.params.id);
     if (!etudiantExistant) {
       return res.status(404).json({ message: 'Étudiant non trouvé' });
     }
 
-    // Validation du mode de paiement
     if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
       return res.status(400).json({ 
         message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
       });
     }
 
-    // NOUVEAU: Validation des champs Partner
     if (isPartner !== undefined) {
       const isPartnerBool = isPartner === 'true' || isPartner === true;
       
       if (isPartnerBool) {
-        // Validation du nom du partner
         if (nomPartner !== undefined && (!nomPartner || nomPartner.trim() === '')) {
           return res.status(400).json({ 
             message: 'Le nom du partner est obligatoire pour les étudiants partenaires' 
@@ -4528,19 +4514,16 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
       }
     }
 
-    // Fonction pour obtenir le chemin des nouveaux documents
     const getDocumentPath = (documentField) => {
       return req.files && req.files[documentField] && req.files[documentField][0] 
         ? `/documents/${req.files[documentField][0].filename}` 
         : undefined;
     };
 
-    // Image de profil
     const imagePath = req.files && req.files['image'] && req.files['image'][0] 
       ? `/uploads/${req.files['image'][0].filename}` 
       : undefined;
 
-    // Fonctions utilitaires
     const toDate = (val) => {
       if (!val) return undefined;
       const date = new Date(val);
@@ -4550,12 +4533,11 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
     const toNumber = (val) => {
       if (val === undefined || val === '' || val === null) return undefined;
       const n = parseFloat(val);
-      return isNaN(n) ? undefined : n;
+      return isNaN(n)? undefined : n;
     };
 
     const toBool = (val) => val === 'true' || val === true;
 
-    // Validation de l'email si fourni
     if (email && email !== etudiantExistant.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -4571,7 +4553,6 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
       }
     }
 
-    // Validation du code étudiant si fourni
     if (codeEtudiant && codeEtudiant !== etudiantExistant.codeEtudiant) {
       const codeExiste = await Etudiant.findOne({ 
         codeEtudiant: codeEtudiant.trim(),
@@ -4582,10 +4563,8 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
       }
     }
 
-    // Créer l'objet de modifications
     const modifications = {};
 
-    // Appliquer toutes les modifications reçues
     if (prenom !== undefined) modifications.prenom = prenom.trim();
     if (nomDeFamille !== undefined) modifications.nomDeFamille = nomDeFamille.trim();
     if (genre !== undefined) modifications.genre = genre;
@@ -4628,12 +4607,29 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
     if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
     if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
     
-    // NOUVEAUX CHAMPS PARTNER
-    if (isPartner !== undefined) modifications.isPartner = toBool(isPartner);
-    if (nomPartner !== undefined) modifications.nomPartner = nomPartner?.trim() || '';
-    if (prixTotalPartner !== undefined) modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
+    // NOUVEAUX CHAMPS PARTNER - VERSION CORRIGÉE
+    if (isPartner !== undefined) {
+      const isPartnerBool = toBool(isPartner);
+      modifications.isPartner = isPartnerBool;
+      
+      if (!isPartnerBool) {
+        modifications.nomPartner = null;
+        modifications.prixTotalPartner = 0;
+      }
+    }
+
+    if (nomPartner !== undefined) {
+      if (nomPartner && nomPartner.trim() !== '') {
+        modifications.nomPartner = nomPartner.trim();
+      } else {
+        modifications.nomPartner = null;
+      }
+    }
+
+    if (prixTotalPartner !== undefined) {
+      modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
+    }
     
-    // Champs spécifiques selon le type de formation
     if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
     if (option !== undefined) modifications.option = option?.trim() || '';
     if (cycle !== undefined) modifications.cycle = cycle;
@@ -4644,10 +4640,8 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
     if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
     if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
     
-    // Image de profil
     if (imagePath !== undefined) modifications.image = imagePath;
 
-    // Validation du mot de passe si fourni
     if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
       if (motDePasse.length < 6) {
         return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
@@ -4656,23 +4650,19 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
       modifications.motDePasse = hashedPassword;
     }
 
-    // Validation du pourcentage de bourse
     if (modifications.pourcentageBourse !== undefined && modifications.pourcentageBourse !== null) {
       if (modifications.pourcentageBourse < 0 || modifications.pourcentageBourse > 100) {
         return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
       }
     }
 
-    // Logique automatique pour le mode de paiement annuel
     if (modePaiement === 'annuel' && paye === undefined) {
       modifications.paye = true;
     }
 
-    // Mise à jour des documents (seulement si de nouveaux fichiers ou commentaires sont fournis)
     const documentsExistants = etudiantExistant.documents || {};
     const nouveauxDocuments = {};
 
-    // Types de documents avec leurs commentaires
     const typesDocuments = [
       { key: 'cin', fileField: 'documentCin', commentField: 'commentaireCin' },
       { key: 'bacCommentaire', fileField: 'documentBacCommentaire', commentField: 'commentaireBacCommentaire' },
@@ -4700,7 +4690,6 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
 
     modifications.documents = nouveauxDocuments;
 
-    // Mise à jour du document existant
     const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
       req.params.id,
       modifications,
@@ -4714,7 +4703,6 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
       return res.status(404).json({ message: 'Étudiant non trouvé lors de la mise à jour' });
     }
 
-    // Retourner le document mis à jour (sans mot de passe)
     const etudiantResponse = etudiantMiseAJour.toObject();
     delete etudiantResponse.motDePasse;
 
@@ -4747,7 +4735,7 @@ app.put('/api2/etudiants/:id', authAdminOrPaiementManager, uploadEtudiants, asyn
   }
 });
 // ===== NOUVELLE ROUTE POUR STATISTIQUES DÉTAILLÉES =====
-app.get('/api2/statistiques', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { anneeScolaire } = req.query;
     
@@ -4817,7 +4805,7 @@ app.get('/api2/statistiques', authAdminOrPaiementManager, async (req, res) => {
 
 
 // Route PUT pour modifier un bulletin
-app.put('/api2/bulletins/:id', authProfesseur, async (req, res) => {
+app.put('/api/bulletins/:id', authProfesseur, async (req, res) => {
   try {
     const { etudiant, cours, semestre, notes, remarque } = req.body;
     
@@ -4854,7 +4842,7 @@ app.put('/api2/bulletins/:id', authProfesseur, async (req, res) => {
 });
 
 // Route DELETE pour supprimer un bulletin
-app.delete('/api2/bulletins/:id', authProfesseur, async (req, res) => {
+app.delete('/api/bulletins/:id', authProfesseur, async (req, res) => {
   try {
     const bulletin = await Bulletin.findOneAndDelete({
       _id: req.params.id,
@@ -4872,7 +4860,7 @@ app.delete('/api2/bulletins/:id', authProfesseur, async (req, res) => {
 });
 
 // Lister tous les étudiants
-app.get('/api2/etudiants', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants', authAdmin, async (req, res) => {
   try {
     // 🎯 FILTRE PRINCIPAL: Exclure seulement les étudiants avec email archivé
     const baseFilter = {
@@ -4897,7 +4885,7 @@ app.get('/api2/etudiants', authAdminOrPaiementManager, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api2/etudiant', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiant', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiants = await Etudiant.find()
       .select('-motDePasse') // ❌ إخفاء كلمة المرور
@@ -4919,7 +4907,7 @@ app.get('/api2/etudiant', authAdminOrPaiementManager, async (req, res) => {
 
 
 
-app.post('/api2/cours', authAdmin , async (req, res) => {
+app.post('/api/cours', authAdmin , async (req, res) => {
   try {
     let { nom, professeur } = req.body;
 
@@ -4962,7 +4950,7 @@ app.post('/api2/cours', authAdmin , async (req, res) => {
 
 // Mise à jour de l'état actif de l'étudiant
 // ✅ Basculer le statut actif d’un étudiant
-app.patch('/api2/etudiants/:id/actif', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/etudiants/:id/actif', authAdmin, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.params.id);
     if (!etudiant) return res.status(404).json({ message: 'Étudiant non trouvé' });
@@ -4977,7 +4965,7 @@ app.patch('/api2/etudiants/:id/actif', authAdminOrPaiementManager, async (req, r
   }
 });
 
-app.delete('/api2/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/etudiants/:id', authAdmin, async (req, res) => {
   try {
     await Etudiant.findByIdAndDelete(req.params.id);
     res.json({ message: 'Étudiant supprimé' });
@@ -4986,7 +4974,7 @@ app.delete('/api2/etudiants/:id', authAdminOrPaiementManager, async (req, res) =
   }
 });
 // ✅ Obtenir un seul étudiant
-app.get('/api2/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.params.id);
     if (!etudiant) return res.status(404).json({ message: 'Étudiant non trouvé' });
@@ -4995,7 +4983,7 @@ app.get('/api2/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
-app.post('/api2/evenements', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/evenements', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { titre, description, dateDebut, dateFin, type } = req.body;
 
@@ -5014,7 +5002,7 @@ app.post('/api2/evenements', authAdminOrPaiementManager, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api2/evenements', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/evenements', authAdminOrPaiementManager, async (req, res) => {
   try {
     const evenements = await Evenement.find().sort({ dateDebut: 1 });
     res.json(evenements);
@@ -5023,7 +5011,7 @@ app.get('/api2/evenements', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 // ✅ Route pour modifier un événement
-app.put('/api2/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { titre, description, dateDebut, dateFin, type } = req.body;
     
@@ -5062,7 +5050,7 @@ app.put('/api2/evenements/:id', authAdminOrPaiementManager, async (req, res) => 
 });
 
 // ✅ Route pour supprimer un événement
-app.delete('/api2/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Vérifier que l'événement existe
     const evenement = await Evenement.findById(req.params.id);
@@ -5092,7 +5080,7 @@ app.delete('/api2/evenements/:id', authAdminOrPaiementManager, async (req, res) 
 });
 
 // ✅ Route pour obtenir un seul événement (optionnel - pour les détails)
-app.get('/api2/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const evenement = await Evenement.findById(req.params.id).populate('creePar', 'nom email');
     
@@ -5110,7 +5098,7 @@ app.get('/api2/evenements/:id', authAdminOrPaiementManager, async (req, res) => 
     });
   }
 });
-app.post('/api2/qr-session/complete', authProfesseur, async (req, res) => {
+app.post('/api/qr-session/complete', authProfesseur, async (req, res) => {
   const { cours, dateSession, heure, periode, matiere, nomProfesseur } = req.body;
 
   try {
@@ -5154,7 +5142,7 @@ app.post('/api2/qr-session/complete', authProfesseur, async (req, res) => {
 });
 
 
-app.get('/api2/presences', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/presences', authAdminOrPaiementManager, async (req, res) => {
   try {
     const data = await Presence.find().populate('etudiant', 'nomComplet');
     res.json(data);
@@ -5163,7 +5151,7 @@ app.get('/api2/presences', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 // middleware: authProfesseur يجب أن تتأكد أنك تستعمل
-app.get('/api2/professeur/etudiants', authProfesseur, async (req, res) => {
+app.get('/api/professeur/etudiants', authProfesseur, async (req, res) => {
   try {
     const professeur = await Professeur.findById(req.professeurId);
     if (!professeur) {
@@ -5184,7 +5172,7 @@ app.get('/api2/professeur/etudiants', authProfesseur, async (req, res) => {
 
 // 📁 routes/professeur.js أو ضمن app.js إذا كل شيء في ملف واحد
 // Remove both routes and replace with this single corrected one
-app.get('/api2/professeur/presences', authProfesseur, async (req, res) => {
+app.get('/api/professeur/presences', authProfesseur, async (req, res) => {
   try {
     const data = await Presence.find({ creePar: req.professeurId })
       .populate('etudiant', 'prenom nomDeFamille telephone')
@@ -5195,7 +5183,7 @@ app.get('/api2/professeur/presences', authProfesseur, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api2/professeur/absences', authProfesseur, async (req, res) => {
+app.get('/api/professeur/absences', authProfesseur, async (req, res) => {
   try {
     const absences = await Presence.find({
       creePar: req.professeurId,
@@ -5210,7 +5198,7 @@ app.get('/api2/professeur/absences', authProfesseur, async (req, res) => {
 
 
 // ✅ فقط الكورسات التي يدرسها هذا الأستاذ
-app.get('/api2/professeur/mes-cours', authProfesseur, async (req, res) => {
+app.get('/api/professeur/mes-cours', authProfesseur, async (req, res) => {
   try {
     const professeur = await Professeur.findById(req.professeurId);
     if (!professeur) return res.status(404).json({ message: 'Professeur non trouvé' });
@@ -5223,7 +5211,7 @@ app.get('/api2/professeur/mes-cours', authProfesseur, async (req, res) => {
   }
 });
 
-app.post('/api2/presences', authProfesseur, async (req, res) => {
+app.post('/api/presences', authProfesseur, async (req, res) => {
   try {
     const { 
       etudiant, cours, seanceId, dateSession, present, absent, retard,
@@ -5409,7 +5397,7 @@ app.post('/api2/presences', authProfesseur, async (req, res) => {
 });
 
 // ✅ Route pour enregistrer plusieurs présences en une fois (bulk)
-app.post('/api2/presences/bulk', authProfesseur, async (req, res) => {
+app.post('/api/presences/bulk', authProfesseur, async (req, res) => {
   try {
     const { presences } = req.body;
 
@@ -5568,7 +5556,7 @@ app.post('/api2/presences/bulk', authProfesseur, async (req, res) => {
 
 
 // 🔧 Route de débogage spéciale
-app.get('/api2/debug/notifications', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/debug/notifications', authAdminOrPaiementManager, async (req, res) => {
   try {
     const aujourdHui = new Date();
     const debutMois = new Date(aujourdHui.getFullYear(), aujourdHui.getMonth(), 1);
@@ -5616,7 +5604,7 @@ app.get('/api2/debug/notifications', authAdminOrPaiementManager, async (req, res
 });
 
 // ✅ Route pour les statistiques du dashboard
-app.get('/api2/dashboard/stats', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/dashboard/stats', authAdminOrPaiementManager, async (req, res) => {
   try {
     const aujourdHui = new Date();
     
@@ -5681,14 +5669,14 @@ app.get('/api2/dashboard/stats', authAdminOrPaiementManager, async (req, res) =>
 });
 
 // ✅ Route pour marquer une notification comme lue (optionnel)
-app.post('/api2/notifications/:id/mark-read',authAdminOrPaiementManager, (req, res) => {
+app.post('/api/notifications/:id/mark-read',authAdminOrPaiementManager, (req, res) => {
   // Dans une vraie application, vous stockeriez l'état "lu" en base
   // Pour l'instant, on retourne juste un succès
   res.json({ message: 'Notification marquée comme lue', id: req.params.id });
 });
-// 📄 Route: GET /api2/documents
+// 📄 Route: GET /api/documents
 // مرئية للجميع
-app.get('/api2/documents', authEtudiant, async (req, res) => {
+app.get('/api/documents', authEtudiant, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.etudiantId);
     const documents = await Document.find({
@@ -5701,14 +5689,14 @@ app.get('/api2/documents', authEtudiant, async (req, res) => {
   }
 });
 
-app.get('/api2/professeur/documents', authProfesseur, async (req, res) => {
+app.get('/api/professeur/documents', authProfesseur, async (req, res) => {
   try {
     const docs = await Document.find({ creePar: req.professeurId }).sort({ dateUpload: -1 });
     res.json(docs);
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
-});app.delete('/api2/documents/:id', authProfesseur, async (req, res) => {
+});app.delete('/api/documents/:id', authProfesseur, async (req, res) => {
   try {
     const documentId = req.params.id;
     const professeurId = req.professeurId; // ✅ depuis le middleware authProfesseur
@@ -5762,7 +5750,7 @@ app.get('/api2/professeur/documents', authProfesseur, async (req, res) => {
 // ===== BACKEND CORRIGÉ POUR INCLURE DIMANCHE =====
 
 // Route pour récupérer le profil du professeur connecté
-app.get('/api2/professeurs/mon-profil', authProfesseur, async (req, res) => {
+app.get('/api/professeurs/mon-profil', authProfesseur, async (req, res) => {
   try {
     const professeur = await Professeur.findById(req.professeurId)
       .select('nom email estPermanent tarifHoraire actif cours coursEnseignes matiere');
@@ -5790,204 +5778,70 @@ app.get('/api2/professeurs/mon-profil', authProfesseur, async (req, res) => {
 });
 
 // Modification de votre route existante pour supporter le paramètre semaine
-app.get('/api2/seances/professeur', authProfesseur, async (req, res) => {
-  try {
-    const { semaine } = req.query; // Format: YYYY-MM-DD (lundi de la semaine)
-    
-    let dateFilter = {};
-    if (semaine) {
-      const lundiSemaine = new Date(semaine);
-      // CORRECTION : 6 jours pour aller jusqu'au dimanche (Lundi + 6 = Dimanche)
-      const dimancheSemaine = new Date(lundiSemaine.getTime() + 6 * 24 * 60 * 60 * 1000);
-      dimancheSemaine.setHours(23, 59, 59, 999);
-      
-      dateFilter = {
-        dateSeance: {
-          $gte: lundiSemaine,
-          $lte: dimancheSemaine
-        }
-      };
-    }
-    
-    const seances = await Seance.find({
-      professeur: req.professeurId,
-      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
-      actif: true,
-      ...dateFilter
-    })
-    .populate('professeur', 'nom estPermanent tarifHoraire')
-    .populate('coursId', 'nom') // Populate le cours si coursId existe
-    .sort({ dateSeance: 1, heureDebut: 1 });
-    
-    // Ajouter les calculs à chaque séance
-    const seancesAvecCalculs = await Promise.all(
-      seances.map(async (seance) => {
-        const calculs = await seance.calculerDureeEtMontant();
-        return {
-          ...seance.toObject(),
-          dureeHeures: calculs.dureeHeures,
-          montant: calculs.montant
-        };
-      })
-    );
-    
-    res.json(seancesAvecCalculs);
-  } catch (err) {
-    console.error('Erreur récupération séances professeur:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
-  }
-});
+// Fonction pour fusionner les doublons (même date + même horaire)
+function fusionnerDoublons(seances) {
+  const groupes = {};
 
-// Fonction utilitaire corrigée pour inclure dimanche
-function calculerStatistiquesProfesseur(seances, professeur) {
-  const stats = {
-    totalSeances: seances.length,
-    totalHeures: 0,
-    coursUniques: 0,
-    moyenneHeuresParJour: 0,
-    totalAPayer: 0,
-    repartitionJours: {}
-  };
-
-  // CORRECTION : Inclure le dimanche
-  const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  jours.forEach(jour => {
-    stats.repartitionJours[jour] = 0;
-  });
-
-  // Calculer les statistiques
-  const coursSet = new Set();
   seances.forEach(seance => {
-    // Durée de la séance
-    const duree = calculerDureeSeance(seance.heureDebut, seance.heureFin);
-    stats.totalHeures += duree;
-    
-    // Répartition par jour
-    if (stats.repartitionJours[seance.jour] !== undefined) {
-      stats.repartitionJours[seance.jour] += duree;
-    }
-    
-    // Cours unique
-    if (seance.cours) {
-      coursSet.add(seance.cours);
-    }
-    
-    // Montant à payer (entrepreneurs uniquement)
-    if (!professeur.estPermanent && professeur.tarifHoraire) {
-      stats.totalAPayer += duree * professeur.tarifHoraire;
-    }
-  });
+    // Créer une clé unique basée sur: date + jour + horaire
+    const dateStr = seance.dateSeance ? seance.dateSeance.toISOString().split('T')[0] : '';
+    const cle = `${dateStr}-${seance.jour}-${seance.heureDebut}-${seance.heureFin}`;
 
-  stats.coursUniques = coursSet.size;
-  stats.totalHeures = Math.round(stats.totalHeures * 100) / 100;
-  stats.totalAPayer = Math.round(stats.totalAPayer * 100) / 100;
-  
-  // Moyenne par jour (sur les jours travaillés)
-  const joursTravaills = Object.values(stats.repartitionJours).filter(h => h > 0).length;
-  stats.moyenneHeuresParJour = joursTravaills > 0 
-    ? Math.round((stats.totalHeures / joursTravaills) * 100) / 100 
-    : 0;
-
-  return stats;
-}
-
-function calculerDureeSeance(heureDebut, heureFin) {
-  const [heureD, minuteD] = heureDebut.split(':').map(Number);
-  const [heureF, minuteF] = heureFin.split(':').map(Number);
-  
-  const minutesDebut = heureD * 60 + minuteD;
-  const minutesFin = heureF * 60 + minuteF;
-  
-  return (minutesFin - minutesDebut) / 60;
-}
-
-// Votre route de rapport existante (pas de modification nécessaire car elle utilise déjà les bonnes données)
-app.get('/api2/professeurs/mon-rapport', authProfesseur, async (req, res) => {
-  try {
-    const { mois, annee } = req.query;
-    
-    const professeur = await Professeur.findById(req.professeurId);
-    if (!professeur) {
-      return res.status(404).json({ message: 'Professeur non trouvé' });
-    }
-
-    // Construire le filtre de date
-    let dateFilter = {};
-    if (mois && annee) {
-      const startDate = new Date(annee, mois - 1, 1);
-      const endDate = new Date(annee, mois, 0, 23, 59, 59);
-      dateFilter = {
-        dateSeance: { // CHANGÉ : utiliser dateSeance au lieu de createdAt
-          $gte: startDate,
-          $lte: endDate
-        }
-      };
-    } else if (annee) {
-      const startDate = new Date(annee, 0, 1);
-      const endDate = new Date(annee, 11, 31, 23, 59, 59);
-      dateFilter = {
-        dateSeance: {
-          $gte: startDate,
-          $lte: endDate
-        }
+    if (!groupes[cle]) {
+      // Première séance de ce créneau
+      groupes[cle] = {
+        ...seance.toObject ? seance.toObject() : seance,
+        coursMultiples: [seance.coursId?.nom || seance.cours || 'Cours'],
+        matieresMultiples: [seance.matiere].filter(Boolean),
+        sallesMultiples: [seance.salle].filter(Boolean),
+        estFusionne: false
       };
     } else {
-      // Par défaut, mois actuel
-      const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      dateFilter = {
-        dateSeance: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      };
+      // Doublon détecté - fusionner les informations
+      groupes[cle].estFusionne = true;
+      
+      // Ajouter le cours si différent
+      const nouveauCours = seance.coursId?.nom || seance.cours;
+      if (nouveauCours && !groupes[cle].coursMultiples.includes(nouveauCours)) {
+        groupes[cle].coursMultiples.push(nouveauCours);
+      }
+      
+      // Ajouter la matière si différente
+      if (seance.matiere && !groupes[cle].matieresMultiples.includes(seance.matiere)) {
+        groupes[cle].matieresMultiples.push(seance.matiere);
+      }
+      
+      // Ajouter la salle si différente
+      if (seance.salle && !groupes[cle].sallesMultiples.includes(seance.salle)) {
+        groupes[cle].sallesMultiples.push(seance.salle);
+      }
     }
+  });
 
-    const seances = await Seance.find({
-      professeur: req.professeurId,
-      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
-      actif: true,
-      ...dateFilter
-    })
-    .populate('coursId', 'nom')
-    .sort({ dateSeance: 1, heureDebut: 1 });
+  // Convertir les groupes fusionnés en tableau
+  return Object.values(groupes).map(groupe => {
+    // Créer un objet avec les informations fusionnées
+    const seanceFusionnee = {
+      ...groupe,
+      cours: groupe.coursMultiples.join(' + '),
+      matiere: groupe.matieresMultiples.join(' / ') || null,
+      salle: groupe.sallesMultiples.join(' / ') || null,
+      nombreCoursSimultanes: groupe.coursMultiples.length
+    };
 
-    const statistiques = calculerStatistiquesProfesseur(seances, professeur);
+    // Supprimer les propriétés temporaires
+    delete seanceFusionnee.coursMultiples;
+    delete seanceFusionnee.matieresMultiples;
+    delete seanceFusionnee.sallesMultiples;
 
-    res.json({
-      professeur: {
-        nom: professeur.nom,
-        email: professeur.email,
-        estPermanent: professeur.estPermanent,
-        tarifHoraire: professeur.tarifHoraire
-      },
-      periode: {
-        mois: mois ? parseInt(mois) : null,
-        annee: annee ? parseInt(annee) : null
-      },
-      statistiques,
-      seances: seances.map(seance => ({
-        jour: seance.jour,
-        heureDebut: seance.heureDebut,
-        heureFin: seance.heureFin,
-        cours: seance.cours || seance.coursId?.nom,
-        coursId: seance.coursId,
-        matiere: seance.matiere,
-        salle: seance.salle,
-        dateSeance: seance.dateSeance,
-        typeSeance: seance.typeSeance,
-        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin)
-      }))
-    });
+    return seanceFusionnee;
+  });
+}
 
-  } catch (err) {
-    console.error('Erreur rapport professeur:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
-  }
-});app.get('/api2/seances/professeur/semaine/:lundiSemaine', authProfesseur, async (req, res) => {
+// Route pour récupérer les séances d'une semaine avec fusion des doublons
+app.get('/api/seances/professeur/semaine/:lundiSemaine', authProfesseur, async (req, res) => {
   try {
-    const { lundiSemaine } = req.params; // Format: YYYY-MM-DD
+    const { lundiSemaine } = req.params;
     
     const dateLundi = new Date(lundiSemaine);
     const dateDimanche = new Date(dateLundi.getTime() + 6 * 24 * 60 * 60 * 1000);
@@ -6008,19 +5862,41 @@ app.get('/api2/professeurs/mon-rapport', authProfesseur, async (req, res) => {
     .populate('coursId', 'nom')
     .sort({ dateSeance: 1, heureDebut: 1 });
 
-    // Ajouter les calculs
+    console.log(`${seances.length} séances brutes trouvées avant fusion`);
+
+    // FUSIONNER LES DOUBLONS
+    const seancesFusionnees = fusionnerDoublons(seances);
+
+    console.log(`${seancesFusionnees.length} séances après fusion des doublons`);
+
+    // Ajouter les calculs (une seule fois par créneau unique)
     const seancesAvecCalculs = await Promise.all(
-      seances.map(async (seance) => {
-        const calculs = await seance.calculerDureeEtMontant();
-        return {
-          ...seance.toObject(),
-          dureeHeures: calculs.dureeHeures,
-          montant: calculs.montant
-        };
+      seancesFusionnees.map(async (seance) => {
+        // Recréer un objet Seance-like pour utiliser la méthode calculerDureeEtMontant
+        if (seance.calculerDureeEtMontant) {
+          const calculs = await seance.calculerDureeEtMontant();
+          return {
+            ...seance,
+            dureeHeures: calculs.dureeHeures,
+            montant: calculs.montant
+          };
+        } else {
+          // Calcul manuel si la méthode n'est pas disponible
+          const dureeHeures = calculerDureeSeance(seance.heureDebut, seance.heureFin);
+          const professeur = seance.professeur;
+          const montant = professeur && !professeur.estPermanent && professeur.tarifHoraire
+            ? dureeHeures * professeur.tarifHoraire
+            : 0;
+          
+          return {
+            ...seance,
+            dureeHeures: Math.round(dureeHeures * 100) / 100,
+            montant: Math.round(montant * 100) / 100
+          };
+        }
       })
     );
 
-    console.log(`${seancesAvecCalculs.length} séances trouvées pour la semaine`);
     res.json(seancesAvecCalculs);
 
   } catch (err) {
@@ -6029,11 +5905,78 @@ app.get('/api2/professeurs/mon-rapport', authProfesseur, async (req, res) => {
   }
 });
 
-// ===== FONCTION UTILITAIRE POUR CALCULS STATISTIQUES =====
+// Route pour récupérer les séances avec paramètre semaine
+app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
+  try {
+    const { semaine } = req.query;
+    
+    let dateFilter = {};
+    if (semaine) {
+      const lundiSemaine = new Date(semaine);
+      const dimancheSemaine = new Date(lundiSemaine.getTime() + 6 * 24 * 60 * 60 * 1000);
+      dimancheSemaine.setHours(23, 59, 59, 999);
+      
+      dateFilter = {
+        dateSeance: {
+          $gte: lundiSemaine,
+          $lte: dimancheSemaine
+        }
+      };
+    }
+    
+    const seances = await Seance.find({
+      professeur: req.professeurId,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      actif: true,
+      ...dateFilter
+    })
+    .populate('professeur', 'nom estPermanent tarifHoraire')
+    .populate('coursId', 'nom')
+    .sort({ dateSeance: 1, heureDebut: 1 });
+    
+    // FUSIONNER LES DOUBLONS
+    const seancesFusionnees = fusionnerDoublons(seances);
 
+    // Ajouter les calculs
+    const seancesAvecCalculs = await Promise.all(
+      seancesFusionnees.map(async (seance) => {
+        if (seance.calculerDureeEtMontant) {
+          const calculs = await seance.calculerDureeEtMontant();
+          return {
+            ...seance,
+            dureeHeures: calculs.dureeHeures,
+            montant: calculs.montant
+          };
+        } else {
+          const dureeHeures = calculerDureeSeance(seance.heureDebut, seance.heureFin);
+          const professeur = seance.professeur;
+          const montant = professeur && !professeur.estPermanent && professeur.tarifHoraire
+            ? dureeHeures * professeur.tarifHoraire
+            : 0;
+          
+          return {
+            ...seance,
+            dureeHeures: Math.round(dureeHeures * 100) / 100,
+            montant: Math.round(montant * 100) / 100
+          };
+        }
+      })
+    );
+    
+    res.json(seancesAvecCalculs);
+  } catch (err) {
+    console.error('Erreur récupération séances professeur:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Fonction de calcul des statistiques avec fusion des doublons
 function calculerStatistiquesProfesseur(seances, professeur) {
+  // D'abord fusionner les doublons
+  const seancesFusionnees = fusionnerDoublons(seances);
+  
   const stats = {
-    totalSeances: seances.length,
+    totalSeances: seancesFusionnees.length, // Nombre de créneaux uniques
     totalHeures: 0,
     coursUniques: 0,
     moyenneHeuresParJour: 0,
@@ -6041,16 +5984,14 @@ function calculerStatistiquesProfesseur(seances, professeur) {
     repartitionJours: {}
   };
 
-  // Initialiser la répartition par jour
   const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
   jours.forEach(jour => {
     stats.repartitionJours[jour] = 0;
   });
 
-  // Calculer les statistiques
   const coursSet = new Set();
-  seances.forEach(seance => {
-    // Durée de la séance
+  seancesFusionnees.forEach(seance => {
+    // Durée de la séance (comptée une seule fois même si plusieurs cours)
     const duree = calculerDureeSeance(seance.heureDebut, seance.heureFin);
     stats.totalHeures += duree;
     
@@ -6059,12 +6000,14 @@ function calculerStatistiquesProfesseur(seances, professeur) {
       stats.repartitionJours[seance.jour] += duree;
     }
     
-    // Cours unique
-    if (seance.cours) {
+    // Cours uniques (compte tous les cours même fusionnés)
+    if (seance.nombreCoursSimultanes > 1) {
+      seance.cours.split(' + ').forEach(c => coursSet.add(c.trim()));
+    } else if (seance.cours) {
       coursSet.add(seance.cours);
     }
     
-    // Montant à payer (entrepreneurs uniquement)
+    // Montant à payer (une seule fois par créneau, même si plusieurs cours)
     if (!professeur.estPermanent && professeur.tarifHoraire) {
       stats.totalAPayer += duree * professeur.tarifHoraire;
     }
@@ -6074,7 +6017,6 @@ function calculerStatistiquesProfesseur(seances, professeur) {
   stats.totalHeures = Math.round(stats.totalHeures * 100) / 100;
   stats.totalAPayer = Math.round(stats.totalAPayer * 100) / 100;
   
-  // Moyenne par jour (sur les jours travaillés)
   const joursTravaills = Object.values(stats.repartitionJours).filter(h => h > 0).length;
   stats.moyenneHeuresParJour = joursTravaills > 0 
     ? Math.round((stats.totalHeures / joursTravaills) * 100) / 100 
@@ -6083,6 +6025,7 @@ function calculerStatistiquesProfesseur(seances, professeur) {
   return stats;
 }
 
+// Fonction de calcul de durée
 function calculerDureeSeance(heureDebut, heureFin) {
   const [heureD, minuteD] = heureDebut.split(':').map(Number);
   const [heureF, minuteF] = heureFin.split(':').map(Number);
@@ -6093,10 +6036,79 @@ function calculerDureeSeance(heureDebut, heureFin) {
   return (minutesFin - minutesDebut) / 60;
 }
 
+app.get('/api/professeurs/mon-rapport', authProfesseur, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+    
+    const professeur = await Professeur.findById(req.professeurId);
+    if (!professeur) {
+      return res.status(404).json({ message: 'Professeur non trouvé' });
+    }
+
+    let dateFilter = {};
+    if (mois && annee) {
+      const startDate = new Date(annee, mois - 1, 1);
+      const endDate = new Date(annee, mois, 0, 23, 59, 59);
+      dateFilter = { dateSeance: { $gte: startDate, $lte: endDate } };
+    } else if (annee) {
+      const startDate = new Date(annee, 0, 1);
+      const endDate = new Date(annee, 11, 31, 23, 59, 59);
+      dateFilter = { dateSeance: { $gte: startDate, $lte: endDate } };
+    } else {
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      dateFilter = { dateSeance: { $gte: startDate, $lte: endDate } };
+    }
+
+    const seances = await Seance.find({
+      professeur: req.professeurId,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      actif: true,
+      ...dateFilter
+    })
+    .populate('coursId', 'nom')
+    .sort({ dateSeance: 1, heureDebut: 1 });
+
+    // Calculer les statistiques AVEC fusion (pour éviter double comptage)
+    const statistiques = calculerStatistiquesProfesseur(seances, professeur);
+
+    // Retourner les séances SANS fusion pour affichage détaillé
+    res.json({
+      professeur: {
+        nom: professeur.nom,
+        email: professeur.email,
+        estPermanent: professeur.estPermanent,
+        tarifHoraire: professeur.tarifHoraire
+      },
+      periode: {
+        mois: mois ? parseInt(mois) : null,
+        annee: annee ? parseInt(annee) : null
+      },
+      statistiques, // Stats avec fusion
+      seances: seances.map(seance => ({ // Séances SANS fusion
+        jour: seance.jour,
+        heureDebut: seance.heureDebut,
+        heureFin: seance.heureFin,
+        cours: seance.cours || seance.coursId?.nom,
+        coursId: seance.coursId,
+        matiere: seance.matiere, // Matière individuelle, pas fusionnée
+        salle: seance.salle,
+        dateSeance: seance.dateSeance,
+        typeSeance: seance.typeSeance,
+        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin)
+      }))
+    });
+
+  } catch (err) {
+    console.error('Erreur rapport professeur:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
 
 
 // ✅ BACKEND: Retourne les cours de l'étudiant + leurs professeurs
-app.get('/api2/etudiant/mes-cours', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/mes-cours', authEtudiant, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.etudiantId);
     if (!etudiant) {
@@ -6118,7 +6130,7 @@ app.get('/api2/etudiant/mes-cours', authEtudiant, async (req, res) => {
 });
 // ✅ BACKEND: Envoi d'un exercice à un prof spécifique
 app.post(
-  '/api2/etudiant/exercices',
+  '/api/etudiant/exercices',
   authEtudiant,
   exerciceUpload.single('fichier'),
   async (req, res) => {
@@ -6167,7 +6179,7 @@ app.post(
 
 
 // DELETE - Supprimer un exercice (par l'étudiant sous 24h)
-app.delete('/api2/etudiant/exercices/:id', authEtudiant, async (req, res) => {
+app.delete('/api/etudiant/exercices/:id', authEtudiant, async (req, res) => {
   try {
     const exercice = await Exercice.findOne({ _id: req.params.id, etudiant: req.etudiantId });
 
@@ -6196,9 +6208,9 @@ app.delete('/api2/etudiant/exercices/:id', authEtudiant, async (req, res) => {
 });
 
 // ✅ Route pour obtenir le nombre de notifications non lues
-app.get('/api2/notifications/unread-count', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/notifications/unread-count', authAdminOrPaiementManager, async (req, res) => {
   try {
-    // Cette route utilise la même logique que /api2/notifications
+    // Cette route utilise la même logique que /api/notifications
     // mais retourne seulement le nombre
     const notifications = [];
     const aujourdHui = new Date();
@@ -6265,7 +6277,7 @@ app.get('/api2/notifications/unread-count', authAdminOrPaiementManager, async (r
   }
 });
 // Route pour sauvegarder les templates jour par jour
-app.post('/api2/pedagogique/cours/:coursId/templates-planning', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/pedagogique/cours/:coursId/templates-planning', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { coursId } = req.params;
     const { planningCreneaux } = req.body; // { "Lundi": [...], "Mardi": [...] }
@@ -6346,7 +6358,7 @@ app.post('/api2/pedagogique/cours/:coursId/templates-planning', authAdminOrPaiem
 });
 
 // Route pour récupérer les templates d'un cours
-app.get('/api2/pedagogique/cours/:coursId/templates-planning', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/pedagogique/cours/:coursId/templates-planning', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { coursId } = req.params;
     
@@ -6398,7 +6410,7 @@ app.get('/api2/pedagogique/cours/:coursId/templates-planning', authAdminOrPaieme
 });
 
 // Route pour générer les séances réelles à partir des templates
-app.post('/api2/pedagogique/generer-semaine-depuis-templates', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/pedagogique/generer-semaine-depuis-templates', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { lundiSemaine, coursId } = req.body;
     
@@ -6508,7 +6520,7 @@ app.post('/api2/pedagogique/generer-semaine-depuis-templates', authAdminOrPaieme
 });
 
 // Route pour supprimer tous les templates d'un cours
-app.delete('/api2/pedagogique/cours/:coursId/templates', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/pedagogique/cours/:coursId/templates', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { coursId } = req.params;
     
@@ -6534,7 +6546,7 @@ app.delete('/api2/pedagogique/cours/:coursId/templates', authAdminOrPaiementMana
 });
 
 // Route pour obtenir tous les cours avec leurs templates
-app.get('/api2/pedagogique/cours-avec-templates', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/pedagogique/cours-avec-templates', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Récupérer tous les cours
     const cours = await Cours.find({ actif: { $ne: false } }).select('nom filiere');
@@ -6573,7 +6585,7 @@ app.get('/api2/pedagogique/cours-avec-templates', authAdminOrPaiementManager, as
   }
 });
 // ✅ Route pour supprimer une notification
-app.delete('/api2/notifications/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/notifications/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const notificationId = req.params.id;
     
@@ -6610,8 +6622,8 @@ app.delete('/api2/notifications/:id', authAdminOrPaiementManager, async (req, re
 
 // ✅ Modifier la route GET notifications pour exclure les notifications supprimées
 
-// 🔒 GET /api2/professeur/exercices/:cours
-app.get('/api2/professeur/exercices/:cours', authProfesseur, async (req, res) => {
+// 🔒 GET /api/professeur/exercices/:cours
+app.get('/api/professeur/exercices/:cours', authProfesseur, async (req, res) => {
   try {
     const { cours } = req.params;
 
@@ -6628,7 +6640,7 @@ app.get('/api2/professeur/exercices/:cours', authProfesseur, async (req, res) =>
 });
 
 // ✅ Route GET – Etudiant voir ses propres exercices
-app.get('/api2/etudiant/mes-exercices', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/mes-exercices', authEtudiant, async (req, res) => {
   try {
     const exercices = await Exercice.find({ etudiant: req.etudiantId })
       .populate('professeur', 'nom matiere') // ✅ إظهار اسم ومادة الأستاذ
@@ -6641,8 +6653,8 @@ app.get('/api2/etudiant/mes-exercices', authEtudiant, async (req, res) => {
 });
 
 
-// 🔒 PUT /api2/professeur/exercices/:id/remarque
-app.put('/api2/professeur/exercices/:id/remarque', authProfesseur, async (req, res) => {
+// 🔒 PUT /api/professeur/exercices/:id/remarque
+app.put('/api/professeur/exercices/:id/remarque', authProfesseur, async (req, res) => {
   try {
     const { remarque } = req.body;
     const { id } = req.params;
@@ -6661,12 +6673,12 @@ app.put('/api2/professeur/exercices/:id/remarque', authProfesseur, async (req, r
   }
 });
 
-app.get('/api2/live/:cours', authProfesseur, (req, res) => {
+app.get('/api/live/:cours', authProfesseur, (req, res) => {
   const { cours } = req.params;
   const lien = genererLienLive(cours);
   res.json({ lien });
 });
-app.delete('/api2/cours/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/cours/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const coursId = req.params.id;
 
@@ -6700,7 +6712,7 @@ app.delete('/api2/cours/:id', authAdminOrPaiementManager, async (req, res) => {
 
 // ✅ Route pour vider la liste des notifications supprimées (optionnel - pour admin)
 
-app.post('/api2/contact/send', async (req, res) => {
+app.post('/api/contact/send', async (req, res) => {
   try {
     const newMessage = new ContactMessage(req.body);
     await newMessage.save();
@@ -6712,7 +6724,7 @@ app.post('/api2/contact/send', async (req, res) => {
 });
 
 // 🔐 Route protégée - vue admin
-app.get('/api2/admin/contact-messages', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/contact-messages', authAdminOrPaiementManager, async (req, res) => {
   try {
     const messages = await ContactMessage.find().sort({ date: -1 });
     res.status(200).json(messages);
@@ -6721,7 +6733,7 @@ app.get('/api2/admin/contact-messages', authAdminOrPaiementManager, async (req, 
     res.status(500).json({ message: '❌ Erreur serveur' });
   }
 });
-app.delete('/api2/admin/contact-messages/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/admin/contact-messages/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -6737,7 +6749,7 @@ app.delete('/api2/admin/contact-messages/:id', authAdminOrPaiementManager, async
   }
 });
 
-app.post('/api2/admin/qr-week-bulk', async (req, res) => {
+app.post('/api/admin/qr-week-bulk', async (req, res) => {
   try {
     const { planning } = req.body;
 
@@ -6789,7 +6801,7 @@ app.post('/api2/admin/qr-week-bulk', async (req, res) => {
 });
 
 
-app.post('/api2/qretudiant', authEtudiant, async (req, res) => {
+app.post('/api/qretudiant', authEtudiant, async (req, res) => {
   try {
     const etudiant = req.user;
 
@@ -6814,14 +6826,14 @@ app.post('/api2/qretudiant', authEtudiant, async (req, res) => {
     res.status(200).json({ message: 'Session trouvée', session });
 
   } catch (err) {
-    console.error('Erreur dans /api2/qretudiant:', err);
+    console.error('Erreur dans /api/qretudiant:', err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
 // backend/app.js ou routes/admin.js
 
-app.post('/api2/etudiant/qr-presence', authEtudiant, async (req, res) => {
+app.post('/api/etudiant/qr-presence', authEtudiant, async (req, res) => {
   try {
     const { date, periode, cours, horaire } = req.body;
 
@@ -6896,7 +6908,7 @@ heure: horaire, // ✅ استخدم التوقيت الرسمي للجلسة
 
 
 // ✅ Route: Supprimer toutes les QR sessions d'un jour donné
-app.delete('/api2/admin/qr-day-delete', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/admin/qr-day-delete', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { date } = req.body;
     if (!date) {
@@ -6917,7 +6929,7 @@ app.delete('/api2/admin/qr-day-delete', authAdminOrPaiementManager, async (req, 
 });
 
 // ✅ Route: Récupérer toutes les sessions QR planifiées pour une date donnée
-app.get('/api2/admin/qr-day-sessions', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/qr-day-sessions', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { date } = req.query;
     if (!date) {
@@ -6933,7 +6945,7 @@ app.get('/api2/admin/qr-day-sessions', authAdminOrPaiementManager, async (req, r
 });
 
 // Modifier une session individuelle
-app.put('/api2/admin/qr-session/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/admin/qr-session/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { matiere, professeur, periode, horaire } = req.body;
@@ -6956,7 +6968,7 @@ app.put('/api2/admin/qr-session/:id', authAdminOrPaiementManager, async (req, re
 });
 
 // Supprimer une session individuelle
-app.delete('/api2/admin/qr-session/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/admin/qr-session/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const session = await QrSession.findByIdAndDelete(id);
@@ -6973,7 +6985,7 @@ app.delete('/api2/admin/qr-session/:id', authAdminOrPaiementManager, async (req,
 
 
 // 🔔 إشعارات الأستاذ - الأحداث القادمة فقط
-app.get('/api2/professeur/notifications', authProfesseur, async (req, res) => {
+app.get('/api/professeur/notifications', authProfesseur, async (req, res) => {
   try {
     const notifications = [];
 
@@ -7006,7 +7018,7 @@ app.get('/api2/professeur/notifications', authProfesseur, async (req, res) => {
 });
 
 // ✅ Route pour obtenir la liste des notifications supprimées (debug)
-app.get('/api2/notifications/deleted', authAdminOrPaiementManager, (req, res) => {
+app.get('/api/notifications/deleted', authAdminOrPaiementManager, (req, res) => {
   try {
     if (!global.deletedNotifications) {
       global.deletedNotifications = new Set();
@@ -7029,7 +7041,7 @@ app.get('/api2/notifications/deleted', authAdminOrPaiementManager, (req, res) =>
 // APIs de gestion des paiements - À ajouter dans votre fichier routes
 
 // 1. API pour créer/récupérer un paiement
-app.post('/api2/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee } = req.body;
 
@@ -7157,7 +7169,7 @@ app.post('/api2/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManage
 });
 
 // 2. API pour valider un paiement
-app.post('/api2/finance/paiements/valider', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/paiements/valider', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { paiementId, notes } = req.body;
 
@@ -7192,7 +7204,7 @@ app.post('/api2/finance/paiements/valider', authAdminOrPaiementManager, async (r
 });
 
 // 3. API pour marquer un paiement comme payé
-app.post('/api2/finance/paiements/marquer-paye', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/paiements/marquer-paye', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { paiementId, methodePaiement, referencePaiement, notes } = req.body;
 
@@ -7231,7 +7243,7 @@ app.post('/api2/finance/paiements/marquer-paye', authAdminOrPaiementManager, asy
 });
 
 // 4. API pour annuler un paiement
-app.post('/api2/finance/paiements/annuler', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/paiements/annuler', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { paiementId, motifAnnulation } = req.body;
 
@@ -7262,7 +7274,7 @@ app.post('/api2/finance/paiements/annuler', authAdminOrPaiementManager, async (r
 });
 
 // 5. API pour récupérer l'historique des paiements d'un professeur
-app.get('/api2/finance/paiements/historique/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/finance/paiements/historique/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     const { limit = 12 } = req.query;
@@ -7290,7 +7302,7 @@ app.get('/api2/finance/paiements/historique/:professeurId', authAdminOrPaiementM
 });
 
 // 6. API pour récupérer tous les paiements en attente
-app.get('/api2/finance/paiements/en-attente', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/finance/paiements/en-attente', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -7322,7 +7334,7 @@ app.get('/api2/finance/paiements/en-attente', authAdminOrPaiementManager, async 
 });
 
 // 7. API pour les statistiques de paiements
-app.get('/api2/finance/paiements/statistiques', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/finance/paiements/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -7372,7 +7384,7 @@ app.get('/api2/finance/paiements/statistiques', authAdminOrPaiementManager, asyn
 
 
 // API pour rapport individuel mensuel - Correction pour les noms de cours
-app.get('/api2/professeurs/:id/rapport', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/:id/rapport', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     const professeurId = req.params.id;
@@ -7479,7 +7491,7 @@ app.get('/api2/professeurs/:id/rapport', authAdminOrPaiementManager, async (req,
 });
 
 // API pour rapport annuel - Correction pour les noms de cours
-app.get('/api2/professeurs/:id/rapport/annuel', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/:id/rapport/annuel', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { annee } = req.query;
     const professeurId = req.params.id;
@@ -7591,7 +7603,7 @@ app.get('/api2/professeurs/:id/rapport/annuel', authAdminOrPaiementManager, asyn
 });
 
 // API pour les rattrapages - Correction pour les noms de cours
-app.get('/api2/professeurs/:id/rattrapages', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/:id/rattrapages', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     const professeurId = req.params.id;
@@ -7687,7 +7699,7 @@ app.get('/api2/professeurs/:id/rattrapages', authAdminOrPaiementManager, async (
 });
 
 // 2. API POUR APPLIQUER UNE PÉNALITÉ
-app.post('/api2/finance/appliquer-penalite', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/appliquer-penalite', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee, type, valeur, motif, appliquePour } = req.body;
 
@@ -7815,7 +7827,7 @@ app.post('/api2/finance/appliquer-penalite', authAdminOrPaiementManager, async (
 
 
 // 2. API CORRIGÉE pour validation par Finance
-app.post('/api2/finance/cycles/valider', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/cycles/valider', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (req.userType !== 'finance_prof') {
       return res.status(403).json({ error: 'Accès réservé au service Finance' });
@@ -7903,7 +7915,7 @@ app.post('/api2/finance/cycles/valider', authAdminOrPaiementManager, async (req,
   }
 });
 
-app.post('/api2/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Autoriser admin OU paiement_manager
     if (req.userType !== 'admin' && req.userType !== 'paiement_manager' && req.userRole !== 'admin' && req.userRole !== 'paiement_manager') {
@@ -8006,7 +8018,7 @@ app.post('/api2/admin/cycles/payer', authAdminOrPaiementManager, async (req, res
 });
 
 // 4. API utilitaire pour créer un cycle manquant
-app.post('/api2/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -8053,7 +8065,7 @@ app.post('/api2/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementM
 });
 
 // 5. API de diagnostic pour vérifier l'état des cycles
-app.get('/api2/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -8105,7 +8117,7 @@ app.get('/api2/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManage
 // SOLUTION SIMPLE : Utiliser directement les cycles payés pour l'historique
 
 // 1. API pour historique d'un professeur (utilise les cycles existants)
-app.get('/api2/professeurs/:id/historique-paiements', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/:id/historique-paiements', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { page = 1, limit = 10, annee } = req.query;
@@ -8189,7 +8201,7 @@ app.get('/api2/professeurs/:id/historique-paiements', authAdminOrPaiementManager
 });
 
 // 2. API pour historique global (tous professeurs)
-app.get('/api2/admin/historique-paiements-global', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/historique-paiements-global', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { page = 1, limit = 20, annee, mois, professeurId } = req.query;
     
@@ -8282,7 +8294,7 @@ app.get('/api2/admin/historique-paiements-global', authAdminOrPaiementManager, a
 });
 
 // 3. API pour détail d'un paiement
-app.get('/api2/admin/historique-paiements/:id/detail', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/historique-paiements/:id/detail', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -8331,7 +8343,7 @@ app.get('/api2/admin/historique-paiements/:id/detail', authAdminOrPaiementManage
 });
 
 // 4. API pour créer des données de test (optionnel - pour tester)
-app.post('/api2/admin/test-paiement/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/test-paiement/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     
@@ -8478,7 +8490,7 @@ const dedupliquerSeancesPartagees = (seances) => {
   
   return resultat;
 };
-app.get('/api2/professeur/rapports/mensuel', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeur/rapports/mensuel', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     
@@ -8616,7 +8628,7 @@ app.get('/api2/professeur/rapports/mensuel', authAdminOrPaiementManager, async (
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-app.get('/api2/professeurs/rapports/mensuel', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/rapports/mensuel', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     
@@ -8798,7 +8810,7 @@ app.get('/api2/professeurs/rapports/mensuel', authAdminOrPaiementManager, async 
   }
 });
 // 2. CORRIGER l'API de validation par Finance
-app.post('/api2/finance/cycles/valider', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/cycles/valider', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (req.userType !== 'finance_prof') {
       return res.status(403).json({ error: 'Accès réservé au service Finance' });
@@ -8846,7 +8858,7 @@ app.post('/api2/finance/cycles/valider', authAdminOrPaiementManager, async (req,
 });
 
 // 3. CORRIGER l'API de paiement par Admin - AVEC CRÉATION AUTOMATIQUE DU NOUVEAU CYCLE
-app.post('/api2/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (req.userType !== 'admin') {
       return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
@@ -8911,7 +8923,7 @@ app.post('/api2/admin/cycles/payer', authAdminOrPaiementManager, async (req, res
 });
 
 // 4. API pour forcer la création d'un cycle manquant (utilitaire de débogage)
-app.post('/api2/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -8942,7 +8954,7 @@ app.post('/api2/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementM
 });
 
 // 5. API de diagnostic pour vérifier l'état des cycles d'un professeur
-app.get('/api2/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -8990,7 +9002,7 @@ app.get('/api2/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManage
 // const PenaliteProfesseur = require('./models/PenaliteProfesseur');
 
 // 4. API POUR RÉCUPÉRER L'HISTORIQUE DES PÉNALITÉS
-app.get('/api2/finance/penalites/historique/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/finance/penalites/historique/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     
@@ -9015,7 +9027,7 @@ app.get('/api2/finance/penalites/historique/:professeurId', authAdminOrPaiementM
 });
 
 // 5. API POUR SUPPRIMER/DÉSACTIVER UNE PÉNALITÉ
-app.delete('/api2/finance/penalites/:penaliteId', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/finance/penalites/:penaliteId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { penaliteId } = req.params;
     
@@ -9097,7 +9109,7 @@ function obtenirNomMois(numeroMois) {
   ];
   return mois[numeroMois - 1] || 'Inconnu';
 }
-app.post('/api2/seances', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/seances', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { jour, heureDebut, heureFin, cours, professeur, matiere, salle } = req.body;
 
@@ -9130,7 +9142,7 @@ app.post('/api2/seances', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 // Route pour créer un template (emploi du temps de base)
-app.post('/api2/seances/template', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/seances/template', authAdminOrPaiementManager, async (req, res) => {
   try {
     const {
       jour, heureDebut, heureFin, cours, professeur, 
@@ -9165,7 +9177,7 @@ app.post('/api2/seances/template', authAdminOrPaiementManager, async (req, res) 
 });
 
 // Route pour obtenir tous les templates
-app.get('/api2/seances/templates', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/seances/templates', authAdminOrPaiementManager, async (req, res) => {
   try {
     const templates = await Seance.find({ typeSeance: 'template' })
       .populate('professeur', 'nom email estPermanent')
@@ -9178,7 +9190,7 @@ app.get('/api2/seances/templates', authAdminOrPaiementManager, async (req, res) 
 });
 
 // Route pour générer les séances automatiquement
-app.post('/api2/seances/generer/:nbSemaines', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/seances/generer/:nbSemaines', authAdminOrPaiementManager, async (req, res) => {
   try {
     const nbSemaines = parseInt(req.params.nbSemaines) || 4;
     
@@ -9208,7 +9220,7 @@ app.post('/api2/seances/generer/:nbSemaines', authAdminOrPaiementManager, async 
 });
 
 // Route pour créer une exception (modifier une séance pour une semaine spécifique)
-app.post('/api2/seances/template/exception', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/seances/template/exception', authAdminOrPaiementManager, async (req, res) => {
   try {
     const {
       templateId, dateSeance, action, // 'modifier' ou 'annuler'
@@ -9266,7 +9278,7 @@ app.post('/api2/seances/template/exception', authAdminOrPaiementManager, async (
 });
 
 // Route modifiée pour récupérer les séances du professeur (avec calculs)
-app.get('/api2/seances/professeur', authProfesseur, async (req, res) => {
+app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
   try {
     const { semaine } = req.query; // Format: YYYY-MM-DD (lundi de la semaine)
     
@@ -9309,7 +9321,7 @@ app.get('/api2/seances/professeur', authProfesseur, async (req, res) => {
 });
 
 // Route pour calculs mensuels d'un professeur
-app.get('/api2/professeurs/:id/calculs/:annee/:mois', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/:id/calculs/:annee/:mois', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id, annee, mois } = req.params;
     
@@ -9397,7 +9409,7 @@ const genererSeancesAutomatique = async () => {
 
 
 // Route pour récupérer toutes les séances (pour admin) - INCHANGÉE
-app.get('/api2/seances', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/seances', authAdminOrPaiementManager, async (req, res) => {
   try {
     const seances = await Seance.find()
       .populate('professeur', 'nom')
@@ -9412,7 +9424,7 @@ app.get('/api2/seances', authAdminOrPaiementManager, async (req, res) => {
 // Route pour récupérer les séances pour les étudiants - MODIFIÉE
 
 // إضافة هذا Route في ملف routes الخاص بك
-app.get('/api2/professeurs/periodes-disponibles', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/periodes-disponibles', authAdminOrPaiementManager, async (req, res) => {
   try {
     // الحصول على كل السنوات والشهور المتاحة من الحصص
     const periodesSeances = await Seance.aggregate([
@@ -9466,7 +9478,7 @@ app.get('/api2/professeurs/periodes-disponibles', authAdminOrPaiementManager, as
   }
 });
 // للتحقق من وجود بيانات لفترة معينة
-app.get('/api2/professeurs/verifier-periode/:annee/:mois', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/verifier-periode/:annee/:mois', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { annee, mois } = req.params;
     
@@ -9490,7 +9502,7 @@ app.get('/api2/professeurs/verifier-periode/:annee/:mois', authAdminOrPaiementMa
   }
 });
 
-app.get('/api2/seances/semaine/:lundiSemaine', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/seances/semaine/:lundiSemaine', authAdminOrPaiementManager, async (req, res) => {
   try {
     const toStartOfDay = d => { const nd = new Date(d); nd.setHours(0,0,0,0); return nd; };
     const toEndOfDay   = d => { const nd = new Date(d); nd.setHours(23,59,59,999); return nd; };
@@ -9525,8 +9537,8 @@ app.get('/api2/seances/semaine/:lundiSemaine', authAdminOrPaiementManager, async
 
 
 
-// DELETE /api2/seances/exception/by-slot
-app.delete('/api2/seances/exception/by-slot', authAdmin, async (req, res) => {
+// DELETE /api/seances/exception/by-slot
+app.delete('/api/seances/exception/by-slot', authAdmin, async (req, res) => {
   try {
     const { cours, dateSeance, heureDebut, heureFin } = req.body; // أو req.query
     const q = {
@@ -9545,13 +9557,13 @@ app.delete('/api2/seances/exception/by-slot', authAdmin, async (req, res) => {
   }
 });
 
-// Remplacer la route POST /api2/seances/exception dans votre backend
+// Remplacer la route POST /api/seances/exception dans votre backend
 
 
 
 // Ajouter cette route dans votre backend (app.js)
 
-app.post('/api2/seances/copier-semaine', authAdminOrPedagogique, async (req, res) => {
+app.post('/api/seances/copier-semaine', authAdminOrPedagogique, async (req, res) => {
   try {
     const { lundiSource, lundiDestination } = req.body;
     
@@ -9689,7 +9701,7 @@ app.post('/api2/seances/copier-semaine', authAdminOrPedagogique, async (req, res
 });
 
 // Route pour la validation pédagogique des étudiants
-app.put('/api2/etudiants/:id/validation-pedagogique', authPedagogique, async (req, res) => {
+app.put('/api/etudiants/:id/validation-pedagogique', authPedagogique, async (req, res) => {
   try {
     const { statut, commentaire } = req.body;
     const etudiantId = req.params.id;
@@ -9755,7 +9767,7 @@ app.put('/api2/etudiants/:id/validation-pedagogique', authPedagogique, async (re
   }
 });
 // Route pour copier une semaine (pédagogique)
-app.post('/api2/pedagogique/seances/copier-semaine', authPedagogique, async (req, res) => {
+app.post('/api/pedagogique/seances/copier-semaine', authPedagogique, async (req, res) => {
   try {
     const { lundiSource, lundiDestination } = req.body;
     
@@ -9899,7 +9911,7 @@ app.post('/api2/pedagogique/seances/copier-semaine', authPedagogique, async (req
 });
 
 // Route pour copier la semaine précédente (pédagogique)
-app.post('/api2/pedagogique/seances/copier-semaine-precedente', authPedagogique, async (req, res) => {
+app.post('/api/pedagogique/seances/copier-semaine-precedente', authPedagogique, async (req, res) => {
   try {
     const { lundiDestination } = req.body;
     
@@ -10008,7 +10020,7 @@ app.post('/api2/pedagogique/seances/copier-semaine-precedente', authPedagogique,
 });
 
 // Route pour obtenir les semaines disponibles (pédagogique)
-app.get('/api2/pedagogique/seances/semaines-disponibles', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/seances/semaines-disponibles', authPedagogique, async (req, res) => {
   try {
     // Construire le filtre selon les permissions
     let coursFilter = {};
@@ -10069,7 +10081,7 @@ app.get('/api2/pedagogique/seances/semaines-disponibles', authPedagogique, async
 });
 
 // Route pour toutes les semaines (pédagogique général)
-app.get('/api2/pedagogique/seances/semaines-disponibles/toutes', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/seances/semaines-disponibles/toutes', authPedagogique, async (req, res) => {
   try {
     // Vérifier que c'est un pédagogique général
     if (req.user.role !== 'pedagogique_general' && req.user.role !== 'admin') {
@@ -10125,7 +10137,7 @@ app.get('/api2/pedagogique/seances/semaines-disponibles/toutes', authPedagogique
 });
 
 // Route pour les semaines avec séances (format simple)
-app.get('/api2/pedagogique/seances/semaines-avec-seances', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/seances/semaines-avec-seances', authPedagogique, async (req, res) => {
   try {
     // Construire le filtre selon les permissions
     let coursFilter = {};
@@ -10185,7 +10197,7 @@ app.get('/api2/pedagogique/seances/semaines-avec-seances', authPedagogique, asyn
 
 
 // Route pour obtenir les semaines disponibles (optionnel)
-app.get('/api2/seances/semaines-disponibles', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/seances/semaines-disponibles', authAdminOrPaiementManager, async (req, res) => {
   try {
     const semaines = await Seance.aggregate([
       {
@@ -10236,7 +10248,7 @@ app.get('/api2/seances/semaines-disponibles', authAdminOrPaiementManager, async 
   }
 });
 // Route simple pour copier la semaine précédente vers la semaine actuelle
-app.post('/api2/seances/copier-semaine-precedente', authAdminOrPedagogique, async (req, res) => {
+app.post('/api/seances/copier-semaine-precedente', authAdminOrPedagogique, async (req, res) => {
   try {
     const { lundiDestination } = req.body;
     
@@ -10334,7 +10346,7 @@ app.post('/api2/seances/copier-semaine-precedente', authAdminOrPedagogique, asyn
 });
 
 // Route pour avoir les semaines avec séances (format simple)
-app.get('/api2/seances/semaines-avec-seances', authAdminOrPedagogique, async (req, res) => {
+app.get('/api/seances/semaines-avec-seances', authAdminOrPedagogique, async (req, res) => {
   try {
     const semaines = await Seance.aggregate([
       {
@@ -10382,7 +10394,7 @@ app.get('/api2/seances/semaines-avec-seances', authAdminOrPedagogique, async (re
     res.status(500).json({ error: error.message });
   }
 });
-app.get('/api2/seances/professeur', authProfesseur, async (req, res) => {
+app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
   try {
     const seances = await Seance.find({ professeur: req.professeurId })
       .populate('professeur', 'nom') // Populate le professeur pour avoir le nom
@@ -10393,7 +10405,7 @@ app.get('/api2/seances/professeur', authProfesseur, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.post('/api2/login', async (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, motDePasse } = req.body;
   
   // ✅ Essayer comme admin
@@ -10554,7 +10566,7 @@ app.post('/api2/login', async (req, res) => {
 
 
 // routes/professeurs.js
-app.patch('/api2/professeurs/:id/actif', authAdminOrPedagogique, async (req, res) => {
+app.patch('/api/professeurs/:id/actif', authAdminOrPedagogique, async (req, res) => {
   try {
     const prof = await Professeur.findById(req.params.id);
     if (!prof) return res.status(404).json({ message: 'Professeur introuvable' });
@@ -10567,7 +10579,7 @@ app.patch('/api2/professeurs/:id/actif', authAdminOrPedagogique, async (req, res
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.get('/api2/etudiant/profile', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/profile', authEtudiant, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.etudiantId).select('-motDePasse'); // ✅ هنا التعديل
     if (!etudiant) return res.status(404).json({ message: 'Étudiant introuvable' });
@@ -10579,7 +10591,7 @@ app.get('/api2/etudiant/profile', authEtudiant, async (req, res) => {
 
 
 // ✅ 🟢 جلسات الحضور
-app.get('/api2/etudiant/presences', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/presences', authEtudiant, async (req, res) => {
   try {
     const presences = await Presence.find({ etudiant: req.etudiantId, present: true });
     res.json(presences);
@@ -10590,7 +10602,7 @@ app.get('/api2/etudiant/presences', authEtudiant, async (req, res) => {
 
 
 // ✅ 🔴 الغيابات
-app.get('/api2/etudiant/absences', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/absences', authEtudiant, async (req, res) => {
   try {
     const absences = await Presence.find({ etudiant: req.etudiantId, present: false });
     res.json(absences);
@@ -10601,7 +10613,7 @@ app.get('/api2/etudiant/absences', authEtudiant, async (req, res) => {
 
 
 // ✅ 💰 الدفعات
-app.get('/api2/etudiant/paiements', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/paiements', authEtudiant, async (req, res) => {
   try {
     const paiements = await Paiement.find({ etudiant: req.etudiantId });
     res.json(paiements);
@@ -10612,7 +10624,7 @@ app.get('/api2/etudiant/paiements', authEtudiant, async (req, res) => {
 
 
 
-app.delete('/api2/professeurs/:id', authAdminOrPedagogique, async (req, res) => {
+app.delete('/api/professeurs/:id', authAdminOrPedagogique, async (req, res) => {
   try {
     await Professeur.findByIdAndDelete(req.params.id);
     res.json({ message: 'Professeur supprimé avec succès' });
@@ -10622,7 +10634,7 @@ app.delete('/api2/professeurs/:id', authAdminOrPedagogique, async (req, res) => 
   }
 });
 
-app.get('/api2/presences/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/presences/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const result = await Presence.find({ etudiant: req.params.etudiantId }).sort({ dateSession: -1 });
     res.json(result);
@@ -10630,7 +10642,7 @@ app.get('/api2/presences/:etudiantId', authAdminOrPaiementManager, async (req, r
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api2/presences/etudiant/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/presences/etudiant/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const presences = await Presence.find({ etudiant: req.params.id }).sort({ dateSession: -1 });
     res.json(presences);
@@ -10642,7 +10654,7 @@ app.get('/api2/presences/etudiant/:id', authAdminOrPaiementManager, async (req, 
 
 
 
-app.get('/api2/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.params.id);
     if (!etudiant) return res.status(404).json({ message: "Étudiant introuvable" });
@@ -10651,7 +10663,7 @@ app.get('/api2/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 });
-app.get('/api2/pedagogique/etudiants', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/etudiants', authPedagogique, async (req, res) => {
   try {
     const filierePedagogique = req.user.filiere;
     const estGeneral = filierePedagogique === 'GENERAL';
@@ -10676,7 +10688,7 @@ app.get('/api2/pedagogique/etudiants', authPedagogique, async (req, res) => {
   }
 });
 
-app.get('/api2/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const paiements = await Paiement.find({ etudiant: req.params.etudiantId });
     res.json(paiements);
@@ -10687,9 +10699,9 @@ app.get('/api2/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, asyn
 
 // Lister les cours
 // Récupérer un seul cours avec détails
-// 📌 Route: GET /api2/cours/:id
+// 📌 Route: GET /api/cours/:id
 // ✅ Lister tous les cours (IMPORTANT!)
-app.get('/api2/cours', authAdminOrPaiementManager  , async (req, res) => {
+app.get('/api/cours', authAdminOrPaiementManager  , async (req, res) => {
   try {
     const cours = await Cours.find();
     res.json(cours);
@@ -10698,7 +10710,7 @@ app.get('/api2/cours', authAdminOrPaiementManager  , async (req, res) => {
   }
 });
 // routes/professeur.js أو في ملف Express المناسب
-app.get('/api2/admin/professeurs-par-cours/:coursNom', async (req, res) => {
+app.get('/api/admin/professeurs-par-cours/:coursNom', async (req, res) => {
   try {
     const coursNom = req.params.coursNom;
 
@@ -10712,7 +10724,7 @@ app.get('/api2/admin/professeurs-par-cours/:coursNom', async (req, res) => {
 // À ajouter dans votre app.js - Routes CRUD pour gérer les Administratifs
 
 // GET - Liste de tous les administratifs
-app.get('/api2/administratifs', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/administratifs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratifs = await Administratif.find()
       .select('-motDePasse') // Exclure le mot de passe
@@ -10724,7 +10736,7 @@ app.get('/api2/administratifs', authAdminOrPaiementManager, async (req, res) => 
 });
 
 // GET - Un administratif par ID
-app.get('/api2/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratif = await Administratif.findById(req.params.id)
       .select('-motDePasse');
@@ -10740,7 +10752,7 @@ app.get('/api2/administratifs/:id', authAdminOrPaiementManager, async (req, res)
 });
 
 // POST - Créer un nouvel administratif
-app.post('/api2/administratifs', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/administratifs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, actif } = req.body;
 
@@ -10787,7 +10799,7 @@ app.post('/api2/administratifs', authAdminOrPaiementManager, async (req, res) =>
 });
 
 // PUT - Modifier un administratif
-app.put('/api2/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, actif } = req.body;
 
@@ -10838,7 +10850,7 @@ app.put('/api2/administratifs/:id', authAdminOrPaiementManager, async (req, res)
 });
 
 // DELETE - Supprimer un administratif
-app.delete('/api2/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratif = await Administratif.findById(req.params.id);
     if (!administratif) {
@@ -10861,7 +10873,7 @@ app.delete('/api2/administratifs/:id', authAdminOrPaiementManager, async (req, r
 });
 
 // PATCH - Activer/Désactiver un administratif
-app.patch('/api2/administratifs/:id/actif', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/administratifs/:id/actif', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratif = await Administratif.findById(req.params.id);
     if (!administratif) {
@@ -10885,7 +10897,7 @@ app.patch('/api2/administratifs/:id/actif', authAdminOrPaiementManager, async (r
 });
 
 // GET - Statistiques des administratifs (optionnel)
-app.get('/api2/administratifs/stats/dashboard', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/administratifs/stats/dashboard', authAdminOrPaiementManager, async (req, res) => {
   try {
     const totalAdministratifs = await Administratif.countDocuments();
     const administratifsActifs = await Administratif.countDocuments({ actif: true });
@@ -10906,7 +10918,7 @@ app.get('/api2/administratifs/stats/dashboard', authAdminOrPaiementManager, asyn
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.get('/api2/professeur/profile', authProfesseur, async (req, res) => {
+app.get('/api/professeur/profile', authProfesseur, async (req, res) => {
   try {
     const professeur = await Professeur.findById(req.professeurId).select('-motDePasse');
     if (!professeur) return res.status(404).json({ message: 'Professeur introuvable' });
@@ -10918,7 +10930,7 @@ app.get('/api2/professeur/profile', authProfesseur, async (req, res) => {
 
 
 // GET - Liste des cours accessible aux commerciaux (lecture seule)
-app.get('/api2/commercial/cours', authCommercial, async (req, res) => {
+app.get('/api/commercial/cours', authCommercial, async (req, res) => {
   try {
     // Les commerciaux peuvent seulement voir les cours, pas les créer/modifier/supprimer
     const cours = await Cours.find()
@@ -10937,7 +10949,7 @@ app.get('/api2/commercial/cours', authCommercial, async (req, res) => {
 
 // Alternative: Modifier la route existante pour accepter les deux types d'auth
 // (Si vous préférez cette approche)
-app.get('/api2/cours', authAdminOrPaiementManager,async (req, res) => {
+app.get('/api/cours', authAdminOrPaiementManager,async (req, res) => {
   try {
     // Vérifier d'abord si c'est un admin
     const adminToken = req.headers.authorization?.replace('Bearer ', '');
@@ -10981,7 +10993,7 @@ app.get('/api2/cours', authAdminOrPaiementManager,async (req, res) => {
 });
 
 // Route spécifique pour les commerciaux - obtenir les cours avec nombre d'étudiants
-app.get('/api2/commercial/cours/disponibles', authCommercial, async (req, res) => {
+app.get('/api/commercial/cours/disponibles', authCommercial, async (req, res) => {
   try {
     const cours = await Cours.find().select('nom professeur').sort({ nom: 1 });
     
@@ -11012,7 +11024,7 @@ app.get('/api2/commercial/cours/disponibles', authCommercial, async (req, res) =
   }
 });
 
-app.get('/api2/cours/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/cours/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const cours = await Cours.findById(req.params.id).populate('creePar', 'nom email');
     if (!cours) return res.status(404).json({ message: 'Cours introuvable' });
@@ -11022,7 +11034,7 @@ app.get('/api2/cours/:id', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 
-app.get('/api2/professeurs', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const professeurs = await Professeur.find().sort({ createdAt: -1 });
     res.json(professeurs);
@@ -11032,7 +11044,7 @@ app.get('/api2/professeurs', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 // Enhanced API route with pagination
-app.get('/api2/actualites', async (req, res) => {
+app.get('/api/actualites', async (req, res) => {
   try {
     const { category, search, sortBy, page = 1, limit = 5 } = req.query;
 
@@ -11074,7 +11086,7 @@ app.get('/api2/actualites', async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.post('/api2/actualites', authAdminOrPaiementManager, upload.single('image'), async (req, res) => {
+app.post('/api/actualites', authAdminOrPaiementManager, upload.single('image'), async (req, res) => {
   try {
     const { title, excerpt, content, category, author, date, tags, type, isPinned } = req.body;
 
@@ -11097,7 +11109,7 @@ app.post('/api2/actualites', authAdminOrPaiementManager, upload.single('image'),
     res.status(400).json({ message: 'Erreur ajout actualité', error: err.message });
   }
 });
-app.delete('/api2/actualites/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/actualites/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const deleted = await Actualite.findByIdAndDelete(req.params.id);
     if (!deleted) {
@@ -11109,7 +11121,7 @@ app.delete('/api2/actualites/:id', authAdminOrPaiementManager, async (req, res) 
   }
 });
 // ✏️ تعديل actualité
-app.put('/api2/actualites/:id', authAdminOrPaiementManager, upload.single('image'), async (req, res) => {
+app.put('/api/actualites/:id', authAdminOrPaiementManager, upload.single('image'), async (req, res) => {
   try {
     const { title, excerpt, content, category, author, date, tags, type, isPinned } = req.body;
 
@@ -11142,7 +11154,7 @@ app.put('/api2/actualites/:id', authAdminOrPaiementManager, upload.single('image
 });
 
 
-app.get('/api2/revenus/modes-paiement/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/modes-paiement/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
   try {
     const anneeScolaire = req.params.anneeScolaire;
     
@@ -11186,7 +11198,7 @@ app.get('/api2/revenus/modes-paiement/:anneeScolaire', authAdminOrPaiementManage
 });
 
 // Route sans paramètre pour "toutes les années"
-app.get('/api2/revenus/modes-paiement', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/modes-paiement', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiants = await Etudiant.find({ actif: true });
     
@@ -11221,7 +11233,7 @@ app.get('/api2/revenus/modes-paiement', authAdminOrPaiementManager, async (req, 
 });
 
 // ✅ Route pour obtenir les prévisions mensuelles détaillées
-app.get('/api2/revenus/previsions-mensuelles/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/previsions-mensuelles/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
   try {
     const anneeScolaire = req.params.anneeScolaire;
     
@@ -11314,7 +11326,7 @@ app.get('/api2/revenus/previsions-mensuelles/:anneeScolaire', authAdminOrPaiemen
 });
 
 // Route sans paramètre pour "toutes les années"
-app.get('/api2/revenus/previsions-mensuelles', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/previsions-mensuelles', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiants = await Etudiant.find({ actif: true });
     
@@ -11391,7 +11403,7 @@ app.get('/api2/revenus/previsions-mensuelles', authAdminOrPaiementManager, async
 });
 
 // ✅ Route pour obtenir toutes les années scolaires disponibles
-app.get('/api2/revenus/annees-disponibles', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/annees-disponibles', authAdminOrPaiementManager, async (req, res) => {
   try {
     const annees = await Etudiant.distinct('anneeScolaire', { anneeScolaire: { $ne: null } });
     
@@ -11411,7 +11423,7 @@ app.get('/api2/revenus/annees-disponibles', authAdminOrPaiementManager, async (r
 });
 
 // ✅ Route pour export Excel des prévisions (optionnel)
-app.get('/api2/revenus/export/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/export/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
   try {
     const anneeScolaire = req.params.anneeScolaire;
     
@@ -11432,7 +11444,7 @@ app.get('/api2/revenus/export/:anneeScolaire', authAdminOrPaiementManager, async
   }
 });
 
-app.get('/api2/revenus/export', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/export', authAdminOrPaiementManager, async (req, res) => {
   try {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=previsions-revenus-toutes.xlsx');
@@ -11444,7 +11456,7 @@ app.get('/api2/revenus/export', authAdminOrPaiementManager, async (req, res) => 
     res.status(500).json({ error: error.message });
   }
 });
-app.get('/api2/etudiants/:etudiantId/mode-paiement', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants/:etudiantId/mode-paiement', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.params.etudiantId);
     if (!etudiant) {
@@ -11472,7 +11484,7 @@ app.get('/api2/etudiants/:etudiantId/mode-paiement', authAdminOrPaiementManager,
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api2/paiements/etudiant/:etudiantId/info', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/paiements/etudiant/:etudiantId/info', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiantId = req.params.etudiantId;
     
@@ -11607,7 +11619,7 @@ app.get('/api2/paiements/etudiant/:etudiantId/info', authAdminOrPaiementManager,
 });
 
 // API POST inchangée
-app.post('/api2/paiements', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { etudiant, cours, moisDebut, nombreMois, montant, note, estInscription, typePaiement } = req.body;
     const coursArray = Array.isArray(cours) ? cours : [cours];
@@ -11699,7 +11711,7 @@ app.post('/api2/paiements', authAdminOrPaiementManager, async (req, res) => {
 // Nouvelle route API à ajouter dans votre serveur
 // À ajouter dans votre fichier serveur (app.js ou server.js)
 
-app.get('/api2/revenus/previsions/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/revenus/previsions/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
   try {
     const anneeScolaire = decodeURIComponent(req.params.anneeScolaire);
     
@@ -11935,7 +11947,7 @@ app.get('/api2/revenus/previsions/:anneeScolaire', authAdminOrPaiementManager, a
     });
   }
 });
-app.post('/api2/messages/upload', authEtudiant, uploadMessageFile.single('fichier'), async (req, res) => {
+app.post('/api/messages/upload', authEtudiant, uploadMessageFile.single('fichier'), async (req, res) => {
   try {
     const { contenu, destinataireId, roleDestinataire } = req.body;
 
@@ -11969,7 +11981,7 @@ app.post('/api2/messages/upload', authEtudiant, uploadMessageFile.single('fichie
     console.error('Erreur lors de l’envoi du message avec fichier:', err);
     res.status(500).json({ message: 'Une erreur est survenue sur le serveur.' });
   }
-});app.get('/api2/etudiant/me', authEtudiant, async (req, res) => {
+});app.get('/api/etudiant/me', authEtudiant, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.etudiantId).select('-motDePasse');
     if (!etudiant) {
@@ -11979,7 +11991,7 @@ app.post('/api2/messages/upload', authEtudiant, uploadMessageFile.single('fichie
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
-});app.get('/api2/etudiant/mes-professeurs-messages', authEtudiant, async (req, res) => {
+});app.get('/api/etudiant/mes-professeurs-messages', authEtudiant, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.etudiantId);
     const coursEtudiant = etudiant.cours;
@@ -12015,7 +12027,7 @@ app.post('/api2/messages/upload', authEtudiant, uploadMessageFile.single('fichie
 });
 
 
-app.post('/api2/bulletins', authProfesseur, async (req, res) => {
+app.post('/api/bulletins', authProfesseur, async (req, res) => {
   try {
     const { etudiant, cours, semestre, notes, remarque } = req.body;
 
@@ -12047,7 +12059,7 @@ app.post('/api2/bulletins', authProfesseur, async (req, res) => {
   }
 });
 
-app.get('/api2/bulletins/etudiant/me', authEtudiant, async (req, res) => {
+app.get('/api/bulletins/etudiant/me', authEtudiant, async (req, res) => {
   try {
     // 1. Vérifier que l'étudiant existe toujours
     const etudiantExists = await Etudiant.findById(req.etudiantId);
@@ -12109,7 +12121,7 @@ app.get('/api2/bulletins/etudiant/me', authEtudiant, async (req, res) => {
   }
 });
 // Voir les bulletins que le prof a créés
-app.get('/api2/bulletins/professeur', authProfesseur, async (req, res) => {
+app.get('/api/bulletins/professeur', authProfesseur, async (req, res) => {
   try {
     const bulletins = await Bulletin.find({ professeur: req.professeurId })
       .populate({
@@ -12132,7 +12144,7 @@ app.get('/api2/bulletins/professeur', authProfesseur, async (req, res) => {
 });
 
 // Admin: voir tous
-app.get('/api2/bulletins',authAdminOrPaiementManager , async (req, res) => {
+app.get('/api/bulletins',authAdminOrPaiementManager , async (req, res) => {
   try {
     const bulletins = await Bulletin.find()
       .populate({
@@ -12172,7 +12184,7 @@ app.get('/api2/bulletins',authAdminOrPaiementManager , async (req, res) => {
 
 
 
-app.get('/api2/paiements/exp', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/paiements/exp', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiants = await Etudiant.find({ actif: true });
     const paiements = await Paiement.find({}).lean();
@@ -12296,7 +12308,7 @@ app.get('/api2/paiements/exp', authAdminOrPaiementManager, async (req, res) => {
 
 
 // ✅ Route pour supprimer un message
-app.delete('/api2/messages/:messageId', async (req, res) => {
+app.delete('/api/messages/:messageId', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -12330,7 +12342,7 @@ app.delete('/api2/messages/:messageId', async (req, res) => {
 
 
 // Route pour supprimer une notification avec sauvegarde du contexte
-app.delete('/api2/notifications/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/notifications/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -12375,7 +12387,7 @@ app.delete('/api2/notifications/:id', authAdminOrPaiementManager, async (req, re
 });
 
 // Route pour restaurer les notifications supprimées
-app.post('/api2/notifications/reset-deleted', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/notifications/reset-deleted', authAdminOrPaiementManager, async (req, res) => {
   try {
     const result = await NotificationSupprimee.deleteMany({});
     
@@ -12394,7 +12406,7 @@ app.post('/api2/notifications/reset-deleted', authAdminOrPaiementManager, async 
 });
 
 // Route pour configurer les seuils d'absence
-app.post('/api2/notifications/seuils-absence', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/notifications/seuils-absence', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { normal, urgent, critique } = req.body;
     
@@ -12432,7 +12444,7 @@ app.post('/api2/notifications/seuils-absence', authAdminOrPaiementManager, async
 });
 
 // Route de statistiques détaillées pour les absences
-app.get('/api2/notifications/stats-absences', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/notifications/stats-absences', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiantsActifs = await Etudiant.find({ actif: true });
     const stats = {
@@ -12488,7 +12500,7 @@ app.get('/api2/notifications/stats-absences', authAdminOrPaiementManager, async 
 // ===== CRUD ROUTES POUR PARTNER =====
 
 // 📊 GET - Statistiques partners (DOIT ÊTRE EN PREMIER - ROUTES SPÉCIFIQUES)
-app.get('/api2/partners/stats', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/partners/stats', authAdminOrPaiementManager, async (req, res) => {
   try {
     const [totalPartners, partnersActifs, partnersInactifs] = await Promise.all([
       Partner.countDocuments({}),
@@ -12518,7 +12530,7 @@ app.get('/api2/partners/stats', authAdminOrPaiementManager, async (req, res) => 
 });
 
 // 📋 GET - Obtenir partners actifs pour select (ROUTES SPÉCIFIQUES AVANT /:id)
-app.get('/api2/partners/active-list', authCommercial, async (req, res) => {
+app.get('/api/partners/active-list', authCommercial, async (req, res) => {
   try {
     const partners = await Partner.getPartnersActifs();
     
@@ -12546,7 +12558,7 @@ app.get('/api2/partners/active-list', authCommercial, async (req, res) => {
 });
 
 // 🔐 POST - Connexion partner (ROUTES SPÉCIFIQUES AVANT /:id)
-app.post('/api2/partners/login', async (req, res) => {
+app.post('/api/partners/login', async (req, res) => {
   try {
     const { email, motDePasse } = req.body;
     
@@ -12614,7 +12626,7 @@ app.post('/api2/partners/login', async (req, res) => {
 });
 
 // 📊 GET - Obtenir tous les partners (ROUTES GÉNÉRALES)
-app.get('/api2/partners', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/partners', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { active } = req.query;
     
@@ -12641,7 +12653,7 @@ app.get('/api2/partners', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // ➕ POST - Créer un nouveau partner
-app.post('/api2/partners', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/partners', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nomPartner, email, motDePasse, active } = req.body;
     
@@ -12730,7 +12742,7 @@ app.post('/api2/partners', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // 🔍 GET - Obtenir un partner par ID (DOIT ÊTRE APRÈS LES ROUTES SPÉCIFIQUES)
-app.get('/api2/partners/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/partners/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Validation de l'ObjectId
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -12764,7 +12776,7 @@ app.get('/api2/partners/:id', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // ✏️ PUT - Modifier un partner
-app.put('/api2/partners/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/partners/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Validation de l'ObjectId
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -12876,7 +12888,7 @@ app.put('/api2/partners/:id', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // 🔄 PATCH - Toggle actif/inactif
-app.patch('/api2/partners/:id/toggle', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/partners/:id/toggle', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Validation de l'ObjectId
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -12913,7 +12925,7 @@ app.patch('/api2/partners/:id/toggle', authAdminOrPaiementManager, async (req, r
 });
 
 // 🔑 PATCH - Changer le mot de passe
-app.patch('/api2/partners/:id/change-password', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/partners/:id/change-password', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Validation de l'ObjectId
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -12958,7 +12970,7 @@ app.patch('/api2/partners/:id/change-password', authAdminOrPaiementManager, asyn
 });
 
 // 🗑️ DELETE - Supprimer un partner
-app.delete('/api2/partners/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/partners/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Validation de l'ObjectId
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -13005,7 +13017,7 @@ app.delete('/api2/partners/:id', authAdminOrPaiementManager, async (req, res) =>
 });
 
 // ✅ Route pour marquer un message comme lu
-app.patch('/api2/messages/:messageId/read', async (req, res) => {
+app.patch('/api/messages/:messageId/read', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -13035,7 +13047,7 @@ app.patch('/api2/messages/:messageId/read', async (req, res) => {
 });
 
 // ✅ Route pour obtenir le nombre de messages non lus
-app.get('/api2/messages/unread-count', async (req, res) => {
+app.get('/api/messages/unread-count', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -13057,7 +13069,7 @@ app.get('/api2/messages/unread-count', async (req, res) => {
 });
 
 // ✅ Route pour obtenir les messages non lus par expéditeur
-app.get('/api2/messages/unread-by-sender', async (req, res) => {
+app.get('/api/messages/unread-by-sender', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -13093,7 +13105,7 @@ app.get('/api2/messages/unread-by-sender', async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.put('/api2/rappels/:id', async (req, res) => {
+app.put('/api/rappels/:id', async (req, res) => {
   try {
     const { dateRappel, note } = req.body;
     const updated = await Rappel.findByIdAndUpdate(
@@ -13107,7 +13119,7 @@ app.put('/api2/rappels/:id', async (req, res) => {
   }
 });
 
-app.post('/api2/rappels', async (req, res) => {
+app.post('/api/rappels', async (req, res) => {
   try {
     console.log('📥 Body reçu:', req.body); // <= هذا مهم
     const { etudiant, cours, montantRestant, note, dateRappel } = req.body;
@@ -13124,7 +13136,7 @@ app.post('/api2/rappels', async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.get('/api2/vie-scolaire', async (req, res) => {
+app.get('/api/vie-scolaire', async (req, res) => {
   try {
     const { cycle, year, category, search, limit = 10, page = 1 } = req.query;
     
@@ -13176,7 +13188,7 @@ app.get('/api2/vie-scolaire', async (req, res) => {
 });
 
 // GET une activité par ID
-app.get('/api2/vie-scolaire/:id', async (req, res) => {
+app.get('/api/vie-scolaire/:id', async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ 
@@ -13206,7 +13218,7 @@ app.get('/api2/vie-scolaire/:id', async (req, res) => {
 });
 
 // POST créer une nouvelle activité (admin uniquement)
-app.post('/api2/vie-scolaire', authAdminOrPaiementManager, uploadVieScolaire.array('images', 10), async (req, res) => {
+app.post('/api/vie-scolaire', authAdminOrPaiementManager, uploadVieScolaire.array('images', 10), async (req, res) => {
   try {
     const {
       title,
@@ -13285,7 +13297,7 @@ app.post('/api2/vie-scolaire', authAdminOrPaiementManager, uploadVieScolaire.arr
     });
   }
 });
-app.get('/api2/commerciaux', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/commerciaux', authAdmin, async (req, res) => {
   try {
     const commerciaux = await Commercial.find()
       .select('-motDePasse') // Don't send password
@@ -13297,7 +13309,7 @@ app.get('/api2/commerciaux', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // ✅ Create new commercial
-app.post('/api2/commerciaux', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/commerciaux', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, estAdminInscription, actif } = req.body;
 
@@ -13346,7 +13358,7 @@ app.post('/api2/commerciaux', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // ✅ Update commercial
-app.put('/api2/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, estAdminInscription, actif } = req.body;
 
@@ -13398,7 +13410,7 @@ app.put('/api2/commerciaux/:id', authAdminOrPaiementManager, async (req, res) =>
 });
 
 // ✅ Delete commercial but keep students (set commercial to null)
-app.delete('/api2/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commercial = await Commercial.findById(req.params.id);
     if (!commercial) {
@@ -13433,7 +13445,7 @@ app.delete('/api2/commerciaux/:id', authAdminOrPaiementManager, async (req, res)
 });
 
 // Alternative version: Delete commercial and assign students to a default/admin commercial
-app.delete('/api2/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commercial = await Commercial.findById(req.params.id);
     if (!commercial) {
@@ -13479,7 +13491,7 @@ app.delete('/api2/commerciaux/:id', authAdminOrPaiementManager, async (req, res)
 });
 
 // Also update the statistics endpoint to handle students without commercials
-app.get('/api2/commerciaux/statistiques', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/commerciaux/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commerciauxStats = await Etudiant.aggregate([
       { $match: { commercial: { $ne: null, $exists: true } } }, // Only students with commercials
@@ -13622,7 +13634,7 @@ app.get('/api2/commerciaux/statistiques', authAdminOrPaiementManager, async (req
 });
 
 // ✅ Toggle commercial active status
-app.patch('/api2/commerciaux/:id/actif', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/commerciaux/:id/actif', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commercial = await Commercial.findById(req.params.id);
     if (!commercial) {
@@ -13647,7 +13659,7 @@ app.patch('/api2/commerciaux/:id/actif', authAdminOrPaiementManager, async (req,
 // ===== ROUTES SPÉCIFIQUES POUR LE DASHBOARD PÉDAGOGIQUE =====
 
 // ✅ Get statistics for commercials
-app.get('/api2/commerciaux/statistiques', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/commerciaux/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commerciauxStats = await Etudiant.aggregate([
       { $match: { commercial: { $ne: null } } },
@@ -13727,7 +13739,7 @@ app.get('/api2/commerciaux/statistiques', authAdminOrPaiementManager, async (req
   }
 });
 // PUT modifier une activité (admin uniquement)
-app.put('/api2/vie-scolaire/:id', authAdminOrPaiementManager, uploadVieScolaire.array('images', 10), async (req, res) => {
+app.put('/api/vie-scolaire/:id', authAdminOrPaiementManager, uploadVieScolaire.array('images', 10), async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -13828,7 +13840,7 @@ app.put('/api2/vie-scolaire/:id', authAdminOrPaiementManager, uploadVieScolaire.
 });
 
 // DELETE supprimer une activité (admin uniquement)
-app.delete('/api2/vie-scolaire/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/vie-scolaire/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -13872,7 +13884,7 @@ app.delete('/api2/vie-scolaire/:id', authAdminOrPaiementManager, async (req, res
 });
 
 // DELETE supprimer une image spécifique d'une activité (admin uniquement)
-app.delete('/api2/vie-scolaire/:id/images/:imageIndex', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/vie-scolaire/:id/images/:imageIndex', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -13922,7 +13934,7 @@ app.delete('/api2/vie-scolaire/:id/images/:imageIndex', authAdminOrPaiementManag
     });
   }
 });
-app.get('/api2/rappels', async (req, res) => {
+app.get('/api/rappels', async (req, res) => {
   try {
     const rappels = await Rappel.find({ status: 'actif' })
       .populate('etudiant', 'nomComplet'); // نجلب فقط الاسم الكامل
@@ -13932,7 +13944,7 @@ app.get('/api2/rappels', async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.delete('/api2/rappels/:id', async (req, res) => {
+app.delete('/api/rappels/:id', async (req, res) => {
   try {
     await Rappel.findByIdAndDelete(req.params.id);
     res.json({ message: 'Rappel supprimé' });
@@ -13942,7 +13954,7 @@ app.delete('/api2/rappels/:id', async (req, res) => {
 });
 
 // ✅ Route pour envoyer un message
-app.post('/api2/messages', async (req, res) => {
+app.post('/api/messages', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -13990,7 +14002,7 @@ app.post('/api2/messages', async (req, res) => {
 });
 
 // ✅ Route pour marquer tous les messages d'une conversation comme lus
-app.patch('/api2/messages/mark-conversation-read', async (req, res) => {
+app.patch('/api/messages/mark-conversation-read', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -14026,7 +14038,7 @@ app.patch('/api2/messages/mark-conversation-read', async (req, res) => {
 });
 
 // ✅ Route pour obtenir tous les messages pour un utilisateur
-app.get('/api2/messages', async (req, res) => {
+app.get('/api/messages', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -14052,7 +14064,7 @@ app.get('/api2/messages', async (req, res) => {
 });
 
 // ✅ Route pour obtenir les messages entre un professeur et un étudiant spécifique (pour le professeur)
-app.get('/api2/messages/professeur/:etudiantId', authProfesseur, async (req, res) => {
+app.get('/api/messages/professeur/:etudiantId', authProfesseur, async (req, res) => {
   try {
     const messages = await Message.find({
       professeur: req.professeurId,
@@ -14069,7 +14081,7 @@ app.get('/api2/messages/professeur/:etudiantId', authProfesseur, async (req, res
 });
 
 // ✅ Route pour obtenir les messages entre un étudiant et un professeur spécifique (pour l'étudiant)
-app.get('/api2/messages/etudiant/:professeurId', authEtudiant, async (req, res) => {
+app.get('/api/messages/etudiant/:professeurId', authEtudiant, async (req, res) => {
   try {
     const messages = await Message.find({
       professeur: req.params.professeurId,
@@ -14086,7 +14098,7 @@ app.get('/api2/messages/etudiant/:professeurId', authEtudiant, async (req, res) 
 });
 
 // ✅ Route pour obtenir les professeurs de l'étudiant
-app.get('/api2/etudiant/mes-professeurs', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/mes-professeurs', authEtudiant, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.etudiantId);
     const coursEtudiant = etudiant.cours;
@@ -14106,7 +14118,7 @@ app.get('/api2/etudiant/mes-professeurs', authEtudiant, async (req, res) => {
 
 
 // ✅ Route pour vérifier le statut en ligne des utilisateurs
-app.get('/api2/users/online-status', async (req, res) => {
+app.get('/api/users/online-status', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Token manquant' });
@@ -14122,7 +14134,7 @@ app.get('/api2/users/online-status', async (req, res) => {
 });
 
 // ✅ Route pour obtenir les informations de l'utilisateur actuel (étudiant)
-app.get('/api2/messages/notifications-etudiant', authEtudiant, async (req, res) => {
+app.get('/api/messages/notifications-etudiant', authEtudiant, async (req, res) => {
   try {
     const messages = await Message.find({
       destinataire: req.etudiantId,
@@ -14144,7 +14156,7 @@ app.get('/api2/messages/notifications-etudiant', authEtudiant, async (req, res) 
   }
 });
 
-app.get('/api2/notifications', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/notifications', authAdminOrPaiementManager, async (req, res) => {
   try {
     const notifications = [];
     const aujourdHui = new Date();
@@ -14418,7 +14430,7 @@ app.get('/api2/notifications', authAdminOrPaiementManager, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api2/messages/notifications-professeur', authProfesseur, async (req, res) => {
+app.get('/api/messages/notifications-professeur', authProfesseur, async (req, res) => {
   try {
     const messages = await Message.find({
       destinataire: req.professeurId,
@@ -14440,7 +14452,7 @@ app.get('/api2/messages/notifications-professeur', authProfesseur, async (req, r
   }
 });
 
-// Route : GET /api2/messages/notifications-etudiant
+// Route : GET /api/messages/notifications-etudiant
 app.get('/notifications-etudiant', authEtudiant, async (req, res) => {
   try {
     const messages = await Message.find({
@@ -14501,7 +14513,7 @@ app.put('/update-profil', authAdminOrPaiementManager, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.get('/api2/professeur/mes-etudiants-messages', authProfesseur, async (req, res) => {
+app.get('/api/professeur/mes-etudiants-messages', authProfesseur, async (req, res) => {
   try {
     // 1. Récupérer les cours du professeur connecté
     const professeur = await Professeur.findById(req.professeurId).select('cours');
@@ -14544,7 +14556,7 @@ app.get('/api2/professeur/mes-etudiants-messages', authProfesseur, async (req, r
   }
 });
 
-app.post('/api2/messages/upload-prof', authProfesseur, uploadMessageFile.single('fichier'), async (req, res) => {
+app.post('/api/messages/upload-prof', authProfesseur, uploadMessageFile.single('fichier'), async (req, res) => {
   try {
     const { contenu, destinataireId, roleDestinataire } = req.body;
 
@@ -14580,7 +14592,7 @@ app.post('/api2/messages/upload-prof', authProfesseur, uploadMessageFile.single(
   }
 });
 // ✅ Route pour obtenir les informations du professeur connecté
-app.get('/api2/professeur/me', authProfesseur, async (req, res) => {
+app.get('/api/professeur/me', authProfesseur, async (req, res) => {
   try {
     const professeur = await Professeur.findById(req.professeurId).select('-motDePasse');
     if (!professeur) {
@@ -14592,7 +14604,7 @@ app.get('/api2/professeur/me', authProfesseur, async (req, res) => {
   }
 });
 // GET - Récupérer les étudiants du commercial connecté
-app.get('/api2/commercial/etudiants', authCommercial, async (req, res) => {
+app.get('/api/commercial/etudiants', authCommercial, async (req, res) => {
   try {
     const etudiants = await Etudiant.find({ commercial: req.commercialId });
     res.json(etudiants);
@@ -14652,7 +14664,7 @@ const addUserInfo = (data, userInfo, action) => {
 // Route historique général
 // Corrigez les deux routes d'historique :
 // Route historique général - AVEC DEBUG COMPLET
-app.get('/api2/seances/historique', authAdmin, async (req, res) => {
+app.get('/api/seances/historique', authAdmin, async (req, res) => {
   try {
     console.log('=== DEBUG HISTORIQUE GÉNÉRAL ===');
     console.log('Début récupération historique...');
@@ -14739,7 +14751,7 @@ app.get('/api2/seances/historique', authAdmin, async (req, res) => {
 });
 
 // Route historique spécifique - AVEC DEBUG COMPLET
-app.get('/api2/seances/historique/:id', authAdmin, async (req, res) => {
+app.get('/api/seances/historique/:id', authAdmin, async (req, res) => {
   try {
     console.log('=== DEBUG HISTORIQUE SPÉCIFIQUE ===');
     console.log('ID recherché:', req.params.id);
@@ -14812,7 +14824,7 @@ app.get('/api2/seances/historique/:id', authAdmin, async (req, res) => {
   }
 });
 // Route POST - Création avec traçabilité
-app.post('/api2/seances/exception', authAdmin, async (req, res) => {
+app.post('/api/seances/exception', authAdmin, async (req, res) => {
   console.log('=== DEBUG TRAÇABILITÉ COMPLET ===');
   console.log('req.userInfo:', JSON.stringify(req.userInfo, null, 2));
   
@@ -14871,7 +14883,7 @@ app.post('/api2/seances/exception', authAdmin, async (req, res) => {
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
-app.put('/api2/seances/:id', authAdmin, async (req, res) => {
+app.put('/api/seances/:id', authAdmin, async (req, res) => {
   console.log('=== DEBUG MODIFICATION SÉANCE ===');
   console.log('ID séance:', req.params.id);
   console.log('req.userInfo:', JSON.stringify(req.userInfo, null, 2));
@@ -15040,7 +15052,7 @@ app.put('/api2/seances/:id', authAdmin, async (req, res) => {
 
 
 // Route DELETE - Suppression avec traçabilité
-app.delete('/api2/seances/:id', authAdmin, async (req, res) => {
+app.delete('/api/seances/:id', authAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const seance = await Seance.findById(id);
@@ -15065,7 +15077,7 @@ app.delete('/api2/seances/:id', authAdmin, async (req, res) => {
 });
 
 // REMPLACEZ par cette route simple :
-app.put('/api2/seances/exception/:id', authAdmin, async (req, res) => {
+app.put('/api/seances/exception/:id', authAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { 
@@ -15121,7 +15133,7 @@ app.put('/api2/seances/exception/:id', authAdmin, async (req, res) => {
 
 
 
-app.delete('/api2/seances/:id', authAdmin, async (req, res) => {
+app.delete('/api/seances/:id', authAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const seance = await Seance.findById(id);
@@ -15158,7 +15170,7 @@ app.delete('/api2/seances/:id', authAdmin, async (req, res) => {
 });
 
 
-app.get('/api2/seances/etudiant', authEtudiant, async (req, res) => {
+app.get('/api/seances/etudiant', authEtudiant, async (req, res) => {
   try {
     const { semaine } = req.query;
     const etudiant = await Etudiant.findById(req.etudiantId);
@@ -15244,7 +15256,7 @@ app.get('/api2/seances/etudiant', authEtudiant, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.put('/api2/pedagogique/seances/:id/rattrapage', authAdmin, async (req, res) => {
+app.put('/api/pedagogique/seances/:id/rattrapage', authAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -15286,7 +15298,7 @@ app.put('/api2/pedagogique/seances/:id/rattrapage', authAdmin, async (req, res) 
   }
 });
 // Route pour les statistiques de rattrapages - VERSION CORRIGÉE AVEC PERMISSIONS
-app.get('/api2/pedagogique/rattrapages/statistiques', authAdmin, async (req, res) => {
+app.get('/api/pedagogique/rattrapages/statistiques', authAdmin, async (req, res) => {
   try {
     const userId = req.user.id;
     const userType = req.userType; // 'admin', 'finance_prof', 'pedagogique'
@@ -15650,7 +15662,7 @@ app.get('/api2/pedagogique/rattrapages/statistiques', authAdmin, async (req, res
 });
 
 // Route spécifique pour Admin et Finance_prof - Toutes les statistiques
-app.get('/api2/admin/rattrapages/statistiques', authAdmin, async (req, res) => {
+app.get('/api/admin/rattrapages/statistiques', authAdmin, async (req, res) => {
   try {
     // Vérifier que l'utilisateur a les bonnes permissions
     if (req.userType !== 'admin' && req.userType !== 'finance_prof') {
@@ -15930,7 +15942,7 @@ app.get('/api2/admin/rattrapages/statistiques', authAdmin, async (req, res) => {
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL =====
 // ===== ROUTE PUT - MODIFICATION D'ÉTUDIANT PAR COMMERCIAL (avec logique de copie) =====
 
-app.get('/api2/seances/periodes-disponibles', authAdmin, async (req, res) => {
+app.get('/api/seances/periodes-disponibles', authAdmin, async (req, res) => {
   try {
     // Récupérer toutes les dates distinctes des séances
     const dates = await Seance.distinct('dateSeance', { actif: true });
@@ -15957,7 +15969,7 @@ app.get('/api2/seances/periodes-disponibles', authAdmin, async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-app.get('/api2/comercial/stats', authCommercial, async (req, res) => {
+app.get('/api/comercial/stats', authCommercial, async (req, res) => {
   try {
     const { anneeScolaire, personnel } = req.query;
     
@@ -16190,7 +16202,7 @@ app.get('/api2/comercial/stats', authCommercial, async (req, res) => {
   }
 });
 // PATCH - Toggle actif pour étudiant du commercial
-app.patch('/api2/commercial/etudiants/:id/actif', authCommercial, async (req, res) => {
+app.patch('/api/commercial/etudiants/:id/actif', authCommercial, async (req, res) => {
   try {
     const etudiant = await Etudiant.findOne({ _id: req.params.id, commercial: req.commercialId });
     if (!etudiant) {
@@ -16206,7 +16218,7 @@ app.patch('/api2/commercial/etudiants/:id/actif', authCommercial, async (req, re
 });
 
 // DELETE - Supprimer un étudiant du commercial
-app.delete('/api2/commercial/etudiants/:id', authCommercial, async (req, res) => {
+app.delete('/api/commercial/etudiants/:id', authCommercial, async (req, res) => {
   try {
     const etudiant = await Etudiant.findOne({ _id: req.params.id, commercial: req.commercialId });
     if (!etudiant) {
@@ -16225,7 +16237,7 @@ app.delete('/api2/commercial/etudiants/:id', authCommercial, async (req, res) =>
 
 
 // 1. Créer un gestionnaire de paiement (POST)
-app.post('/api2/admin/paiement-managers', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/paiement-managers', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, email, telephone, motDePasse } = req.body;
 
@@ -16263,7 +16275,7 @@ app.post('/api2/admin/paiement-managers', authAdminOrPaiementManager, async (req
 });
 
 // 2. Lire tous les gestionnaires (GET)
-app.get('/api2/admin/paiement-managers', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/paiement-managers', authAdminOrPaiementManager, async (req, res) => {
   try {
     const managers = await PaiementManager.find({}, { motDePasse: 0 });
     res.json(managers);
@@ -16273,7 +16285,7 @@ app.get('/api2/admin/paiement-managers', authAdminOrPaiementManager, async (req,
 });
 
 // 3. Lire un gestionnaire spécifique (GET)
-app.get('/api2/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const manager = await PaiementManager.findById(req.params.id, { motDePasse: 0 });
     if (!manager) {
@@ -16286,7 +16298,7 @@ app.get('/api2/admin/paiement-managers/:id', authAdminOrPaiementManager, async (
 });
 
 // 4. Mettre à jour un gestionnaire (PUT)
-app.put('/api2/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, email, telephone, motDePasse, actif } = req.body;
     const updates = {};
@@ -16318,7 +16330,7 @@ app.put('/api2/admin/paiement-managers/:id', authAdminOrPaiementManager, async (
 });
 
 // 5. Supprimer un gestionnaire (DELETE)
-app.delete('/api2/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const manager = await PaiementManager.findByIdAndDelete(req.params.id);
     if (!manager) {
@@ -16331,7 +16343,7 @@ app.delete('/api2/admin/paiement-managers/:id', authAdminOrPaiementManager, asyn
 });
 
 // 6. Activer/Désactiver un gestionnaire (PATCH)
-app.patch('/api2/admin/paiement-managers/:id/toggle-active', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/admin/paiement-managers/:id/toggle-active', authAdminOrPaiementManager, async (req, res) => {
   try {
     const manager = await PaiementManager.findById(req.params.id);
     if (!manager) {
@@ -16350,7 +16362,7 @@ app.patch('/api2/admin/paiement-managers/:id/toggle-active', authAdminOrPaiement
   }
 });
 
-app.get('/api2/paiements', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
   try {
     const paiements = await Paiement.find()
       .populate('etudiant', 'prenom nomDeFamille nomComplet telephone modePaiement') // AJOUTER modePaiement
@@ -16362,7 +16374,7 @@ app.get('/api2/paiements', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 
-app.get('/api2/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const paiements = await Paiement.find({ etudiant: req.params.etudiantId })
       .populate('etudiant', 'modePaiement prixTotal paye'); // AJOUTER les infos nécessaires
@@ -16372,7 +16384,7 @@ app.get('/api2/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, asyn
     res.status(500).json({ message: "Erreur lors de la récupération des paiements", error: err.message });
   }
 });
-app.get('/api2/paiement-manager/etudiants', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/etudiants', authPaiementManager, async (req, res) => {
   try {
     const { actif, paye } = req.query;
     let query = {};
@@ -16390,7 +16402,7 @@ app.get('/api2/paiement-manager/etudiants', authPaiementManager, async (req, res
 });
 
 // 2. Obtenir la liste des cours
-app.get('/api2/paiement-manager/cours', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/cours', authPaiementManager, async (req, res) => {
   try {
     const cours = await Cours.find({}).select('nom prix');
     res.json(cours);
@@ -16400,7 +16412,7 @@ app.get('/api2/paiement-manager/cours', authPaiementManager, async (req, res) =>
 });
 
 // 3. Obtenir les paiements d'un étudiant
-app.get('/api2/paiement-manager/paiements/etudiant/:etudiantId', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/paiements/etudiant/:etudiantId', authPaiementManager, async (req, res) => {
   try {
     const paiements = await Paiement.find({ etudiant: req.params.etudiantId })
       .sort({ moisDebut: -1 });
@@ -16411,7 +16423,7 @@ app.get('/api2/paiement-manager/paiements/etudiant/:etudiantId', authPaiementMan
 });
 
 // 4. Ajouter un nouveau paiement
-app.post('/api2/paiement-manager/paiements', authPaiementManager, async (req, res) => {
+app.post('/api/paiement-manager/paiements', authPaiementManager, async (req, res) => {
   try {
     const { etudiant, cours, moisDebut, nombreMois, montant, note } = req.body;
 
@@ -16442,7 +16454,7 @@ app.post('/api2/paiement-manager/paiements', authPaiementManager, async (req, re
 });
 
 // 5. Obtenir les paiements récents
-app.get('/api2/paiement-manager/paiements', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/paiements', authPaiementManager, async (req, res) => {
   try {
     const { limit = 20 } = req.query;
     const paiements = await Paiement.find()
@@ -16457,7 +16469,7 @@ app.get('/api2/paiement-manager/paiements', authPaiementManager, async (req, res
 });
 
 // 6. Gestion des rappels
-app.post('/api2/paiement-manager/rappels', authPaiementManager, async (req, res) => {
+app.post('/api/paiement-manager/rappels', authPaiementManager, async (req, res) => {
   try {
     const { etudiant, cours, montantRestant, note, dateRappel } = req.body;
 
@@ -16478,7 +16490,7 @@ app.post('/api2/paiement-manager/rappels', authPaiementManager, async (req, res)
 });
 
 // 7. Statistiques de paiement
-app.get('/api2/paiement-manager/statistiques', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/statistiques', authPaiementManager, async (req, res) => {
   try {
     const stats = await Paiement.aggregate([
       {
@@ -16540,7 +16552,7 @@ async function updateStatutPaiementEtudiant(etudiantId) {
 
 
 
-app.get('/api2/paiement-manager/paiements/:id', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/paiements/:id', authPaiementManager, async (req, res) => {
   try {
     const cacheKey = `paiement_${req.params.id}`;
     const cachedData = paiementCache.get(cacheKey);
@@ -16580,7 +16592,7 @@ app.get('/api2/paiement-manager/paiements/:id', authPaiementManager, async (req,
 });
 
 
-app.get('/api2/paiement-manager/paiements/exp', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/paiements/exp', authPaiementManager, async (req, res) => {
   try {
     const etudiants = await Etudiant.find({ actif: true });
     const paiements = await Paiement.find({}).lean();
@@ -16699,7 +16711,7 @@ app.get('/api2/paiement-manager/paiements/exp', authPaiementManager, async (req,
 });
 
 
-app.get('/api2/paiement-manager/paiements', authPaiementManager, async (req, res) => {
+app.get('/api/paiement-manager/paiements', authPaiementManager, async (req, res) => {
   try {
     const { 
       page = 1, 
@@ -16785,7 +16797,7 @@ app.get('/api2/paiement-manager/paiements', authPaiementManager, async (req, res
     });
   }
 });
-app.get('/api2/admin/profile', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/profile', authAdminOrPaiementManager, async (req, res) => {
   try {
     console.log('📝 Route profile GET appelée - Admin ID:', req.adminId);
     
@@ -16804,7 +16816,7 @@ app.get('/api2/admin/profile', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // 1. API pour que FINANCE valide un cycle (Étape 1)
-app.post('/api2/finance/cycles/valider', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/cycles/valider', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Vérifier que c'est un utilisateur Finance
     if (req.userType !== 'finance_prof') {
@@ -16853,7 +16865,7 @@ app.post('/api2/finance/cycles/valider', authAdminOrPaiementManager, async (req,
 
 // 2. API pour récupérer les cycles validés par Finance (pour Admin)
 // 2. API pour récupérer les cycles validés par Finance
-app.get('/api2/admin/cycles/valides-finance', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/cycles/valides-finance', authAdminOrPaiementManager, async (req, res) => {
   try {
     // SUPPRIMER CETTE VÉRIFICATION qui bloque paiement_manager
     // if (req.userType !== 'admin') {
@@ -16881,7 +16893,7 @@ app.get('/api2/admin/cycles/valides-finance', authAdminOrPaiementManager, async 
 });
 
 // 3. API pour qu'ADMIN paie un cycle
-app.post('/api2/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
   try {
     // SUPPRIMER CETTE VÉRIFICATION
     // if (req.userType !== 'admin') {
@@ -16942,7 +16954,7 @@ app.post('/api2/admin/cycles/payer', authAdminOrPaiementManager, async (req, res
   }
 });
 // 4. API pour récupérer les détails d'un cycle spécifique
-app.get('/api2/cycles/:cycleId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/cycles/:cycleId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { cycleId } = req.params;
 
@@ -16965,7 +16977,7 @@ app.get('/api2/cycles/:cycleId', authAdminOrPaiementManager, async (req, res) =>
 });
 
 // 5. API pour récupérer le cycle en cours d'un professeur
-app.get('/api2/cycles/professeur/:professeurId/en-cours', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/cycles/professeur/:professeurId/en-cours', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -16990,7 +17002,7 @@ app.get('/api2/cycles/professeur/:professeurId/en-cours', authAdminOrPaiementMan
 });
 
 // 6. API pour l'historique des cycles d'un professeur
-app.get('/api2/cycles/professeur/:professeurId/historique', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/cycles/professeur/:professeurId/historique', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     const { limit = 10 } = req.query;
@@ -17017,7 +17029,7 @@ app.get('/api2/cycles/professeur/:professeurId/historique', authAdminOrPaiementM
 });
 
 // 7. API pour annuler un cycle (avant paiement)
-app.post('/api2/cycles/:cycleId/annuler', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/cycles/:cycleId/annuler', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { cycleId } = req.params;
     const { motif } = req.body;
@@ -17051,7 +17063,7 @@ app.post('/api2/cycles/:cycleId/annuler', authAdminOrPaiementManager, async (req
 });
 
 // 8. API pour les statistiques des cycles
-app.get('/api2/cycles/statistiques', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/cycles/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -17098,7 +17110,7 @@ app.get('/api2/cycles/statistiques', authAdminOrPaiementManager, async (req, res
 });
 
 // 9. API pour récupérer tous les cycles à différents statuts (dashboard)
-app.get('/api2/cycles/dashboard', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/cycles/dashboard', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { statut } = req.query;
 
@@ -17135,7 +17147,7 @@ app.get('/api2/cycles/dashboard', authAdminOrPaiementManager, async (req, res) =
 });
 
 
-app.put('/api2/admin/profile', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/admin/profile', authAdminOrPaiementManager, async (req, res) => {
   try {
     console.log('📝 Route profile PUT appelée - Admin ID:', req.adminId);
     console.log('📝 Body reçu:', req.body);
@@ -17229,7 +17241,7 @@ app.put('/api2/admin/profile', authAdminOrPaiementManager, async (req, res) => {
 
 
 // 2. Route pour obtenir les cours (CORRIGÉE)
-app.get('/api2/pedagogique/cours', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/cours', authPedagogique, async (req, res) => {
   try {
     const estGeneral = req.user.filiere === 'GENERAL';
     
@@ -17270,7 +17282,7 @@ app.get('/api2/pedagogique/cours', authPedagogique, async (req, res) => {
 
 
 // 4. Route pour les statistiques (CORRIGÉE)
-app.get('/api2/pedagogique/dashboard-stats', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/dashboard-stats', authPedagogique, async (req, res) => {
   try {
     let query = {};
     const estGeneral = req.user.filiere === 'GENERAL';
@@ -17376,7 +17388,7 @@ app.get('/api2/pedagogique/dashboard-stats', authPedagogique, async (req, res) =
   }
 });
 // Route pour récupérer les séances d'une semaine (filtrées par filière pédagogique)
-app.get('/api2/pedagogique/seances/semaine/:lundiSemaine', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/seances/semaine/:lundiSemaine', authPedagogique, async (req, res) => {
   try {
     const toStartOfDay = d => { const nd = new Date(d); nd.setHours(0,0,0,0); return nd; };
     const toEndOfDay   = d => { const nd = new Date(d); nd.setHours(23,59,59,999); return nd; };
@@ -17430,7 +17442,7 @@ app.get('/api2/pedagogique/seances/semaine/:lundiSemaine', authPedagogique, asyn
 });
 
 // Route pour créer une exception (séance ponctuelle)
-app.post('/api2/pedagogique/seances/exception', authPedagogique, async (req, res) => {
+app.post('/api/pedagogique/seances/exception', authPedagogique, async (req, res) => {
   try {
     const { cours, professeur, matiere, salle, dateSeance, jour, heureDebut, heureFin } = req.body;
 
@@ -17486,7 +17498,7 @@ app.post('/api2/pedagogique/seances/exception', authPedagogique, async (req, res
 });
 
 // ===== CORRECTION ROUTE PUT - Modifier une séance =====
-app.put('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) => {
+app.put('/api/pedagogique/seances/:id', authPedagogique, async (req, res) => {
   try {
     const { jour, heureDebut, heureFin, cours, professeur, matiere, salle } = req.body;
 
@@ -17610,7 +17622,7 @@ app.put('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) => {
 });
 
 // Route pour supprimer une séance
-app.delete('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) => {
+app.delete('/api/pedagogique/seances/:id', authPedagogique, async (req, res) => {
   try {
     const { id } = req.params;
     const seance = await Seance.findById(id);
@@ -17645,7 +17657,7 @@ app.delete('/api2/pedagogique/seances/:id', authPedagogique, async (req, res) =>
 });
 
 // Route pour copier une semaine
-app.post('/api2/pedagogique/seances/copier-semaine', authPedagogique, async (req, res) => {
+app.post('/api/pedagogique/seances/copier-semaine', authPedagogique, async (req, res) => {
   try {
     const { lundiSource, lundiDestination } = req.body;
     
@@ -17757,7 +17769,7 @@ app.post('/api2/pedagogique/seances/copier-semaine', authPedagogique, async (req
   }
 });
 // Dans votre backend
-app.get('/api2/auth/me', authPedagogique, async (req, res) => {
+app.get('/api/auth/me', authPedagogique, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findById(req.user.id);
     if (!pedagogique) {
@@ -17776,7 +17788,7 @@ app.get('/api2/auth/me', authPedagogique, async (req, res) => {
   }
 });
 // 5. Route pour obtenir les cours détaillés (CORRIGÉE)
-app.get('/api2/pedagogique/cours-detailles', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/cours-detailles', authPedagogique, async (req, res) => {
   try {
     let etudiantsQuery = {};
     const estGeneral = req.user.filiere === 'GENERAL';
@@ -17845,7 +17857,7 @@ app.get('/api2/pedagogique/cours-detailles', authPedagogique, async (req, res) =
   }
 });
 // ===== ROUTE GET - PROFESSEURS POUR PÉDAGOGIQUES =====
-app.get('/api2/pedagogique/professeurs', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/professeurs', authPedagogique, async (req, res) => {
   try {
     const filierePedagogique = req.user.filiere;
     const estGeneral = filierePedagogique === 'GENERAL';
@@ -17935,7 +17947,7 @@ typeDeCree: {
 */
 
 // ===== MISE À JOUR DE LA ROUTE POST PROFESSEUR POUR PÉDAGOGIQUES =====
-app.post('/api2/pedagogique/professeurs', 
+app.post('/api/pedagogique/professeurs', 
   authPedagogique, 
   uploadDocuments.fields([
     { name: 'image', maxCount: 1 },
@@ -18111,7 +18123,7 @@ app.post('/api2/pedagogique/professeurs',
 );
 
 // ===== ROUTE PUT - MODIFIER PROFESSEUR POUR PÉDAGOGIQUES =====
-app.put('/api2/pedagogique/professeurs/:id', 
+app.put('/api/pedagogique/professeurs/:id', 
   authPedagogique, 
   uploadDocuments.fields([
     { name: 'image', maxCount: 1 },
@@ -18189,7 +18201,7 @@ app.put('/api2/pedagogique/professeurs/:id',
 );
 
 // ===== ROUTE DELETE - SUPPRIMER PROFESSEUR POUR PÉDAGOGIQUES =====
-app.delete('/api2/pedagogique/professeurs/:id', authPedagogique, async (req, res) => {
+app.delete('/api/pedagogique/professeurs/:id', authPedagogique, async (req, res) => {
   try {
     const professeurId = req.params.id;
     const filierePedagogique = req.user.filiere;
@@ -18233,7 +18245,7 @@ app.delete('/api2/pedagogique/professeurs/:id', authPedagogique, async (req, res
 });
 
 // 6. Route pour obtenir les informations du pédagogique connecté (CORRIGÉE)
-app.get('/api2/pedagogique/me', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/me', authPedagogique, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findById(req.user.id).select('-motDePasse');
     
@@ -18254,7 +18266,7 @@ app.get('/api2/pedagogique/me', authPedagogique, async (req, res) => {
 // ===== ROUTES GESTION PÉDAGOGIQUES (Admin seulement) =====
 
 // 1. Créer un nouveau pédagogique
-app.post('/api2/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, filiere } = req.body;
 
@@ -18321,7 +18333,7 @@ app.post('/api2/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // 2. Lister tous les pédagogiques
-app.get('/api2/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogiques = await Pedagogique.find({})
       .select('-motDePasse')
@@ -18335,7 +18347,7 @@ app.get('/api2/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // 3. Modifier un pédagogique
-app.put('/api2/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, filiere, actif, motDePasse } = req.body;
     
@@ -18388,7 +18400,7 @@ app.put('/api2/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) =
 });
 
 // 4. Supprimer un pédagogique
-app.delete('/api2/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findByIdAndDelete(req.params.id);
     
@@ -18413,7 +18425,7 @@ app.delete('/api2/pedagogiques/:id', authAdminOrPaiementManager, async (req, res
 });
 
 // 5. Obtenir un pédagogique par ID
-app.get('/api2/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findById(req.params.id)
       .select('-motDePasse');
@@ -18430,7 +18442,7 @@ app.get('/api2/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) =
 });
 
 // 6. Toggle actif/inactif
-app.patch('/api2/pedagogiques/:id/toggle-actif', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/pedagogiques/:id/toggle-actif', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findById(req.params.id);
     
@@ -18455,7 +18467,7 @@ app.patch('/api2/pedagogiques/:id/toggle-actif', authAdminOrPaiementManager, asy
   }
 });
 // ===== CONFIGURATION MULTER POUR DOCUMENTS PROFESSEUR =====
-app.get('/api2/pedagogique/mes-professeurs', 
+app.get('/api/pedagogique/mes-professeurs', 
   authPedagogique, // Middleware qui vérifie que c'est un pédagogique
   async (req, res) => {
     try {
@@ -18475,7 +18487,7 @@ app.get('/api2/pedagogique/mes-professeurs',
 );
 
 // ===== ROUTE POST - CRÉER PROFESSEUR AVEC NOUVEAU SYSTÈME =====
-app.post('/api2/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
+app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
     { name: 'image', maxCount: 1 },
     { name: 'diplome', maxCount: 1 },
     { name: 'cv', maxCount: 1 },
@@ -18654,7 +18666,7 @@ app.post('/api2/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
 
 // ===== ROUTE PUT MODIFIÉE - MODIFIER PROFESSEUR AVEC VÉRIFICATION DE PROPRIÉTÉ =====
 app.put(
-  '/api2/professeurs/:id',
+  '/api/professeurs/:id',
   authAdminOrPedagogique,
   uploadDocuments.fields([
     { name: 'image', maxCount: 1 },
@@ -18840,7 +18852,7 @@ app.put(
 
 
 // ===== ROUTE DELETE MODIFIÉE - SUPPRIMER PROFESSEUR AVEC VÉRIFICATION DE PROPRIÉTÉ =====
-app.delete('/api2/professeurs/:id', 
+app.delete('/api/professeurs/:id', 
   authAdminOrPedagogique, 
   async (req, res) => {
     try {
@@ -18885,7 +18897,7 @@ app.delete('/api2/professeurs/:id',
   }
 );
 // Route pour récupérer le profil du pédagogique connecté
-app.get('/api2/auth/profile', authPedagogique, async (req, res) => {
+app.get('/api/auth/profile', authPedagogique, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findById(req.user.id).select('-motDePasse');
     if (!pedagogique) {
@@ -18897,7 +18909,7 @@ app.get('/api2/auth/profile', authPedagogique, async (req, res) => {
   }
 });
 // ===== ROUTE GET - LISTER PROFESSEURS AVEC INFOS COMPLÈTES =====
-app.get('/api2/professeurs', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { estPermanent, actif, cours, matiere } = req.query;
     
@@ -18943,7 +18955,7 @@ app.get('/api2/professeurs', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // ===== ROUTE GET - DÉTAILS D'UN PROFESSEUR =====
-app.get('/api2/professeurs/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const professeur = await Professeur.findById(req.params.id)
       .select('-motDePasse');
@@ -18970,7 +18982,7 @@ app.get('/api2/professeurs/:id', authAdminOrPaiementManager, async (req, res) =>
   }
 });
 // GET - Récupérer tous les étudiants avec filtrage
-app.get('/api2/etudiants-evaluation', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants-evaluation', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { commercialId } = req.query;
     
@@ -19014,7 +19026,7 @@ app.get('/api2/etudiants-evaluation', authAdminOrPaiementManager, async (req, re
 });
 
 // POST - Créer une nouvelle évaluation pour un étudiant
-app.post('/api2/evaluations/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/evaluations/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { etudiantId } = req.params;
     const { documents, commentaireGeneral } = req.body;
@@ -19066,7 +19078,7 @@ app.post('/api2/evaluations/:etudiantId', authAdminOrPaiementManager, async (req
 });
 
 // GET - Récupérer une évaluation spécifique
-app.get('/api2/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const evaluation = await FormulaireEvaluation.findById(req.params.evaluationId)
       .populate('etudiant', 'prenom nomDeFamille email typeFormation niveau specialite')
@@ -19084,7 +19096,7 @@ app.get('/api2/evaluation/:evaluationId', authAdminOrPaiementManager, async (req
 });
 
 // PUT - Mettre à jour une évaluation
-app.put('/api2/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { evaluationId } = req.params;
     const { documents, commentaireGeneral } = req.body;
@@ -19126,7 +19138,7 @@ app.put('/api2/evaluation/:evaluationId', authAdminOrPaiementManager, async (req
 });
 
 // PUT - Finaliser une évaluation (Complet/Incomplet)
-app.put('/api2/evaluation/:evaluationId/finaliser', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/evaluation/:evaluationId/finaliser', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { evaluationId } = req.params;
     const { statut, commentaireGeneral } = req.body;
@@ -19173,7 +19185,7 @@ app.put('/api2/evaluation/:evaluationId/finaliser', authAdminOrPaiementManager, 
 });
 
 // GET - Récupérer toutes les évaluations avec filtres
-app.get('/api2/evaluations', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/evaluations', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { 
       commercialId, 
@@ -19216,7 +19228,7 @@ app.get('/api2/evaluations', authAdminOrPaiementManager, async (req, res) => {
 });
 
 // DELETE - Supprimer une évaluation (seulement si en cours)
-app.delete('/api2/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const evaluation = await FormulaireEvaluation.findById(req.params.evaluationId);
     
@@ -19239,7 +19251,7 @@ app.delete('/api2/evaluation/:evaluationId', authAdminOrPaiementManager, async (
   }
 });
 // ===== ROUTE GET - STATISTIQUES PROFESSEURS =====
-app.get('/api2/professeurs/stats/dashboard', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/professeurs/stats/dashboard', authAdminOrPaiementManager, async (req, res) => {
   try {
     const stats = await Professeur.getStatistiques();
     
@@ -19287,7 +19299,7 @@ app.get('/api2/professeurs/stats/dashboard', authAdminOrPaiementManager, async (
 });
 
 // ===== ROUTE GET - PROFESSEURS POUR PÉDAGOGIQUES =====
-app.get('/api2/pedagogique/professeurs', authPedagogique, async (req, res) => {
+app.get('/api/pedagogique/professeurs', authPedagogique, async (req, res) => {
   try {
     const filierePedagogique = req.user.filiere;
     const estGeneral = filierePedagogique === 'GENERAL';
@@ -19351,7 +19363,7 @@ app.get('/api2/pedagogique/professeurs', authPedagogique, async (req, res) => {
   }
 });
 // CREATE - Ajouter un nouveau professeur de finance
-app.post('/api2/admin/financeprofs', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/admin/financeprofs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse } = req.body;
 
@@ -19403,7 +19415,7 @@ app.post('/api2/admin/financeprofs', authAdminOrPaiementManager, async (req, res
 });
 
 // READ - Obtenir tous les professeurs de finance
-app.get('/api2/admin/financeprofs', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/financeprofs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -19450,7 +19462,7 @@ app.get('/api2/admin/financeprofs', authAdminOrPaiementManager, async (req, res)
 });
 
 // READ - Obtenir un professeur par ID
-app.get('/api2/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -19478,7 +19490,7 @@ app.get('/api2/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, 
 });
 
 // UPDATE - Mettre à jour un professeur
-app.put('/api2/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
+app.put('/api/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { nom, telephone, email, actif } = req.body;
@@ -19530,7 +19542,7 @@ app.put('/api2/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, 
 });
 
 // DELETE - Supprimer un professeur
-app.delete('/api2/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
+app.delete('/api/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -19559,7 +19571,7 @@ app.delete('/api2/admin/financeprofs/:id', authAdminOrPaiementManager, async (re
 });
 
 // PATCH - Activer/Désactiver un professeur
-app.patch('/api2/admin/financeprofs/:id/toggle-status', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/admin/financeprofs/:id/toggle-status', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -19621,7 +19633,7 @@ typeDeCree: {
 // API pour invalider un paiement - À ajouter dans votre fichier routes
 
 // 8. API pour invalider un paiement validé
-app.post('/api2/finance/paiements/invalider', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/paiements/invalider', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee, motifInvalidation } = req.body;
 
@@ -19678,7 +19690,7 @@ app.post('/api2/finance/paiements/invalider', authAdminOrPaiementManager, async 
 });
 
 // 9. API pour récupérer le statut des paiements pour le rapport mensuel
-app.get('/api2/finance/paiements/statuts-mensuels', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/finance/paiements/statuts-mensuels', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -19719,7 +19731,7 @@ app.get('/api2/finance/paiements/statuts-mensuels', authAdminOrPaiementManager, 
 });
 
 // 10. API pour créer automatiquement les paiements du mois suivant
-app.post('/api2/finance/paiements/generer-mois-suivant', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/paiements/generer-mois-suivant', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { moisActuel, anneeActuelle } = req.body;
 
@@ -19873,7 +19885,7 @@ app.post('/api2/finance/paiements/generer-mois-suivant', authAdminOrPaiementMana
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-app.post('/api2/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManager, async (req, res) => {
+app.post('/api/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee } = req.body;
 
@@ -19901,7 +19913,7 @@ app.post('/api2/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManage
   }
 });
 // Dans votre fichier de routes backend, ajoutez cette API :
-app.get('/api2/finance/penalites/professeur/:professeurId', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/finance/penalites/professeur/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     const { mois, annee } = req.query;
@@ -19928,7 +19940,7 @@ app.get('/api2/finance/penalites/professeur/:professeurId', authAdminOrPaiementM
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-app.post('/api2/pedagogique/professeurs', 
+app.post('/api/pedagogique/professeurs', 
   authPedagogique, 
   uploadDocuments.fields([
     { name: 'image', maxCount: 1 },
@@ -20104,7 +20116,7 @@ app.post('/api2/pedagogique/professeurs',
 );
 
 // ===== ROUTE PUT - MODIFIER PROFESSEUR POUR PÉDAGOGIQUES =====
-app.put('/api2/pedagogique/professeurs/:id', 
+app.put('/api/pedagogique/professeurs/:id', 
   authPedagogique, 
   uploadDocuments.fields([
     { name: 'image', maxCount: 1 },
@@ -20182,7 +20194,7 @@ app.put('/api2/pedagogique/professeurs/:id',
 );
 
 // ===== ROUTE DELETE - SUPPRIMER PROFESSEUR POUR PÉDAGOGIQUES =====
-app.delete('/api2/pedagogique/professeurs/:id', authPedagogique, async (req, res) => {
+app.delete('/api/pedagogique/professeurs/:id', authPedagogique, async (req, res) => {
   try {
     const professeurId = req.params.id;
     const filierePedagogique = req.user.filiere;
@@ -20226,7 +20238,7 @@ app.delete('/api2/pedagogique/professeurs/:id', authPedagogique, async (req, res
 });
 
 // ===== ROUTE POST - AJOUTER/MODIFIER COURS POUR UN PROFESSEUR =====
-app.post('/api2/professeurs/:id/cours', authAdminOrPedagogique, async (req, res) => {
+app.post('/api/professeurs/:id/cours', authAdminOrPedagogique, async (req, res) => {
   try {
     const { coursEnseignes } = req.body; // Array de {nomCours, matiere, niveau?, heuresParSemaine?}
     
@@ -20260,7 +20272,7 @@ app.post('/api2/professeurs/:id/cours', authAdminOrPedagogique, async (req, res)
 });
 
 // ===== ROUTE DELETE - SUPPRIMER UN COURS SPÉCIFIQUE =====
-app.delete('/api2/professeurs/:id/cours/:coursIndex', authAdminOrPedagogique, async (req, res) => {
+app.delete('/api/professeurs/:id/cours/:coursIndex', authAdminOrPedagogique, async (req, res) => {
   try {
     const { id, coursIndex } = req.params;
     
@@ -20288,7 +20300,7 @@ app.delete('/api2/professeurs/:id/cours/:coursIndex', authAdminOrPedagogique, as
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.get('/api2/etudiant/presences', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/presences', authEtudiant, async (req, res) => {
   try {
     const presences = await Presence.find({
       etudiant: req.etudiantId,
@@ -20306,7 +20318,7 @@ app.get('/api2/etudiant/presences', authEtudiant, async (req, res) => {
 });
 
 
-app.get('/api2/etudiant/absences', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/absences', authEtudiant, async (req, res) => {
   try {
     const absences = await Presence.find({
       etudiant: req.etudiantId,
@@ -20321,7 +20333,7 @@ app.get('/api2/etudiant/absences', authEtudiant, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api2/etudiant/retards', authEtudiant, async (req, res) => {
+app.get('/api/etudiant/retards', authEtudiant, async (req, res) => {
   try {
     // Récupérer les présences où l'étudiant est en retard
     const retards = await Presence.find({
@@ -20338,7 +20350,7 @@ app.get('/api2/etudiant/retards', authEtudiant, async (req, res) => {
   }
 });
 
-app.get('/api2/seances/actuelle', authProfesseur, async (req, res) => {
+app.get('/api/seances/actuelle', authProfesseur, async (req, res) => {
   try {
     console.log('Recherche de la prochaine séance pour professeur:', req.professeurId);
     
@@ -20480,7 +20492,7 @@ app.get('/api2/seances/actuelle', authProfesseur, async (req, res) => {
     });
   }
 });
-app.post('/api2/presences', authProfesseur, async (req, res) => {
+app.post('/api/presences', authProfesseur, async (req, res) => {
   try {
     const { 
       etudiant, cours, seanceId, dateSession, present, absent, retard,
@@ -20635,7 +20647,7 @@ app.post('/api2/presences', authProfesseur, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
-app.get('/api2/seances/:seanceId/etudiants', authProfesseur, async (req, res) => {
+app.get('/api/seances/:seanceId/etudiants', authProfesseur, async (req, res) => {
   try {
     const seance = await Seance.findById(req.params.seanceId);
     if (!seance) {
@@ -20655,7 +20667,7 @@ app.get('/api2/seances/:seanceId/etudiants', authProfesseur, async (req, res) =>
   }
 });
 
-app.get('/api2/professeur/profil', authProfesseur, async (req, res) => {
+app.get('/api/professeur/profil', authProfesseur, async (req, res) => {
   try {
     const professeur = await Professeur.findById(req.professeurId).select('-motDePasse');
     if (!professeur) return res.status(404).json({ message: 'Professeur introuvable' });

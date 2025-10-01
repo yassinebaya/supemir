@@ -42,8 +42,8 @@ const HistoriquePaiements = () => {
       });
 
       const url = selectedProfesseur 
-        ? `https://vmi1977988.contaboserver.net//api2/professeurs/${selectedProfesseur}/historique-paiements?${params}`
-        : `https://vmi1977988.contaboserver.net//api2/admin/historique-paiements-global?${params}`;
+        ? `http://195.179.229.230:5000/api/professeurs/${selectedProfesseur}/historique-paiements?${params}`
+        : `http://195.179.229.230:5000/api/admin/historique-paiements-global?${params}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
@@ -78,7 +78,7 @@ const HistoriquePaiements = () => {
   const fetchProfesseurs = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/professeurs', {
+      const res = await fetch('http://195.179.229.230:5000/api/professeurs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -94,7 +94,7 @@ const HistoriquePaiements = () => {
   const fetchDetailPaiement = async (historiqueId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/admin/historique-paiements/${historiqueId}/detail`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/admin/historique-paiements/${historiqueId}/detail`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

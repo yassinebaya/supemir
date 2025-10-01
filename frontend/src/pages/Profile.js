@@ -36,7 +36,7 @@ const ProfileEtudiant = () => {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch('https://vmi1977988.contaboserver.net/api2/etudiant/profile', {
+        const res = await fetch('http://195.179.229.230:5000/api/etudiant/profile', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -114,7 +114,7 @@ const ProfileEtudiant = () => {
             <div style={styles.avatarContainer}>
               {etudiant.image ? (
                 <img
-                  src={`https://vmi1977988.contaboserver.net/${etudiant.image}`}
+                  src={`http://195.179.229.230:5000${etudiant.image}`}
                   alt="Profil"
                   style={styles.avatar}
                 />

@@ -22,7 +22,7 @@ const TeleverserExerciceEtudiant = () => {
     const fetchCours = async () => {
       const token = localStorage.getItem('token');
       try {
-        const res = await axios.get('https://vmi1977988.contaboserver.net/api2/etudiant/mes-cours', {
+        const res = await axios.get('http://195.179.229.230:5000/api/etudiant/mes-cours', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -71,7 +71,7 @@ const TeleverserExerciceEtudiant = () => {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await axios.post('https://vmi1977988.contaboserver.net/api2/etudiant/exercices', formData, {
+      const res = await axios.post('http://195.179.229.230:5000/api/etudiant/exercices', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'

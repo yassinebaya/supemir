@@ -44,7 +44,7 @@ const ValidationPaiement = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      const res = await fetch('/api2/finance/paiements/creer-ou-recuperer', {
+      const res = await fetch('/api/finance/paiements/creer-ou-recuperer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ const ValidationPaiement = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const res = await fetch(`/api2/finance/paiements/historique/${professeurId}`, {
+      const res = await fetch(`/api/finance/paiements/historique/${professeurId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -104,7 +104,7 @@ const ValidationPaiement = () => {
       setLoadingAction(true);
       const token = localStorage.getItem('token');
       
-      const res = await fetch('/api2/finance/paiements/valider', {
+      const res = await fetch('/api/finance/paiements/valider', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ const ValidationPaiement = () => {
       setLoadingAction(true);
       const token = localStorage.getItem('token');
       
-      const res = await fetch('/api2/finance/paiements/marquer-paye', {
+      const res = await fetch('/api/finance/paiements/marquer-paye', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -202,7 +202,7 @@ const ValidationPaiement = () => {
       setLoadingAction(true);
       const token = localStorage.getItem('token');
       
-      const res = await fetch('/api2/finance/paiements/annuler', {
+      const res = await fetch('/api/finance/paiements/annuler', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

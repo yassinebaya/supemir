@@ -43,7 +43,7 @@ const PartnersPage = () => {
   const fetchPartners = async () => {
     try {
       setLoading(true);
-      let url = 'https://vmi1977988.contaboserver.net/api2/partners';
+      let url = 'http://195.179.229.230:5000/api/partners';
       
       // Ajouter le filtre si nécessaire
       if (filterActive !== 'all') {
@@ -69,7 +69,7 @@ const PartnersPage = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/partners/stats', { headers });
+      const res = await fetch('http://195.179.229.230:5000/api/partners/stats', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des statistiques');
       const data = await res.json();
       
@@ -134,8 +134,8 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;    if (!emailRegex.test(newPart
     setLoading(true);
     try {
       const url = editingPartner 
-        ? `https://vmi1977988.contaboserver.net//api2/partners/${editingPartner._id}`
-        : 'https://vmi1977988.contaboserver.net/api2/partners';
+        ? `http://195.179.229.230:5000/api/partners/${editingPartner._id}`
+        : 'http://195.179.229.230:5000/api/partners';
       
       const method = editingPartner ? 'PUT' : 'POST';
       
@@ -182,7 +182,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;    if (!emailRegex.test(newPart
     
     setLoading(true);
     try {
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/partners/${selectedPartner._id}/change-password`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/partners/${selectedPartner._id}/change-password`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({
@@ -213,7 +213,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;    if (!emailRegex.test(newPart
     
     setLoading(true);
     try {
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/partners/${partnerToDelete._id}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/partners/${partnerToDelete._id}`, {
         method: 'DELETE',
         headers
       });
@@ -240,7 +240,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;    if (!emailRegex.test(newPart
   const handleToggleActive = async (partner) => {
     try {
       setLoading(true);
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/partners/${partner._id}/toggle`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/partners/${partner._id}/toggle`, {
         method: 'PATCH',
         headers
       });

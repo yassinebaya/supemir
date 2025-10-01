@@ -131,7 +131,7 @@ const PaiementsExp = () => {
         return;
       }
 
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/paiements/exp', {
+      const res = await fetch('http://195.179.229.230:5000/api/paiements/exp', {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -902,7 +902,7 @@ const PaiementsExp = () => {
                   <div style={styles.studentInfo}>
                     {p.etudiant?.image ? (
                       <img
-                        src={`https://vmi1977988.contaboserver.net/${p.etudiant.image}`}
+                        src={`http://195.179.229.230:5000${p.etudiant.image}`}
                         alt="Avatar"
                         style={{
                           width: '48px',
@@ -1149,7 +1149,7 @@ const PaiementsExp = () => {
                       <div style={styles.studentCell}>
                         {p.etudiant?.image ? (
                           <img
-                            src={`https://vmi1977988.contaboserver.net/${p.etudiant.image}`}
+                            src={`http://195.179.229.230:5000${p.etudiant.image}`}
                             alt="Avatar"
                             style={{
                               width: '32px',
@@ -1332,7 +1332,7 @@ const PaiementsExp = () => {
             }}>
               {selectedPaiement.etudiant?.image ? (
                 <img
-                  src={`https://vmi1977988.contaboserver.net/${selectedPaiement.etudiant.image}`}
+                  src={`http://195.179.229.230:5000${selectedPaiement.etudiant.image}`}
                   alt="Photo étudiant"
                   style={{
                     width: '80px',

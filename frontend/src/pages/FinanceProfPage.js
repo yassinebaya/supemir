@@ -37,7 +37,7 @@ const FinanceProfPage = () => {
 
   const fetchProfs = async () => {
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/admin/financeprofs', { headers });
+      const res = await fetch('http://195.179.229.230:5000/api/admin/financeprofs', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des professeurs');
       const data = await res.json();
       setProfs(data.data || data);
@@ -102,8 +102,8 @@ const FinanceProfPage = () => {
     setLoading(true);
     try {
       const url = editingProf 
-        ? `https://vmi1977988.contaboserver.net//api2/admin/financeprofs/${editingProf._id}`
-        : 'https://vmi1977988.contaboserver.net/api2/admin/financeprofs';
+        ? `http://195.179.229.230:5000/api/admin/financeprofs/${editingProf._id}`
+        : 'http://195.179.229.230:5000/api/admin/financeprofs';
       
       const method = editingProf ? 'PUT' : 'POST';
       
@@ -148,7 +148,7 @@ const FinanceProfPage = () => {
     
     setLoading(true);
     try {
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/admin/financeprofs/${profToDelete._id}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/admin/financeprofs/${profToDelete._id}`, {
         method: 'DELETE',
         headers
       });
@@ -173,7 +173,7 @@ const FinanceProfPage = () => {
   const handleToggleActive = async (prof) => {
     try {
       setLoading(true);
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/admin/financeprofs/${prof._id}/toggle-status`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/admin/financeprofs/${prof._id}/toggle-status`, {
         method: 'PATCH',
         headers
       });

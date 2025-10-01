@@ -35,7 +35,7 @@ const handleLogin = async () => {
   setMessage('');
 
   try {
-    const res = await fetch('https://vmi1977988.contaboserver.net/api2/login', {
+    const res = await fetch('http://195.179.229.230:5000/api/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

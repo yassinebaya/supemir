@@ -44,7 +44,7 @@ const ExercicesCoursProf = () => {
     const fetchExercices = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(`https://vmi1977988.contaboserver.net//api2/professeur/exercices/${nomCours}`, {
+        const res = await axios.get(`http://195.179.229.230:5000/api/professeur/exercices/${nomCours}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -93,7 +93,7 @@ const ExercicesCoursProf = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`https://vmi1977988.contaboserver.net//api2/professeur/exercices/${id}/remarque`, {
+      await axios.put(`http://195.179.229.230:5000/api/professeur/exercices/${id}/remarque`, {
         remarque
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -560,7 +560,7 @@ const ExercicesCoursProf = () => {
                     </div>
                     <div>
                       <a 
-                        href={`https://vmi1977988.contaboserver.net/${ex.fichier}`}
+                        href={`http://195.179.229.230:5000${ex.fichier}`}
                         target="_blank" 
                         rel="noreferrer"
                         style={styles.downloadLink}

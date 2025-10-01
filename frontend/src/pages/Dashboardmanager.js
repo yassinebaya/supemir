@@ -38,7 +38,7 @@ const RevenusMensuels = () => {
       const token = localStorage.getItem('token');
 
       // Récupérer les étudiants pour avoir les années disponibles
-      const etudiantsRes = await fetch('https://vmi1977988.contaboserver.net/api2/etudiants', {
+      const etudiantsRes = await fetch('http://195.179.229.230:5000/api/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -90,7 +90,7 @@ const RevenusMensuels = () => {
       
       console.log('Appel API avec année:', anneeScolaire, 'encodée:', anneeScolaireEncoded);
       
-      const revenusRes = await fetch(`https://vmi1977988.contaboserver.net//api2/revenus/previsions/${anneeScolaireEncoded}`, {
+      const revenusRes = await fetch(`http://195.179.229.230:5000/api/revenus/previsions/${anneeScolaireEncoded}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -260,7 +260,7 @@ const RevenusMensuels = () => {
           'Content-Type': 'application/json'
         };
 
-        const res = await fetch('https://vmi1977988.contaboserver.net/api2/rappels', { headers });
+        const res = await fetch('http://195.179.229.230:5000/api/rappels', { headers });
         if (!res.ok) throw new Error('Erreur lors du chargement des rappels');
 
         const data = await res.json();
@@ -291,7 +291,7 @@ const RevenusMensuels = () => {
   const handleUpdateRappel = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/rappels/${id}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -313,7 +313,7 @@ const RevenusMensuels = () => {
   const handleDeleteRappel = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/rappels/${id}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${token}`

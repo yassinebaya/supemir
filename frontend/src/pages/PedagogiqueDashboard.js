@@ -68,16 +68,16 @@ const PedagogiqueDashboard = () => {
       }
 
       const [etudiantsRes, coursRes, professeursRes, statsRes] = await Promise.all([
-        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/etudiants', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/cours', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/cours', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/professeurs', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/professeurs', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/dashboard-stats', {
+        fetch('http://195.179.229.230:5000/api/pedagogique/dashboard-stats', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);

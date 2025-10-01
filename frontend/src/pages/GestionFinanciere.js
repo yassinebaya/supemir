@@ -79,7 +79,7 @@ const GestionFinanciere = () => {
       }
 
       const res = await fetch(
-        `https://vmi1977988.contaboserver.net//api2/professeurs/rapports/mensuel?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`,
+        `http://195.179.229.230:5000/api/professeurs/rapports/mensuel?mois=${selectedPeriod.mois}&annee=${selectedPeriod.annee}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -193,7 +193,7 @@ const GestionFinanciere = () => {
         appliquePour: penaliteData.appliquePour
       };
 
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/finance/appliquer-penalite', {
+      const res = await fetch('http://195.179.229.230:5000/api/finance/appliquer-penalite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -241,7 +241,7 @@ const GestionFinanciere = () => {
       setLoadingHistorique(true);
       const token = localStorage.getItem('token');
       
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/finance/penalites/historique/${professeurId}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/finance/penalites/historique/${professeurId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -265,7 +265,7 @@ const GestionFinanciere = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/finance/penalites/${ajustementId}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/finance/penalites/${ajustementId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -293,7 +293,7 @@ const GestionFinanciere = () => {
       setLoadingValidation(true);
       const token = localStorage.getItem('token');
       
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/finance/cycles/valider', {
+      const res = await fetch('http://195.179.229.230:5000/api/finance/cycles/valider', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -6,7 +6,6 @@ import {
   Shield, CheckCircle, XCircle, User, Search, Download, Handshake,Clock // Ajouter Clock ici
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
 
 const DashboardNormal = () => {
   const [etudiants, setEtudiants] = useState([]);
@@ -161,13 +160,13 @@ const fetchData = async () => {
 
     // Fetch all data with error handling for each request
     const [etudiantsRes, commerciauxRes, partnersRes] = await Promise.all([
-      fetch('https://vmi1977988.contaboserver.net/api2/etudiant', {
+      fetch('http://195.179.229.230:5000/api/etudiant', {
         headers: { Authorization: `Bearer ${token}` }
       }),
-      fetch('https://vmi1977988.contaboserver.net/api2/commerciaux', {
+      fetch('http://195.179.229.230:5000/api/commerciaux', {
         headers: { Authorization: `Bearer ${token}` }
       }),
-      fetch('https://vmi1977988.contaboserver.net/api2/partners', {
+      fetch('http://195.179.229.230:5000/api/partners', {
         headers: { Authorization: `Bearer ${token}` }
       })
     ]);
@@ -960,7 +959,6 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
       <Sidebar onLogout={handleLogout} />
       
       <div style={{ flex: 1, paddingLeft: '0' }}>
-        <Header />
         
         <div style={{ padding: '2rem' }}>
           {/* Header */}
@@ -1051,7 +1049,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
           </div>
 
 
-       {/* Chiffre d'Affaire */}
+{/* Chiffre d'Affaire avec Partners FIXES pour 2025/2026 */}
 <div
   style={{
     background: '#fff',
@@ -1061,6 +1059,22 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
     border: '1px solid #e5e7eb'
   }}
 >
+  <h2
+    style={{
+      fontSize: '1.25rem',
+      fontWeight: 'bold',
+      color: '#1f2937',
+      marginBottom: '2rem',
+      textAlign: 'center',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.5rem'
+    }}
+  >
+    Chiffre d'Affaires {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
+  </h2>
+
   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
     <thead>
       <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
@@ -1073,6 +1087,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
       </tr>
     </thead>
     <tbody>
+      {/* DYNAMIQUE - Nouveaux Inscrits */}
       <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
         <td style={{ padding: '1rem', textAlign: 'center' }}>
           <strong>Nouveaux Inscrits</strong>
@@ -1083,6 +1098,8 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
           <strong>{formatMoney(chiffreAffaire.nouveauxInscrits.ca)} MAD</strong>
         </td>
       </tr>
+
+      {/* DYNAMIQUE - Réinscriptions */}
       <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
         <td style={{ padding: '1rem', textAlign: 'center' }}>
           <strong>Réinscriptions</strong>
@@ -1094,58 +1111,141 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
         </td>
       </tr>
       
-      {/* NOUVEAU: Ligne pour chaque partner */}
-      {chiffreAffaire.partners && chiffreAffaire.partners.length > 0 && (
+      {/* FIXE - Partners pour 2025/2026 uniquement */}
+      {anneeScolaireFilter === '2025/2026' && (
         <>
-          {chiffreAffaire.partners.map((partner, index) => (
-            <tr key={index} style={{ borderBottom: '1px solid #f3f4f6', background: '#f0f9ff' }}>
-              <td style={{ padding: '1rem', textAlign: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                  <Handshake size={16} style={{ color: '#1976d2' }} />
-                  <strong style={{ color: '#1976d2' }}>{partner.nomPartner}</strong>
-                </div>
-                <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{partner.count}</span>
-              </td>
-              <td style={{ padding: '1rem', textAlign: 'center' }}>
-                <strong style={{ color: '#1976d2' }}>{formatMoney(partner.ca)} MAD</strong>
-              </td>
-            </tr>
-          ))}
-          
-          {/* Total Partners */}
-          <tr style={{ borderBottom: '1px solid #f3f4f6', background: '#e3f2fd' }}>
+          {/* IPM - Groupe 1 */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
             <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong style={{ color: '#1565c0' }}>Total Partners</strong>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>IPM (Groupe 1)</strong>
+              </div>
+              <span style={{ fontSize: '1rem', color: '#64748b' }}>145 étudiants</span>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong>50 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* IPM - Groupe 2 (111 étudiants) */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>IPM (Groupe 2)</strong>
+              </div>
+              <span style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem', display: 'block' }}>111 étudiants</span>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Recouvrement :</div>
+                <div>• 50% en novembre</div>
+                <div>• 50% en février</div>
+              </div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong>555 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Mega */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>Mega</strong>
+              </div>
+              <span style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem', display: 'block' }}>400 étudiants</span>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Plan de paiement :</div>
+                <div>Déc/Mar/Sep : 500k chacun</div>
+              </div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong>1 500 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Jobinteck */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>Jobinteck</strong>
+              </div>
+              <span style={{ fontSize: '1rem', color: '#64748b' }}>50 étudiants</span>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong>760 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Ode */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>Ode</strong>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Remboursement :</div>
+                <div>Tous les 2 mois dès février</div>
+              </div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong>260 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Total Partners FIXE */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong>Total Partners</strong>
               <br />
-              <span style={{ fontSize: '1.25rem', color: '#1f2937', fontWeight: 'bold' }}>
-                {chiffreAffaire.totalPartners.count}
+              <span style={{ fontSize: '1rem', color: '#64748b' }}>
+                706 étudiants (5 partenaires)
               </span>
             </td>
             <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong style={{ fontSize: '1.1rem', color: '#1565c0' }}>
-                {formatMoney(chiffreAffaire.totalPartners.ca)} MAD
+              <strong style={{ fontSize: '1.1rem' }}>
+                3 125 000,00 MAD
               </strong>
             </td>
           </tr>
         </>
       )}
 
+      {/* TOTAL GLOBAL */}
       <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
         <td style={{ padding: '1rem', textAlign: 'center' }}>
           <strong>Total</strong>
           <br />
-          <span style={{ fontSize: '1.5rem', color: '#1f2937', fontWeight: 'bold' }}>{chiffreAffaire.total.count}</span>
+          <span style={{ fontSize: '1.5rem', color: '#1f2937', fontWeight: 'bold' }}>
+            {anneeScolaireFilter === '2025/2026' 
+              ? chiffreAffaire.nouveauxInscrits.count + chiffreAffaire.reinscriptions.count + 706
+              : chiffreAffaire.total.count
+            }
+          </span>
         </td>
         <td style={{ padding: '1rem', textAlign: 'center' }}>
-          <strong style={{ fontSize: '1.1rem' }}>{formatMoney(chiffreAffaire.total.ca)} MAD</strong>
+          <strong style={{ fontSize: '1.1rem' }}>
+            {anneeScolaireFilter === '2025/2026'
+              ? formatMoney(chiffreAffaire.nouveauxInscrits.ca + chiffreAffaire.reinscriptions.ca + 3125000)
+              : formatMoney(chiffreAffaire.total.ca)
+            } MAD
+          </strong>
         </td>
       </tr>
+
+      {/* Recouvrement */}
       <tr>
         <td style={{ padding: '1rem', textAlign: 'center' }}>
           <strong>Recouvrement</strong>
           <br />
           <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>
-            {chiffreAffaire.recouvrement.percentage.toFixed(2)} %
+            {anneeScolaireFilter === '2025/2026'
+              ? ((chiffreAffaire.recouvrement.ca / (chiffreAffaire.nouveauxInscrits.ca + chiffreAffaire.reinscriptions.ca + 3125000)) * 100).toFixed(2)
+              : chiffreAffaire.recouvrement.percentage.toFixed(2)
+            } %
           </span>
         </td>
         <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -1155,7 +1255,6 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
     </tbody>
   </table>
 </div>
-
           {/* Section Préinscriptions - Seulement si ce n'est pas 2024/2025 */}
           {anneeScolaireFilter !== '2024/2025' && preinscriptions.count > 0 && (
             <div

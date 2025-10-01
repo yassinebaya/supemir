@@ -18,8 +18,8 @@ const TableCours = () => {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        const resCours = await fetch('https://vmi1977988.contaboserver.net/api2/cours', config);
-        const resEtudiants = await fetch('https://vmi1977988.contaboserver.net/api2/etudiants', config);
+        const resCours = await fetch('http://195.179.229.230:5000/api/cours', config);
+        const resEtudiants = await fetch('http://195.179.229.230:5000/api/etudiants', config);
 
         if (resCours.ok && resEtudiants.ok) {
           const coursData = await resCours.json();

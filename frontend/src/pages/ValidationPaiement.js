@@ -53,7 +53,7 @@ const ValidationPaiement = () => {
       }
 
       const res = await fetch(
-        `https://vmi1977988.contaboserver.net//api2/cycles/professeur/${professeurId}/en-cours`,
+        `http://195.179.229.230:5000/api/cycles/professeur/${professeurId}/en-cours`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -128,7 +128,7 @@ const ValidationPaiement = () => {
       }
       
       const res = await fetch(
-        'https://vmi1977988.contaboserver.net/api2/admin/cycles/valides-finance',
+        'http://195.179.229.230:5000/api/admin/cycles/valides-finance',
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -203,7 +203,7 @@ const ValidationPaiement = () => {
         return;
       }
       
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/admin/cycles/payer', {
+      const res = await fetch('http://195.179.229.230:5000/api/admin/cycles/payer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -55,13 +55,13 @@ const EnhancedDashboard = () => {
       const token = localStorage.getItem('token');
       
       const [etudiantsRes, commerciauxRes, coursRes] = await Promise.all([
-        axios.get('https://vmi1977988.contaboserver.net/api2/etudiants', {
+        axios.get('http://195.179.229.230:5000/api/etudiants', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('https://vmi1977988.contaboserver.net/api2/commerciaux', {
+        axios.get('http://195.179.229.230:5000/api/commerciaux', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get('https://vmi1977988.contaboserver.net/api2/cours', {
+        axios.get('http://195.179.229.230:5000/api/cours', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);

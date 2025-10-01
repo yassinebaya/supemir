@@ -47,7 +47,7 @@ const ListePresences = () => {
           return;
         }
 
-        const res = await axios.get('https://vmi1977988.contaboserver.net/api2/professeur/presences', {
+        const res = await axios.get('http://195.179.229.230:5000/api/professeur/presences', {
           headers: { Authorization: `Bearer ${token}` }
         });
 

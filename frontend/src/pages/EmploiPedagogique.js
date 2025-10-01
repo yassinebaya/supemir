@@ -367,7 +367,7 @@ const EmploiPedagogique = () => {
   const fetchUserInfo = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/auth/me', {
+      const res = await fetch('http://195.179.229.230:5000/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -398,8 +398,8 @@ const EmploiPedagogique = () => {
       const token = localStorage.getItem('token');
       
       const coursUrl = permissions.isGeneral 
-        ? 'https://vmi1977988.contaboserver.net/api2/cours'
-        : 'https://vmi1977988.contaboserver.net/api2/pedagogique/cours';
+        ? 'http://195.179.229.230:5000/api/cours'
+        : 'http://195.179.229.230:5000/api/pedagogique/cours';
         
       const resCours = await fetch(coursUrl, {
         headers: { Authorization: `Bearer ${token}` }
@@ -410,7 +410,7 @@ const EmploiPedagogique = () => {
         setCoursList(coursData);
       }
 
-      const resProfs = await fetch('https://vmi1977988.contaboserver.net/api2/professeurs', {
+      const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (resProfs.ok) {
@@ -434,7 +434,7 @@ const EmploiPedagogique = () => {
       const day = String(d.getDate()).padStart(2,'0');
       const lundiSemaine = `${y}-${m}-${day}`;
       
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/semaine/${lundiSemaine}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/semaine/${lundiSemaine}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -661,13 +661,13 @@ const EmploiPedagogique = () => {
 
       let res;
       if (s.typeSeance === 'exception' && s.seanceId) {
-        res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${s.seanceId}`, {
+        res = await fetch(`http://195.179.229.230:5000/api/seances/${s.seanceId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload)
         });
       } else {
-        res = await fetch('https://vmi1977988.contaboserver.net/api2/seances/exception', {
+        res = await fetch('http://195.179.229.230:5000/api/seances/exception', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(payload)
@@ -705,7 +705,7 @@ const EmploiPedagogique = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/${seanceId}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/${seanceId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -747,7 +747,7 @@ const EmploiPedagogique = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/pedagogique/seances/${seanceId}/rattrapage`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/pedagogique/seances/${seanceId}/rattrapage`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -771,7 +771,7 @@ const EmploiPedagogique = () => {
     try {
       setLoadingStats(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/rattrapages/statistiques', {
+      const res = await fetch('http://195.179.229.230:5000/api/pedagogique/rattrapages/statistiques', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -823,7 +823,7 @@ const EmploiPedagogique = () => {
     setCopyLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/seances/copier-semaine-precedente', {
+      const res = await fetch('http://195.179.229.230:5000/api/seances/copier-semaine-precedente', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

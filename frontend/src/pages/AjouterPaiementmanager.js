@@ -50,8 +50,8 @@ const AjouterPaiement = () => {
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
   try {
-    const resEtudiants = await axios.get('https://vmi1977988.contaboserver.net/api2/etudiants', config);
-    const resCours = await axios.get('https://vmi1977988.contaboserver.net/api2/cours', config);
+    const resEtudiants = await axios.get('http://195.179.229.230:5000/api/etudiants', config);
+    const resCours = await axios.get('http://195.179.229.230:5000/api/cours', config);
 
     // FILTRER : étudiants actifs ET avec prixTotal > 0
     const etudiantsActifs = resEtudiants.data.filter(e => 
@@ -107,7 +107,7 @@ const AjouterPaiement = () => {
       
       // Récupérer les infos détaillées de paiement
       try {
-        const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}/info`, {
+        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}/info`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -133,7 +133,7 @@ const AjouterPaiement = () => {
         console.warn('API /info non disponible, utilisation de l\'ancienne méthode:', infoErr);
         
         // Fallback vers l'ancienne méthode
-        const resPaiements = await axios.get(`https://vmi1977988.contaboserver.net//api2/paiements/etudiant/${etudiantId}`, {
+        const resPaiements = await axios.get(`http://195.179.229.230:5000/api/paiements/etudiant/${etudiantId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -248,7 +248,7 @@ const AjouterPaiement = () => {
     };
 
     try {
-      await axios.post('https://vmi1977988.contaboserver.net/api2/paiements', paiementData, {
+      await axios.post('http://195.179.229.230:5000/api/paiements', paiementData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('✅ Paiement ajouté avec succès');
@@ -299,7 +299,7 @@ const AjouterPaiement = () => {
     };
 
     try {
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/rappels', {
+      const res = await fetch('http://195.179.229.230:5000/api/rappels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

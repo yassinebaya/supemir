@@ -3,7 +3,6 @@ import {
   RotateCcw, AlertCircle, Filter, BookOpen, Handshake
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
 
 const DashboardPartners = () => {
   const [etudiants, setEtudiants] = useState([]);
@@ -25,10 +24,10 @@ const DashboardPartners = () => {
       const token = localStorage.getItem('token');
 
       const [etudiantsRes, partnersRes] = await Promise.all([
-        fetch('https://vmi1977988.contaboserver.net/api2/etudiant', {
+        fetch('http://195.179.229.230:5000/api/etudiant', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('https://vmi1977988.contaboserver.net/api2/partners', {
+        fetch('http://195.179.229.230:5000/api/partners', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -219,7 +218,6 @@ const DashboardPartners = () => {
       <Sidebar onLogout={handleLogout} />
       
       <div style={{ flex: 1, paddingLeft: '0' }}>
-        <Header />
         
         <div style={{ padding: '2rem' }}>
           {/* Header */}

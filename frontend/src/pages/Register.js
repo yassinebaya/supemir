@@ -10,7 +10,7 @@ const Register = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('https://vmi1977988.contaboserver.net/api2/admin/register', {
+      const res = await axios.post('http://195.179.229.230:5000/api/admin/register', {
         nom,
         email,
         motDePasse

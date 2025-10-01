@@ -32,10 +32,10 @@ const UserAvatar = ({ user, size = 48 }) => {
     }
     
     if (imagePath.startsWith('/')) {
-      return `https://vmi1977988.contaboserver.net/${imagePath}`;
+      return `http://195.179.229.230:5000${imagePath}`;
     }
     
-    return `https://vmi1977988.contaboserver.net//${imagePath}`;
+    return `http://195.179.229.230:5000/${imagePath}`;
   };
 
   const imageUrl = getImageUrl(user?.image);
@@ -211,7 +211,7 @@ const [audioBlob, setAudioBlob] = useState(null);
       }
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/me', {
+        const response = await fetch('http://195.179.229.230:5000/api/professeur/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -240,7 +240,7 @@ const [audioBlob, setAudioBlob] = useState(null);
 
       setIsLoadingEtudiants(true);
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net/api2/professeur/mes-etudiants-messages', {
+        const response = await fetch('http://195.179.229.230:5000/api/professeur/mes-etudiants-messages', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -276,7 +276,7 @@ const [audioBlob, setAudioBlob] = useState(null);
       if (!token) return;
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/unread-by-sender', {
+        const response = await fetch('http://195.179.229.230:5000/api/messages/unread-by-sender', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -298,7 +298,7 @@ const [audioBlob, setAudioBlob] = useState(null);
       if (!token) return;
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net/api2/users/online-status', {
+        const response = await fetch('http://195.179.229.230:5000/api/users/online-status', {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -326,7 +326,7 @@ const [audioBlob, setAudioBlob] = useState(null);
 
       setIsLoadingMessages(true);
       try {
-        const response = await fetch(`https://vmi1977988.contaboserver.net//api2/messages/professeur/${selectedEtudiant._id}`, {
+        const response = await fetch(`http://195.179.229.230:5000/api/messages/professeur/${selectedEtudiant._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -338,7 +338,7 @@ const [audioBlob, setAudioBlob] = useState(null);
         setMessages(Array.isArray(data) ? data : []);
         
         // Marquer les messages comme lus
-        await fetch('https://vmi1977988.contaboserver.net/api2/messages/mark-conversation-read', {
+        await fetch('http://195.179.229.230:5000/api/messages/mark-conversation-read', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -380,7 +380,7 @@ const [audioBlob, setAudioBlob] = useState(null);
     if (fichier) formData.append('fichier', fichier);
 
     try {
-      const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/upload-prof', {
+      const response = await fetch('http://195.179.229.230:5000/api/messages/upload-prof', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -427,7 +427,7 @@ const [audioBlob, setAudioBlob] = useState(null);
     }
 
     try {
-      const response = await fetch(`https://vmi1977988.contaboserver.net//api2/messages/${messageToDelete}`, {
+      const response = await fetch(`http://195.179.229.230:5000/api/messages/${messageToDelete}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -488,7 +488,7 @@ const stopRecording = () => {
       formData.append('fichier', file);
 
       try {
-        const response = await fetch('https://vmi1977988.contaboserver.net/api2/messages/upload-prof', {
+        const response = await fetch('http://195.179.229.230:5000/api/messages/upload-prof', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData
@@ -916,7 +916,7 @@ const stopRecording = () => {
                               </div>
                             )}
                             {message.fichier && getFileExtension(message.fichier) === 'webm' && (
-  <audio controls src={`https://vmi1977988.contaboserver.net/${message.fichier}`} style={{ marginTop: '8px', width: '100%' }} />
+  <audio controls src={`http://195.179.229.230:5000${message.fichier}`} style={{ marginTop: '8px', width: '100%' }} />
 )}
 
                             {/* Fichier attaché */}
@@ -949,7 +949,7 @@ const stopRecording = () => {
                                   </div>
                                 </div>
                                 <a
-                                  href={`https://vmi1977988.contaboserver.net/${message.fichier}`}
+                                  href={`http://195.179.229.230:5000${message.fichier}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   style={{

@@ -91,7 +91,7 @@ const EtudiantsPedagogiquePage = () => {
         throw new Error('Token d\'authentification manquant');
       }
 
-      const response = await fetch('https://vmi1977988.contaboserver.net/api2/pedagogique/etudiants', {
+      const response = await fetch('http://195.179.229.230:5000/api/pedagogique/etudiants', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -113,7 +113,7 @@ const EtudiantsPedagogiquePage = () => {
   const fetchCommerciaux = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://vmi1977988.contaboserver.net/api2/commerciaux', {
+      const response = await fetch('http://195.179.229.230:5000/api/commerciaux', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -523,7 +523,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`https://vmi1977988.contaboserver.net//api2/etudiants/${etudiantId}/documents/${typeDocument}/download`, {
+      const response = await fetch(`http://195.179.229.230:5000/api/etudiants/${etudiantId}/documents/${typeDocument}/download`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -601,7 +601,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
   const handleValidation = async (etudiantId, statut, commentaire = '') => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://vmi1977988.contaboserver.net//api2/etudiants/${etudiantId}/validation-pedagogique`, {
+      const response = await fetch(`http://195.179.229.230:5000/api/etudiants/${etudiantId}/validation-pedagogique`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1542,7 +1542,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                         }}>
                           {etudiant.image ? (
                             <img
-                              src={`https://vmi1977988.contaboserver.net/${etudiant.image}`}
+                              src={`http://195.179.229.230:5000${etudiant.image}`}
                               alt={`${etudiant.prenom} ${etudiant.nomDeFamille}`}
                               style={{
                                 width: '40px',
@@ -1802,7 +1802,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                     <div>
                       {etudiant.image ? (
                         <img
-                          src={`https://vmi1977988.contaboserver.net/${etudiant.image}`}
+                          src={`http://195.179.229.230:5000${etudiant.image}`}
                           alt={`${etudiant.prenom} ${etudiant.nomDeFamille}`}
                           style={{
                             width: '80px',
@@ -2236,7 +2236,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                 <div style={{ flexShrink: 0 }}>
                   {selectedStudent.image ? (
                     <img
-                      src={`https://vmi1977988.contaboserver.net/${selectedStudent.image}`}
+                      src={`http://195.179.229.230:5000${selectedStudent.image}`}
                       alt={`${selectedStudent.prenom} ${selectedStudent.nomDeFamille}`}
                       style={{
                         width: '130px',
@@ -3063,7 +3063,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                               docInfo.fichier.toLowerCase().includes('.png') || 
                               docInfo.fichier.toLowerCase().includes('.gif')) && (
                               <button 
-                                onClick={() => window.open(`https://vmi1977988.contaboserver.net/${docInfo.fichier}`, '_blank')}
+                                onClick={() => window.open(`http://195.179.229.230:5000${docInfo.fichier}`, '_blank')}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',

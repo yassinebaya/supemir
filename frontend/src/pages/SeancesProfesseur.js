@@ -20,12 +20,11 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+const handleLogout = () => {
+  localStorage.removeItem('token');
+  window.location.href = '/';
+};
 
-
- const handleLogout = () => {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-  };
 const SeancesProfesseur = () => {
   const [seances, setSeances] = useState([]);
   const [professeurInfo, setProfesseurInfo] = useState(null);
@@ -33,15 +32,11 @@ const SeancesProfesseur = () => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [viewMode, setViewMode] = useState('emploi'); // 'emploi' ou 'statistiques'
+  const [viewMode, setViewMode] = useState('emploi');
   const [selectedPeriod, setSelectedPeriod] = useState({
     mois: new Date().getMonth() + 1,
     annee: new Date().getFullYear()
   });
-
-  // États pour la gestion des créneaux dynamiques
-  const [creneauxParCours, setCreneauxParCours] = useState({});
-  const [coursUniques, setCoursUniques] = useState([]);
 
   const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
@@ -50,7 +45,21 @@ const SeancesProfesseur = () => {
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
   ];
 
-  // Fonction pour calculer la durée d'une séance
+  const estUnId = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    return /^[0-9a-f]{24}$/i.test(str);
+  };
+
+  const obtenirNomCours = (seance) => {
+    if (seance.coursId?.nom) {
+      return seance.coursId.nom;
+    }
+    if (seance.cours && !estUnId(seance.cours)) {
+      return seance.cours;
+    }
+    return 'Cours Inconnu';
+  };
+
   const calculerDureeSeance = (heureDebut, heureFin) => {
     const [heureD, minuteD] = heureDebut.split(':').map(Number);
     const [heureF, minuteF] = heureFin.split(':').map(Number);
@@ -61,7 +70,6 @@ const SeancesProfesseur = () => {
     return (minutesFin - minutesDebut) / 60;
   };
 
-  // Fonction pour générer un label de créneau
   const genererLabel = (debut, fin) => {
     if (!debut || !fin) return '';
     const formatTime = (time) => {
@@ -71,7 +79,6 @@ const SeancesProfesseur = () => {
     return `${formatTime(debut)} - ${formatTime(fin)}`;
   };
 
-  // Fonction pour obtenir les dates de la semaine
   const getWeekDates = (date) => {
     const start = new Date(date);
     const day = start.getDay();
@@ -103,38 +110,6 @@ const SeancesProfesseur = () => {
     }
   }, [viewMode, selectedPeriod]);
 
-  // Analyser les séances pour extraire les créneaux par cours
-  const analyserCreneaux = (seancesData) => {
-    const creneauxMap = {};
-    const coursSet = new Set();
-
-    seancesData.forEach(seance => {
-      const coursNom = seance.cours || seance.coursId?.nom || 'Cours Inconnu';
-      coursSet.add(coursNom);
-
-      if (!creneauxMap[coursNom]) {
-        creneauxMap[coursNom] = new Set();
-      }
-
-      const creneauKey = `${seance.heureDebut}-${seance.heureFin}`;
-      creneauxMap[coursNom].add(creneauKey);
-    });
-
-    // Convertir les Sets en Arrays et trier
-    const creneauxFinal = {};
-    Object.keys(creneauxMap).forEach(cours => {
-      creneauxFinal[cours] = Array.from(creneauxMap[cours])
-        .map(key => {
-          const [debut, fin] = key.split('-');
-          return { debut, fin, label: genererLabel(debut, fin) };
-        })
-        .sort((a, b) => a.debut.localeCompare(b.debut));
-    });
-
-    setCreneauxParCours(creneauxFinal);
-    setCoursUniques(Array.from(coursSet).sort());
-  };
-
   const fetchSeances = async () => {
     try {
       setLoading(true);
@@ -145,14 +120,13 @@ const SeancesProfesseur = () => {
         return;
       }
 
-      // Récupérer les séances de la semaine
       const d = weekDates[0];
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const lundiSemaine = `${y}-${m}-${day}`;
 
-      const res = await fetch(`https://vmi1977988.contaboserver.net//api2/seances/professeur/semaine/${lundiSemaine}`, {
+      const res = await fetch(`http://195.179.229.230:5000/api/seances/professeur/semaine/${lundiSemaine}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -161,7 +135,6 @@ const SeancesProfesseur = () => {
       if (res.ok) {
         const data = await res.json();
         setSeances(data);
-        analyserCreneaux(data);
         
         if (data.length > 0) {
           setMessage({ 
@@ -189,7 +162,7 @@ const SeancesProfesseur = () => {
   const fetchProfesseurInfo = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://vmi1977988.contaboserver.net/api2/professeurs/mon-profil', {
+      const res = await fetch('http://195.179.229.230:5000/api/professeurs/mon-profil', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -210,7 +183,7 @@ const SeancesProfesseur = () => {
       params.append('annee', selectedPeriod.annee);
       
       const res = await fetch(
-        `https://vmi1977988.contaboserver.net//api2/professeurs/mon-rapport?${params}`,
+        `http://195.179.229.230:5000/api/professeurs/mon-rapport?${params}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -223,46 +196,37 @@ const SeancesProfesseur = () => {
     }
   };
 
-  // Organiser les séances par cours, jour et créneau
-  const organiserSeances = () => {
-    const emploi = {};
-    
-    seances.forEach(seance => {
-      const coursNom = seance.cours || seance.coursId?.nom || 'Cours Inconnu';
-      const key = `${seance.jour}-${seance.heureDebut}-${seance.heureFin}`;
-      
-      if (!emploi[coursNom]) {
-        emploi[coursNom] = {};
-      }
-      
-      emploi[coursNom][key] = {
-        ...seance,
-        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin),
-        montant: professeurInfo && !professeurInfo.estPermanent && professeurInfo.tarifHoraire 
-          ? calculerDureeSeance(seance.heureDebut, seance.heureFin) * professeurInfo.tarifHoraire 
-          : 0
-      };
-    });
-    
-    return emploi;
-  };
-
-  const emploiOrganise = organiserSeances();
-
-  // Navigation des semaines
   const changeWeek = (direction) => {
     const newDate = new Date(currentWeek);
     newDate.setDate(currentWeek.getDate() + (direction * 7));
     setCurrentWeek(newDate);
   };
 
-  // Obtenir les statistiques rapides
+  // Fonction pour obtenir les statistiques avec fusion des doublons côté front
   const getStatsRapides = () => {
-    const coursUniques = [...new Set(seances.map(s => s.cours || s.coursId?.nom).filter(Boolean))];
-    const matieresUniques = [...new Set(seances.map(s => s.matiere).filter(Boolean))];
-    const sallesUniques = [...new Set(seances.map(s => s.salle).filter(Boolean))];
+    // Fusionner les doublons pour les calculs
+    const creneauxUniques = {};
+    const coursSet = new Set();
     
-    const totalHeures = seances.reduce((total, seance) => {
+    seances.forEach(seance => {
+      const key = `${seance.jour}-${seance.heureDebut}-${seance.heureFin}`;
+      
+      if (!creneauxUniques[key]) {
+        creneauxUniques[key] = seance;
+      }
+      
+      const coursNom = obtenirNomCours(seance);
+      if (coursNom !== 'Cours Inconnu') {
+        coursSet.add(coursNom);
+      }
+    });
+    
+    const seancesUniques = Object.values(creneauxUniques);
+    
+    const matieresUniques = [...new Set(seancesUniques.map(s => s.matiere).filter(Boolean))];
+    const sallesUniques = [...new Set(seancesUniques.map(s => s.salle).filter(Boolean))];
+    
+    const totalHeures = seancesUniques.reduce((total, seance) => {
       return total + calculerDureeSeance(seance.heureDebut, seance.heureFin);
     }, 0);
 
@@ -271,8 +235,8 @@ const SeancesProfesseur = () => {
       : 0;
     
     return {
-      totalSeances: seances.length,
-      totalCours: coursUniques.length,
+      totalSeances: seancesUniques.length,
+      totalCours: coursSet.size,
       totalMatieres: matieresUniques.length,
       totalSalles: sallesUniques.length,
       totalHeures: Math.round(totalHeures * 100) / 100,
@@ -282,7 +246,6 @@ const SeancesProfesseur = () => {
 
   const stats = getStatsRapides();
 
-  // Obtenir la prochaine séance
   const getNextSeance = () => {
     const now = new Date();
     const currentDay = now.toLocaleDateString('fr-FR', { weekday: 'long' });
@@ -324,13 +287,11 @@ const SeancesProfesseur = () => {
 
   const prochaineSeance = getNextSeance();
 
-  // Télécharger l'emploi du temps
   const downloadSchedule = () => {
     let csvContent = '';
     csvContent += `Emploi du Temps Professeur - ${professeurInfo?.nom || 'Professeur'}\n`;
     csvContent += `Semaine du ${formatDate(weekDates[0])} au ${formatDate(weekDates[6])}\n\n`;
     
-    // Informations du professeur
     if (professeurInfo) {
       csvContent += `INFORMATIONS PROFESSEUR\n`;
       csvContent += `Nom: ${professeurInfo.nom}\n`;
@@ -341,7 +302,6 @@ const SeancesProfesseur = () => {
       csvContent += `\n`;
     }
 
-    // Statistiques de la semaine
     csvContent += `STATISTIQUES SEMAINE\n`;
     csvContent += `Total séances: ${stats.totalSeances}\n`;
     csvContent += `Total heures: ${stats.totalHeures}h\n`;
@@ -349,18 +309,6 @@ const SeancesProfesseur = () => {
       csvContent += `Total montant: ${stats.totalMontant.toFixed(2)} DH\n`;
     }
     csvContent += `\n`;
-    
-    // Données par cours
-    Object.keys(emploiOrganise).forEach(coursNom => {
-      csvContent += `COURS: ${coursNom}\n`;
-      csvContent += 'Jour;Horaire;Matière;Salle;Durée;Montant\n';
-      
-      Object.entries(emploiOrganise[coursNom]).forEach(([key, seance]) => {
-        const [jour, debut, fin] = key.split('-');
-        csvContent += `${jour};${debut}-${fin};${seance.matiere || ''};${seance.salle || ''};${seance.dureeHeures}h;${seance.montant.toFixed(2)} DH\n`;
-      });
-      csvContent += '\n';
-    });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -586,7 +534,7 @@ const SeancesProfesseur = () => {
       border: '1px solid #e5e7eb',
       padding: '8px',
       verticalAlign: 'top',
-      height: '130px',
+      minHeight: '130px',
       width: 'calc(100% / 7)',
       position: 'relative'
     },
@@ -595,11 +543,11 @@ const SeancesProfesseur = () => {
       borderRadius: '4px',
       padding: '6px',
       fontSize: '11px',
-      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      border: '1px solid #10b981'
+      border: '1px solid #10b981',
+      marginBottom: '4px'
     },
     coursName: {
       fontWeight: '600',
@@ -611,19 +559,13 @@ const SeancesProfesseur = () => {
       fontWeight: '500',
       color: '#7c3aed',
       marginBottom: '2px',
-      fontSize: '10px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '2px'
+      fontSize: '10px'
     },
     salleName: {
       fontWeight: '500',
       color: '#dc2626',
       marginBottom: '2px',
-      fontSize: '10px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '2px'
+      fontSize: '10px'
     },
     dureeInfo: {
       fontWeight: '500',
@@ -635,6 +577,16 @@ const SeancesProfesseur = () => {
       fontWeight: '600',
       color: '#dc2626',
       fontSize: '10px'
+    },
+    multiCoursBadge: {
+      fontSize: '8px',
+      backgroundColor: '#fbbf24',
+      color: '#92400e',
+      padding: '2px 4px',
+      borderRadius: '3px',
+      marginTop: '2px',
+      textAlign: 'center',
+      fontWeight: '600'
     },
     message: {
       padding: '12px 16px',
@@ -677,12 +629,9 @@ const SeancesProfesseur = () => {
     }
   };
 
- 
-
   if (loading) {
     return (
       <div style={styles.container}>
-        
         <div style={styles.content}>
           <div style={styles.loading}>
             <div>Chargement de votre emploi du temps...</div>
@@ -697,10 +646,9 @@ const SeancesProfesseur = () => {
 
   return (
     <div style={styles.container}>
-            <Sidebaretudiant onLogout={handleLogout} />
+      <Sidebaretudiant onLogout={handleLogout} />
 
       <div style={styles.content}>
-        {/* Header */}
         <div style={styles.header}>
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#1f2937' }}>
             <GraduationCap size={24} style={{ verticalAlign: 'middle', marginRight: '10px' }} />
@@ -708,7 +656,6 @@ const SeancesProfesseur = () => {
           </h1>
         </div>
 
-        {/* Sélecteur de mode */}
         <div style={styles.modeSelector}>
           <button
             style={{
@@ -732,7 +679,6 @@ const SeancesProfesseur = () => {
           </button>
         </div>
 
-        {/* Informations du professeur */}
         {professeurInfo && (
           <div style={styles.professeurInfo}>
             <h3 style={{ margin: '0 0 10px 0', color: '#374151' }}>
@@ -758,7 +704,6 @@ const SeancesProfesseur = () => {
           </div>
         )}
 
-        {/* Message */}
         {message.text && (
           <div style={{
             ...styles.message,
@@ -770,10 +715,8 @@ const SeancesProfesseur = () => {
           </div>
         )}
 
-        {/* Mode Emploi du Temps */}
         {viewMode === 'emploi' && (
           <>
-            {/* Prochaine séance */}
             {prochaineSeance && (
               <div style={styles.nextSeanceCard}>
                 <div style={styles.nextSeanceTitle}>
@@ -781,7 +724,7 @@ const SeancesProfesseur = () => {
                   Prochaine séance
                 </div>
                 <div style={styles.nextSeanceInfo}>
-                  <strong>{prochaineSeance.cours || prochaineSeance.coursId?.nom}</strong> - {prochaineSeance.jour} à {prochaineSeance.heureDebut}
+                  <strong>{obtenirNomCours(prochaineSeance)}</strong> - {prochaineSeance.jour} à {prochaineSeance.heureDebut}
                   {prochaineSeance.matiere && <span> ({prochaineSeance.matiere})</span>}
                   {prochaineSeance.salle && <span> - Salle: {prochaineSeance.salle}</span>}
                   <div style={{ marginTop: '5px', fontSize: '14px', color: '#6b7280' }}>
@@ -794,33 +737,28 @@ const SeancesProfesseur = () => {
               </div>
             )}
 
-            {/* Statistiques rapides */}
             <div style={styles.statsContainer}>
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>{stats.totalSeances}</div>
                 <div style={styles.statLabel}>
-                  <Clock size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                   Séances par semaine
                 </div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>{stats.totalHeures}h</div>
                 <div style={styles.statLabel}>
-                  <Users size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                   Heures d'enseignement
                 </div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>{stats.totalCours}</div>
                 <div style={styles.statLabel}>
-                  <Book size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                   Cours différents
                 </div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>{stats.totalMatieres}</div>
                 <div style={styles.statLabel}>
-                  <BookOpen size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                   Matières
                 </div>
               </div>
@@ -828,14 +766,12 @@ const SeancesProfesseur = () => {
                 <div style={styles.statCard}>
                   <div style={styles.statNumber}>{stats.totalMontant} DH</div>
                   <div style={styles.statLabel}>
-                    <DollarSign size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                     Revenus semaine
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Contrôles */}
             <div style={styles.controls}>
               <div style={styles.weekNavigation}>
                 <button 
@@ -879,110 +815,133 @@ const SeancesProfesseur = () => {
                   e.target.style.backgroundColor = '#f59e0b';
                   e.target.style.transform = 'translateY(0px)';
                 }}
-              >
-                <Download size={18} />
+              ><Download size={18} />
                 Télécharger mon emploi du temps
               </button>
             </div>
 
-            {/* Tableau de l'emploi du temps par cours */}
             {seances.length > 0 ? (
               <>
-                {coursUniques.map(coursNom => {
-                  const creneauxCours = creneauxParCours[coursNom] || [];
-                  const seancesCours = emploiOrganise[coursNom] || {};
-                  
-                  return (
-                    <div key={coursNom} style={styles.courseContainer}>
-                      <div style={styles.courseTitle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Book size={18} />
-                          {coursNom}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                          {Object.keys(seancesCours).length} séance(s) cette semaine
-                        </div>
-                      </div>
-                      
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={styles.table}>
-                          <thead>
-                            <tr>
-                              <th style={styles.headerCell}>Horaires</th>
-                              {jours.map((jour, index) => (
-                                <th key={jour} style={styles.headerCell}>
-                                  {jour}<br />
-                                  <small>{formatDate(weekDates[index])}</small>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {creneauxCours.map(creneau => (
-                              <tr key={`${creneau.debut}-${creneau.fin}`}>
-                                <td style={styles.timeCell}>
-                                  {creneau.label}
-                                </td>
-                                {jours.map(jour => {
-                                  const key = `${jour}-${creneau.debut}-${creneau.fin}`;
-                                  const seance = seancesCours[key];
-                                  
-                                  return (
-                                    <td key={jour} style={styles.cell}>
-                                      {seance ? (
-                                        <div style={styles.seanceCard}>
-                                          <div>
-                                            <div style={styles.coursName}>
-                                              {seance.cours || seance.coursId?.nom || 'Cours'}
-                                            </div>
-                                            {seance.matiere && (
-                                              <div style={styles.matiereName}>
-                                                <BookOpen size={10} />
-                                                {seance.matiere}
-                                              </div>
-                                            )}
-                                            {seance.salle && (
-                                              <div style={styles.salleName}>
-                                                <MapPin size={10} />
-                                                {seance.salle}
-                                              </div>
-                                            )}
-                                            <div style={styles.dureeInfo}>
-                                              <Clock size={10} />
-                                              {seance.dureeHeures}h
-                                            </div>
-                                            {seance.montant > 0 && (
-                                              <div style={styles.montantInfo}>
-                                                <DollarSign size={10} />
-                                                {seance.montant.toFixed(2)} DH
-                                              </div>
-                                            )}
-                                            {seance.typeSeance === 'rattrapage' && (
-                                              <div style={{
-                                                fontSize: '9px',
-                                                backgroundColor: '#fbbf24',
-                                                color: '#92400e',
-                                                padding: '2px 4px',
-                                                borderRadius: '3px',
-                                                marginTop: '2px'
-                                              }}>
-                                                RATTRAPAGE
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ) : null}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                {/* TABLEAU UNIQUE AVEC TOUS LES COURS */}
+                <div style={styles.courseContainer}>
+                  <div style={styles.courseTitle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Book size={18} />
+                      Emploi du Temps Complet
                     </div>
-                  );
-                })}
+                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                      {seances.length} séance(s) cette semaine
+                    </div>
+                  </div>
+                  
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={styles.headerCell}>Horaires</th>
+                          {jours.map((jour, index) => (
+                            <th key={jour} style={styles.headerCell}>
+                              {jour}<br />
+                              <small>{formatDate(weekDates[index])}</small>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          // Obtenir tous les créneaux horaires uniques
+                          const creneauxUniques = new Set();
+                          seances.forEach(s => {
+                            creneauxUniques.add(`${s.heureDebut}-${s.heureFin}`);
+                          });
+                          
+                          const creneauxArray = Array.from(creneauxUniques)
+                            .map(c => {
+                              const [debut, fin] = c.split('-');
+                              return { debut, fin, label: genererLabel(debut, fin) };
+                            })
+                            .sort((a, b) => a.debut.localeCompare(b.debut));
+                          
+                          return creneauxArray.map(creneau => (
+                            <tr key={`${creneau.debut}-${creneau.fin}`}>
+                              <td style={styles.timeCell}>
+                                {creneau.label}
+                              </td>
+                              {jours.map(jour => {
+                                // Trouver TOUTES les séances pour ce jour et ce créneau
+                                const seancesDuCreneau = seances.filter(s => 
+                                  s.jour === jour && 
+                                  s.heureDebut === creneau.debut && 
+                                  s.heureFin === creneau.fin
+                                );
+                                
+                                return (
+                                  <td key={jour} style={styles.cell}>
+                                    {seancesDuCreneau.length > 0 ? (
+                                      <div style={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '4px',
+                                        height: '100%'
+                                      }}>
+                                        {seancesDuCreneau.map((seance, idx) => (
+                                          <div 
+                                            key={idx} 
+                                            style={{
+                                              ...styles.seanceCard,
+                                              backgroundColor: idx === 0 ? '#d1fae5' : '#e0e7ff',
+                                              borderColor: idx === 0 ? '#10b981' : '#6366f1'
+                                            }}
+                                          >
+                                            <div>
+                                              <div style={{
+                                                ...styles.coursName,
+                                                color: idx === 0 ? '#065f46' : '#3730a3'
+                                              }}>
+                                                {obtenirNomCours(seance)}
+                                              </div>
+                                              {seance.matiere && (
+                                                <div style={styles.matiereName}>
+                                                  Matière: {seance.matiere}
+                                                </div>
+                                              )}
+                                              {seance.salle && (
+                                                <div style={styles.salleName}>
+                                                  Salle: {seance.salle}
+                                                </div>
+                                              )}
+                                              {idx === 0 && (
+                                                <>
+                                                  <div style={styles.dureeInfo}>
+                                                    Durée: {seance.dureeHeures}h
+                                                  </div>
+                                                  {seance.montant > 0 && (
+                                                    <div style={styles.montantInfo}>
+                                                      Montant: {seance.montant.toFixed(2)} DH
+                                                    </div>
+                                                  )}
+                                                </>
+                                              )}
+                                              {seancesDuCreneau.length > 1 && idx === 0 && (
+                                                <div style={styles.multiCoursBadge}>
+                                                  {seancesDuCreneau.length} COURS SIMULTANÉS
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ));
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </>
             ) : (
               <div style={styles.emptyState}>
@@ -994,10 +953,8 @@ const SeancesProfesseur = () => {
           </>
         )}
 
-        {/* Mode Statistiques */}
         {viewMode === 'statistiques' && (
           <>
-            {/* Contrôles période */}
             <div style={styles.controls}>
               <div style={styles.controlRow}>
                 <select
@@ -1030,40 +987,34 @@ const SeancesProfesseur = () => {
               </div>
             </div>
 
-            {/* Statistiques détaillées */}
             {statistiques && (
               <div style={styles.statistiquesContainer}>
                 <h3 style={{ margin: '0 0 20px 0', color: '#374151' }}>
                   Mes Statistiques - {mois[selectedPeriod.mois - 1]} {selectedPeriod.annee}
                 </h3>
 
-                {/* Statistiques principales */}
                 <div style={styles.statsContainer}>
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{statistiques.statistiques.totalHeures}h</div>
                     <div style={styles.statLabel}>
-                      <Clock size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                       Total Heures
                     </div>
                   </div>
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{statistiques.statistiques.totalSeances}</div>
                     <div style={styles.statLabel}>
-                      <Calendar size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                       Séances
                     </div>
                   </div>
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{statistiques.statistiques.coursUniques}</div>
                     <div style={styles.statLabel}>
-                      <Book size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                       Cours Différents
                     </div>
                   </div>
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{statistiques.statistiques.moyenneHeuresParJour}h</div>
                     <div style={styles.statLabel}>
-                      <TrendingUp size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                       Moyenne/Jour
                     </div>
                   </div>
@@ -1071,14 +1022,12 @@ const SeancesProfesseur = () => {
                     <div style={styles.statCard}>
                       <div style={styles.statNumber}>{statistiques.statistiques.totalAPayer.toFixed(2)} DH</div>
                       <div style={styles.statLabel}>
-                        <DollarSign size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
                         Total Gagné
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Répartition par jour */}
                 {Object.keys(statistiques.statistiques.repartitionJours).length > 0 && (
                   <div style={{ marginTop: '30px' }}>
                     <h4 style={{ margin: '0 0 20px 0', color: '#374151' }}>
@@ -1126,52 +1075,95 @@ const SeancesProfesseur = () => {
                   </div>
                 )}
 
-                {/* Détail des séances */}
-                {statistiques.seances && statistiques.seances.length > 0 && (
-                  <div style={{ marginTop: '30px' }}>
-                    <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>
-                      Détail de Mes Séances
-                    </h4>
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={styles.table}>
-                        <thead>
-                          <tr>
-                            <th style={styles.headerCell}>Date</th>
-                            <th style={styles.headerCell}>Jour</th>
-                            <th style={styles.headerCell}>Horaire</th>
-                            <th style={styles.headerCell}>Cours</th>
-                            <th style={styles.headerCell}>Matière</th>
-                            <th style={styles.headerCell}>Salle</th>
-                            <th style={styles.headerCell}>Durée</th>
-                            {professeurInfo && !professeurInfo.estPermanent && (
-                              <th style={styles.headerCell}>Montant</th>
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {statistiques.seances.map((seance, index) => (
-                            <tr key={index}>
-                              <td style={styles.timeCell}>
-                                {seance.dateSeance ? new Date(seance.dateSeance).toLocaleDateString('fr-FR') : '-'}
-                              </td>
-                              <td style={styles.timeCell}>{seance.jour}</td>
-                              <td style={styles.timeCell}>{seance.heureDebut} - {seance.heureFin}</td>
-                              <td style={styles.timeCell}>{seance.cours || seance.coursId?.nom}</td>
-                              <td style={styles.timeCell}>{seance.matiere || '-'}</td>
-                              <td style={styles.timeCell}>{seance.salle || '-'}</td>
-                              <td style={styles.timeCell}>{calculerDureeSeance(seance.heureDebut, seance.heureFin)}h</td>
-                              {professeurInfo && !professeurInfo.estPermanent && (
-                                <td style={styles.timeCell}>
-                                  {(calculerDureeSeance(seance.heureDebut, seance.heureFin) * professeurInfo.tarifHoraire).toFixed(2)} DH
-                                </td>
-                              )}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+           {statistiques.seances && statistiques.seances.length > 0 && (
+  <div style={{ marginTop: '30px' }}>
+    <h4 style={{ margin: '0 0 15px 0', color: '#374151' }}>
+      Détail de Mes Séances
+    </h4>
+    <div style={{ overflowX: 'auto' }}>
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            <th style={styles.headerCell}>Date</th>
+            <th style={styles.headerCell}>Jour</th>
+            <th style={styles.headerCell}>Horaire</th>
+            <th style={styles.headerCell}>Cours</th>
+            <th style={styles.headerCell}>Matière</th>
+            <th style={styles.headerCell}>Salle</th>
+            <th style={styles.headerCell}>Durée</th>
+            {professeurInfo && !professeurInfo.estPermanent && (
+              <th style={styles.headerCell}>Montant</th>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {(() => {
+            // Regrouper les séances par date + horaire
+            const seancesGroupees = {};
+            
+            statistiques.seances.forEach(seance => {
+              const dateStr = seance.dateSeance ? new Date(seance.dateSeance).toLocaleDateString('fr-FR') : '-';
+              const key = `${dateStr}-${seance.jour}-${seance.heureDebut}-${seance.heureFin}`;
+              
+              if (!seancesGroupees[key]) {
+                seancesGroupees[key] = {
+                  dateSeance: seance.dateSeance,
+                  jour: seance.jour,
+                  heureDebut: seance.heureDebut,
+                  heureFin: seance.heureFin,
+                  cours: [],
+                  matieres: [],
+                  salles: [],
+                  dureeHeures: seance.dureeHeures
+                };
+              }
+              
+              const coursNom = obtenirNomCours(seance);
+              if (coursNom && !seancesGroupees[key].cours.includes(coursNom)) {
+                seancesGroupees[key].cours.push(coursNom);
+              }
+              
+              if (seance.matiere && !seancesGroupees[key].matieres.includes(seance.matiere)) {
+                seancesGroupees[key].matieres.push(seance.matiere);
+              }
+              
+              if (seance.salle && !seancesGroupees[key].salles.includes(seance.salle)) {
+                seancesGroupees[key].salles.push(seance.salle);
+              }
+            });
+            
+            return Object.values(seancesGroupees).map((groupe, index) => (
+              <tr key={index}>
+                <td style={styles.timeCell}>
+                  {groupe.dateSeance ? new Date(groupe.dateSeance).toLocaleDateString('fr-FR') : '-'}
+                </td>
+                <td style={styles.timeCell}>{groupe.jour}</td>
+                <td style={styles.timeCell}>{groupe.heureDebut} - {groupe.heureFin}</td>
+                <td style={styles.timeCell}>
+                  {groupe.cours.join(' + ')}
+                </td>
+                <td style={styles.timeCell}>
+                  {groupe.matieres.join(' / ') || '-'}
+                </td>
+                <td style={styles.timeCell}>
+                  {groupe.salles.join(' / ') || '-'}
+                </td>
+                <td style={styles.timeCell}>
+                  {calculerDureeSeance(groupe.heureDebut, groupe.heureFin)}h
+                </td>
+                {professeurInfo && !professeurInfo.estPermanent && (
+                  <td style={styles.timeCell}>
+                    {(calculerDureeSeance(groupe.heureDebut, groupe.heureFin) * professeurInfo.tarifHoraire).toFixed(2)} DH
+                  </td>
                 )}
+              </tr>
+            ));
+          })()}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
               </div>
             )}
 
@@ -1185,7 +1177,6 @@ const SeancesProfesseur = () => {
           </>
         )}
 
-        {/* Instructions en bas de page */}
         <div style={{
           backgroundColor: '#f8fafc',
           padding: '15px',
@@ -1201,7 +1192,8 @@ const SeancesProfesseur = () => {
             • Les créneaux s'adaptent automatiquement à votre planning<br/>
             • Utilisez les statistiques pour analyser votre charge de travail<br/>
             • Téléchargez votre emploi du temps pour une consultation hors ligne<br/>
-            • Les montants affichés sont calculés selon votre tarif horaire (entrepreneurs uniquement)
+            • Les montants affichés sont calculés selon votre tarif horaire (entrepreneurs uniquement)<br/>
+            • Les cours simultanés sont affichés dans la même case avec des couleurs différentes
           </div>
         </div>
       </div>
