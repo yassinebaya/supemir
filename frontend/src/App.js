@@ -86,8 +86,10 @@ import HistoriquePaiements from './pages/HistoriquePaiements';
 import DashboardPartners from './pages/DashboardPartners';
 import PartnersCreateEtudiant
  from './pages/PartnersCreateEtudiant';
-
+import ListeCoursPedagogique from './pages/ListeCoursPedagogique';
 import PartnersPage from './pages/PartnersPage';
+import ProfilEtudiantPedagogique from './pages/ProfilEtudiantPedagogique';
+import ModifierCoursEtudiant from './pages/ModifierCoursEtudiant';
 
    function AppContent() {
      const location = useLocation();
@@ -179,6 +181,11 @@ import PartnersPage from './pages/PartnersPage';
         <Route path="/calendrier" element={<Calendrier />} />
         <Route path="/etudiants/:id" element={<ProfilEtudiant />} />
                 <Route path="/etudiant/:id" element={<ProfilEtudiantadmin />} />
+        <Route path="/pedagogique/cours" element={<ListeCoursPedagogique />} />
+                <Route path="/pedagogique/etudiant/:id" element={<ProfilEtudiantPedagogique />} />
+
+
+<Route path="/pedagogique/etudiant/:id/modifier-cours" element={<ModifierCoursEtudiant />} />
 
                 <Route path="/partners/create-etudiant" element={<PartnersCreateEtudiant />} />
         <Route path="/ajouter-professeur" element={<AjouterProfesseur />} />

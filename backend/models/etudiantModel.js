@@ -718,11 +718,18 @@ etudiantSchema.methods.validerParcours = function() {
     
     if (this.typeFormation && this.specialite && this.niveau) {
       const STRUCTURE_FORMATION = {
-        MASI: {
-          3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-          4: ['Management des affaires et systèmes d\'information'],
-          5: ['Management des affaires et systèmes d\'information']
-        },
+       3: [
+    'Entreprenariat, audit et finance',
+    'Développement commercial et marketing digital'
+  ],
+  4: [
+    'Finance et Stratégie Entrepreneuriale Master 1',
+    'Développement Commercial et Marketing Digital Master 1'
+  ],
+  5: [
+    'Finance et Stratégie Entrepreneuriale Master 2',
+    'Développement Commercial et Marketing Digital Master 2'
+  ],
         IRM: {
           3: ['Développement informatique', 'Réseaux et cybersécurité'],
           4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],

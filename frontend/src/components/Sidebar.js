@@ -61,17 +61,20 @@ const Sidebar = ({ onLogout }) => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
       
-      if (!mobile) {
-        setIsOpen(true);
-      } else {
-        setIsOpen(false);
-      }
+      // MODIFIÉ: Sidebar fermée par défaut sur toutes les tailles d'écran
+      setIsOpen(false);
     };
 
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // NOUVEAU: Fermer automatiquement la sidebar à chaque changement de page
+  useEffect(() => {
+    // Fermer la sidebar à chaque changement d'URL
+    setIsOpen(false);
+  }, [location.pathname]);
 
   // Navigation items pour admin (configuration actuelle)
   const adminNavigationItems = [
@@ -151,7 +154,11 @@ const Sidebar = ({ onLogout }) => {
       label: 'Dashboard',
       icon: Home
     },
-
+    {
+      path: '/pedagogique/cours',
+      label: 'Cours',
+      icon: BookOpen
+    },
     {
       path: '/pedagogique/etudiants',
       label: 'Étudiants',
@@ -239,9 +246,8 @@ const Sidebar = ({ onLogout }) => {
 
   const handleNavigation = (path) => {
     navigate(path);
-    if (isMobile) {
-      closeSidebar();
-    }
+    // Fermer immédiatement la sidebar après navigation (mobile ET desktop)
+    setIsOpen(false);
   };
 
   const isActive = (path) => location.pathname === path;

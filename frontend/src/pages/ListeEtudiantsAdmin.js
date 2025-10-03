@@ -163,39 +163,42 @@ const autoAssignCours = (form, setForm, listeCours, isLockedByUser) => {
 };
 
 const STRUCTURE_FORMATION = {
-  MASI: {
-    nom: 'MASI',
-    niveauxManuels: true,
-    // لاستعمال بسيط سريع (مثلاً عرض عام)
-    specialites: [
-      'Entreprenariat, audit et finance',
-      'Développement commercial et marketing digital'
-    ],
-    // 👇 الهيكلة اللي كيعتمد عليها الفرونت لاشتقاق الاختيارات حسب المستوى
-    niveaux: {
-      1: { specialites: [] },
-      2: { specialites: [] },
-      3: { specialites: [
+MASI: {
+  nom: 'MASI',
+  niveauxManuels: true,
+  specialites: [
+    'Entreprenariat, audit et finance',
+    'Développement commercial et marketing digital'
+  ],
+  niveaux: {
+    1: { specialites: [] },
+    2: { specialites: [] },
+    3: { 
+      specialites: [
         'Entreprenariat, audit et finance',
         'Développement commercial et marketing digital'
-      ]},
-      4: { specialites: ["Management des affaires et systèmes d'information"] },
-      5: { 
-        specialites: ["Management des affaires et systèmes d'information"],
-        // 👇 OPTIONS ديال MASI كيكونو غير فالمستوى 5 حسب التخصص
-        options: {
-          "Management des affaires et systèmes d'information": [
-            'Finance & Audit',
-            'Management SI',
-            'Entrepreneuriat & Innovation',
-            'Marketing & Ventes',
-            'Contrôle de Gestion'
-          ]
-        }
-      }
+      ]
+    },
+    4: { 
+      specialites: [
+        'Finance et Stratégie Entrepreneuriale Master 1',
+        'Développement Commercial et Marketing Digital Master 1'
+      ]
+    },
+    5: { 
+      specialites: [
+        'Finance et Stratégie Entrepreneuriale Master 2',
+        'Développement Commercial et Marketing Digital Master 2'
+      ],
+      options: {}
     }
   },
-
+  // Mapping automatique Master 1 → Master 2
+  autoMapping: {
+    'Finance et Stratégie Entrepreneuriale Master 1': 'Finance et Stratégie Entrepreneuriale Master 2',
+    'Développement Commercial et Marketing Digital Master 1': 'Développement Commercial et Marketing Digital Master 2'
+  }
+},
   IRM: {
     nom: 'IRM',
     niveauxManuels: true,
@@ -372,8 +375,16 @@ const getSpecialitesDisponibles = (filiere, niveau) => {
   if (filiere === 'MASI') {
     if (niveauInt === 3) {
       return ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'];
-    } else if (niveauInt >= 4) {
-      return ['Management des affaires et systèmes d\'information'];
+    } else if (niveauInt === 4) {
+      return [
+        'Finance et Stratégie Entrepreneuriale Master 1',
+        'Développement Commercial et Marketing Digital Master 1'
+      ];
+    } else if (niveauInt === 5) {
+      return [
+        'Finance et Stratégie Entrepreneuriale Master 2',
+        'Développement Commercial et Marketing Digital Master 2'
+      ];
     }
   }
   

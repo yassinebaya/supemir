@@ -1113,105 +1113,20 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
       
       {/* FIXE - Partners pour 2025/2026 uniquement */}
       {anneeScolaireFilter === '2025/2026' && (
-        <>
-          {/* IPM - Groupe 1 */}
-          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <Handshake size={16} />
-                <strong>IPM (Groupe 1)</strong>
-              </div>
-              <span style={{ fontSize: '1rem', color: '#64748b' }}>145 étudiants</span>
-            </td>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong>50 000,00 MAD</strong>
-            </td>
-          </tr>
-
-          {/* IPM - Groupe 2 (111 étudiants) */}
-          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <Handshake size={16} />
-                <strong>IPM (Groupe 2)</strong>
-              </div>
-              <span style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem', display: 'block' }}>111 étudiants</span>
-              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Recouvrement :</div>
-                <div>• 50% en novembre</div>
-                <div>• 50% en février</div>
-              </div>
-            </td>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong>555 000,00 MAD</strong>
-            </td>
-          </tr>
-
-          {/* Mega */}
-          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <Handshake size={16} />
-                <strong>Mega</strong>
-              </div>
-              <span style={{ fontSize: '1rem', color: '#64748b', marginBottom: '0.5rem', display: 'block' }}>400 étudiants</span>
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Plan de paiement :</div>
-                <div>Déc/Mar/Sep : 500k chacun</div>
-              </div>
-            </td>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong>1 500 000,00 MAD</strong>
-            </td>
-          </tr>
-
-          {/* Jobinteck */}
-          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <Handshake size={16} />
-                <strong>Jobinteck</strong>
-              </div>
-              <span style={{ fontSize: '1rem', color: '#64748b' }}>50 étudiants</span>
-            </td>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong>760 000,00 MAD</strong>
-            </td>
-          </tr>
-
-          {/* Ode */}
-          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <Handshake size={16} />
-                <strong>Ode</strong>
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Remboursement :</div>
-                <div>Tous les 2 mois dès février</div>
-              </div>
-            </td>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong>260 000,00 MAD</strong>
-            </td>
-          </tr>
-
-          {/* Total Partners FIXE */}
-          <tr style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong>Total Partners</strong>
-              <br />
-              <span style={{ fontSize: '1rem', color: '#64748b' }}>
-                706 étudiants (5 partenaires)
-              </span>
-            </td>
-            <td style={{ padding: '1rem', textAlign: 'center' }}>
-              <strong style={{ fontSize: '1.1rem' }}>
-                3 125 000,00 MAD
-              </strong>
-            </td>
-          </tr>
-        </>
+        <tr style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: '#f9fafb' }}>
+          <td style={{ padding: '1rem', textAlign: 'center' }}>
+            <strong>Total Partners</strong>
+            <br />
+            <span style={{ fontSize: '1rem', color: '#64748b' }}>
+              706 étudiants (5 partenaires)
+            </span>
+          </td>
+          <td style={{ padding: '1rem', textAlign: 'center' }}>
+            <strong style={{ fontSize: '1.1rem' }}>
+              3 075 000,00 MAD
+            </strong>
+          </td>
+        </tr>
       )}
 
       {/* TOTAL GLOBAL */}
@@ -1229,29 +1144,14 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
         <td style={{ padding: '1rem', textAlign: 'center' }}>
           <strong style={{ fontSize: '1.1rem' }}>
             {anneeScolaireFilter === '2025/2026'
-              ? formatMoney(chiffreAffaire.nouveauxInscrits.ca + chiffreAffaire.reinscriptions.ca + 3125000)
+              ? formatMoney(chiffreAffaire.nouveauxInscrits.ca + chiffreAffaire.reinscriptions.ca + 3075000)
               : formatMoney(chiffreAffaire.total.ca)
             } MAD
           </strong>
         </td>
       </tr>
 
-      {/* Recouvrement */}
-      <tr>
-        <td style={{ padding: '1rem', textAlign: 'center' }}>
-          <strong>Recouvrement</strong>
-          <br />
-          <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>
-            {anneeScolaireFilter === '2025/2026'
-              ? ((chiffreAffaire.recouvrement.ca / (chiffreAffaire.nouveauxInscrits.ca + chiffreAffaire.reinscriptions.ca + 3125000)) * 100).toFixed(2)
-              : chiffreAffaire.recouvrement.percentage.toFixed(2)
-            } %
-          </span>
-        </td>
-        <td style={{ padding: '1rem', textAlign: 'center' }}>
-          <strong>{formatMoney(chiffreAffaire.recouvrement.ca)} MAD</strong>
-        </td>
-      </tr>
+
     </tbody>
   </table>
 </div>
@@ -1599,7 +1499,140 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
               </div>
             </div>
           </div>
+ <div
+      style={{
+        background: '#fff',
+        borderRadius: '8px',
+        padding: '2rem',
+        marginBottom: '2rem',
+        border: '1px solid #e5e7eb'
+      }}
+    >
+      <h2
+        style={{
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          color: '#1f2937',
+          marginBottom: '2rem',
+          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem'
+        }}
+      >
+        <Handshake size={24} />
+        Détails des Partners 2025/2026
+      </h2>
 
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
+              Partenaire
+            </th>
+            <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
+              Étudiants
+            </th>
+            <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
+              Chiffre d'affaire
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* IPM */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>IPM</strong>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '1.5rem' }}>
+                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Recouvrement :</div>
+                <div>• 50% en novembre</div>
+                <div>• 50% en février</div>
+              </div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <span style={{ fontSize: '1rem', color: '#1f2937' }}>111</span>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'right' }}>
+              <strong>555 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Mega */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>Mega</strong>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '1.5rem' }}>
+                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Plan de paiement :</div>
+                <div>Déc/Mar/Sep : 500k chacun</div>
+              </div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <span style={{ fontSize: '1rem', color: '#1f2937' }}>400</span>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'right' }}>
+              <strong>1 500 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Jobinteck */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>Jobinteck</strong>
+              </div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <span style={{ fontSize: '1rem', color: '#1f2937' }}>50</span>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'right' }}>
+              <strong>760 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Ode */}
+          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <td style={{ padding: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Handshake size={16} />
+                <strong>Ode</strong>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '1.5rem' }}>
+                <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>Remboursement :</div>
+                <div>Tous les 2 mois dès février</div>
+              </div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <span style={{ fontSize: '1rem', color: '#64748b' }}>—</span>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'right' }}>
+              <strong>260 000,00 MAD</strong>
+            </td>
+          </tr>
+
+          {/* Total */}
+          <tr style={{ borderTop: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+            <td style={{ padding: '1rem' }}>
+              <strong style={{ fontSize: '1.1rem' }}>Total Partners</strong>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'center' }}>
+              <strong style={{ fontSize: '1.1rem', color: '#1f2937' }}>706</strong>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>(5 partenaires)</div>
+            </td>
+            <td style={{ padding: '1rem', textAlign: 'right' }}>
+              <strong style={{ fontSize: '1.2rem', color: '#059669' }}>3 075 000,00 MAD</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
           {/* Performance des Commerciaux */}
           <div
             style={{
@@ -2115,6 +2148,7 @@ const calculerPreinscriptionsDirectement = (etudiantsData, commerciauxData, anne
               </table>
             </div>
           </div>
+          
 
           {/* Message d'erreur */}
           {error && (

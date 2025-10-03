@@ -8,7 +8,7 @@ const coursSchema = new mongoose.Schema({
     ref: 'Admin'
   },
 professeur: {
-  type: [String], // âœ… Ù…ØµÙÙˆÙØ© Ù…Ù† Ø£Ø³Ù…Ø§Ø¡ Ø§Ù„Ø£Ø³Ø§ØªØ°Ø©
+  type: [String], 
   required: true,
   default: []
 },

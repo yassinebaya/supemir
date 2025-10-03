@@ -865,10 +865,19 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
         if (specialite) {
           const STRUCTURE_FORMATION = {
             MASI: {
-              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-              4: ['Management des affaires et systèmes d\'information'],
-              5: ['Management des affaires et systèmes d\'information']
-            },
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
             IRM: {
               3: ['Développement informatique', 'Réseaux et cybersécurité'],
               4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -892,7 +901,7 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
       }
 
       // GESTION DES COURS AVEC LIMITE
-      const MAX_ETUDIANTS = 20;
+      const MAX_ETUDIANTS = 50;
       let coursArray = [];
 
       if (cours) {
@@ -1489,11 +1498,20 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
         const specialiteAValider = specialite !== undefined ? specialite : etudiantExistant.specialite;
         if (specialiteAValider && specialiteAValider.trim() !== '') {
           const STRUCTURE_FORMATION = {
-            MASI: {
-              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-              4: ['Management des affaires et systèmes d\'information'],
-              5: ['Management des affaires et systèmes d\'information']
-            },
+           MASI: {
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
             IRM: {
               3: ['Développement informatique', 'Réseaux et cybersécurité'],
               4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -1514,7 +1532,7 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
     }
 
     // GESTION DES COURS AVEC LIMITE
-    const MAX_ETUDIANTS = 20;
+    const MAX_ETUDIANTS = 50;
     let coursArray = etudiantExistant.cours || [];
 
     if (cours !== undefined) {
@@ -2163,11 +2181,20 @@ app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (re
 
       if (typeFormationFinal && specialite) {
         const STRUCTURE_FORMATION = {
-          MASI: {
-            3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-            4: ['Management des affaires et systèmes d\'information'],
-            5: ['Management des affaires et systèmes d\'information']
-          },
+        MASI: {
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
           IRM: {
             3: ['Développement informatique', 'Réseaux et cybersécurité'],
             4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -2185,7 +2212,7 @@ app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (re
     }
 
     // ===== GESTION DES COURS AVEC LIMITE =====
-    const MAX_ETUDIANTS = 20;
+    const MAX_ETUDIANTS = 50;
     let coursArray = [];
 
     if (cours) {
@@ -2505,12 +2532,62 @@ app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (re
   }
 });
 
+app.put('/api/pedagogique/etudiant/:id/cours', authPedagogique, async (req, res) => {
+  try {
+    const { cours } = req.body;
+    const etudiantId = req.params.id;
+    
+    // Utiliser directement req.pedagogique si disponible
+    const pedagogique = req.pedagogique || await Pedagogique.findById(req.pedagogiqueId || req.user.id);
+    
+    if (!pedagogique) {
+      return res.status(403).json({ message: 'Pédagogique non trouvé' });
+    }
+    
+    // Récupérer l'étudiant
+    const etudiant = await Etudiant.findById(etudiantId);
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+    
+    // Vérifier les permissions
+    const filiereEtudiant = etudiant.typeFormation || etudiant.filiere;
+    let hasAccess = false;
+    
+    if (pedagogique.type === 'GENERAL') {
+      hasAccess = pedagogique.filieresList.includes(filiereEtudiant);
+    } else {
+      hasAccess = pedagogique.filiere === filiereEtudiant;
+    }
+    
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        message: `Vous n'avez pas accès à cette filière (${filiereEtudiant})`
+      });
+    }
+    
+    // Mettre à jour UNIQUEMENT les cours
+    etudiant.cours = cours;
+    await etudiant.save({ validateBeforeSave: false });
+    
+    res.status(200).json({
+      message: 'Classes mis à jour avec succès',
+      etudiant: {
+        _id: etudiant._id,
+        nomComplet: etudiant.nomComplet,
+        cours: etudiant.cours
+      }
+    });
+    
+  } catch (err) {
+    console.error('Erreur:', err);
+    res.status(500).json({ 
+      message: 'Erreur serveur',
+      error: err.message 
+    });
+  }
+});
 
-// À ajouter dans votre fichier principal du serveur (après les autres routes)
-
-// ===== ROUTES PARTNERS =====
-
-// 1. Route pour récupérer les étudiants partners
 app.get('/api/partners/etudiants', authCommercial, async (req, res) => {
   try {
     let etudiants;
@@ -3882,9 +3959,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     });
   }
 });
-// Route pour valider un étudiant (PUT)
 
-// ===== ROUTE GET MODIFIÉE POUR FILTRAGE PAR ANNÉE =====
 
 // Route POST pour créer un étudiant
 app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
@@ -4128,11 +4203,20 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
 
       if (specialite) {
         const STRUCTURE_FORMATION = {
-          MASI: {
-            3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-            4: ['Management des affaires et systèmes d\'information'],
-            5: ['Management des affaires et systèmes d\'information']
-          },
+         MASI: {
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
           IRM: {
             3: ['Développement informatique', 'Réseaux et cybersécurité'],
             4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -4170,7 +4254,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
     }
 
     // Gestion des cours avec limite
-    const MAX_ETUDIANTS = 20;
+    const MAX_ETUDIANTS = 50;
     let coursArray = [];
 
     if (cours) {
