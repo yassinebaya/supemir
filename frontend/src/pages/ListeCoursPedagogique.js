@@ -71,24 +71,21 @@ const ListeCoursPedagogique = () => {
     }
   };
 
-  // Filtrer les étudiants accessibles selon la filière du pédagogique
-  const getEtudiantsAccessibles = () => {
-    if (!pedagogiqueInfo) return [];
-    
-    if (pedagogiqueInfo.type === 'GENERAL') {
-      // Pédagogique général : accès à tous les étudiants des filières autorisées
-      return etudiants.filter(e => 
-        pedagogiqueInfo.filieresList.includes(e.filiere) || 
-        pedagogiqueInfo.filieresList.includes(e.typeFormation)
-      );
-    } else {
-      // Pédagogique spécifique : accès uniquement à sa filière
-      return etudiants.filter(e => 
-        e.filiere === pedagogiqueInfo.filiere || 
-        e.typeFormation === pedagogiqueInfo.filiere
-      );
-    }
-  };
+// Filtrer les étudiants accessibles selon la filière du pédagogique
+const getEtudiantsAccessibles = () => {
+  if (!pedagogiqueInfo) return [];
+  
+  if (pedagogiqueInfo.filiere === 'GENERAL' || pedagogiqueInfo.type === 'GENERAL') {
+    // Pédagogique général : accès à TOUS les étudiants
+    return etudiants;
+  } else {
+    // Pédagogique spécifique : accès uniquement à sa filière
+    return etudiants.filter(e => 
+      e.filiere === pedagogiqueInfo.filiere || 
+      e.typeFormation === pedagogiqueInfo.filiere
+    );
+  }
+};
 
   const getNombreEtudiants = (nomCours, regimeFormation = null) => {
     const etudiantsAccessibles = getEtudiantsAccessibles();

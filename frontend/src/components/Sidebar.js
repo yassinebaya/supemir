@@ -173,7 +173,15 @@ const Sidebar = ({ onLogout }) => {
       path: '/pedagogique/emploi-pedagogique',
       label: 'Emploi du temps',
       icon: Calendar
+    },
+    {
+      path: '/pedagogique/gestion-cours',
+      label: 'Gestion des Cours',
+      icon: BookOpen
     }
+    ,
+   
+
 
   ];
 

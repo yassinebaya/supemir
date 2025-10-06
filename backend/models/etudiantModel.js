@@ -272,7 +272,8 @@ const etudiantSchema = new mongoose.Schema({
       'Cybersécurité et Transformation Digitale',
       'Génie Informatique et Innovation Technologique',
       'Finance, Audit & Entrepreneuriat',
-      'Développement Commercial et Marketing Digital'
+      'Développement Commercial et Marketing Digital',
+      'Ingénierie et Management industriel'
     ]
   },
   
@@ -963,7 +964,8 @@ etudiantSchema.statics.getSpecialitesMasterPro = function() {
     'Cybersécurité et Transformation Digitale',
     'Génie Informatique et Innovation Technologique',
     'Finance, Audit & Entrepreneuriat',
-    'Développement Commercial et Marketing Digital'
+    'Développement Commercial et Marketing Digital',
+    'Ingénierie et Management industriel'
   ];
 };
 

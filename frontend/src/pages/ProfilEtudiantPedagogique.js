@@ -76,16 +76,17 @@ const ProfilEtudiantPedagogique = () => {
     }
   };
 
-  const checkAccess = (pedago, etud) => {
+const checkAccess = (pedago, etud) => {
     if (!pedago || !etud) return false;
 
-    if (pedago.type === 'GENERAL') {
-      return pedago.filieresList.includes(etud.filiere) || 
-             pedago.filieresList.includes(etud.typeFormation);
-    } else {
-      return etud.filiere === pedago.filiere || 
-             etud.typeFormation === pedago.filiere;
+    // Si pédagogique général, accès à TOUS les étudiants
+    if (pedago.type === 'GENERAL' || pedago.filiere === 'GENERAL') {
+      return true;
     }
+    
+    // Sinon, vérifier que la filière correspond
+    return etud.filiere === pedago.filiere || 
+           etud.typeFormation === pedago.filiere;
   };
 
   const getPresenceStats = () => {

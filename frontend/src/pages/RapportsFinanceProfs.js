@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
+import './RapportsProfesseurs.css';
 
 const handleLogout = () => {
   localStorage.removeItem('token');
@@ -20,7 +21,6 @@ const RapportsProfesseurs = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('tous');
-
   const [showRattrapages, setShowRattrapages] = useState(false);
   const [rattrapagesData, setRattrapagesData] = useState(null);
   const [loadingRattrapages, setLoadingRattrapages] = useState(false);
@@ -364,281 +364,30 @@ const RapportsProfesseurs = () => {
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
-  const styles = {
-    pageWrapper: {
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
-      padding: '40px 20px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    },
-    container: {
-      maxWidth: '1400px',
-      margin: '0 auto'
-    },
-    header: {
-      background: 'white',
-      borderRadius: '16px',
-      padding: '32px',
-      marginBottom: '32px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      borderLeft: '4px solid #3b82f6'
-    },
-    headerTitle: {
-      fontSize: '28px',
-      fontWeight: '700',
-      color: '#1e293b',
-      margin: '0 0 8px 0'
-    },
-    headerSubtitle: {
-      fontSize: '15px',
-      color: '#64748b',
-      margin: 0
-    },
-    card: {
-      background: 'white',
-      borderRadius: '16px',
-      padding: '28px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      marginBottom: '24px'
-    },
-    controlRow: {
-      display: 'flex',
-      gap: '16px',
-      alignItems: 'center',
-      marginBottom: '16px',
-      flexWrap: 'wrap'
-    },
-    select: {
-      padding: '12px 16px',
-      border: '2px solid #e2e8f0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      minWidth: '150px',
-      background: 'white',
-      cursor: 'pointer',
-      transition: 'border-color 0.2s ease',
-      boxSizing: 'border-box'
-    },
-    input: {
-      padding: '12px 16px',
-      border: '2px solid #e2e8f0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      minWidth: '200px',
-      transition: 'border-color 0.2s ease',
-      boxSizing: 'border-box'
-    },
-    button: {
-      padding: '10px 20px',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      whiteSpace: 'nowrap'
-    },
-    buttonPrimary: {
-      background: '#3b82f6',
-      color: 'white'
-    },
-    buttonSuccess: {
-      background: '#10b981',
-      color: 'white'
-    },
-    buttonWarning: {
-      background: '#f59e0b',
-      color: 'white'
-    },
-    buttonDanger: {
-      background: '#ef4444',
-      color: 'white'
-    },
-    buttonSecondary: {
-      background: '#6b7280',
-      color: 'white'
-    },
-    buttonDisabled: {
-      background: '#d1d5db',
-      color: '#9ca3af',
-      cursor: 'not-allowed'
-    },
-    statsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-      gap: '20px',
-      marginBottom: '24px'
-    },
-    statCard: {
-      background: 'white',
-      padding: '24px',
-      borderRadius: '12px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      textAlign: 'center',
-      border: '1px solid #e2e8f0'
-    },
-    statNumber: {
-      fontSize: '28px',
-      fontWeight: '700',
-      color: '#3b82f6',
-      marginBottom: '8px'
-    },
-    statLabel: {
-      fontSize: '13px',
-      color: '#64748b',
-      fontWeight: '500',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'collapse',
-      fontSize: '14px',
-      background: 'white',
-      borderRadius: '12px',
-      overflow: 'hidden'
-    },
-    th: {
-      background: '#f8fafc',
-      padding: '16px 12px',
-      textAlign: 'left',
-      fontWeight: '600',
-      color: '#475569',
-      borderBottom: '2px solid #e2e8f0',
-      fontSize: '13px',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    },
-    td: {
-      padding: '16px 12px',
-      borderBottom: '1px solid #f1f5f9'
-    },
-    badge: {
-      display: 'inline-block',
-      padding: '4px 12px',
-      borderRadius: '20px',
-      fontSize: '12px',
-      fontWeight: '600'
-    },
-    badgeSuccess: {
-      background: '#d1fae5',
-      color: '#065f46'
-    },
-    badgeWarning: {
-      background: '#fef3c7',
-      color: '#92400e'
-    },
-    badgeInfo: {
-      background: '#dbeafe',
-      color: '#1e40af'
-    },
-    message: {
-      padding: '16px 20px',
-      borderRadius: '10px',
-      marginBottom: '24px',
-      fontSize: '14px',
-      fontWeight: '500'
-    },
-    successMessage: {
-      background: '#d1fae5',
-      color: '#065f46',
-      border: '1px solid #10b981'
-    },
-    errorMessage: {
-      background: '#fee2e2',
-      color: '#991b1b',
-      border: '1px solid #ef4444'
-    },
-    warningMessage: {
-      background: '#fef3c7',
-      color: '#78350f',
-      border: '1px solid #f59e0b'
-    },
-    infoMessage: {
-      background: '#dbeafe',
-      color: '#1e40af',
-      border: '1px solid #3b82f6'
-    },
-    emptyState: {
-      textAlign: 'center',
-      padding: '80px 20px',
-      background: 'white',
-      borderRadius: '16px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-    },
-    emptyTitle: {
-      fontSize: '20px',
-      fontWeight: '600',
-      color: '#475569',
-      marginBottom: '12px'
-    },
-    emptyText: {
-      fontSize: '15px',
-      color: '#64748b'
-    },
-    modal: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    },
-    modalContent: {
-      background: 'white',
-      borderRadius: '16px',
-      width: '100%',
-      maxWidth: '800px',
-      maxHeight: '90vh',
-      overflow: 'auto',
-      boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-    },
-    modalHeader: {
-      padding: '28px 32px',
-      borderBottom: '1px solid #e2e8f0'
-    },
-    modalTitle: {
-      fontSize: '22px',
-      fontWeight: '700',
-      color: '#1e293b',
-      margin: 0
-    },
-    modalBody: {
-      padding: '32px'
-    }
-  };
-
   const totaux = calculateTotals(filteredRapports);
 
   return (
-    <div style={styles.pageWrapper}>
+    <div className="rapports-page-wrapper">
       <Sidebar onLogout={handleLogout} />
 
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h1 style={styles.headerTitle}>Rapports Professeurs</h1>
-          <p style={styles.headerSubtitle}>
+      <div className="rapports-container">
+        <div className="rapports-header">
+          <h1 className="rapports-header-title">Rapports Professeurs</h1>
+          <p className="rapports-header-subtitle">
             Consultation et analyse des activités des professeurs
           </p>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.controlRow}>
+        <div className="rapports-controls-card">
+          <div className="rapports-control-row">
             <select
-              style={styles.select}
+              className="rapports-select"
               value={viewMode}
               onChange={(e) => {
                 setViewMode(e.target.value);
                 setRapportIndividuel(null);
                 setSelectedProfesseur('');
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             >
               <option value="mensuel">Rapport Mensuel</option>
               <option value="individuel">Rapport Individuel</option>
@@ -646,45 +395,35 @@ const RapportsProfesseurs = () => {
             </select>
 
             <select
-              style={styles.select}
+              className="rapports-select"
               value={selectedPeriod.mois}
               onChange={(e) => setSelectedPeriod(prev => ({ ...prev, mois: parseInt(e.target.value) }))}
               disabled={viewMode === 'annuel'}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             >
               {viewMode === 'annuel' ? (
                 <option value="">Toute l'année</option>
               ) : (
                 mois.map((m, index) => (
-                  <option key={index} value={index + 1}>
-                    {m}
-                  </option>
+                  <option key={index} value={index + 1}>{m}</option>
                 ))
               )}
             </select>
 
             <select
-              style={styles.select}
+              className="rapports-select"
               value={selectedPeriod.annee}
               onChange={(e) => setSelectedPeriod(prev => ({ ...prev, annee: parseInt(e.target.value) }))}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             >
               {[2023, 2024, 2025, 2026].map(year => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
+                <option key={year} value={year}>{year}</option>
               ))}
             </select>
 
             {(viewMode === 'individuel' || viewMode === 'annuel') && (
               <select
-                style={styles.select}
+                className="rapports-select"
                 value={selectedProfesseur}
                 onChange={(e) => setSelectedProfesseur(e.target.value)}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
               >
                 <option value="">-- Sélectionner un professeur --</option>
                 {professeurs.map(prof => (
@@ -696,11 +435,7 @@ const RapportsProfesseurs = () => {
             )}
 
             <button
-              style={{
-                ...styles.button,
-                ...styles.buttonPrimary,
-                ...(loading ? styles.buttonDisabled : {})
-              }}
+              className="rapports-button rapports-button-primary"
               onClick={() => {
                 if (viewMode === 'mensuel') {
                   fetchRapportsMensuels();
@@ -714,11 +449,7 @@ const RapportsProfesseurs = () => {
             </button>
 
             <button
-              style={{
-                ...styles.button,
-                ...styles.buttonSuccess,
-                ...((!rapports.length && !rapportIndividuel) ? styles.buttonDisabled : {})
-              }}
+              className="rapports-button rapports-button-success"
               onClick={() => downloadRapport('csv')}
               disabled={viewMode === 'mensuel' ? rapports.length === 0 : !rapportIndividuel}
             >
@@ -727,21 +458,17 @@ const RapportsProfesseurs = () => {
           </div>
 
           {viewMode === 'mensuel' && (
-            <div style={styles.controlRow}>
+            <div className="rapports-control-row">
               <input
-                style={styles.input}
+                className="rapports-input"
                 placeholder="Rechercher un professeur..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
               />
               <select
-                style={styles.select}
+                className="rapports-select"
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
               >
                 <option value="tous">Tous les professeurs</option>
                 <option value="permanent">Permanents seulement</option>
@@ -749,7 +476,7 @@ const RapportsProfesseurs = () => {
               </select>
               {(searchTerm || filterType !== 'tous') && (
                 <button
-                  style={{ ...styles.button, ...styles.buttonDanger, fontSize: '12px', padding: '6px 12px' }}
+                  className="rapports-button rapports-button-danger rapports-button-small"
                   onClick={() => {
                     setSearchTerm('');
                     setFilterType('tous');
@@ -763,20 +490,14 @@ const RapportsProfesseurs = () => {
         </div>
 
         {message.text && (
-          <div style={{
-            ...styles.message,
-            ...(message.type === 'error' ? styles.errorMessage : 
-                message.type === 'warning' ? styles.warningMessage :
-                message.type === 'info' ? styles.infoMessage :
-                styles.successMessage)
-          }}>
+          <div className={`rapports-message rapports-message-${message.type}`}>
             {message.text}
           </div>
         )}
 
         {loading && (
-          <div style={styles.emptyState}>
-            <div style={styles.emptyTitle}>Chargement des rapports...</div>
+          <div className="rapports-loading">
+            <div className="rapports-loading-title">Chargement des rapports...</div>
           </div>
         )}
 
@@ -784,38 +505,38 @@ const RapportsProfesseurs = () => {
           <>
             {filteredRapports.length > 0 ? (
               <>
-                <div style={styles.statsGrid}>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{filteredRapports.length}</div>
-                    <div style={styles.statLabel}>Professeurs Actifs</div>
+                <div className="rapports-stats-grid">
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{filteredRapports.length}</div>
+                    <div className="rapports-stat-label">Professeurs Actifs</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{totaux.totalHeures.toFixed(1)}h</div>
-                    <div style={styles.statLabel}>Total Heures</div>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{totaux.totalHeures.toFixed(1)}h</div>
+                    <div className="rapports-stat-label">Total Heures</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">
                       {filteredRapports.filter(r => r.professeur && !r.professeur.estPermanent).length}
                     </div>
-                    <div style={styles.statLabel}>Entrepreneurs</div>
+                    <div className="rapports-stat-label">Entrepreneurs</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{totaux.totalAPayer.toFixed(2)} DH</div>
-                    <div style={styles.statLabel}>Total à Payer</div>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{totaux.totalAPayer.toFixed(2)} DH</div>
+                    <div className="rapports-stat-label">Total à Payer</div>
                   </div>
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={styles.table}>
+                <div className="rapports-table-wrapper">
+                  <table className="rapports-table">
                     <thead>
                       <tr>
-                        <th style={styles.th}>Professeur</th>
-                        <th style={styles.th}>Type</th>
-                        <th style={styles.th}>Heures</th>
-                        <th style={styles.th}>Séances</th>
-                        <th style={styles.th}>Tarif/h</th>
-                        <th style={styles.th}>Total à Payer</th>
-                        <th style={styles.th}>Actions</th>
+                        <th>Professeur</th>
+                        <th>Type</th>
+                        <th>Heures</th>
+                        <th>Séances</th>
+                        <th>Tarif/h</th>
+                        <th>Total à Payer</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -824,40 +545,37 @@ const RapportsProfesseurs = () => {
                         
                         return (
                           <tr key={rapport.professeur._id}>
-                            <td style={styles.td}>
-                              <div style={{ fontWeight: '600', color: '#1e293b' }}>
+                            <td>
+                              <div className="rapports-prof-name-cell">
                                 {rapport.professeur.nom}
                               </div>
-                              <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+                              <div className="rapports-prof-email">
                                 {rapport.professeur.email}
                               </div>
                             </td>
-                            <td style={styles.td}>
-                              <span style={{
-                                ...styles.badge,
-                                ...(rapport.professeur.estPermanent ? styles.badgeSuccess : styles.badgeWarning)
-                              }}>
+                            <td>
+                              <span className={`rapports-badge ${rapport.professeur.estPermanent ? 'rapports-badge-success' : 'rapports-badge-warning'}`}>
                                 {rapport.professeur.estPermanent ? 'Permanent' : 'Entrepreneur'}
                               </span>
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               <strong>{safeCalculate(rapport.statistiques, 'totalHeures')}h</strong>
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               {safeCalculate(rapport, 'nombreSeances')}
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               {rapport.professeur.estPermanent ? '-' : `${safeCalculate(rapport.statistiques, 'tarifHoraire')} DH`}
                             </td>
-                            <td style={styles.td}>
-                              <strong style={{ color: safeCalculate(rapport.statistiques, 'totalAPayer') > 0 ? '#dc2626' : '#64748b' }}>
+                            <td>
+                              <strong className={safeCalculate(rapport.statistiques, 'totalAPayer') > 0 ? 'text-danger' : 'text-muted'}>
                                 {rapport.professeur.estPermanent ? '-' : `${safeCalculate(rapport.statistiques, 'totalAPayer').toFixed(2)} DH`}
                               </strong>
                             </td>
-                            <td style={styles.td}>
-                              <div style={{ display: 'flex', gap: '6px', flexDirection: 'column' }}>
+                            <td>
+                              <div className="rapports-actions-cell">
                                 <button
-                                  style={{ ...styles.button, ...styles.buttonPrimary, fontSize: '12px', padding: '6px 10px' }}
+                                  className="rapports-button rapports-button-primary rapports-button-small"
                                   onClick={() => {
                                     setSelectedProfesseur(rapport.professeur._id);
                                     setViewMode('individuel');
@@ -867,7 +585,7 @@ const RapportsProfesseurs = () => {
                                   Voir Détails
                                 </button>
                                 <button
-                                  style={{ ...styles.button, ...styles.buttonWarning, fontSize: '12px', padding: '6px 10px' }}
+                                  className="rapports-button rapports-button-warning rapports-button-small"
                                   onClick={() => {
                                     setSelectedProfesseur(rapport.professeur._id);
                                     fetchRattrapagesProfesseur(rapport.professeur._id);
@@ -886,13 +604,14 @@ const RapportsProfesseurs = () => {
                 </div>
               </>
             ) : (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyTitle}>Aucun rapport disponible</div>
-                <div style={styles.emptyText}>
+              <div className="rapports-empty-state">
+                <div className="rapports-empty-icon">📊</div>
+                <div className="rapports-empty-title">Aucun rapport disponible</div>
+                <div className="rapports-empty-text">
                   Aucune activité trouvée pour {mois[selectedPeriod.mois - 1]} {selectedPeriod.annee}.
                 </div>
                 <button
-                  style={{ ...styles.button, ...styles.buttonPrimary, marginTop: '16px' }}
+                  className="rapports-button rapports-button-primary mt-2"
                   onClick={fetchRapportsMensuels}
                 >
                   Actualiser
@@ -906,19 +625,16 @@ const RapportsProfesseurs = () => {
           <>
             {rapportIndividuel ? (
               <>
-                <div style={{ ...styles.card, marginBottom: '20px' }}>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: '600', color: '#1e293b', textAlign: 'center' }}>
+                <div className="rapports-prof-card">
+                  <h3 className="rapports-prof-name">
                     {rapportIndividuel.professeur.nom}
                   </h3>
-                  <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center' }}>
-                    <span style={{
-                      ...styles.badge,
-                      ...(rapportIndividuel.professeur.estPermanent ? styles.badgeSuccess : styles.badgeWarning)
-                    }}>
+                  <div className="rapports-prof-info">
+                    <span className={`rapports-badge ${rapportIndividuel.professeur.estPermanent ? 'rapports-badge-success' : 'rapports-badge-warning'}`}>
                       {rapportIndividuel.professeur.estPermanent ? 'Permanent' : 'Entrepreneur'}
                     </span>
                     {!rapportIndividuel.professeur.estPermanent && (
-                      <span style={{ fontSize: '14px', color: '#64748b' }}>
+                      <span className="text-muted">
                         Tarif: {rapportIndividuel.professeur.tarifHoraire || 0} DH/h
                       </span>
                     )}
@@ -926,50 +642,50 @@ const RapportsProfesseurs = () => {
                 </div>
 
                 {viewMode === 'individuel' ? (
-                  <div style={styles.statsGrid}>
-                    <div style={styles.statCard}>
-                      <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'totalHeures')}h</div>
-                      <div style={styles.statLabel}>Total Heures</div>
+                  <div className="rapports-stats-grid">
+                    <div className="rapports-stat-card">
+                      <div className="rapports-stat-number">{safeCalculate(rapportIndividuel.statistiques, 'totalHeures')}h</div>
+                      <div className="rapports-stat-label">Total Heures</div>
                     </div>
-                    <div style={styles.statCard}>
-                      <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'totalSeances')}</div>
-                      <div style={styles.statLabel}>Séances</div>
+                    <div className="rapports-stat-card">
+                      <div className="rapports-stat-number">{safeCalculate(rapportIndividuel.statistiques, 'totalSeances')}</div>
+                      <div className="rapports-stat-label">Séances</div>
                     </div>
-                    <div style={styles.statCard}>
-                      <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'coursUniques')}</div>
-                      <div style={styles.statLabel}>Cours Différents</div>
+                    <div className="rapports-stat-card">
+                      <div className="rapports-stat-number">{safeCalculate(rapportIndividuel.statistiques, 'coursUniques')}</div>
+                      <div className="rapports-stat-label">Cours Différents</div>
                     </div>
                     {!rapportIndividuel.professeur.estPermanent && (
-                      <div style={styles.statCard}>
-                        <div style={styles.statNumber}>{safeCalculate(rapportIndividuel.statistiques, 'totalAPayer').toFixed(2)} DH</div>
-                        <div style={styles.statLabel}>Total à Payer</div>
+                      <div className="rapports-stat-card">
+                        <div className="rapports-stat-number">{safeCalculate(rapportIndividuel.statistiques, 'totalAPayer').toFixed(2)} DH</div>
+                        <div className="rapports-stat-label">Total à Payer</div>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div style={styles.card}>
-                    <h4 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>
+                  <div className="rapports-controls-card">
+                    <h4 className="rapports-section-title">
                       Évolution Mensuelle {rapportIndividuel.annee}
                     </h4>
                     {rapportIndividuel.rapportsMensuels && Array.isArray(rapportIndividuel.rapportsMensuels) ? (
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={styles.table}>
+                      <div className="rapports-table-wrapper">
+                        <table className="rapports-table">
                           <thead>
                             <tr>
-                              <th style={styles.th}>Mois</th>
-                              <th style={styles.th}>Heures</th>
-                              <th style={styles.th}>Séances</th>
-                              {!rapportIndividuel.professeur.estPermanent && <th style={styles.th}>Montant</th>}
+                              <th>Mois</th>
+                              <th>Heures</th>
+                              <th>Séances</th>
+                              {!rapportIndividuel.professeur.estPermanent && <th>Montant</th>}
                             </tr>
                           </thead>
                           <tbody>
                             {rapportIndividuel.rapportsMensuels.map(rapport => (
                               <tr key={rapport.mois}>
-                                <td style={styles.td}>{rapport.nomMois}</td>
-                                <td style={styles.td}>{safeCalculate(rapport.statistiques, 'totalHeures')}h</td>
-                                <td style={styles.td}>{safeCalculate(rapport, 'nombreSeances')}</td>
+                                <td>{rapport.nomMois}</td>
+                                <td>{safeCalculate(rapport.statistiques, 'totalHeures')}h</td>
+                                <td>{safeCalculate(rapport, 'nombreSeances')}</td>
                                 {!rapportIndividuel.professeur.estPermanent && (
-                                  <td style={styles.td}>{safeCalculate(rapport.statistiques, 'totalAPayer').toFixed(2)} DH</td>
+                                  <td>{safeCalculate(rapport.statistiques, 'totalAPayer').toFixed(2)} DH</td>
                                 )}
                               </tr>
                             ))}
@@ -977,39 +693,39 @@ const RapportsProfesseurs = () => {
                         </table>
                       </div>
                     ) : (
-                      <div style={styles.emptyState}>
-                        <div style={styles.emptyTitle}>Aucune donnée mensuelle</div>
+                      <div className="rapports-empty-state">
+                        <div className="rapports-empty-title">Aucune donnée mensuelle</div>
                       </div>
                     )}
                   </div>
                 )}
 
                 {viewMode === 'individuel' && rapportIndividuel.seances && Array.isArray(rapportIndividuel.seances) && rapportIndividuel.seances.length > 0 && (
-                  <div style={styles.card}>
-                    <h4 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>
+                  <div className="rapports-controls-card">
+                    <h4 className="rapports-section-title">
                       Détail des Séances
                     </h4>
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={styles.table}>
+                    <div className="rapports-table-wrapper">
+                      <table className="rapports-table">
                         <thead>
                           <tr>
-                            <th style={styles.th}>Jour</th>
-                            <th style={styles.th}>Horaire</th>
-                            <th style={styles.th}>Cours</th>
-                            <th style={styles.th}>Matière</th>
-                            <th style={styles.th}>Salle</th>
-                            <th style={styles.th}>Durée</th>
+                            <th>Jour</th>
+                            <th>Horaire</th>
+                            <th>Cours</th>
+                            <th>Matière</th>
+                            <th>Salle</th>
+                            <th>Durée</th>
                           </tr>
                         </thead>
                         <tbody>
                           {rapportIndividuel.seances.map((seance, index) => (
                             <tr key={index}>
-                              <td style={styles.td}>{seance.jour || 'N/A'}</td>
-                              <td style={styles.td}>{seance.heureDebut || 'N/A'} - {seance.heureFin || 'N/A'}</td>
-                              <td style={styles.td}>{seance.cours || 'N/A'}</td>
-                              <td style={styles.td}>{seance.matiere || '-'}</td>
-                              <td style={styles.td}>{seance.salle || '-'}</td>
-                              <td style={styles.td}>{seance.dureeHeures || 0}h</td>
+                              <td>{seance.jour || 'N/A'}</td>
+                              <td>{seance.heureDebut || 'N/A'} - {seance.heureFin || 'N/A'}</td>
+                              <td>{seance.cours || 'N/A'}</td>
+                              <td>{seance.matiere || '-'}</td>
+                              <td>{seance.salle || '-'}</td>
+                              <td>{seance.dureeHeures || 0}h</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1019,22 +735,24 @@ const RapportsProfesseurs = () => {
                 )}
               </>
             ) : selectedProfesseur ? (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyTitle}>Aucune donnée disponible</div>
-                <div style={styles.emptyText}>
+              <div className="rapports-empty-state">
+                <div className="rapports-empty-icon">📭</div>
+                <div className="rapports-empty-title">Aucune donnée disponible</div>
+                <div className="rapports-empty-text">
                   Ce professeur n'a aucune activité enregistrée pour cette période.
                 </div>
                 <button
-                  style={{ ...styles.button, ...styles.buttonPrimary, marginTop: '16px' }}
+                  className="rapports-button rapports-button-primary mt-2"
                   onClick={() => fetchRapportIndividuel(selectedProfesseur)}
                 >
                   Réessayer
                 </button>
               </div>
             ) : (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyTitle}>Sélectionnez un professeur</div>
-                <div style={styles.emptyText}>
+              <div className="rapports-empty-state">
+                <div className="rapports-empty-icon">👤</div>
+                <div className="rapports-empty-title">Sélectionnez un professeur</div>
+                <div className="rapports-empty-text">
                   Choisissez un professeur dans la liste ci-dessus pour voir son rapport détaillé.
                 </div>
               </div>
@@ -1043,42 +761,36 @@ const RapportsProfesseurs = () => {
         )}
 
         {showRattrapages && (
-          <div style={styles.modal} onClick={() => setShowRattrapages(false)}>
-            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.modalHeader}>
-                <h2 style={styles.modalTitle}>
+          <div className="rapports-modal-overlay" onClick={() => setShowRattrapages(false)}>
+            <div className="rapports-modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="rapports-modal-header">
+                <h2 className="rapports-modal-title">
                   Séances en Rattrapage - {rattrapagesData?.professeur?.nom}
                 </h2>
               </div>
 
-              <div style={styles.modalBody}>
+              <div className="rapports-modal-body">
                 {loadingRattrapages ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    Chargement des rattrapages...
+                  <div className="rapports-loading">
+                    <div className="rapports-loading-title">Chargement des rattrapages...</div>
                   </div>
                 ) : rattrapagesData ? (
                   <>
-                    <div style={{
-                      background: '#fee2e2',
-                      border: '1px solid #fecaca',
-                      borderRadius: '12px',
-                      padding: '20px',
-                      marginBottom: '24px'
-                    }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        <div>
-                          <div style={{ fontSize: '28px', fontWeight: '700', color: '#dc2626', marginBottom: '8px' }}>
+                    <div className="rapports-rattrapage-stats">
+                      <div className="rapports-rattrapage-grid">
+                        <div className="rapports-rattrapage-item">
+                          <div className="rapports-rattrapage-number">
                             {rattrapagesData.statistiquesRattrapages?.totalRattrapages || 0}
                           </div>
-                          <div style={{ fontSize: '13px', color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          <div className="rapports-rattrapage-label">
                             Séances à rattraper
                           </div>
                         </div>
-                        <div>
-                          <div style={{ fontSize: '28px', fontWeight: '700', color: '#dc2626', marginBottom: '8px' }}>
+                        <div className="rapports-rattrapage-item">
+                          <div className="rapports-rattrapage-number">
                             {rattrapagesData.statistiquesRattrapages?.totalHeuresRattrapage || 0}h
                           </div>
-                          <div style={{ fontSize: '13px', color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          <div className="rapports-rattrapage-label">
                             Heures non effectuées
                           </div>
                         </div>
@@ -1086,28 +798,28 @@ const RapportsProfesseurs = () => {
                     </div>
 
                     {rattrapagesData.rattrapages && rattrapagesData.rattrapages.length > 0 ? (
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={styles.table}>
+                      <div className="rapports-table-wrapper">
+                        <table className="rapports-table">
                           <thead>
                             <tr>
-                              <th style={styles.th}>Date</th>
-                              <th style={styles.th}>Horaire</th>
-                              <th style={styles.th}>Cours</th>
-                              <th style={styles.th}>Durée</th>
+                              <th>Date</th>
+                              <th>Horaire</th>
+                              <th>Cours</th>
+                              <th>Durée</th>
                             </tr>
                           </thead>
                           <tbody>
                             {rattrapagesData.rattrapages.map((rattrapage, index) => (
                               <tr key={index}>
-                                <td style={styles.td}>
+                                <td>
                                   {new Date(rattrapage.dateSeance).toLocaleDateString('fr-FR')}
                                 </td>
-                                <td style={styles.td}>
+                                <td>
                                   {rattrapage.heureDebut} - {rattrapage.heureFin}
                                 </td>
-                                <td style={styles.td}>{rattrapage.cours}</td>
-                                <td style={styles.td}>
-                                  <strong style={{ color: '#dc2626' }}>{rattrapage.dureeHeures}h</strong>
+                                <td>{rattrapage.cours}</td>
+                                <td>
+                                  <strong className="text-danger">{rattrapage.dureeHeures}h</strong>
                                 </td>
                               </tr>
                             ))}
@@ -1115,16 +827,16 @@ const RapportsProfesseurs = () => {
                         </table>
                       </div>
                     ) : (
-                      <div style={{ textAlign: 'center', padding: '40px' }}>
-                        <div style={styles.emptyTitle}>Aucun rattrapage</div>
-                        <div style={styles.emptyText}>
+                      <div className="rapports-empty-state">
+                        <div className="rapports-empty-title">Aucun rattrapage</div>
+                        <div className="rapports-empty-text">
                           Ce professeur n'a aucune séance en attente de rattrapage.
                         </div>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <div className="text-center mt-3 mb-3">
                     Aucune donnée de rattrapage disponible
                   </div>
                 )}
@@ -1134,14 +846,8 @@ const RapportsProfesseurs = () => {
                     setShowRattrapages(false);
                     setRattrapagesData(null);
                   }}
-                  style={{
-                    ...styles.button,
-                    ...styles.buttonSecondary,
-                    width: '100%',
-                    marginTop: '20px',
-                    justifyContent: 'center',
-                    display: 'flex'
-                  }}
+                  className="rapports-button rapports-button-secondary"
+                  style={{ width: '100%', marginTop: '20px' }}
                 >
                   Fermer
                 </button>

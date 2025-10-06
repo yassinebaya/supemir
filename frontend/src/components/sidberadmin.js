@@ -94,6 +94,14 @@ const AdministratifSidebar = ({ onLogout }) => {
           label: 'Calendrier',
           icon: Calendar
         },
+      
+
+        {
+          path: '/admin/tests-langue',
+          label: 'Tests de Langue',
+          icon: ClipboardList
+        }
+
   ];
 
   const toggleSidebar = () => {

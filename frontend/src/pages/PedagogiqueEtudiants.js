@@ -134,6 +134,9 @@ const EtudiantsPedagogiquePage = () => {
   const getFilteredEtudiants = () => {
     let filtered = [...etudiants];
 
+    // Exclure les étudiants avec prixTotal = 0
+    filtered = filtered.filter(e => e.prixTotal > 0);
+
     // Recherche textuelle
     if (searchTerm.trim() !== '') {
       const search = searchTerm.toLowerCase();
@@ -393,7 +396,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
   };
 
   const handleExportSelected = () => {
-    const selectedData = etudiants.filter(e => selectedStudents.includes(e._id));
+    const selectedData = etudiantsFiltres.filter(e => selectedStudents.includes(e._id));
     exportStudentsToCSV(selectedData, `etudiants_selection_${new Date().toISOString().split('T')[0]}`);
   };
 
@@ -1318,6 +1321,28 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
               </button>
             </div>
           )}
+
+          {/* Nouveau bouton d'export de tous les étudiants filtrés */}
+          <button
+            onClick={() => exportStudentsToCSV(etudiantsFiltres, `etudiants_filtres_${new Date().toISOString().split('T')[0]}`)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: styles.primaryColor,
+              color: styles.white,
+              border: 'none',
+              padding: '0.75rem 1rem',
+              borderRadius: styles.borderRadius,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: styles.transition
+            }}
+          >
+            <Download size={16} />
+            Exporter tout ({etudiantsFiltres.length})
+          </button>
         </div>
 
         {/* Contenu principal */}

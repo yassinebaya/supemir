@@ -424,7 +424,80 @@ const EmploiPedagogique = () => {
       setLoading(false);
     }
   };
+// NOUVELLE FONCTION: Générer automatiquement les créneaux depuis les séances existantes
+const genererCreneauxDepuisSeances = (seancesData) => {
+  const nouveauxCreneaux = { ...creneauxCours };
+  
+  seancesData.forEach((seance) => {
+    let coursObj = null;
+    
+    if (seance.coursId) {
+      coursObj = coursList.find(c => c._id === seance.coursId);
+    }
+    
+    if (!coursObj && seance.cours) {
+      coursObj = coursList.find(c => c._id === seance.cours);
+      if (!coursObj) {
+        coursObj = coursList.find(c => c.nom === seance.cours);
+      }
+    }
 
+    if (!coursObj) return;
+    
+    const coursId = coursObj._id;
+    const jour = getJourForSeance(seance) || 'Lundi';
+    const semaineKey = getSemaineKey(currentWeek);
+    
+    // Initialiser la structure si nécessaire
+    if (!nouveauxCreneaux[coursId]) {
+      nouveauxCreneaux[coursId] = {};
+    }
+    if (!nouveauxCreneaux[coursId][semaineKey]) {
+      nouveauxCreneaux[coursId][semaineKey] = {};
+    }
+    if (!nouveauxCreneaux[coursId][semaineKey][jour]) {
+      nouveauxCreneaux[coursId][semaineKey][jour] = [];
+    }
+    
+    const debut = normalizeTime(seance.heureDebut);
+    const fin = normalizeTime(seance.heureFin);
+    
+    // Vérifier si ce créneau existe déjà
+    const creneauExiste = nouveauxCreneaux[coursId][semaineKey][jour].some(
+      c => c.debut === debut && c.fin === fin
+    );
+    
+    // Ajouter le créneau s'il n'existe pas
+    if (!creneauExiste) {
+      const maxId = nouveauxCreneaux[coursId][semaineKey][jour].length > 0
+        ? Math.max(...nouveauxCreneaux[coursId][semaineKey][jour].map(c => c.id))
+        : 0;
+      
+      nouveauxCreneaux[coursId][semaineKey][jour].push({
+        id: maxId + 1,
+        debut: debut,
+        fin: fin
+      });
+    }
+  });
+  
+  // Trier les créneaux de chaque jour
+  Object.keys(nouveauxCreneaux).forEach(coursId => {
+    if (nouveauxCreneaux[coursId]) {
+      Object.keys(nouveauxCreneaux[coursId]).forEach(semaineKey => {
+        if (nouveauxCreneaux[coursId][semaineKey]) {
+          Object.keys(nouveauxCreneaux[coursId][semaineKey]).forEach(jour => {
+            nouveauxCreneaux[coursId][semaineKey][jour].sort((a, b) => 
+              a.debut.localeCompare(b.debut)
+            );
+          });
+        }
+      });
+    }
+  });
+  
+  return nouveauxCreneaux;
+};
   const fetchSeancesReelles = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -442,13 +515,18 @@ const EmploiPedagogique = () => {
         const data = await res.json();
         setSeancesReelles(data);
         
-        if (coursList.length > 0 && data.length > 0) {
-          organiserSeances(data);
-          setMessage({ 
-            type: 'success', 
-            text: `${data.length} séances chargées pour la semaine du ${formatDate(weekDates[0])}` 
-          });
-        } else if (data.length === 0) {
+      if (coursList.length > 0 && data.length > 0) {
+  // NOUVEAU: Générer automatiquement les créneaux depuis les séances
+  const nouveauxCreneaux = genererCreneauxDepuisSeances(data);
+  localStorage.setItem('creneauxCoursPersonnalises', JSON.stringify(nouveauxCreneaux));
+  setCreneauxCours(nouveauxCreneaux);
+  
+  organiserSeances(data);
+  setMessage({ 
+    type: 'success', 
+    text: `${data.length} séances chargées pour la semaine du ${formatDate(weekDates[0])}` 
+  });
+} else if (data.length === 0) {
           setEmploiDuTemps({});
           setMessage({ 
             type: 'warning', 
@@ -815,39 +893,48 @@ const EmploiPedagogique = () => {
     setCurrentWeek(newDate);
   };
 
-  const copierSemainePrecedente = async () => {
-    const lundiActuel = weekDates[0].toISOString().split('T')[0];
-    if (!window.confirm('Copier toutes les séances de la semaine précédente vers la semaine actuelle ?')) {
-      return;
-    }
-    setCopyLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://195.179.229.230:5000/api/seances/copier-semaine-precedente', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          lundiDestination: lundiActuel
-        })
-      });
-      const result = await res.json();
-      if (result.ok) {
-        setMessage({ type: 'success', text: result.message });
-        await fetchSeancesReelles();
-      } else {
-        setMessage({ type: 'error', text: result.error });
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Erreur de connexion' });
-    } finally {
+const copierSemainePrecedente = async () => {
+  const lundiActuel = weekDates[0].toISOString().split('T')[0];
+  if (!window.confirm('Copier toutes les séances de la semaine précédente vers la semaine actuelle ?')) {
+    return;
+  }
+  setCopyLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('http://195.179.229.230:5000/api/seances/copier-semaine-precedente', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        lundiDestination: lundiActuel
+      })
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      setMessage({ type: 'error', text: errorData.error || 'Erreur lors de la copie' });
       setCopyLoading(false);
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
     }
-  };
-
+    
+    const result = await res.json();
+    if (result.ok) {
+      setMessage({ type: 'success', text: result.message });
+      await fetchSeancesReelles();
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Erreur inconnue' });
+    }
+  } catch (err) {
+    console.error('Erreur copie semaine:', err);
+    setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
+  } finally {
+    setCopyLoading(false);
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  }
+};
   // COMPOSANT MODAL MODIFIÉ POUR CRÉNEAUX SEMAINE PAR SEMAINE
   const ModalCreneaux = () => {
     if (!showCreneauxModal) return null;
@@ -1546,70 +1633,478 @@ const EmploiPedagogique = () => {
       {/* Modal pour configurer les créneaux */}
       <ModalCreneaux />
 
-      {/* Modal Statistiques Rattrapages */}
-      {showStatsRattrapages && (
-        <div className="modal-overlay">
-          <div className="modal-content-large">
-            <h3>📊 Statistiques des Rattrapages</h3>
-            
-            {loadingStats ? (
-              <div className="loading-stats">
-                <div>Chargement des statistiques...</div>
+{/* Modal Statistiques Rattrapages avec Détails - VERSION COMPLÈTE */}
+{showStatsRattrapages && (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(15, 23, 42, 0.75)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '20px'
+  }}>
+    <div style={{
+      background: 'white',
+      borderRadius: '8px',
+      width: '100%',
+      maxWidth: '1200px',
+      maxHeight: '90vh',
+      overflow: 'hidden',
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '24px 32px',
+        borderBottom: '1px solid #e2e8f0',
+        background: '#f8fafc',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <h3 style={{
+            margin: 0,
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#0f172a'
+          }}>
+            Rapport des Rattrapages
+          </h3>
+          <p style={{
+            margin: '4px 0 0 0',
+            fontSize: '14px',
+            color: '#64748b'
+          }}>
+            Vue détaillée des séances de rattrapage par professeur
+          </p>
+        </div>
+        <button
+          onClick={() => setShowStatsRattrapages(false)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '8px',
+            color: '#64748b',
+            borderRadius: '4px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <X size={20} />
+        </button>
+      </div>
+      
+      {/* Content */}
+      <div style={{ 
+        flex: 1,
+        overflowY: 'auto',
+        padding: '24px 32px'
+      }}>
+        {loadingStats ? (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '300px',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: '#64748b', fontSize: '15px' }}>
+              Chargement des statistiques...
+            </p>
+          </div>
+        ) : statsRattrapages.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            color: '#94a3b8'
+          }}>
+            <Clock size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
+            <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 8px 0' }}>
+              Aucune donnée disponible
+            </h4>
+            <p style={{ fontSize: '14px', margin: 0 }}>
+              Il n'y a actuellement aucun rattrapage enregistré dans le système.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Résumé Global */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '16px',
+              marginBottom: '32px'
+            }}>
+              <div style={{
+                padding: '20px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px'
+              }}>
+                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+                  Total professeurs
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a' }}>
+                  {statsRattrapages.length}
+                </div>
               </div>
-            ) : (
-              <div>
-                {statsRattrapages.map(stat => (
-                  <div key={stat._id} className={`stat-card ${stat.seancesRattrapage > 0 ? 'has-rattrapage' : ''}`}>
-                    <div className="stat-header">
-                      {stat.nomProfesseur}
+              <div style={{
+                padding: '20px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px'
+              }}>
+                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+                  Total séances
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a' }}>
+                  {statsRattrapages.reduce((sum, s) => sum + s.totalSeances, 0)}
+                </div>
+              </div>
+              <div style={{
+                padding: '20px',
+                background: '#fef3c7',
+                border: '1px solid #fde047',
+                borderRadius: '6px'
+              }}>
+                <div style={{ fontSize: '13px', color: '#a16207', marginBottom: '8px' }}>
+                  Total rattrapages
+                </div>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: '#a16207' }}>
+                  {statsRattrapages.reduce((sum, s) => sum + s.seancesRattrapage, 0)}
+                </div>
+              </div>
+            </div>
+
+            {/* Liste des Professeurs */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {statsRattrapages.map(stat => (
+                <div 
+                  key={stat._id}
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    background: 'white'
+                  }}
+                >
+                  {/* Header Professeur */}
+                  <div style={{
+                    padding: '20px',
+                    background: stat.seancesRattrapage > 0 ? '#fef3c7' : '#f8fafc',
+                    borderBottom: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '16px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h4 style={{
+                          margin: 0,
+                          fontSize: '17px',
+                          fontWeight: '600',
+                          color: '#0f172a'
+                        }}>
+                          {stat.nomProfesseur}
+                        </h4>
+                        {stat.seancesRattrapage > 0 && (
+                          <span style={{
+                            padding: '4px 12px',
+                            background: '#fbbf24',
+                            color: '#78350f',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            borderRadius: '12px'
+                          }}>
+                            {stat.seancesRattrapage} rattrapage{stat.seancesRattrapage > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '24px' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>
+                            {stat.totalSeances}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>Total</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#15803d' }}>
+                            {stat.seancesNormales}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>Effectuées</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#a16207' }}>
+                            {stat.seancesRattrapage}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>Rattrapages</div>
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="stat-grid">
-                      <div className="stat-item">
-                        <div className="stat-label">Total séances:</div>
-                        <div className="stat-value">{stat.totalSeances}</div>
-                      </div>
-                      <div className="stat-item">
-                        <div className="stat-label">Séances normales:</div>
-                        <div className="stat-value normal">{stat.seancesNormales}</div>
-                      </div>
-                      <div className="stat-item">
-                        <div className="stat-label">Rattrapages requis:</div>
-                        <div className="stat-value rattrapage">{stat.seancesRattrapage}</div>
-                      </div>
-                    </div>
-                    
+                    {/* Progress Bar */}
                     {stat.totalSeances > 0 && (
-                      <div className="stat-taux">
-                        <span>Taux de présence: <strong>{Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%</strong></span>
-                        <span>Taux de rattrapage: <strong className="rattrapage">{stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%</strong></span>
+                      <div style={{ marginTop: '16px' }}>
+                        <div style={{
+                          height: '8px',
+                          background: '#e2e8f0',
+                          borderRadius: '4px',
+                          overflow: 'hidden',
+                          display: 'flex'
+                        }}>
+                          <div style={{
+                            background: '#22c55e',
+                            width: `${(stat.seancesNormales / stat.totalSeances) * 100}%`,
+                            transition: 'width 0.3s ease'
+                          }}></div>
+                          <div style={{
+                            background: '#eab308',
+                            width: `${(stat.seancesRattrapage / stat.totalSeances) * 100}%`,
+                            transition: 'width 0.3s ease'
+                          }}></div>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginTop: '8px',
+                          fontSize: '13px'
+                        }}>
+                          <span style={{ color: '#15803d' }}>
+                            Présence: {Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%
+                          </span>
+                          <span style={{ color: '#a16207' }}>
+                            Rattrapage: {stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
-                ))}
-                
-                {statsRattrapages.length === 0 && (
-                  <div className="empty-stats">
-                    <div>📊</div>
-                    <div>Aucune donnée de rattrapage disponible</div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <div className="modal-footer">
-              <button
-                onClick={() => setShowStatsRattrapages(false)}
-                className="modal-button cancel"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Modal Historique */}
+                  {/* Détails des Rattrapages */}
+                  {stat.detailsRattrapages && stat.detailsRattrapages.length > 0 && (
+                    <details style={{ padding: '20px' }}>
+                      <summary style={{
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                        color: '#0f172a',
+                        fontSize: '14px',
+                        marginBottom: '16px',
+                        userSelect: 'none'
+                      }}>
+                        Voir les {stat.detailsRattrapages.length} rattrapage{stat.detailsRattrapages.length > 1 ? 's' : ''} en détail
+                      </summary>
+                      
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        marginTop: '16px'
+                      }}>
+                        {stat.detailsRattrapages.map((rattrapage, idx) => {
+                          // Résolution du nom du cours depuis l'ID
+                          const nomCours = coursList.find(c => c._id === rattrapage.cours)?.nom || rattrapage.cours;
+                          
+                          return (
+                            <div 
+                              key={idx}
+                              style={{
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                padding: '16px'
+                              }}
+                            >
+                              {/* Header Rattrapage */}
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '12px',
+                                paddingBottom: '12px',
+                                borderBottom: '1px solid #e2e8f0'
+                              }}>
+                                <span style={{
+                                  background: '#fbbf24',
+                                  color: '#78350f',
+                                  padding: '4px 10px',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  fontWeight: '600'
+                                }}>
+                                  Rattrapage #{idx + 1}
+                                </span>
+                                <span style={{
+                                  fontSize: '13px',
+                                  color: '#64748b',
+                                  fontWeight: '500'
+                                }}>
+                                  {new Date(rattrapage.dateSeance).toLocaleDateString('fr-FR', {
+                                    weekday: 'long',
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                              
+                              {/* Infos du Rattrapage */}
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'auto 1fr',
+                                gap: '8px 16px',
+                                fontSize: '14px'
+                              }}>
+                                <span style={{ color: '#64748b', fontWeight: '500' }}>Cours:</span>
+                                <span style={{ color: '#0f172a' }}>{nomCours}</span>
+                                
+                                <span style={{ color: '#64748b', fontWeight: '500' }}>Matière:</span>
+                                <span style={{ color: '#0f172a' }}>{rattrapage.matiere}</span>
+                                
+                                <span style={{ color: '#64748b', fontWeight: '500' }}>Horaire:</span>
+                                <span style={{ color: '#0f172a' }}>
+                                  {rattrapage.jour} de {rattrapage.heureDebut} à {rattrapage.heureFin}
+                                </span>
+                                
+                                {rattrapage.salle && (
+                                  <>
+                                    <span style={{ color: '#64748b', fontWeight: '500' }}>Salle:</span>
+                                    <span style={{ color: '#0f172a' }}>{rattrapage.salle}</span>
+                                  </>
+                                )}
+                              </div>
+                              
+                              {/* Footer Rattrapage */}
+                              <div style={{
+                                marginTop: '12px',
+                                paddingTop: '12px',
+                                borderTop: '1px solid #e2e8f0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontSize: '12px',
+                                color: '#64748b',
+                                flexWrap: 'wrap',
+                                gap: '8px'
+                              }}>
+                                <div>
+                                  <span>Marqué par: </span>
+                                  <span style={{ fontWeight: '500', color: '#0f172a' }}>
+                                    {rattrapage.marqueParNom || 'Système'}
+                                  </span>
+                                  {rattrapage.marqueParRole && (
+                                    <span style={{ marginLeft: '4px' }}>
+                                      ({rattrapage.marqueParRole})
+                                    </span>
+                                  )}
+                                </div>
+                                {rattrapage.dateRattrapage && (
+                                  <span>
+                                    Le {new Date(rattrapage.dateRattrapage).toLocaleDateString('fr-FR')}
+                                    {' à '}
+                                    {new Date(rattrapage.dateRattrapage).toLocaleTimeString('fr-FR', { 
+                                      hour: '2-digit', 
+                                      minute: '2-digit' 
+                                    })}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Notes */}
+                              {rattrapage.notes && (
+                                <div style={{
+                                  marginTop: '12px',
+                                  padding: '12px',
+                                  background: 'white',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '4px',
+                                  fontSize: '13px'
+                                }}>
+                                  <strong style={{ color: '#64748b' }}>Notes: </strong>
+                                  <span style={{ color: '#0f172a' }}>{rattrapage.notes}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      
+      {/* Footer */}
+      <div style={{
+        padding: '16px 32px',
+        borderTop: '1px solid #e2e8f0',
+        background: '#f8fafc',
+        display: 'flex',
+        justifyContent: 'flex-end'
+      }}>
+        <button
+          onClick={() => setShowStatsRattrapages(false)}
+          style={{
+            padding: '10px 20px',
+            background: '#0f172a',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'background 0.2s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#1e293b'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#0f172a'}
+        >
+          Fermer
+        </button>
+      </div>
+    </div>
+
+    <style>{`
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      details summary::-webkit-details-marker {
+        display: none;
+      }
+      details summary::marker {
+        display: none;
+      }
+      details summary::before {
+        content: '▶';
+        display: inline-block;
+        margin-right: 8px;
+        transition: transform 0.2s;
+        color: #64748b;
+      }
+      details[open] summary::before {
+        transform: rotate(90deg);
+      }
+      details summary:hover {
+        color: #0f172a;
+      }
+    `}</style>
+  </div>
+)}  {/* Modal Historique */}
       <HistoriqueModal
         show={showHistorique}
         onClose={() => setShowHistorique(false)}

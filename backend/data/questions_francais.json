@@ -1,0 +1,204 @@
+[
+  {
+    "id": 1,
+    "step": "A1",
+    "question": "Je … Etudiant(e).",
+    "options": ["Ai", "Suis", "Es", "Suit"]
+  },
+  {
+    "id": 2,
+    "step": "A1",
+    "question": "Je …. Travailler",
+    "options": ["Suis", "Dois", "Donne", "Parle"]
+  },
+  {
+    "id": 3,
+    "step": "A1",
+    "question": "Casablanca est une ……ville.",
+    "options": ["Droite", "Petite", "Grand", "Grande"]
+  },
+  {
+    "id": 4,
+    "step": "A1",
+    "question": "J'ai acheté….à la boulangerie.",
+    "options": ["De le pain", "La viande", "Un croissant", "Du sel"]
+  },
+  {
+    "id": 5,
+    "step": "A1",
+    "question": "J'ai fait un …. Voyage.",
+    "options": ["Lent", "Lon", "Long", "lang"]
+  },
+  {
+    "id": 6,
+    "step": "A2",
+    "question": "As-tu vu mon parapluie ? …… cherche depuis un quart d'heure.",
+    "options": ["Je le", "Je lui", "J'en", "J'y", "Je la"]
+  },
+  {
+    "id": 7,
+    "step": "A2",
+    "question": "J'ai promis de rendre ce travail pour demain, mais je n'ai encore rien fait ……",
+    "options": ["du tout", "jamais", "personne", "Plus", "Encor"]
+  },
+  {
+    "id": 8,
+    "step": "A2",
+    "question": "Il doit aller rapidement ….. Coiffeur",
+    "options": ["Au", "Vers le", "Chez le", "Dans", "Voir le"]
+  },
+  {
+    "id": 9,
+    "step": "A2",
+    "question": "C'est un …… appareil, mais qui marche encore parfaitement.",
+    "options": ["vieille", "vieilles", "vieil", "vieux", "Veuille"]
+  },
+  {
+    "id": 10,
+    "step": "A2",
+    "question": "J'espère que ce soir, le dîner sera …… qu'hier.",
+    "options": ["bien", "bon", "meilleur", "le mieux", "aussi bon"]
+  },
+  {
+    "id": 11,
+    "step": "B1",
+    "question": "Je le connais …. 10 Ans",
+    "options": ["Durant", "De", "Depuis", "Il y a", "Ça fait"]
+  },
+  {
+    "id": 12,
+    "step": "B1",
+    "question": "Malheureusement, vous ne pourrez pas …… le voir demain.",
+    "options": ["Allé", "Aller", "Allés", "Allez", "Aler"]
+  },
+  {
+    "id": 13,
+    "step": "B1",
+    "question": "Choisissez la phrase correcte :",
+    "options": [
+      "Il est non seulement intelligent",
+      "Il n'est pas intelligent mais aussi très courageux",
+      "Il est non seulement intelligent mais aussi très courageux",
+      "Il n'est pas que courageux il est moins intelligent",
+      "Il est aussi intelligent"
+    ]
+  },
+  {
+    "id": 14,
+    "step": "B1",
+    "question": "Nous sommes … d'accord.",
+    "options": ["Tout", "Tous", "Toute", "Touts", "Touse"]
+  },
+  {
+    "id": 15,
+    "step": "B1",
+    "question": "J'avais mal garé ma voiture. La Police m'a fait payer ……",
+    "options": ["un argent", "un billet", "une amende", "un ticket", "Une taxe"]
+  },
+  {
+    "id": 16,
+    "step": "B1",
+    "question": "Les autres ….fait un meilleur travail.",
+    "options": ["Ils ont", "Qui ont", "Leur équipe a", "Avaient", "Savent"]
+  },
+  {
+    "id": 17,
+    "step": "B1+",
+    "question": "Vous trouverez l'Université juste en face …… conservatoire",
+    "options": ["De", "De le", "Du", "A"]
+  },
+  {
+    "id": 18,
+    "step": "B1+",
+    "question": "Vous parlez à votre professeur.",
+    "options": [
+      "Salut Professeur, comment vas-tu ?",
+      "Salut Monsieur, comment tu vas ?",
+      "Bonjour, puis- je m'entretenir avec toi ?",
+      "Bonjour, auriez-vous un moment ?"
+    ]
+  },
+  {
+    "id": 19,
+    "step": "B1+",
+    "question": "Vous devez signaler une situation à votre direction.",
+    "options": [
+      "La fille est tombée dans les pommes",
+      "La fille là-bas n'est pas bien",
+      "Notre collègue a fait un malaise",
+      "Elle va pas bien, je crois qu'elle a un problème de famille ou je ne sais quoi."
+    ]
+  },
+  {
+    "id": 20,
+    "step": "B1+",
+    "question": "Vous proposez à vos amis d'aller manger",
+    "options": [
+      "On va manger un truc ?",
+      "Allons manger quelque chose !",
+      "Et si on allait se restaurer ?",
+      "On se casse la croûte ?"
+    ]
+  },
+  {
+    "id": 21,
+    "step": "B1+",
+    "question": "Que veut dire la phrase : « il a la main verte »",
+    "options": [
+      "Il a une maladie qui rend les mains vertes",
+      "Il sait jardiner",
+      "Il a de la peinture verte sur la main",
+      "Il porte des plantes vertes"
+    ]
+  },
+  {
+    "id": 22,
+    "step": "B2",
+    "question": "Le silence des autorités médicales à propos de son bilan de santé est une véritable épée de Damoclès pour Hugo. Quelle est la signification de l'expression « une épée de Damoclès » ?",
+    "options": [
+      "Hugo croit que les médecins hésitent sur son cas et ne sont pas en mesure de trancher.",
+      "Hugo interprète ce silence comme une menace constante.",
+      "Le silence est si grand qu'il semble à Hugo tranchant comme une épée.",
+      "Les normes médicales sont tranchantes et Hugo en est blessé."
+    ]
+  },
+  {
+    "id": 23,
+    "step": "B2",
+    "question": "Ça fait un bail que le comité examine son dossier. Quelle est la signification du mot « ça fait un bail ».",
+    "options": [
+      "Les fonctionnaires administratifs examinent son dossier depuis exactement douze mois.",
+      "Cela fait longtemps que le comité examine son dossier.",
+      "Le comité examine son dossier depuis peu de temps.",
+      "Le comité a reconduit son bail pour une durée de douze mois."
+    ]
+  },
+  {
+    "id": 24,
+    "step": "B2",
+    "question": "L'expression « les bras m'en tombent » signifie :",
+    "options": [
+      "Être blessé grièvement.",
+      "Être stupéfait.",
+      "Porter un sac très lourd.",
+      "Être amputé."
+    ]
+  },
+  {
+    "id": 25,
+    "step": "B2",
+    "question": "L'expression « Se faire l'avocat du diable » signifie :",
+    "options": [
+      "Critiquer avec énergie.",
+      "Adopter une position contraire à la morale.",
+      "Encenser vivement.",
+      "Déranger en plaisantant."
+    ]
+  },
+  {
+    "id": 26,
+    "step": "B2",
+    "question": "Votre collègue vous traite avec froideur. Il vous fait donc _________ mine !",
+    "options": ["Vert.", "Rouge.", "Noire.", "Grise."]
+  }
+]

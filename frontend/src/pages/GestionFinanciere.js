@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import './RapportsProfesseurs.css';
 
 const handleLogout = () => {
   localStorage.removeItem('token');
@@ -19,7 +20,6 @@ const GestionFinanciere = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [searchTerm, setSearchTerm] = useState('');
 
-  // États pour les pénalités/ajustements
   const [showPenaliteModal, setShowPenaliteModal] = useState(false);
   const [selectedProfesseur, setSelectedProfesseur] = useState(null);
   const [penaliteData, setPenaliteData] = useState({
@@ -30,12 +30,10 @@ const GestionFinanciere = () => {
   });
   const [loadingPenalite, setLoadingPenalite] = useState(false);
 
-  // États pour l'historique
   const [showHistoriqueModal, setShowHistoriqueModal] = useState(false);
   const [historiquePenalites, setHistoriquePenalites] = useState([]);
   const [loadingHistorique, setLoadingHistorique] = useState(false);
 
-  // États pour la validation des paiements
   const [loadingValidation, setLoadingValidation] = useState(false);
 
   const mois = [
@@ -307,6 +305,7 @@ const GestionFinanciere = () => {
 
       if (res.ok) {
         const data = await res.json();
+        
         setMessage({ 
           type: 'success', 
           text: `Cycle validé ! Montant: ${data.cycle.montantNet.toFixed(2)} DH. En attente de paiement par l'Admin.` 
@@ -315,13 +314,14 @@ const GestionFinanciere = () => {
         await rafraichirApresAction();
       } else {
         const error = await res.json().catch(() => ({}));
+        
         setMessage({ 
           type: 'error', 
           text: error.error || 'Erreur lors de la validation du cycle' 
         });
       }
     } catch (err) {
-      console.error('Erreur validation cycle:', err);
+      console.error('Erreur validation:', err);
       setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
     } finally {
       setLoadingValidation(false);
@@ -418,377 +418,42 @@ const GestionFinanciere = () => {
 
   const totaux = calculateTotals();
 
-  const styles = {
-    pageWrapper: {
-      minHeight: '100vh',
-    background: 'linear-gradient(135deg, #EBF8FF 0%, #E0F2FE 100%)',
-      padding: '40px 20px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    },
-    container: {
-      maxWidth: '1400px',
-      margin: '0 auto'
-    },
-    header: {
-      background: 'white',
-      borderRadius: '16px',
-      padding: '32px',
-      marginBottom: '32px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      borderLeft: '4px solid #3b82f6'
-    },
-    headerTitle: {
-      fontSize: '28px',
-      fontWeight: '700',
-      color: '#1e293b',
-      margin: '0 0 8px 0'
-    },
-    headerSubtitle: {
-      fontSize: '15px',
-      color: '#64748b',
-      margin: 0
-    },
-    card: {
-      background: 'white',
-      borderRadius: '16px',
-      padding: '28px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      marginBottom: '24px'
-    },
-    controlRow: {
-      display: 'flex',
-      gap: '16px',
-      alignItems: 'center',
-      marginBottom: '16px',
-      flexWrap: 'wrap'
-    },
-    select: {
-      padding: '12px 16px',
-      border: '2px solid #e2e8f0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      minWidth: '150px',
-      background: 'white',
-      cursor: 'pointer',
-      transition: 'border-color 0.2s ease'
-    },
-    input: {
-      padding: '12px 16px',
-      border: '2px solid #e2e8f0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      minWidth: '300px',
-      transition: 'border-color 0.2s ease'
-    },
-    button: {
-      padding: '10px 20px',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      whiteSpace: 'nowrap'
-    },
-    buttonPrimary: {
-      background: '#3b82f6',
-      color: 'white'
-    },
-    buttonSuccess: {
-      background: '#10b981',
-      color: 'white'
-    },
-    buttonDanger: {
-      background: '#ef4444',
-      color: 'white'
-    },
-    buttonSecondary: {
-      background: '#6b7280',
-      color: 'white'
-    },
-    buttonDisabled: {
-      background: '#d1d5db',
-      color: '#9ca3af',
-      cursor: 'not-allowed'
-    },
-    statsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '20px',
-      marginBottom: '24px'
-    },
-    statCard: {
-      background: 'white',
-      padding: '24px',
-      borderRadius: '12px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      textAlign: 'center',
-      border: '1px solid #e2e8f0'
-    },
-    statNumber: {
-      fontSize: '32px',
-      fontWeight: '700',
-      color: '#3b82f6',
-      marginBottom: '8px'
-    },
-    statLabel: {
-      fontSize: '13px',
-      color: '#64748b',
-      fontWeight: '500',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'collapse',
-      fontSize: '14px',
-      background: 'white',
-      borderRadius: '12px',
-      overflow: 'hidden'
-    },
-    th: {
-      background: '#f8fafc',
-      padding: '16px 12px',
-      textAlign: 'left',
-      fontWeight: '600',
-      color: '#475569',
-      borderBottom: '2px solid #e2e8f0',
-      fontSize: '13px',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    },
-    td: {
-      padding: '16px 12px',
-      borderBottom: '1px solid #f1f5f9'
-    },
-    badge: {
-      display: 'inline-block',
-      padding: '4px 12px',
-      borderRadius: '20px',
-      fontSize: '12px',
-      fontWeight: '600'
-    },
-    badgeSuccess: {
-      background: '#d1fae5',
-      color: '#065f46'
-    },
-    badgeWarning: {
-      background: '#fef3c7',
-      color: '#92400e'
-    },
-    badgeInfo: {
-      background: '#dbeafe',
-      color: '#1e40af'
-    },
-    message: {
-      padding: '16px 20px',
-      borderRadius: '10px',
-      marginBottom: '24px',
-      fontSize: '14px',
-      fontWeight: '500'
-    },
-    successMessage: {
-      background: '#d1fae5',
-      color: '#065f46',
-      border: '1px solid #10b981'
-    },
-    errorMessage: {
-      background: '#fee2e2',
-      color: '#991b1b',
-      border: '1px solid #ef4444'
-    },
-    warningMessage: {
-      background: '#fef3c7',
-      color: '#78350f',
-      border: '1px solid #f59e0b'
-    },
-    infoMessage: {
-      background: '#dbeafe',
-      color: '#1e40af',
-      border: '1px solid #3b82f6'
-    },
-    emptyState: {
-      textAlign: 'center',
-      padding: '80px 20px',
-      background: 'white',
-      borderRadius: '16px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-    },
-    emptyTitle: {
-      fontSize: '20px',
-      fontWeight: '600',
-      color: '#475569',
-      marginBottom: '12px'
-    },
-    emptyText: {
-      fontSize: '15px',
-      color: '#64748b',
-      lineHeight: '1.6'
-    },
-    modal: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    },
-    modalContent: {
-      background: 'white',
-      borderRadius: '16px',
-      width: '100%',
-      maxWidth: '700px',
-      maxHeight: '90vh',
-      overflow: 'auto',
-      boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-    },
-    modalHeader: {
-      padding: '28px 32px',
-      borderBottom: '1px solid #e2e8f0'
-    },
-    modalTitle: {
-      fontSize: '22px',
-      fontWeight: '700',
-      color: '#1e293b',
-      margin: 0
-    },
-    modalBody: {
-      padding: '32px'
-    },
-    modalFooter: {
-      padding: '20px 32px',
-      borderTop: '1px solid #e2e8f0',
-      display: 'flex',
-      gap: '12px',
-      justifyContent: 'flex-end'
-    },
-    formGroup: {
-      marginBottom: '24px'
-    },
-    label: {
-      display: 'block',
-      fontSize: '14px',
-      fontWeight: '600',
-      color: '#374151',
-      marginBottom: '8px'
-    },
-    textarea: {
-      width: '100%',
-      padding: '12px 16px',
-      border: '2px solid #e2e8f0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      resize: 'vertical',
-      minHeight: '100px',
-      fontFamily: 'inherit',
-      boxSizing: 'border-box'
-    },
-    infoBox: {
-      background: '#fef3c7',
-      border: '1px solid #fbbf24',
-      borderRadius: '12px',
-      padding: '20px',
-      marginBottom: '24px'
-    },
-    infoGrid: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '16px',
-      fontSize: '14px',
-      color: '#78350f'
-    },
-    previewBox: {
-      background: '#e0f2fe',
-      border: '1px solid #0891b2',
-      borderRadius: '12px',
-      padding: '20px',
-      marginBottom: '24px'
-    },
-    previewTitle: {
-      fontSize: '16px',
-      fontWeight: '600',
-      color: '#0891b2',
-      marginBottom: '12px'
-    },
-    previewContent: {
-      fontSize: '14px',
-      color: '#0c4a6e',
-      lineHeight: '1.8'
-    },
-    cycleInfo: {
-      background: '#f8fafc',
-      borderRadius: '8px',
-      padding: '16px',
-      marginBottom: '16px',
-      border: '1px solid #e2e8f0'
-    },
-    cycleTitle: {
-      fontSize: '14px',
-      fontWeight: '600',
-      color: '#475569',
-      marginBottom: '8px'
-    },
-    cycleText: {
-      fontSize: '13px',
-      color: '#64748b',
-      lineHeight: '1.6'
-    }
-  };
-
   return (
-    <div style={styles.pageWrapper}>
+    <div className="rapports-page-wrapper">
       <Sidebar onLogout={handleLogout} />
       
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h1 style={styles.headerTitle}>Gestion Financière</h1>
-          <p style={styles.headerSubtitle}>
+      <div className="rapports-container">
+        <div className="rapports-header">
+          <h1 className="rapports-header-title">Gestion Financière</h1>
+          <p className="rapports-header-subtitle">
             Gérez les paiements, ajustements et validations des entrepreneurs
           </p>
         </div>
 
-        {/* Contrôles */}
-        <div style={styles.card}>
-          <div style={styles.controlRow}>
+        <div className="rapports-controls-card">
+          <div className="rapports-control-row">
             <select
-              style={styles.select}
+              className="rapports-select"
               value={selectedPeriod.mois}
               onChange={(e) => setSelectedPeriod(prev => ({ ...prev, mois: parseInt(e.target.value) }))}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             >
               {mois.map((m, index) => (
-                <option key={index} value={index + 1}>
-                  {m}
-                </option>
+                <option key={index} value={index + 1}>{m}</option>
               ))}
             </select>
 
             <select
-              style={styles.select}
+              className="rapports-select"
               value={selectedPeriod.annee}
               onChange={(e) => setSelectedPeriod(prev => ({ ...prev, annee: parseInt(e.target.value) }))}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             >
               {[2023, 2024, 2025, 2026].map(year => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
+                <option key={year} value={year}>{year}</option>
               ))}
             </select>
 
             <button
-              style={{
-                ...styles.button,
-                ...styles.buttonPrimary,
-                ...(loading ? styles.buttonDisabled : {})
-              }}
+              className="rapports-button rapports-button-primary"
               onClick={fetchRapportsFinanciers}
               disabled={loading}
             >
@@ -796,11 +461,7 @@ const GestionFinanciere = () => {
             </button>
 
             <button
-              style={{
-                ...styles.button,
-                ...styles.buttonSuccess,
-                ...(filteredRapports.length === 0 ? styles.buttonDisabled : {})
-              }}
+              className="rapports-button rapports-button-success"
               onClick={exporterDonneesFinancieres}
               disabled={filteredRapports.length === 0}
             >
@@ -808,18 +469,16 @@ const GestionFinanciere = () => {
             </button>
           </div>
 
-          <div style={styles.controlRow}>
+          <div className="rapports-control-row">
             <input
-              style={styles.input}
+              className="rapports-input"
               placeholder="Rechercher un entrepreneur..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
             />
             {searchTerm && (
               <button
-                style={{ ...styles.button, ...styles.buttonDanger }}
+                className="rapports-button rapports-button-danger rapports-button-small"
                 onClick={() => setSearchTerm('')}
               >
                 Effacer
@@ -828,104 +487,92 @@ const GestionFinanciere = () => {
           </div>
         </div>
 
-        {/* Information système de cycles */}
-        <div style={styles.card}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', marginBottom: '16px' }}>
+        <div className="rapports-controls-card">
+          <h3 className="rapports-section-title">
             Système de Cycles de Paiement
           </h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            <div style={styles.cycleInfo}>
-              <div style={styles.cycleTitle}>Cycle En Cours</div>
-              <div style={styles.cycleText}>
+            <div className="finance-cycle-info">
+              <div className="finance-cycle-title">Cycle En Cours</div>
+              <div className="finance-cycle-text">
                 Séances non payées accumulées depuis le dernier paiement. Ajustements possibles et validation Finance requise.
               </div>
             </div>
             
-            <div style={{...styles.cycleInfo, background: '#eff6ff', borderColor: '#bfdbfe'}}>
-              <div style={styles.cycleTitle}>Validé Finance</div>
-              <div style={styles.cycleText}>
+            <div className="finance-cycle-info finance-cycle-valide">
+              <div className="finance-cycle-title">Validé Finance</div>
+              <div className="finance-cycle-text">
                 Cycle approuvé avec montant final confirmé. Prêt pour paiement Admin. Ajustements verrouillés.
               </div>
             </div>
             
-            <div style={{...styles.cycleInfo, background: '#f0fdf4', borderColor: '#bbf7d0'}}>
-              <div style={styles.cycleTitle}>Payé - Nouveau Cycle</div>
-              <div style={styles.cycleText}>
+            <div className="finance-cycle-info finance-cycle-paye">
+              <div className="finance-cycle-title">Payé - Nouveau Cycle</div>
+              <div className="finance-cycle-text">
                 Paiement effectué, nouveau cycle créé automatiquement. Historique préservé et données remises à zéro.
               </div>
             </div>
           </div>
         </div>
 
-        {/* Message */}
         {message.text && (
-          <div style={{
-            ...styles.message,
-            ...(message.type === 'error' ? styles.errorMessage : 
-                message.type === 'warning' ? styles.warningMessage :
-                message.type === 'info' ? styles.infoMessage :
-                styles.successMessage)
-          }}>
+          <div className={`rapports-message rapports-message-${message.type}`}>
             {message.text}
           </div>
         )}
 
-        {/* Chargement */}
         {loading && (
-          <div style={styles.emptyState}>
-            <div style={styles.emptyTitle}>Chargement en cours</div>
-            <div style={styles.emptyText}>Récupération des données financières...</div>
+          <div className="rapports-loading">
+            <div className="rapports-loading-title">Chargement en cours</div>
+            <div className="text-muted">Récupération des données financières...</div>
           </div>
         )}
 
-        {/* Contenu principal */}
         {!loading && (
           <>
             {filteredRapports.length > 0 ? (
               <>
-                {/* Statistiques */}
-                <div style={styles.statsGrid}>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{filteredRapports.length}</div>
-                    <div style={styles.statLabel}>Entrepreneurs Actifs</div>
+                <div className="rapports-stats-grid">
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{filteredRapports.length}</div>
+                    <div className="rapports-stat-label">Entrepreneurs Actifs</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{totaux.montantBrut.toFixed(0)} DH</div>
-                    <div style={styles.statLabel}>Montant Brut Total</div>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{totaux.montantBrut.toFixed(0)} DH</div>
+                    <div className="rapports-stat-label">Montant Brut Total</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{totaux.totalAjustements.toFixed(0)} DH</div>
-                    <div style={styles.statLabel}>Total Ajustements</div>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{totaux.totalAjustements.toFixed(0)} DH</div>
+                    <div className="rapports-stat-label">Total Ajustements</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{totaux.montantNet.toFixed(0)} DH</div>
-                    <div style={styles.statLabel}>Montant Net à Payer</div>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{totaux.montantNet.toFixed(0)} DH</div>
+                    <div className="rapports-stat-label">Montant Net à Payer</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{totaux.paiementsValides}</div>
-                    <div style={styles.statLabel}>Paiements Validés</div>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{totaux.paiementsValides}</div>
+                    <div className="rapports-stat-label">Paiements Validés</div>
                   </div>
-                  <div style={styles.statCard}>
-                    <div style={styles.statNumber}>{totaux.paiementsEnAttente}</div>
-                    <div style={styles.statLabel}>En Attente</div>
+                  <div className="rapports-stat-card">
+                    <div className="rapports-stat-number">{totaux.paiementsEnAttente}</div>
+                    <div className="rapports-stat-label">En Attente</div>
                   </div>
                 </div>
 
-                {/* Tableau */}
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={styles.table}>
+                <div className="rapports-table-wrapper">
+                  <table className="rapports-table">
                     <thead>
                       <tr>
-                        <th style={styles.th}>Entrepreneur</th>
-                        <th style={styles.th}>Cycle Actuel</th>
-                        <th style={styles.th}>Heures</th>
-                        <th style={styles.th}>Tarif/h</th>
-                        <th style={styles.th}>Montant Brut</th>
-                        <th style={styles.th}>Ajustements</th>
-                        <th style={styles.th}>Montant Net</th>
-                        <th style={styles.th}>Statut</th>
-                        <th style={styles.th}>Actions</th>
+                        <th>Entrepreneur</th>
+                        <th>Cycle Actuel</th>
+                        <th>Heures</th>
+                        <th>Tarif/h</th>
+                        <th>Montant Brut</th>
+                        <th>Ajustements</th>
+                        <th>Montant Net</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -937,81 +584,72 @@ const GestionFinanciere = () => {
                         
                         return (
                           <tr key={prof._id}>
-                            <td style={styles.td}>
-                              <div style={{ fontWeight: '600', fontSize: '15px', color: '#1e293b' }}>
+                            <td>
+                              <div className="rapports-prof-name-cell">
                                 {prof.nom}
                               </div>
-                              <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
+                              <div className="rapports-prof-email">
                                 {prof.email}
                               </div>
                             </td>
-                            <td style={styles.td}>
-                              <div style={{ fontWeight: '600', fontSize: '14px', color: '#3b82f6' }}>
+                            <td>
+                              <div className="finance-cycle-number">
                                 Cycle #{donnees.numeroCycle}
                               </div>
-                              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                              <div className="finance-seances-count">
                                 {donnees.cycleInfo?.seancesCount || 0} séance(s)
                               </div>
                             </td>
-                            <td style={styles.td}>
-                              <strong style={{ fontSize: '16px', color: '#3b82f6' }}>
+                            <td>
+                              <strong className="finance-heures-count">
                                 {safeCalculate(donnees, 'totalHeures')}h
                               </strong>
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               <strong>{safeCalculate(donnees, 'tarifHoraire')} DH</strong>
                             </td>
-                            <td style={styles.td}>
-                              <strong style={{ fontSize: '15px', color: '#059669' }}>
+                            <td>
+                              <strong className="finance-montant-brut">
                                 {safeCalculate(donnees, 'montantBrut').toFixed(2)} DH
                               </strong>
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               {donnees.ajustements !== 0 ? (
                                 <div>
-                                  <strong style={{ 
-                                    color: donnees.ajustements > 0 ? '#dc2626' : '#10b981',
-                                    fontSize: '14px'
-                                  }}>
+                                  <strong className={donnees.ajustements > 0 ? 'text-danger' : 'text-success'}>
                                     {donnees.ajustements > 0 ? '-' : '+'}
                                     {Math.abs(donnees.ajustements).toFixed(2)} DH
                                   </strong>
                                   {donnees.ajustementInfo && (
-                                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                                    <div className="finance-ajustement-motif">
                                       {donnees.ajustementInfo.motif.substring(0, 20)}...
                                     </div>
                                   )}
                                 </div>
                               ) : (
-                                <span style={{ color: '#64748b', fontSize: '13px' }}>Aucun</span>
+                                <span className="text-muted">Aucun</span>
                               )}
                             </td>
-                            <td style={styles.td}>
-                              <strong style={{ fontSize: '16px', color: '#dc2626' }}>
+                            <td>
+                              <strong className="finance-montant-net">
                                 {safeCalculate(donnees, 'montantNet').toFixed(2)} DH
                               </strong>
                             </td>
-                            <td style={styles.td}>
-                              <span style={{
-                                ...styles.badge,
-                                ...(donnees.statutCycle === 'paye_admin' ? styles.badgeSuccess : 
-                                    donnees.statutCycle === 'valide_finance' ? styles.badgeInfo :
-                                    styles.badgeWarning)
-                              }}>
+                            <td>
+                              <span className={`rapports-badge ${
+                                donnees.statutCycle === 'paye_admin' ? 'rapports-badge-success' : 
+                                donnees.statutCycle === 'valide_finance' ? 'rapports-badge-info' :
+                                'rapports-badge-warning'
+                              }`}>
                                 {donnees.statutAffichage || 'En attente'}
                               </span>
                             </td>
-                            <td style={styles.td}>
-                              <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                            <td>
+                              <div className="rapports-actions-cell">
                                 {donnees.statutCycle === 'en_cours' && (
                                   <>
                                     <button
-                                      style={{ 
-                                        ...styles.button, 
-                                        ...styles.buttonDanger,
-                                        fontSize: '12px', 
-                                        padding: '6px 12px'
-                                      }}
+                                      className="rapports-button rapports-button-danger rapports-button-small"
                                       onClick={() => {
                                         setSelectedProfesseur(prof);
                                         setShowPenaliteModal(true);
@@ -1020,13 +658,7 @@ const GestionFinanciere = () => {
                                       Ajustement
                                     </button>
                                     <button
-                                      style={{ 
-                                        ...styles.button, 
-                                        ...styles.buttonSuccess,
-                                        fontSize: '12px', 
-                                        padding: '6px 12px',
-                                        ...(loadingValidation ? styles.buttonDisabled : {})
-                                      }}
+                                      className="rapports-button rapports-button-success rapports-button-small"
                                       onClick={() => validerCycleParFinance(prof._id)}
                                       disabled={loadingValidation}
                                     >
@@ -1037,13 +669,7 @@ const GestionFinanciere = () => {
 
                                 {donnees.statutCycle === 'valide_finance' && (
                                   <button
-                                    style={{ 
-                                      ...styles.button, 
-                                      fontSize: '12px', 
-                                      padding: '6px 12px',
-                                      background: '#f59e0b',
-                                      color: 'white'
-                                    }}
+                                    className="rapports-button rapports-button-warning rapports-button-small"
                                     onClick={() => allerVersValidationAdmin(prof._id)}
                                   >
                                     Vers Paiement
@@ -1051,26 +677,13 @@ const GestionFinanciere = () => {
                                 )}
 
                                 {donnees.statutCycle === 'paye_admin' && (
-                                  <div style={{
-                                    padding: '6px 12px',
-                                    background: '#d1fae5',
-                                    color: '#065f46',
-                                    borderRadius: '6px',
-                                    fontSize: '12px',
-                                    textAlign: 'center',
-                                    fontWeight: '600'
-                                  }}>
+                                  <div className="finance-paye-badge">
                                     Payé
                                   </div>
                                 )}
                                 
                                 <button
-                                  style={{ 
-                                    ...styles.button, 
-                                    ...styles.buttonSecondary,
-                                    fontSize: '11px', 
-                                    padding: '4px 8px'
-                                  }}
+                                  className="rapports-button rapports-button-secondary rapports-button-small"
                                   onClick={() => {
                                     setSelectedProfesseur(prof);
                                     fetchHistoriqueAjustements(prof._id);
@@ -1089,11 +702,11 @@ const GestionFinanciere = () => {
                 </div>
               </>
             ) : (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyTitle}>
+              <div className="rapports-empty-state">
+                <div className="rapports-empty-title">
                   {rapportsFinanciers.length === 0 ? 'Aucune donnée financière' : 'Aucun résultat'}
                 </div>
-                <div style={styles.emptyText}>
+                <div className="rapports-empty-text">
                   {rapportsFinanciers.length === 0 
                     ? `Aucun entrepreneur actif pour ${mois[selectedPeriod.mois - 1]} ${selectedPeriod.annee}.`
                     : `Aucun entrepreneur ne correspond à "${searchTerm}".`
@@ -1104,17 +717,16 @@ const GestionFinanciere = () => {
           </>
         )}
 
-        {/* Modal Ajustement */}
         {showPenaliteModal && (
-          <div style={styles.modal} onClick={() => setShowPenaliteModal(false)}>
-            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.modalHeader}>
-                <h2 style={styles.modalTitle}>Appliquer un Ajustement</h2>
+          <div className="rapports-modal-overlay" onClick={() => setShowPenaliteModal(false)}>
+            <div className="rapports-modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="rapports-modal-header">
+                <h2 className="rapports-modal-title">Appliquer un Ajustement</h2>
               </div>
 
-              <div style={styles.modalBody}>
-                <div style={styles.infoBox}>
-                  <div style={styles.infoGrid}>
+              <div className="rapports-modal-body">
+                <div className="finance-info-box">
+                  <div className="finance-info-grid">
                     <div>
                       <strong>Entrepreneur:</strong> {selectedProfesseur?.nom}<br/>
                       <strong>Email:</strong> {selectedProfesseur?.email}
@@ -1126,59 +738,51 @@ const GestionFinanciere = () => {
                   </div>
                 </div>
 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Type d'ajustement</label>
+                <div className="finance-form-group">
+                  <label className="finance-label">Type d'ajustement</label>
                   <select
-                    style={styles.select}
+                    className="rapports-select"
                     value={penaliteData.type}
                     onChange={(e) => setPenaliteData({ ...penaliteData, type: e.target.value })}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                   >
                     <option value="pourcentage">Pourcentage du montant total</option>
                     <option value="montant_fixe">Montant fixe en DH</option>
                   </select>
                 </div>
 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>
+                <div className="finance-form-group">
+                  <label className="finance-label">
                     {penaliteData.type === 'pourcentage' ? 'Pourcentage (%)' : 'Montant (DH)'}
                   </label>
                   <input
                     type="number"
-                    style={styles.input}
+                    className="rapports-input"
                     value={penaliteData.valeur}
                     onChange={(e) => setPenaliteData({ ...penaliteData, valeur: e.target.value })}
                     placeholder={penaliteData.type === 'pourcentage' ? 'Ex: 10 ou -5' : 'Ex: 500 ou -200'}
                     step={penaliteData.type === 'pourcentage' ? "0.1" : "0.01"}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                   />
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div className="finance-field-hint">
                     Valeurs négatives pour rabais (ex: -10)
                   </div>
                 </div>
 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Motif (obligatoire)</label>
+                <div className="finance-form-group">
+                  <label className="finance-label">Motif (obligatoire)</label>
                   <textarea
-                    style={styles.textarea}
+                    className="finance-textarea"
                     value={penaliteData.motif}
                     onChange={(e) => setPenaliteData({ ...penaliteData, motif: e.target.value })}
                     placeholder="Ex: Retards répétés, Prime de performance..."
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                   />
                 </div>
 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Appliquer pour</label>
+                <div className="finance-form-group">
+                  <label className="finance-label">Appliquer pour</label>
                   <select
-                    style={styles.select}
+                    className="rapports-select"
                     value={penaliteData.appliquePour}
                     onChange={(e) => setPenaliteData({ ...penaliteData, appliquePour: e.target.value })}
-                    onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                   >
                     <option value="mois_actuel">Ce mois uniquement</option>
                     <option value="permanent">Tous les mois suivants</option>
@@ -1186,8 +790,8 @@ const GestionFinanciere = () => {
                 </div>
 
                 {penaliteData.valeur && penaliteData.valeur !== '' && selectedProfesseur && (
-                  <div style={styles.previewBox}>
-                    <div style={styles.previewTitle}>Aperçu du calcul</div>
+                  <div className="finance-preview-box">
+                    <div className="finance-preview-title">Aperçu du calcul</div>
                     {(() => {
                       const rapportActuel = filteredRapports.find(r => r.professeur._id === selectedProfesseur._id);
                       const montantActuel = rapportActuel?.donnees?.montantNet || rapportActuel?.donnees?.montantBrut || 0;
@@ -1202,12 +806,12 @@ const GestionFinanciere = () => {
                       const nouveauMontant = montantActuel - ajustement;
                       
                       return (
-                        <div style={styles.previewContent}>
+                        <div className="finance-preview-content">
                           <div>Montant actuel: <strong>{montantActuel.toFixed(2)} DH</strong></div>
-                          <div>Ajustement: <strong style={{ color: ajustement >= 0 ? '#dc2626' : '#10b981' }}>
+                          <div>Ajustement: <strong className={ajustement >= 0 ? 'text-danger' : 'text-success'}>
                             {ajustement >= 0 ? '-' : '+'}{Math.abs(ajustement).toFixed(2)} DH
                           </strong></div>
-                          <div>Nouveau montant: <strong style={{ fontSize: '16px' }}>
+                          <div>Nouveau montant: <strong className="finance-preview-total">
                             {nouveauMontant.toFixed(2)} DH
                           </strong></div>
                         </div>
@@ -1217,9 +821,9 @@ const GestionFinanciere = () => {
                 )}
               </div>
 
-              <div style={styles.modalFooter}>
+              <div className="rapports-modal-footer">
                 <button
-                  style={{...styles.button, ...styles.buttonSecondary}}
+                  className="rapports-button rapports-button-secondary"
                   onClick={() => {
                     setShowPenaliteModal(false);
                     setSelectedProfesseur(null);
@@ -1234,11 +838,7 @@ const GestionFinanciere = () => {
                   Annuler
                 </button>
                 <button
-                  style={{
-                    ...styles.button,
-                    ...styles.buttonDanger,
-                    ...(loadingPenalite || !penaliteData.valeur || !penaliteData.motif.trim() ? styles.buttonDisabled : {})
-                  }}
+                  className="rapports-button rapports-button-danger"
                   onClick={appliquerAjustement}
                   disabled={loadingPenalite || !penaliteData.valeur || !penaliteData.motif.trim()}
                 >
@@ -1249,77 +849,69 @@ const GestionFinanciere = () => {
           </div>
         )}
 
-        {/* Modal Historique */}
         {showHistoriqueModal && (
-          <div style={styles.modal} onClick={() => setShowHistoriqueModal(false)}>
-            <div style={{...styles.modalContent, maxWidth: '1000px'}} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.modalHeader}>
-                <h2 style={styles.modalTitle}>Historique - {selectedProfesseur?.nom}</h2>
+          <div className="rapports-modal-overlay" onClick={() => setShowHistoriqueModal(false)}>
+            <div className="rapports-modal-content finance-modal-large" onClick={(e) => e.stopPropagation()}>
+              <div className="rapports-modal-header">
+                <h2 className="rapports-modal-title">Historique - {selectedProfesseur?.nom}</h2>
               </div>
 
-              <div style={styles.modalBody}>
+              <div className="rapports-modal-body">
                 {loadingHistorique ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    Chargement de l'historique...
+                  <div className="rapports-loading">
+                    <div className="rapports-loading-title">Chargement de l'historique...</div>
                   </div>
                 ) : historiquePenalites.length > 0 ? (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={styles.table}>
+                  <div className="rapports-table-wrapper">
+                    <table className="rapports-table">
                       <thead>
                         <tr>
-                          <th style={styles.th}>Date</th>
-                          <th style={styles.th}>Période</th>
-                          <th style={styles.th}>Type</th>
-                          <th style={styles.th}>Valeur</th>
-                          <th style={styles.th}>Ajustement</th>
-                          <th style={styles.th}>Motif</th>
-                          <th style={styles.th}>Actions</th>
+                          <th>Date</th>
+                          <th>Période</th>
+                          <th>Type</th>
+                          <th>Valeur</th>
+                          <th>Ajustement</th>
+                          <th>Motif</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {historiquePenalites.map((ajustement, index) => (
                           <tr key={index}>
-                            <td style={styles.td}>
+                            <td>
                               {new Date(ajustement.dateApplication).toLocaleDateString('fr-FR')}
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               {mois[ajustement.mois - 1]} {ajustement.annee}
                             </td>
-                            <td style={styles.td}>
-                              <span style={{
-                                ...styles.badge,
-                                ...(ajustement.type === 'pourcentage' ? styles.badgeInfo : styles.badgeWarning)
-                              }}>
+                            <td>
+                              <span className={`rapports-badge ${
+                                ajustement.type === 'pourcentage' ? 'rapports-badge-info' : 'rapports-badge-warning'
+                              }`}>
                                 {ajustement.type === 'pourcentage' ? 'Pourcentage' : 'Fixe'}
                               </span>
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               <strong>
                                 {ajustement.type === 'pourcentage' ? `${ajustement.valeur}%` : `${ajustement.valeur} DH`}
                               </strong>
                             </td>
-                            <td style={styles.td}>
-                              <span style={{
-                                color: (ajustement.montantOriginal - ajustement.montantAjuste) > 0 ? '#dc2626' : '#10b981',
-                                fontWeight: '700'
-                              }}>
+                            <td>
+                              <span className={
+                                (ajustement.montantOriginal - ajustement.montantAjuste) > 0 ? 'text-danger font-bold' : 'text-success font-bold'
+                              }>
                                 {(ajustement.montantOriginal - ajustement.montantAjuste) > 0 ? '-' : '+'}
                                 {Math.abs(ajustement.montantOriginal - ajustement.montantAjuste).toFixed(2)} DH
                               </span>
                             </td>
-                            <td style={styles.td}>
-                              <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={ajustement.motif}>
+                            <td>
+                              <div className="finance-motif-cell" title={ajustement.motif}>
                                 {ajustement.motif}
                               </div>
                             </td>
-                            <td style={styles.td}>
+                            <td>
                               <button
-                                style={{
-                                  ...styles.button,
-                                  ...styles.buttonDanger,
-                                  fontSize: '11px',
-                                  padding: '4px 8px'
-                                }}
+                                className="rapports-button rapports-button-danger rapports-button-small"
                                 onClick={() => supprimerAjustement(ajustement._id)}
                               >
                                 Supprimer
@@ -1331,18 +923,18 @@ const GestionFinanciere = () => {
                     </table>
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
+                  <div className="rapports-empty-state">
+                    <div className="rapports-empty-title">
                       Aucun historique
                     </div>
-                    <div>Aucun ajustement trouvé pour cet entrepreneur.</div>
+                    <div className="rapports-empty-text">Aucun ajustement trouvé pour cet entrepreneur.</div>
                   </div>
                 )}
               </div>
 
-              <div style={styles.modalFooter}>
+              <div className="rapports-modal-footer">
                 <button
-                  style={{...styles.button, ...styles.buttonSecondary}}
+                  className="rapports-button rapports-button-secondary"
                   onClick={() => {
                     setShowHistoriqueModal(false);
                     setHistoriquePenalites([]);

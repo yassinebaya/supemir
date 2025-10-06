@@ -1,0 +1,362 @@
+[
+  {
+    "id": 1,
+    "step": "Step1",
+    "question": "I ……………………. to work everyday",
+    "options": ["walks", "walk", "walkes"]
+  },
+  {
+    "id": 2,
+    "step": "Step1",
+    "question": "He is ……………………… right now.",
+    "options": ["read", "reading", "reads"]
+  },
+  {
+    "id": 3,
+    "step": "Step1",
+    "question": "We …………………….live in a flat.",
+    "options": ["don't", "hasn't", "doesn't"]
+  },
+  {
+    "id": 4,
+    "step": "Step1",
+    "question": "John is not a serious student. He ………………………….",
+    "options": ["works hard", "hardly works", "works harder"]
+  },
+  {
+    "id": 5,
+    "step": "Step1",
+    "question": "Teacher: How………………………….…………………do you live? Student: I live just around the corner from here.",
+    "options": ["far", "long", "often"]
+  },
+  {
+    "id": 6,
+    "step": "Step1",
+    "question": "The man…………………came to dinner is my uncle.",
+    "options": ["whose", "which", "who"]
+  },
+  {
+    "id": 7,
+    "step": "Step1",
+    "question": "I ……………… there for a long time.",
+    "options": ["lived", "living", "live"]
+  },
+  {
+    "id": 8,
+    "step": "Step1",
+    "question": "He didn't ……………… glasses.",
+    "options": ["put", "wear", "take"]
+  },
+  {
+    "id": 9,
+    "step": "Step1",
+    "question": "The opposite of fantastic is:………..",
+    "options": ["wonderful", "beautiful", "terrible"]
+  },
+  {
+    "id": 10,
+    "step": "Step1",
+    "question": "Yesterday was the ………….. of April.",
+    "options": ["third", "three", "day three"]
+  },
+  {
+    "id": 11,
+    "step": "Step1",
+    "question": "I am …………………. whether I should buy a small car or a van. I can't decide. Any suggestions?",
+    "options": ["wondering", "telling", "saying"]
+  },
+  {
+    "id": 12,
+    "step": "Step1",
+    "question": "I had no time for cooking. I just ................................ the spaghetti left over from dinner last night. I did not enjoy it though!",
+    "options": ["hated", "hit", "heated"]
+  },
+  {
+    "id": 13,
+    "step": "Step1",
+    "question": "……………………………… the vase was packed in a special box, it was broken. I had to return it to the shop.",
+    "options": ["Even", "Although", "But"]
+  },
+  {
+    "id": 14,
+    "step": "Step1",
+    "question": "Because the show was not well advertised, .................... came to see it.",
+    "options": ["many", "more", "few"]
+  },
+  {
+    "id": 15,
+    "step": "Step1",
+    "question": "I've never met an actor ………………...",
+    "options": ["before", "already", "after"]
+  },
+  {
+    "id": 16,
+    "step": "Step1",
+    "question": "…………. is very good exercise.",
+    "options": ["swim", "to swim", "Swimming"]
+  },
+  {
+    "id": 17,
+    "step": "Step1",
+    "question": "Have you _____ been on a winter sports holiday?",
+    "options": ["always", "ever", "soon"]
+  },
+  {
+    "id": 18,
+    "step": "Step1",
+    "question": "Because they live in a .......................... area in the country side, we had to buy food from the city.",
+    "options": ["near", "remote", "pleasant"]
+  },
+  {
+    "id": 19,
+    "step": "Step1",
+    "question": "I can't …………… another language.",
+    "options": ["speaking", "speak", "to speak"]
+  },
+  {
+    "id": 20,
+    "step": "Step1",
+    "question": "They ……………. pay for the tickets.",
+    "options": ["haven't to", "don't have", "don't have to"]
+  },
+  {
+    "id": 21,
+    "step": "Step2",
+    "question": "…………………… old is their car?",
+    "options": ["What", "When", "How"]
+  },
+  {
+    "id": 22,
+    "step": "Step2",
+    "question": "Are you ……………….. for one or two weeks?",
+    "options": ["staying", "stay", "stayed"]
+  },
+  {
+    "id": 23,
+    "step": "Step2",
+    "question": "Stephen …………….. to visit his parents.",
+    "options": ["will", "going", "is going"]
+  },
+  {
+    "id": 24,
+    "step": "Step2",
+    "question": "I don't ……………. getting up early.",
+    "options": ["not like", "want", "enjoy"]
+  },
+  {
+    "id": 25,
+    "step": "Step2",
+    "question": "We ………………like to see the mountains.",
+    "options": ["would", "will", "are"]
+  },
+  {
+    "id": 26,
+    "step": "Step2",
+    "question": "They ……………… ever check their emails.",
+    "options": ["hard", "harder", "hardly"]
+  },
+  {
+    "id": 27,
+    "step": "Step2",
+    "question": "They won't come, …………… they?",
+    "options": ["won't", "come", "will"]
+  },
+  {
+    "id": 28,
+    "step": "Step2",
+    "question": "He ……………….. know how to spell it.",
+    "options": ["doesn't", "hasn't", "don't"]
+  },
+  {
+    "id": 29,
+    "step": "Step2",
+    "question": "Carla ………………. to the radio all morning.",
+    "options": ["listening", "heard", "listened"]
+  },
+  {
+    "id": 30,
+    "step": "Step2",
+    "question": "They …………….. come to the cinema with us.",
+    "options": ["doesn't", "not", "didn't"]
+  },
+  {
+    "id": 31,
+    "step": "Step2",
+    "question": "I like this song. ………………. do I.",
+    "options": ["Either", "So", "Neither"]
+  },
+  {
+    "id": 32,
+    "step": "Step2",
+    "question": "We ………………. them at eight o'clock.",
+    "options": ["meet", "'re meet", "'re meeting"]
+  },
+  {
+    "id": 33,
+    "step": "Step2",
+    "question": "They ………………. in America next month.",
+    "options": ["to be", "will be", "being"]
+  },
+  {
+    "id": 34,
+    "step": "Step2",
+    "question": "This is the cinema ………………. we saw the film.",
+    "options": ["when", "which", "where"]
+  },
+  {
+    "id": 35,
+    "step": "Step2",
+    "question": "Have you ever ………………. in a jazz band?",
+    "options": ["seen", "played", "listened"]
+  },
+  {
+    "id": 36,
+    "step": "Step2",
+    "question": "I'm ………………. when I'm with you.",
+    "options": ["happyer", "happier", "the happy"]
+  },
+  {
+    "id": 37,
+    "step": "Step2",
+    "question": "This is ………………. than I thought.",
+    "options": ["bad", "badder", "worse"]
+  },
+  {
+    "id": 38,
+    "step": "Step2",
+    "question": "Can you tell me the way ………………. ?",
+    "options": ["to the bank", "is the bank", "where is the bank"]
+  },
+  {
+    "id": 39,
+    "step": "Step2",
+    "question": "Do you know what ………………. ?",
+    "options": ["time is it", "time is", "time it is"]
+  },
+  {
+    "id": 40,
+    "step": "Step3",
+    "question": "Were you ………………. to open the door?",
+    "options": ["able", "could", "can"]
+  },
+  {
+    "id": 41,
+    "step": "Step3",
+    "question": "Everybody ………………. wear a seat belt in the car.",
+    "options": ["must", "mustn't", "don't have to"]
+  },
+  {
+    "id": 42,
+    "step": "Step3",
+    "question": "Tom has lived in this town ………………. three years.",
+    "options": ["since", "after", "for"]
+  },
+  {
+    "id": 43,
+    "step": "Step3",
+    "question": "We ………………. work in that factory.",
+    "options": ["use to", "used to", "was"]
+  },
+  {
+    "id": 44,
+    "step": "Step4",
+    "question": "His colleagues in the laboratory accused him of dishonesty because he gave them...........information.",
+    "options": ["elusive", "misleading", "accurate", "unsound"]
+  },
+  {
+    "id": 45,
+    "step": "Step4",
+    "question": "Local residents have never felt so insecure................................... the alarming increase in the rate of crime.",
+    "options": ["thanks to", "because of", "owing to", "in order"]
+  },
+  {
+    "id": 46,
+    "step": "Step4",
+    "question": "The government will implement a strict water rationing plan due to severe water….................. in the area.",
+    "options": ["plenty", "shortage", "flooding", "drought"]
+  },
+  {
+    "id": 47,
+    "step": "Step4",
+    "question": "The candidate would have been offered the job if she had..............................the expectations of the recruitment committee.",
+    "options": ["filled in", "answered", "met", "set"]
+  },
+  {
+    "id": 48,
+    "step": "Step4",
+    "question": "Competition in this market is so.........................that very few small–size companies can survive within the first three months of their creation.",
+    "options": ["harsh", "rude", "soft", "offensive"]
+  },
+  {
+    "id": 49,
+    "step": "Step4",
+    "question": "The city council coffers are ……………………..... No financial resources are available to provide local citizens with essential services.",
+    "options": ["abundant", "deleted", "depleted", "unsound"]
+  },
+  {
+    "id": 50,
+    "step": "Step4",
+    "question": "Our city's urbanization authority intends to restore ........................ buildings in the old city centre in an attempt to save local cultural heritage.",
+    "options": ["dilapidated", "senile", "modern", "unkempt"]
+  },
+  {
+    "id": 51,
+    "step": "Step4",
+    "question": "He had no intention of sending the email. In fact, he wrote a second email to explain that he had sent the first one ................................... .",
+    "options": ["intentionally", "deliberately", "inadvertently", "expressly"]
+  },
+  {
+    "id": 52,
+    "step": "Step4",
+    "question": "Appropriate and well monitored physical exercises ……………… muscular strength and endurance",
+    "options": ["alter", "manage", "harm", "enhance"]
+  },
+  {
+    "id": 53,
+    "step": "Step4",
+    "question": "The model presently used in our company is ………………. We should adopt newer models.",
+    "options": ["antiquated", "original", "illogical", "outmoded"]
+  },
+  {
+    "id": 54,
+    "step": "Step4",
+    "question": "Tom: Where are you? ………………………… here for an hour. Emma: Sorry. I missed the bus.",
+    "options": ["I wait", "I'm waiting", "I've been waiting", "I'd been waiting"]
+  },
+  {
+    "id": 55,
+    "step": "Step4",
+    "question": "It was ……………………  hot that we decided to stay at home.",
+    "options": ["so", "very", "too", "such a"]
+  },
+  {
+    "id": 56,
+    "step": "Step4",
+    "question": "The …………………………… I concentrate the………………….. I finish my work.",
+    "options": ["more hard/ fastest", "hardly / faster", "harder / fastest", "harder / faster"]
+  },
+  {
+    "id": 57,
+    "step": "Step4",
+    "question": "You …………………………………… brought food. We have got plenty here.",
+    "options": ["had better", "needn't have", "didn't need", "should have"]
+  },
+  {
+    "id": 58,
+    "step": "Step4",
+    "question": "You won a prize for your paintings, ………………………………………………?",
+    "options": ["isn't it", "haven't you", "didn't you", "don't you"]
+  },
+  {
+    "id": 59,
+    "step": "Step4",
+    "question": "They ………………. an old photograph of the place.",
+    "options": ["came up", "came into", "came after", "came across"]
+  },
+  {
+    "id": 60,
+    "step": "Step4",
+    "question": "I ………………………. I had been able to meet her.",
+    "options": ["wish", "hope", "want", "think"]
+  }
+]

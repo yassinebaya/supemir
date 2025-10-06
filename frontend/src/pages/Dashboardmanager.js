@@ -38,7 +38,7 @@ const RevenusMensuels = () => {
       const token = localStorage.getItem('token');
 
       // Récupérer les étudiants pour avoir les années disponibles
-      const etudiantsRes = await fetch('http://195.179.229.230:5000/api/etudiants', {
+      const etudiantsRes = await fetch('http://195.179.229.230:5000/api/etudiant', {
         headers: { Authorization: `Bearer ${token}` }
       });
 

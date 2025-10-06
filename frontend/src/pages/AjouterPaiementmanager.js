@@ -50,7 +50,7 @@ const AjouterPaiement = () => {
   const config = { headers: { Authorization: `Bearer ${token}` } };
 
   try {
-    const resEtudiants = await axios.get('http://195.179.229.230:5000/api/etudiants', config);
+    const resEtudiants = await axios.get('http://195.179.229.230:5000/api/etudiant', config);
     const resCours = await axios.get('http://195.179.229.230:5000/api/cours', config);
 
     // FILTRER : étudiants actifs ET avec prixTotal > 0

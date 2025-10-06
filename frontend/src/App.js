@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { Download } from 'lucide-react';
 
 // Import des pages
+import AdminTestsLangue from './pages/AdminTestsLangue';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
@@ -36,7 +37,7 @@ import LiveCoursEtudiant from './pages/LiveCoursEtudiant';
 import ProfLiveCours from './pages/ProfLiveCours';
 import ProfileProfesseur from './pages/ProfileProfesseur';
 import PedagogiqueEtudiants from './pages/PedagogiqueEtudiants';
-
+import GestionCoursPedagogique from './pages/GestionCoursPedagogique';
 import MessageProf from './pages/MessageProf';
 import MessageEtudiant from './pages/MessageEtudiant';
 import ProfileUpdatePage from './pages/ProfileUpdatePage';
@@ -268,6 +269,11 @@ import ModifierCoursEtudiant from './pages/ModifierCoursEtudiant';
         <Route path="/pedagogique/professeurs" element={<PedagogiePageprof />} />
         <Route path="/admin/dashboard-partners" element={<DashboardPartners />} />
 
+<Route path="/admin/tests-langue" element={<AdminTestsLangue />} />
+<Route 
+  path="/pedagogique/gestion-cours" 
+  element={<GestionCoursPedagogique />} 
+/>
         <Route path="/pedagogique/emploi-pedagogique" element={<EmploiPedagogique />} />
         <Route path="/admin/paiements-exp" element={<PaiementsExpadmin />} />
         <Route path="/etudiant" element={<DashboardEtudiant />} />

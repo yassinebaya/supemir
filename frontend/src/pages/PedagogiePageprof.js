@@ -21,7 +21,6 @@ import {
   Mail,
   Plus,
   FileText,
-  DollarSign,
   Building
 } from "lucide-react";
 
@@ -740,7 +739,6 @@ const ListeProfesseurs = () => {
                           </>
                         ) : (
                           <>
-                            <DollarSign size={14} className="inline mr-1" />
                             Entrepreneur
                           </>
                         )}
@@ -863,13 +861,12 @@ const ListeProfesseurs = () => {
                         <span className={`type-badge ${p.estPermanent ? 'permanent' : 'entrepreneur'}`}>
                           {p.estPermanent ? (
                             <>
-                              <Building size={16} className="inline mr-1" />
                               Permanent
                             </>
                           ) : (
                             <>
-                              <DollarSign size={16} className="inline mr-1" />
-                              Entrepreneur ({p.tarifHoraire ? `${p.tarifHoraire}€/h` : 'Tarif non défini'})
+                              <span className="dh-icon">Dh</span>
+                              Entrepreneur ({p.tarifHoraire ? `${p.tarifHoraire} Dh/h` : 'Tarif non défini'})
                             </>
                           )}
                         </span>
@@ -1104,11 +1101,11 @@ const ListeProfesseurs = () => {
 
                 {!formAjout.estPermanent && (
                   <div className="form-group">
-                    <label>Tarif Horaire (€) *</label>
+                    <label>Tarif Horaire (Dh) *</label>
                     <input
                       type="number"
                       name="tarifHoraire"
-                      placeholder="Tarif horaire en euros"
+                      placeholder="Tarif horaire en dirhams"
                       value={formAjout.tarifHoraire}
                       onChange={handleChangeAjout}
                       required={!formAjout.estPermanent}
@@ -1344,7 +1341,7 @@ const ListeProfesseurs = () => {
                         </>
                       ) : (
                         <>
-                          <DollarSign size={16} className="inline mr-1" /> Entrepreneur
+                          <span className="dh-icon">Dh</span> Entrepreneur
                         </>
                       )}
                     </span>
@@ -1392,7 +1389,7 @@ const ListeProfesseurs = () => {
                   <div className="info-card">
                     <div className="info-label">Tarif Horaire</div>
                     <div className="info-value">
-                      <DollarSign size={16} className="inline mr-1" /> {professeurSelectionne.tarifHoraire}€/h
+                      <span className="dh-icon">Dh</span> {professeurSelectionne.tarifHoraire} Dh/h
                     </div>
                   </div>
                 )}
@@ -1616,11 +1613,11 @@ const ListeProfesseurs = () => {
 
                 {!formModifier.estPermanent && (
                   <div className="form-group">
-                    <label>Tarif Horaire (€) *</label>
+                    <label>Tarif Horaire (Dh) *</label>
                     <input
                       type="number"
                       name="tarifHoraire"
-                      placeholder="Tarif horaire en euros"
+                      placeholder="Tarif horaire en dirhams"
                       value={formModifier.tarifHoraire}
                       onChange={handleChangeModifier}
                       required={!formModifier.estPermanent}

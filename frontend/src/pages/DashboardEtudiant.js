@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebaretudiant from '../components/sidebaretudiant';
 import Headeretudiant from '../components/Headeretudiant';
 import ModalPaiementExpire from '../components/ModalPaiementExpire';
+import SystemeTestLangue from '../components/SystemeTestLangue'; // Import du système de test
 
 import './AdminDashboard.css';
 
@@ -19,7 +20,7 @@ const DashboardEtudiant = () => {
   useEffect(() => {
     const role = localStorage.getItem('role');
     if (role !== 'etudiant') {
-      navigate('/'); // Redirection si pas étudiant
+      navigate('/');
     }
   }, [navigate]);
 
@@ -35,6 +36,10 @@ const DashboardEtudiant = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  
+  // AJOUT : États pour le système de test
+  const [doitPasserTests, setDoitPasserTests] = useState(false);
+  const [chargementTests, setChargementTests] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
@@ -46,6 +51,7 @@ const DashboardEtudiant = () => {
       if (!token) {
         setError('Token manquant - veuillez vous reconnecter');
         setLoading(false);
+        setChargementTests(false);
         return;
       }
 
@@ -84,6 +90,27 @@ const DashboardEtudiant = () => {
       });
 
       setEtudiant(etudiantData);
+
+      // AJOUT : Vérifier si l'étudiant doit passer les tests
+      if (etudiantData.nouvelleInscription) {
+        try {
+          const resTests = await fetch('http://195.179.229.230:5000/api/tests/statut', { headers });
+          if (resTests.ok) {
+            const dataTests = await resTests.json();
+            // Si pas terminé les deux tests, afficher le système de test
+            if (!dataTests.tousTermines) {
+              setDoitPasserTests(true);
+              setChargementTests(false);
+              setLoading(false);
+              return; // Arrêter ici, ne pas continuer à charger le dashboard
+            }
+          }
+        } catch (err) {
+          console.error('Erreur vérification tests:', err);
+        }
+      }
+      
+      setChargementTests(false);
       
       // Vérifier si le modal a déjà été affiché pour cet utilisateur
       const modalShown = localStorage.getItem('welcomeModalShownStudent');
@@ -126,6 +153,7 @@ const DashboardEtudiant = () => {
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des données:', error);
       setError(`Erreur de connexion: ${error.message}`);
+      setChargementTests(false);
     } finally {
       setLoading(false);
     }
@@ -134,13 +162,12 @@ const DashboardEtudiant = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    localStorage.removeItem('welcomeModalShownStudent'); // Réinitialiser le modal pour la prochaine connexion
+    localStorage.removeItem('welcomeModalShownStudent');
     window.location.href = '/';
   };
 
   const closeWelcomeModal = () => {
     setShowWelcomeModal(false);
-    // Marquer que le modal a été affiché pour ne plus le montrer
     localStorage.setItem('welcomeModalShownStudent', 'true');
   };
 
@@ -264,6 +291,23 @@ const DashboardEtudiant = () => {
     );
   };
 
+  // AJOUT : Affichage du loader pendant la vérification des tests
+  if (chargementTests) {
+    return (
+      <div className="loading-container">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Vérification de votre profil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // AJOUT : Si l'étudiant doit passer les tests, afficher le système de test
+  if (doitPasserTests) {
+    return <SystemeTestLangue etudiant={etudiant} />;
+  }
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -325,7 +369,6 @@ const DashboardEtudiant = () => {
     </div>
   );
 
-  // Fonction pour obtenir l'icône de statut d'assiduité
   const getAssiduitéIcon = (taux) => {
     if (taux >= 80) return <Award className="inline-icon" />;
     if (taux >= 60) return <CheckCircle className="inline-icon" />;
@@ -333,7 +376,6 @@ const DashboardEtudiant = () => {
     return <XCircle className="inline-icon" />;
   };
 
-  // Fonction pour obtenir l'icône d'engagement
   const getEngagementIcon = (coursCount) => {
     if (coursCount >= 3) return <Star className="inline-icon" />;
     if (coursCount >= 2) return <CheckSquare className="inline-icon" />;
@@ -341,28 +383,21 @@ const DashboardEtudiant = () => {
     return <Clock className="inline-icon" />;
   };
 
-  // Fonction pour obtenir l'icône de statut paiement
   const getPaymentStatusIcon = (expired) => {
     return expired === 0 ? <CheckCircle className="inline-icon" /> : <AlertTriangle className="inline-icon" />;
   };
 
   return (
     <div className="admin-dashboard" style={{
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
-        }}>
-      {/* Header */}
+      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
+    }}>
       <Headeretudiant />
-      
-      {/* Modal de bienvenue */}
       <WelcomeModal />
-      
       <ModalPaiementExpire />
-
       <Sidebaretudiant onLogout={handleLogout} />
 
       <div className="dashboard-container">
         <div className="dashboard-content">
-          {/* Informations personnelles */}
           {etudiant && (
             <div className="summary-card" style={{ marginBottom: '2rem' }}>
               <h3 className="summary-header">
@@ -411,7 +446,6 @@ const DashboardEtudiant = () => {
             </div>
           )}
 
-          {/* Cartes de statistiques principales */}
           <div className="stats-grid">
             <StatCard
               title="Présences"
@@ -443,7 +477,6 @@ const DashboardEtudiant = () => {
             />
           </div>
 
-          {/* Section d'alertes pour paiements expirés */}
           {dashboardData.paiementsExpires > 0 && (
             <div className="alert-section">
               <div className="alert-content">
@@ -462,7 +495,6 @@ const DashboardEtudiant = () => {
             </div>
           )}
 
-          {/* Résumé de performance */}
           <div className="summary-card">
             <h3 className="summary-header">
               <Target className="inline-icon" style={{ marginRight: '8px' }} />

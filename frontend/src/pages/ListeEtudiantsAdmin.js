@@ -332,7 +332,8 @@ MASI: {
       'Cybersécurité et Transformation Digitale',
       'Génie Informatique et Innovation Technologique',
       'Finance, Audit & Entrepreneuriat',
-      'Développement Commercial et Marketing Digital'
+      'Développement Commercial et Marketing Digital',
+      'Ingénierie et Management industriel'
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {

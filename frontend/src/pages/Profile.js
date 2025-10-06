@@ -10,7 +10,11 @@ import {
   MapPin,
   CreditCard,
   FileText,
-  Award
+  Award,
+  Edit2,
+  Save,
+  X as CloseIcon,
+  Upload
 } from 'lucide-react';
 import Sidebar from '../components/sidebaretudiant';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +27,54 @@ const handleLogout = () => {
 const ProfileEtudiant = () => {
   const [etudiant, setEtudiant] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  
+  // États pour les champs modifiables
+  const [formData, setFormData] = useState({
+    telephone: '',
+    telephoneResponsable: '',
+    dateNaissance: '',
+    lieuNaissance: '',
+    pays: '',
+    cin: '',
+    codeMassar: '',
+    passeport: '',
+    codeBaccalaureat: '',
+    serieBaccalaureat: '',
+    anneeBaccalaureat: '',
+    lieuObtentionDiplome: '',
+    diplomeAcces: '',
+    specialiteDiplomeAcces: '',
+    mention: '',
+    email: '',
+    nouveauMotDePasse: '',
+    motDePasseActuel: ''
+  });
+  
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedDocuments, setSelectedDocuments] = useState({});
   const navigate = useNavigate();
+
+  // Liste des pays
+  const listePays = [
+    'Maroc', 'France', 'Algérie', 'Tunisie', 'Sénégal', 'Côte d\'Ivoire',
+    'Mali', 'Mauritanie', 'Cameroun', 'Gabon', 'Congo', 'Bénin',
+    'Burkina Faso', 'Niger', 'Tchad', 'Guinée', 'Madagascar',
+    'Belgique', 'Suisse', 'Canada', 'États-Unis', 'Espagne',
+    'Allemagne', 'Italie', 'Portugal', 'Royaume-Uni', 'Pays-Bas'
+  ].sort();
+
+  // Types de documents uploadables
+  const typesDocuments = [
+    { key: 'documentCin', label: 'CIN' },
+    { key: 'documentBacCommentaire', label: 'Baccalauréat' },
+    { key: 'documentReleveNoteBac', label: 'Relevé de notes Bac' },
+    { key: 'documentDiplomeCommentaire', label: 'Diplôme' },
+    { key: 'documentAttestationReussiteCommentaire', label: 'Attestation de réussite' },
+    { key: 'documentPasseport', label: 'Passeport' }
+  ];
 
   useEffect(() => {
     const role = localStorage.getItem('role');
@@ -34,27 +85,176 @@ const ProfileEtudiant = () => {
       return;
     }
 
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch('http://195.179.229.230:5000/api/etudiant/profile', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!res.ok) {
-          throw new Error('Échec de chargement du profil');
-        }
-
-        const data = await res.json();
-        setEtudiant(data);
-      } catch (err) {
-        console.error('Erreur chargement profil:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProfile();
   }, [navigate]);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://195.179.229.230:5000/api/etudiant/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) throw new Error('Échec de chargement du profil');
+
+      const data = await res.json();
+      setEtudiant(data);
+      
+      // Initialiser formData avec les données existantes
+      setFormData({
+        telephone: data.telephone || '',
+        telephoneResponsable: data.telephoneResponsable || '',
+        dateNaissance: data.dateNaissance ? data.dateNaissance.split('T')[0] : '',
+        lieuNaissance: data.lieuNaissance || '',
+        pays: data.pays || '',
+        cin: data.cin || '',
+        codeMassar: data.codeMassar || '',
+        passeport: data.passeport || '',
+        codeBaccalaureat: data.codeBaccalaureat || '',
+        serieBaccalaureat: data.serieBaccalaureat || '',
+        anneeBaccalaureat: data.anneeBaccalaureat || '',
+        lieuObtentionDiplome: data.lieuObtentionDiplome || '',
+        diplomeAcces: data.diplomeAcces || '',
+        specialiteDiplomeAcces: data.specialiteDiplomeAcces || '',
+        mention: data.mention || '',
+        email: data.email || '',
+        nouveauMotDePasse: '',
+        motDePasseActuel: ''
+      });
+    } catch (err) {
+      console.error('Erreur chargement profil:', err);
+      setMessage({ type: 'error', text: 'Erreur de chargement du profil' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'L\'image ne doit pas dépasser 5 MB' });
+        return;
+      }
+      setSelectedImage(file);
+    }
+  };
+
+  const handleDocumentChange = (e, documentKey) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'Le document ne doit pas dépasser 5 MB' });
+        return;
+      }
+      setSelectedDocuments(prev => ({
+        ...prev,
+        [documentKey]: file
+      }));
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const token = localStorage.getItem('token');
+      const formDataToSend = new FormData();
+
+      // Ajouter tous les champs modifiables
+      Object.keys(formData).forEach(key => {
+        if (formData[key]) {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      // Ajouter l'image si sélectionnée
+      if (selectedImage) {
+        formDataToSend.append('image', selectedImage);
+      }
+
+      // Ajouter les documents si sélectionnés
+      Object.keys(selectedDocuments).forEach(key => {
+        if (selectedDocuments[key]) {
+          formDataToSend.append(key, selectedDocuments[key]);
+        }
+      });
+
+      const res = await fetch('http://195.179.229.230:5000/api/etudiant/mon-profil', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formDataToSend
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Erreur lors de la mise à jour');
+      }
+
+      setMessage({ type: 'success', text: 'Profil mis à jour avec succès !' });
+      setEtudiant(data.etudiant);
+      setEditMode(false);
+      setSelectedImage(null);
+      setSelectedDocuments({});
+      
+      // Réinitialiser les champs de mot de passe
+      setFormData(prev => ({
+        ...prev,
+        nouveauMotDePasse: '',
+        motDePasseActuel: ''
+      }));
+
+      // Rafraîchir le profil
+      setTimeout(() => {
+        fetchProfile();
+      }, 1000);
+
+    } catch (err) {
+      console.error('Erreur sauvegarde:', err);
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditMode(false);
+    setSelectedImage(null);
+    setSelectedDocuments({});
+    setMessage({ type: '', text: '' });
+    // Restaurer les données originales
+    if (etudiant) {
+      setFormData({
+        telephone: etudiant.telephone || '',
+        telephoneResponsable: etudiant.telephoneResponsable || '',
+        dateNaissance: etudiant.dateNaissance ? etudiant.dateNaissance.split('T')[0] : '',
+        lieuNaissance: etudiant.lieuNaissance || '',
+        pays: etudiant.pays || '',
+        cin: etudiant.cin || '',
+        codeMassar: etudiant.codeMassar || '',
+        passeport: etudiant.passeport || '',
+        codeBaccalaureat: etudiant.codeBaccalaureat || '',
+        serieBaccalaureat: etudiant.serieBaccalaureat || '',
+        anneeBaccalaureat: etudiant.anneeBaccalaureat || '',
+        lieuObtentionDiplome: etudiant.lieuObtentionDiplome || '',
+        diplomeAcces: etudiant.diplomeAcces || '',
+        specialiteDiplomeAcces: etudiant.specialiteDiplomeAcces || '',
+        mention: etudiant.mention || '',
+        email: etudiant.email || '',
+        nouveauMotDePasse: '',
+        motDePasseActuel: ''
+      });
+    }
+  };
 
   const calculerAge = (dateNaissance) => {
     if (!dateNaissance) return 'N/A';
@@ -73,7 +273,6 @@ const ProfileEtudiant = () => {
     return new Date(date).toLocaleDateString('fr-FR');
   };
 
-  // Construire le nom complet à partir de prenom et nomDeFamille
   const getNomComplet = (etudiant) => {
     return `${etudiant.prenom || ''} ${etudiant.nomDeFamille || ''}`.trim();
   };
@@ -101,10 +300,56 @@ const ProfileEtudiant = () => {
       <Sidebar onLogout={handleLogout} />
 
       <div style={styles.header}>
-        <div style={{ ...styles.headerContent, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <h1 style={{ ...styles.headerTitle, textAlign: 'center', width: '100%' }}>Mon Profil</h1>
+        <div style={styles.headerContent}>
+          <h1 style={styles.headerTitle}>Mon Profil</h1>
+          {!editMode ? (
+            <button
+              onClick={() => setEditMode(true)}
+              style={styles.editButton}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
+            >
+              <Edit2 size={18} />
+              Modifier le profil
+            </button>
+          ) : (
+            <div style={styles.actionButtons}>
+              <button
+                onClick={handleCancel}
+                style={styles.cancelButton}
+                disabled={saving}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#6b7280'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#9ca3af'}
+              >
+                <CloseIcon size={18} />
+                Annuler
+              </button>
+              <button
+                onClick={handleSave}
+                style={styles.saveButton}
+                disabled={saving}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#15803d'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
+              >
+                <Save size={18} />
+                {saving ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Message de feedback */}
+      {message.text && (
+        <div style={{
+          ...styles.messageBox,
+          backgroundColor: message.type === 'success' ? '#d1fae5' : '#fee2e2',
+          color: message.type === 'success' ? '#065f46' : '#991b1b',
+          border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`
+        }}>
+          {message.text}
+        </div>
+      )}
 
       {/* Main Content */}
       <div style={styles.mainContent}>
@@ -112,7 +357,24 @@ const ProfileEtudiant = () => {
         <div style={styles.profileCard}>
           <div style={styles.profileHeader}>
             <div style={styles.avatarContainer}>
-              {etudiant.image ? (
+              {editMode && (
+                <label style={styles.imageUploadLabel}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    style={{ display: 'none' }}
+                  />
+                  <Upload size={20} />
+                </label>
+              )}
+              {selectedImage ? (
+                <img
+                  src={URL.createObjectURL(selectedImage)}
+                  alt="Profil"
+                  style={styles.avatar}
+                />
+              ) : etudiant.image ? (
                 <img
                   src={`http://195.179.229.230:5000${etudiant.image}`}
                   alt="Profil"
@@ -133,7 +395,18 @@ const ProfileEtudiant = () => {
             </div>
             <div style={styles.profileInfo}>
               <h2 style={styles.profileName}>{getNomComplet(etudiant)}</h2>
-              <p style={styles.profileEmail}>{etudiant.email}</p>
+              {editMode ? (
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  style={styles.input}
+                  placeholder="Email"
+                />
+              ) : (
+                <p style={styles.profileEmail}>{etudiant.email}</p>
+              )}
               <div style={styles.statusContainer}>
                 <span style={{
                   ...styles.statusText,
@@ -159,45 +432,186 @@ const ProfileEtudiant = () => {
                 <Phone size={18} color="#6b7280" />
                 <div style={styles.infoDetails}>
                   <span style={styles.infoLabel}>Téléphone</span>
-                  <span style={styles.infoValue}>{etudiant.telephone}</span>
+                  {editMode ? (
+                    <input
+                      type="tel"
+                      name="telephone"
+                      value={formData.telephone}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.telephone}</span>
+                  )}
                 </div>
               </div>
+
+              <div style={styles.infoItem}>
+                <Phone size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Téléphone Responsable</span>
+                  {editMode ? (
+                    <input
+                      type="tel"
+                      name="telephoneResponsable"
+                      value={formData.telephoneResponsable}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.telephoneResponsable || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
               <div style={styles.infoItem}>
                 <Calendar size={18} color="#6b7280" />
                 <div style={styles.infoDetails}>
                   <span style={styles.infoLabel}>Date de naissance</span>
-                  <span style={styles.infoValue}>
-                    {formaterDate(etudiant.dateNaissance)} ({calculerAge(etudiant.dateNaissance)})
-                  </span>
+                  {editMode ? (
+                    <input
+                      type="date"
+                      name="dateNaissance"
+                      value={formData.dateNaissance}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>
+                      {formaterDate(etudiant.dateNaissance)} ({calculerAge(etudiant.dateNaissance)})
+                    </span>
+                  )}
                 </div>
               </div>
-              {etudiant.genre && (
-                <div style={styles.infoItem}>
-                  <GraduationCap size={18} color="#6b7280" />
-                  <div style={styles.infoDetails}>
-                    <span style={styles.infoLabel}>Genre</span>
-                    <span style={styles.infoValue}>{etudiant.genre}</span>
-                  </div>
+
+              <div style={styles.infoItem}>
+                <MapPin size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Lieu de naissance</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="lieuNaissance"
+                      value={formData.lieuNaissance}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.lieuNaissance || 'N/A'}</span>
+                  )}
                 </div>
-              )}
-              {etudiant.cin && (
-                <div style={styles.infoItem}>
-                  <FileText size={18} color="#6b7280" />
-                  <div style={styles.infoDetails}>
-                    <span style={styles.infoLabel}>CIN</span>
-                    <span style={styles.infoValue}>{etudiant.cin}</span>
-                  </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <MapPin size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Pays</span>
+                  {editMode ? (
+                    <select
+                      name="pays"
+                      value={formData.pays}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    >
+                      <option value="">Sélectionnez un pays</option>
+                      {listePays.map(pays => (
+                        <option key={pays} value={pays}>{pays}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.pays || 'N/A'}</span>
+                  )}
                 </div>
-              )}
-              {etudiant.lieuNaissance && (
-                <div style={styles.infoItem}>
-                  <MapPin size={18} color="#6b7280" />
-                  <div style={styles.infoDetails}>
-                    <span style={styles.infoLabel}>Lieu de naissance</span>
-                    <span style={styles.infoValue}>{etudiant.lieuNaissance}</span>
-                  </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <GraduationCap size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Genre</span>
+                  <span style={styles.infoValue}>{etudiant.genre}</span>
                 </div>
-              )}
+              </div>
+            </div>
+          </div>
+
+          {/* Documents d'identité */}
+          <div style={styles.infoCard}>
+            <div style={styles.cardHeader}>
+              <FileText size={20} color="#dc2626" />
+              <h3 style={styles.cardTitle}>Documents d'Identité</h3>
+            </div>
+            <div style={styles.cardContent}>
+              <div style={styles.infoItem}>
+                <FileText size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>CIN</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="cin"
+                      value={formData.cin}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.cin || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <FileText size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Code Massar</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="codeMassar"
+                      value={formData.codeMassar}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.codeMassar || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <FileText size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Passeport</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="passeport"
+                      value={formData.passeport}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.passeport || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <FileText size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Code Baccalauréat</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="codeBaccalaureat"
+                      value={formData.codeBaccalaureat}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.codeBaccalaureat || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -205,7 +619,7 @@ const ProfileEtudiant = () => {
           <div style={styles.infoCard}>
             <div style={styles.cardHeader}>
               <Award size={20} color="#7c3aed" />
-              <h3 style={styles.cardTitle}>Informations Académiques</h3>
+              <h3 style={styles.cardTitle}>Informations Académiques (Non modifiables)</h3>
             </div>
             <div style={styles.cardContent}>
               {etudiant.niveau && (
@@ -244,7 +658,6 @@ const ProfileEtudiant = () => {
                   </div>
                 </div>
               )}
-              {/* NOUVEAU : Année scolaire */}
               {etudiant.anneeScolaire && (
                 <div style={styles.infoItem}>
                   <Calendar size={18} color="#6b7280" />
@@ -257,59 +670,205 @@ const ProfileEtudiant = () => {
             </div>
           </div>
 
-          {/* Financial Information */}
-          {(etudiant.prixTotal || etudiant.pourcentageBourse || etudiant.typePaiement) && (
-            <div style={styles.infoCard}>
-              <div style={styles.cardHeader}>
-                <CreditCard size={20} color="#059669" />
-                <h3 style={styles.cardTitle}>Informations Financières</h3>
+          {/* Infos Baccalauréat */}
+          <div style={styles.infoCard}>
+            <div style={styles.cardHeader}>
+              <Award size={20} color="#059669" />
+              <h3 style={styles.cardTitle}>Diplômes Antérieurs</h3>
+            </div>
+            <div style={styles.cardContent}>
+              <div style={styles.infoItem}>
+                <FileText size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Série Baccalauréat</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="serieBaccalaureat"
+                      value={formData.serieBaccalaureat}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.serieBaccalaureat || 'N/A'}</span>
+                  )}
+                </div>
               </div>
-              <div style={styles.cardContent}>
-                {etudiant.prixTotal && (
-                  <div style={styles.infoItem}>
-                    <CreditCard size={18} color="#6b7280" />
-                    <div style={styles.infoDetails}>
-                      <span style={styles.infoLabel}>Prix Total</span>
-                      <span style={styles.infoValue}>{etudiant.prixTotal} DH</span>
-                    </div>
-                  </div>
-                )}
-                {etudiant.pourcentageBourse && (
-                  <div style={styles.infoItem}>
-                    <Award size={18} color="#6b7280" />
-                    <div style={styles.infoDetails}>
-                      <span style={styles.infoLabel}>Pourcentage Bourse</span>
-                      <span style={styles.infoValue}>{etudiant.pourcentageBourse}%</span>
-                    </div>
-                  </div>
-                )}
-                {etudiant.typePaiement && (
-                  <div style={styles.infoItem}>
-                    <CreditCard size={18} color="#6b7280" />
-                    <div style={styles.infoDetails}>
-                      <span style={styles.infoLabel}>Type de Paiement</span>
-                      <span style={styles.infoValue}>{etudiant.typePaiement}</span>
-                    </div>
-                  </div>
-                )}
-                <div style={styles.infoItem}>
-                  <CheckCircle size={18} color={etudiant.paye ? "#10b981" : "#ef4444"} />
-                  <div style={styles.infoDetails}>
-                    <span style={styles.infoLabel}>Statut Paiement</span>
-                    <span style={{...styles.infoValue, color: etudiant.paye ? '#10b981' : '#ef4444'}}>
-                      {etudiant.paye ? 'Payé' : 'Non Payé'}
-                    </span>
-                  </div>
+
+              <div style={styles.infoItem}>
+                <Calendar size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Année Baccalauréat</span>
+                  {editMode ? (
+                    <input
+                      type="number"
+                      name="anneeBaccalaureat"
+                      value={formData.anneeBaccalaureat}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.anneeBaccalaureat || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <MapPin size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Lieu Obtention Diplôme</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="lieuObtentionDiplome"
+                      value={formData.lieuObtentionDiplome}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.lieuObtentionDiplome || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <FileText size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Diplôme d'Accès</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="diplomeAcces"
+                      value={formData.diplomeAcces}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.diplomeAcces || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <FileText size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Spécialité Diplôme d'Accès</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="specialiteDiplomeAcces"
+                      value={formData.specialiteDiplomeAcces}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.specialiteDiplomeAcces || 'N/A'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.infoItem}>
+                <Award size={18} color="#6b7280" />
+                <div style={styles.infoDetails}>
+                  <span style={styles.infoLabel}>Mention</span>
+                  {editMode ? (
+                    <input
+                      type="text"
+                      name="mention"
+                      value={formData.mention}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <span style={styles.infoValue}>{etudiant.mention || 'N/A'}</span>
+                  )}
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Changement de mot de passe */}
+          {editMode && (
+            <>
+              <div style={styles.infoCard}>
+                <div style={styles.cardHeader}>
+                  <FileText size={20} color="#dc2626" />
+                  <h3 style={styles.cardTitle}>Changer le mot de passe</h3>
+                </div>
+                <div style={styles.cardContent}>
+                  <div style={styles.infoItem}>
+                    <FileText size={18} color="#6b7280" />
+                    <div style={styles.infoDetails}>
+                      <span style={styles.infoLabel}>Mot de passe actuel (requis)</span>
+                      <input
+                        type="password"
+                        name="motDePasseActuel"
+                        value={formData.motDePasseActuel}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                        placeholder="Entrez votre mot de passe actuel"
+                      />
+                    </div>
+                  </div>
+
+                  <div style={styles.infoItem}>
+                    <FileText size={18} color="#6b7280" />
+                    <div style={styles.infoDetails}>
+                      <span style={styles.infoLabel}>Nouveau mot de passe</span>
+                      <input
+                        type="password"
+                        name="nouveauMotDePasse"
+                        value={formData.nouveauMotDePasse}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                        placeholder="Minimum 6 caractères"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload de documents */}
+              <div style={styles.infoCard}>
+                <div style={styles.cardHeader}>
+                  <Upload size={20} color="#7c3aed" />
+                  <h3 style={styles.cardTitle}>Uploader des documents</h3>
+                </div>
+                <div style={styles.cardContent}>
+                  {typesDocuments.map(doc => (
+                    <div key={doc.key} style={styles.infoItem}>
+                      <FileText size={18} color="#6b7280" />
+                      <div style={styles.infoDetails}>
+                        <span style={styles.infoLabel}>{doc.label}</span>
+                        <div style={styles.fileInputContainer}>
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            onChange={(e) => handleDocumentChange(e, doc.key)}
+                            style={styles.fileInput}
+                            id={doc.key}
+                          />
+                          <label htmlFor={doc.key} style={styles.fileLabel}>
+                            <Upload size={16} />
+                            {selectedDocuments[doc.key] 
+                              ? selectedDocuments[doc.key].name 
+                              : 'Choisir un fichier'}
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <p style={styles.fileHint}>Formats acceptés: PDF, JPG, PNG, DOC, DOCX (max 5 MB)</p>
+                </div>
+              </div>
+            </>
           )}
 
-          {/* Courses Information */}
+          {/* Courses Information (Non modifiable) */}
           <div style={styles.infoCard}>
             <div style={styles.cardHeader}>
               <BookOpen size={20} color="#059669" />
-              <h3 style={styles.cardTitle}>Mes classe</h3>
+              <h3 style={styles.cardTitle}>Mes Classes</h3>
             </div>
             <div style={styles.cardContent}>
               {etudiant.cours && etudiant.cours.length > 0 ? (
@@ -358,13 +917,77 @@ const styles = {
     maxWidth: '1200px',
     margin: '0 auto',
     padding: '0 1rem',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '1rem'
   },
   
   headerTitle: {
-    fontSize: '32px',
+    fontSize: '28px',
     fontWeight: '700',
     color: '#1f2937',
     margin: 0,
+  },
+
+  editButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    backgroundColor: '#4f46e5',
+    color: 'white',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '0.5rem',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s'
+  },
+
+  actionButtons: {
+    display: 'flex',
+    gap: '0.75rem'
+  },
+
+  cancelButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    backgroundColor: '#9ca3af',
+    color: 'white',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '0.5rem',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s'
+  },
+
+  saveButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    backgroundColor: '#16a34a',
+    color: 'white',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '0.5rem',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s'
+  },
+
+  messageBox: {
+    maxWidth: '1200px',
+    margin: '1rem auto',
+    padding: '1rem 1.5rem',
+    borderRadius: '0.5rem',
+    fontSize: '14px',
+    fontWeight: '500'
   },
   
   mainContent: {
@@ -392,6 +1015,22 @@ const styles = {
   avatarContainer: {
     position: 'relative',
     flexShrink: 0,
+  },
+
+  imageUploadLabel: {
+    position: 'absolute',
+    top: '-10px',
+    right: '-10px',
+    backgroundColor: '#4f46e5',
+    color: 'white',
+    padding: '0.5rem',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    zIndex: 10,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   
   avatar: {
@@ -432,7 +1071,7 @@ const styles = {
     fontSize: '1.5rem',
     fontWeight: '700',
     color: '#1f2937',
-    margin: '0 0 0.25rem 0',
+    margin: '0 0 0.5rem 0',
   },
   
   profileEmail: {
@@ -511,6 +1150,52 @@ const styles = {
     fontSize: '0.875rem',
     color: '#1f2937',
     fontWeight: '500',
+  },
+
+  input: {
+    width: '100%',
+    padding: '0.5rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '0.375rem',
+    fontSize: '0.875rem',
+    outline: 'none',
+    transition: 'border-color 0.2s'
+  },
+
+  fileInputContainer: {
+    position: 'relative',
+    width: '100%'
+  },
+
+  fileInput: {
+    position: 'absolute',
+    width: '0.1px',
+    height: '0.1px',
+    opacity: 0,
+    overflow: 'hidden',
+    zIndex: -1
+  },
+
+  fileLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 1rem',
+    backgroundColor: '#f3f4f6',
+    border: '1px solid #d1d5db',
+    borderRadius: '0.375rem',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    width: '100%',
+    justifyContent: 'center'
+  },
+
+  fileHint: {
+    fontSize: '0.75rem',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    margin: '0.5rem 0 0 0'
   },
   
   coursesList: {
@@ -607,17 +1292,21 @@ styleSheet.textContent = `
     100% { transform: rotate(360deg); }
   }
   
-  button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  input:focus {
+    border-color: #4f46e5 !important;
+    outline: none;
+  }
+
+  label[style*="fileLabel"]:hover {
+    background-color: #e5e7eb;
+  }
+  
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   
   @media (max-width: 768px) {
-    .profile-header {
-      flex-direction: column;
-      text-align: center;
-    }
-    
     .cards-grid {
       grid-template-columns: 1fr;
     }
@@ -625,5 +1314,4 @@ styleSheet.textContent = `
 `;
 document.head.appendChild(styleSheet);
 
-// Export par défaut pour résoudre l'erreur d'import
 export default ProfileEtudiant;
