@@ -71,21 +71,21 @@ const ListeCoursPedagogique = () => {
     }
   };
 
-// Filtrer les étudiants accessibles selon la filière du pédagogique
-const getEtudiantsAccessibles = () => {
-  if (!pedagogiqueInfo) return [];
-  
-  if (pedagogiqueInfo.filiere === 'GENERAL' || pedagogiqueInfo.type === 'GENERAL') {
-    // Pédagogique général : accès à TOUS les étudiants
-    return etudiants;
-  } else {
-    // Pédagogique spécifique : accès uniquement à sa filière
-    return etudiants.filter(e => 
-      e.filiere === pedagogiqueInfo.filiere || 
-      e.typeFormation === pedagogiqueInfo.filiere
-    );
-  }
-};
+  // Filtrer les étudiants accessibles selon la filière du pédagogique
+  const getEtudiantsAccessibles = () => {
+    if (!pedagogiqueInfo) return [];
+    
+    if (pedagogiqueInfo.filiere === 'GENERAL' || pedagogiqueInfo.type === 'GENERAL') {
+      // Pédagogique général : accès à TOUS les étudiants
+      return etudiants;
+    } else {
+      // Pédagogique spécifique : accès uniquement à sa filière
+      return etudiants.filter(e => 
+        e.filiere === pedagogiqueInfo.filiere || 
+        e.typeFormation === pedagogiqueInfo.filiere
+      );
+    }
+  };
 
   const getNombreEtudiants = (nomCours, regimeFormation = null) => {
     const etudiantsAccessibles = getEtudiantsAccessibles();
@@ -278,15 +278,13 @@ const getEtudiantsAccessibles = () => {
       worksheetData = [["Nom du Cours", "Professeur(s)", "Nombre d'Étudiants", "Executive"]];
       filteredCours = cours.filter(c => {
         const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
-        const nombreEtudiants = getNombreEtudiants(c.nom);
-        return isLicenceMaster && nombreEtudiants > 0;
+        return isLicenceMaster;
       });
     } else {
       worksheetData = [["Nom du Cours", "Professeur(s)", "Régime de Formation", "Nombre d'Étudiants"]];
       filteredCours = cours.filter(c => {
         const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
-        const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
-        return !isLicenceMaster && nombreEtudiants > 0;
+        return !isLicenceMaster;
       });
     }
 
@@ -511,6 +509,17 @@ const getEtudiantsAccessibles = () => {
     studentBadge: {
       backgroundColor: '#dbeafe',
       color: '#1e40af',
+      padding: '0.25rem 0.75rem',
+      borderRadius: '9999px',
+      fontSize: '0.75rem',
+      fontWeight: '500',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '0.25rem'
+    },
+    emptyBadge: {
+      backgroundColor: '#f3f4f6',
+      color: '#6b7280',
       padding: '0.25rem 0.75rem',
       borderRadius: '9999px',
       fontSize: '0.75rem',
@@ -949,12 +958,25 @@ const getEtudiantsAccessibles = () => {
     );
   }
 
-  // Fonction pour rendre le tableau FI
+  // Fonction pour rendre le tableau FI - AFFICHE TOUS LES COURS (même avec 0 étudiant)
   const renderTableFI = () => {
     const regimeFormation = 'FI';
     const filteredCours = cours.filter(c => {
       const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
-      return !isLicenceMaster && getNombreEtudiants(c.nom, regimeFormation) > 0;
+      if (isLicenceMaster) return false;
+      
+      // Exclure les cours qui contiennent " TA" dans leur nom (ils vont dans le tableau TA)
+      const coursNameLower = c.nom.toLowerCase();
+      if (coursNameLower.includes(' ta')) return false;
+      
+      // Si pédagogique GENERAL, afficher tous les cours
+      if (pedagogiqueInfo.type === 'GENERAL' || pedagogiqueInfo.filiere === 'GENERAL') {
+        return true;
+      }
+      
+      // Si pédagogique spécifique (ex: IRM), filtrer par filière
+      const coursNameUpper = c.nom.toUpperCase();
+      return coursNameUpper.includes(pedagogiqueInfo.filiere.toUpperCase());
     });
     
     const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom, regimeFormation), 0);
@@ -1016,10 +1038,17 @@ const getEtudiantsAccessibles = () => {
                       </span>
                     </td>
                     <td style={styles.tdCenter}>
-                      <div style={styles.studentBadge}>
-                        <Users size={12} />
-                        {nombreEtudiants}
-                      </div>
+                      {nombreEtudiants > 0 ? (
+                        <div style={styles.studentBadge}>
+                          <Users size={12} />
+                          {nombreEtudiants}
+                        </div>
+                      ) : (
+                        <div style={styles.emptyBadge}>
+                          <Users size={12} />
+                          0
+                        </div>
+                      )}
                     </td>
                     <td style={styles.tdLast}>
                       <div style={styles.actionButtons}>
@@ -1033,7 +1062,7 @@ const getEtudiantsAccessibles = () => {
                         <button
                           onClick={() => ouvrirModalSuppression(c)}
                           style={styles.deleteButton}
-                          title="Supprimer ce classe"
+                          title="Supprimer ce cours"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1057,12 +1086,25 @@ const getEtudiantsAccessibles = () => {
     );
   };
 
-  // Fonction pour rendre le tableau TA
+  // Fonction pour rendre le tableau TA - AFFICHE TOUS LES COURS (même avec 0 étudiant)
   const renderTableTA = () => {
     const regimeFormation = 'TA';
     const filteredCours = cours.filter(c => {
       const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
-      return !isLicenceMaster && getNombreEtudiants(c.nom, regimeFormation) > 0;
+      if (isLicenceMaster) return false;
+      
+      // Inclure UNIQUEMENT les cours qui contiennent " TA" dans leur nom
+      const coursNameLower = c.nom.toLowerCase();
+      if (!coursNameLower.includes(' ta')) return false;
+      
+      // Si pédagogique GENERAL, afficher tous les cours TA
+      if (pedagogiqueInfo.type === 'GENERAL' || pedagogiqueInfo.filiere === 'GENERAL') {
+        return true;
+      }
+      
+      // Si pédagogique spécifique (ex: IRM), filtrer par filière
+      const coursNameUpper = c.nom.toUpperCase();
+      return coursNameUpper.includes(pedagogiqueInfo.filiere.toUpperCase());
     });
     
     const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom, regimeFormation), 0);
@@ -1124,10 +1166,17 @@ const getEtudiantsAccessibles = () => {
                       </span>
                     </td>
                     <td style={styles.tdCenter}>
-                      <div style={styles.studentBadge}>
-                        <Users size={12} />
-                        {nombreEtudiants}
-                      </div>
+                      {nombreEtudiants > 0 ? (
+                        <div style={styles.studentBadge}>
+                          <Users size={12} />
+                          {nombreEtudiants}
+                        </div>
+                      ) : (
+                        <div style={styles.emptyBadge}>
+                          <Users size={12} />
+                          0
+                        </div>
+                      )}
                     </td>
                     <td style={styles.tdLast}>
                       <div style={styles.actionButtons}>
@@ -1141,7 +1190,7 @@ const getEtudiantsAccessibles = () => {
                         <button
                           onClick={() => ouvrirModalSuppression(c)}
                           style={styles.deleteButton}
-                          title="Supprimer ce classe"
+                          title="Supprimer ce cours"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1165,11 +1214,20 @@ const getEtudiantsAccessibles = () => {
     );
   };
 
-  // Fonction pour rendre le tableau Licence/Master Pro
+  // Fonction pour rendre le tableau Licence/Master Pro - AFFICHE TOUS LES COURS (même avec 0 étudiant)
   const renderTableLicenceMaster = () => {
     const filteredCours = cours.filter(c => {
       const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
-      return isLicenceMaster && getNombreEtudiants(c.nom) > 0;
+      if (!isLicenceMaster) return false;
+      
+      // Si pédagogique GENERAL, afficher tous les cours
+      if (pedagogiqueInfo.type === 'GENERAL' || pedagogiqueInfo.filiere === 'GENERAL') {
+        return true;
+      }
+      
+      // Si pédagogique spécifique (ex: IRM), filtrer par filière
+      const coursNameUpper = c.nom.toUpperCase();
+      return coursNameUpper.includes(pedagogiqueInfo.filiere.toUpperCase());
     });
     
     const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom), 0);
@@ -1228,10 +1286,17 @@ const getEtudiantsAccessibles = () => {
                       </div>
                     </td>
                     <td style={styles.tdCenter}>
-                      <div style={styles.studentBadge}>
-                        <Users size={12} />
-                        {nombreEtudiants}
-                      </div>
+                      {nombreEtudiants > 0 ? (
+                        <div style={styles.studentBadge}>
+                          <Users size={12} />
+                          {nombreEtudiants}
+                        </div>
+                      ) : (
+                        <div style={styles.emptyBadge}>
+                          <Users size={12} />
+                          0
+                        </div>
+                      )}
                     </td>
                     <td style={styles.tdCenter}>
                       <span style={styles.executiveBadge}>
@@ -1251,7 +1316,7 @@ const getEtudiantsAccessibles = () => {
                         <button
                           onClick={() => ouvrirModalSuppression(c)}
                           style={styles.deleteButton}
-                          title="Supprimer ce classe"
+                          title="Supprimer ce cours"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1280,7 +1345,6 @@ const getEtudiantsAccessibles = () => {
       <Sidebar onLogout={handleLogout} />
       
       <div style={styles.mainContent}>
-        {/* Badge d'information sur les permissions */}
         {pedagogiqueInfo && (
           <div style={{
             marginBottom: '1rem',
@@ -1305,7 +1369,6 @@ const getEtudiantsAccessibles = () => {
           </div>
         )}
 
-        {/* Header principal */}
         <div style={styles.headerSection}>
           <div style={styles.mainTitle}>
             <div style={styles.mainIconBox}>
@@ -1322,13 +1385,11 @@ const getEtudiantsAccessibles = () => {
           </button>
         </div>
 
-        {/* Tableaux séparés */}
         {renderTableFI()}
         {renderTableTA()}
         {renderTableLicenceMaster()}
       </div>
 
-      {/* Modal d'ajout de cours */}
       {showAjoutModal && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
@@ -1485,7 +1546,6 @@ const getEtudiantsAccessibles = () => {
         </div>
       )}
 
-      {/* Modal de confirmation de suppression */}
       {showDeleteModal && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
@@ -1540,7 +1600,6 @@ const getEtudiantsAccessibles = () => {
         </div>
       )}
 
-      {/* Modal de détails */}
       {coursActuel && (
         <div style={styles.modal}>
           <div style={{...styles.modalContent, ...styles.detailsModalContent}}>

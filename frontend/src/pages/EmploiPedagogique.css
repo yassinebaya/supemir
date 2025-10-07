@@ -39,7 +39,522 @@ body {
   margin: 0 auto;
   padding: 2rem;
 }
+/* ========================================
+   MODAL CONFIGURATION CRÉNEAUX - DESIGN MODERNE ET CLAIR
+   ======================================== */
 
+/* Overlay du modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Contenu principal du modal */
+.modal-content {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header du modal */
+.modal-header {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  padding: 24px 32px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 16px 16px 0 0;
+  letter-spacing: 0.3px;
+}
+
+/* Info semaine */
+.semaine-info {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #bae6fd;
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin: 24px 32px 0;
+  text-align: center;
+  font-weight: 600;
+  font-size: 15px;
+  color: #0c4a6e;
+}
+
+/* Actions semaine (bouton copie) */
+.semaine-actions {
+  margin: 20px 32px 0;
+}
+
+.modal-action-button.copy-week {
+  width: 100%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.modal-action-button.copy-week:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+}
+
+/* Onglets des jours */
+.modal-tabs {
+  display: flex;
+  padding: 24px 32px 0;
+  gap: 8px;
+  overflow-x: auto;
+  border-bottom: 2px solid #f1f5f9;
+  background: white;
+}
+
+.modal-tab {
+  flex: 1;
+  min-width: 100px;
+  background: #f8fafc;
+  color: #64748b;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  text-align: center;
+}
+
+.modal-tab:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.modal-tab.active {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.tab-count {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+/* Contenu de l'onglet */
+.tab-content {
+  padding: 32px;
+  background: white;
+}
+
+.tab-title {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tab-badge {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Ligne de créneau */
+.creneau-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 180px 50px;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+}
+
+.creneau-row:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateX(4px);
+}
+
+.creneau-label {
+  font-weight: 600;
+  color: #475569;
+  font-size: 14px;
+}
+
+.creneau-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.creneau-time-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.creneau-time-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.creneau-separator {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.creneau-preview {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  border: 2px solid #93c5fd;
+}
+
+.creneau-delete {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.creneau-delete:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* État vide */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: #64748b;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.empty-state div:not(.empty-state-icon) {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.text-xs {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+/* Bouton d'ajout */
+.text-center {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.add-creneau-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-creneau-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
+/* Actions rapides */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  padding: 0 32px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.modal-action-button {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.modal-action-button.copy {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.modal-action-button.copy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+}
+
+.modal-action-button.clear {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.modal-action-button.clear:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+
+/* Résumé */
+.modal-summary {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #fbbf24;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 0 32px 24px;
+}
+
+.summary-title {
+  color: #78350f;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-item {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.summary-item-title {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.summary-item-count {
+  font-size: 18px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.summary-total {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: #78350f;
+  font-weight: 600;
+}
+
+/* Boutons de validation */
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  padding: 0 32px 32px;
+  justify-content: flex-end;
+}
+
+.modal-button {
+  padding: 14px 32px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-button.cancel {
+  background: #f1f5f9;
+  color: #475569;
+  border: 2px solid #e2e8f0;
+}
+
+.modal-button.cancel:hover {
+  background: #e2e8f0;
+  transform: translateY(-2px);
+}
+
+.modal-button.save {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.modal-button.save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .modal-header {
+    border-radius: 0;
+    font-size: 18px;
+    padding: 20px;
+  }
+
+  .semaine-info,
+  .semaine-actions,
+  .tab-content,
+  .modal-actions,
+  .modal-summary,
+  .modal-buttons {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .modal-tabs {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .creneau-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .creneau-label {
+    text-align: center;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal-buttons {
+    flex-direction: column;
+  }
+
+  .modal-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-action-button {
+    min-width: auto;
+  }
+}
 /* ========================================
    HEADER SECTION
    ======================================== */
@@ -1488,7 +2003,6 @@ body {
   text-align: center;
   padding: 5rem 2rem;
   color: #9ca3af;
-  font-size: 1.125rem;
 }
 
 .empty-stats div:first-child {
@@ -1782,4 +2296,129 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #94a3b8, #64748b);
+}
+
+/* --- OVERRIDES: Modal et UI simplifiés, sans animation ni effet --- */
+
+/* Overlay simple, pas de blur */
+.modal-overlay {
+  background: rgba(0,0,0,0.45) !important;
+  backdrop-filter: none !important;
+  animation: none !important;
+}
+
+/* Contenu modal : fond blanc, bord fin, pas d'ombre ni d'animation */
+.modal-content,
+.modal-content-large {
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  border: 1px solid #e6e6e6 !important;
+  padding: 20px !important;
+  animation: none !important;
+  max-height: 85vh !important;
+  overflow: auto !important;
+  transition: none !important;
+}
+
+/* Header simple */
+.modal-header {
+  background: transparent !important;
+  color: #111827 !important;
+  padding: 12px 16px !important;
+  font-size: 18px !important;
+  border-bottom: 1px solid #eef2f7 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Tabs et boutons: pas d'ombre, pas de transition, pas de transform au hover */
+.modal-tabs,
+.modal-tab,
+.modal-action-button,
+.modal-button,
+.add-creneau-button,
+.creneau-row,
+.creneau-delete,
+.add-button,
+.configure-button-inline {
+  transition: none !important;
+  box-shadow: none !important;
+}
+
+/* Empêcher effets hover/transform */
+.modal-tab:hover,
+.modal-action-button:hover,
+.modal-button:hover,
+.add-creneau-button:hover,
+.creneau-row:hover,
+.configure-button-inline:hover,
+.add-button:hover {
+  transform: none !important;
+  background: #f8fafc !important;
+  box-shadow: none !important;
+}
+
+/* Boutons standards plats et sobres */
+.modal-button,
+.modal-action-button,
+.add-creneau-button,
+.creneau-delete,
+.configure-button-inline,
+.action-button {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+  border: 1px solid #e6e6e6 !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+}
+
+/* Badges et aperçus simplifiés */
+.tab-badge,
+.badge-configured,
+.badge-has-seances,
+.badge-not-configured,
+.summary-item,
+.summary-total {
+  background: #ffffff !important;
+  border: 1px solid #eef2f7 !important;
+  color: #111827 !important;
+  box-shadow: none !important;
+}
+
+/* Supprimer keyframes utilisées précédemment (ne fait rien mais évite animations héritées) */
+@keyframes fadeIn { from { opacity: 1; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: none; } to { transform: none; } }
+@keyframes spin { from { transform: none; } to { transform: none; } }
+
+/* Assurer pas d'animation sur messages et éléments modaux */
+.message,
+.loading,
+.loading-stats,
+.stat-card {
+  transition: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+}
+
+/* Réduire les coins et aérer */
+.modal-content .tab-content,
+.modal-content .modal-actions,
+.modal-content .modal-summary,
+.modal-content .modal-buttons {
+  padding: 12px !important;
+}
+
+/* Petite règle responsive conservatrice (sans animation) */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 96% !important;
+    padding: 12px !important;
+    border-radius: 6px !important;
+  }
+
+  .modal-header {
+    font-size: 16px !important;
+    padding: 10px !important;
+  }
 }

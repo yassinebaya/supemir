@@ -156,7 +156,7 @@ const Sidebar = ({ onLogout }) => {
     },
     {
       path: '/pedagogique/cours',
-      label: 'Cours',
+      label: 'Classes',
       icon: BookOpen
     },
     {
@@ -176,7 +176,7 @@ const Sidebar = ({ onLogout }) => {
     },
     {
       path: '/pedagogique/gestion-cours',
-      label: 'Gestion des Cours',
+      label: 'Gestion des Classes',
       icon: BookOpen
     }
     ,

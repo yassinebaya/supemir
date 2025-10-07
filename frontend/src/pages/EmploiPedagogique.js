@@ -424,80 +424,7 @@ const EmploiPedagogique = () => {
       setLoading(false);
     }
   };
-// NOUVELLE FONCTION: Générer automatiquement les créneaux depuis les séances existantes
-const genererCreneauxDepuisSeances = (seancesData) => {
-  const nouveauxCreneaux = { ...creneauxCours };
-  
-  seancesData.forEach((seance) => {
-    let coursObj = null;
-    
-    if (seance.coursId) {
-      coursObj = coursList.find(c => c._id === seance.coursId);
-    }
-    
-    if (!coursObj && seance.cours) {
-      coursObj = coursList.find(c => c._id === seance.cours);
-      if (!coursObj) {
-        coursObj = coursList.find(c => c.nom === seance.cours);
-      }
-    }
 
-    if (!coursObj) return;
-    
-    const coursId = coursObj._id;
-    const jour = getJourForSeance(seance) || 'Lundi';
-    const semaineKey = getSemaineKey(currentWeek);
-    
-    // Initialiser la structure si nécessaire
-    if (!nouveauxCreneaux[coursId]) {
-      nouveauxCreneaux[coursId] = {};
-    }
-    if (!nouveauxCreneaux[coursId][semaineKey]) {
-      nouveauxCreneaux[coursId][semaineKey] = {};
-    }
-    if (!nouveauxCreneaux[coursId][semaineKey][jour]) {
-      nouveauxCreneaux[coursId][semaineKey][jour] = [];
-    }
-    
-    const debut = normalizeTime(seance.heureDebut);
-    const fin = normalizeTime(seance.heureFin);
-    
-    // Vérifier si ce créneau existe déjà
-    const creneauExiste = nouveauxCreneaux[coursId][semaineKey][jour].some(
-      c => c.debut === debut && c.fin === fin
-    );
-    
-    // Ajouter le créneau s'il n'existe pas
-    if (!creneauExiste) {
-      const maxId = nouveauxCreneaux[coursId][semaineKey][jour].length > 0
-        ? Math.max(...nouveauxCreneaux[coursId][semaineKey][jour].map(c => c.id))
-        : 0;
-      
-      nouveauxCreneaux[coursId][semaineKey][jour].push({
-        id: maxId + 1,
-        debut: debut,
-        fin: fin
-      });
-    }
-  });
-  
-  // Trier les créneaux de chaque jour
-  Object.keys(nouveauxCreneaux).forEach(coursId => {
-    if (nouveauxCreneaux[coursId]) {
-      Object.keys(nouveauxCreneaux[coursId]).forEach(semaineKey => {
-        if (nouveauxCreneaux[coursId][semaineKey]) {
-          Object.keys(nouveauxCreneaux[coursId][semaineKey]).forEach(jour => {
-            nouveauxCreneaux[coursId][semaineKey][jour].sort((a, b) => 
-              a.debut.localeCompare(b.debut)
-            );
-          });
-        }
-      });
-    }
-  });
-  
-  return nouveauxCreneaux;
-};
   const fetchSeancesReelles = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -515,18 +442,13 @@ const genererCreneauxDepuisSeances = (seancesData) => {
         const data = await res.json();
         setSeancesReelles(data);
         
-      if (coursList.length > 0 && data.length > 0) {
-  // NOUVEAU: Générer automatiquement les créneaux depuis les séances
-  const nouveauxCreneaux = genererCreneauxDepuisSeances(data);
-  localStorage.setItem('creneauxCoursPersonnalises', JSON.stringify(nouveauxCreneaux));
-  setCreneauxCours(nouveauxCreneaux);
-  
-  organiserSeances(data);
-  setMessage({ 
-    type: 'success', 
-    text: `${data.length} séances chargées pour la semaine du ${formatDate(weekDates[0])}` 
-  });
-} else if (data.length === 0) {
+        if (coursList.length > 0 && data.length > 0) {
+          organiserSeances(data);
+          setMessage({ 
+            type: 'success', 
+            text: `${data.length} séances chargées pour la semaine du ${formatDate(weekDates[0])}` 
+          });
+        } else if (data.length === 0) {
           setEmploiDuTemps({});
           setMessage({ 
             type: 'warning', 
@@ -893,48 +815,39 @@ const genererCreneauxDepuisSeances = (seancesData) => {
     setCurrentWeek(newDate);
   };
 
-const copierSemainePrecedente = async () => {
-  const lundiActuel = weekDates[0].toISOString().split('T')[0];
-  if (!window.confirm('Copier toutes les séances de la semaine précédente vers la semaine actuelle ?')) {
-    return;
-  }
-  setCopyLoading(true);
-  try {
-    const token = localStorage.getItem('token');
-    const res = await fetch('http://195.179.229.230:5000/api/seances/copier-semaine-precedente', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        lundiDestination: lundiActuel
-      })
-    });
-    
-    if (!res.ok) {
-      const errorData = await res.json();
-      setMessage({ type: 'error', text: errorData.error || 'Erreur lors de la copie' });
-      setCopyLoading(false);
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  const copierSemainePrecedente = async () => {
+    const lundiActuel = weekDates[0].toISOString().split('T')[0];
+    if (!window.confirm('Copier toutes les séances de la semaine précédente vers la semaine actuelle ?')) {
       return;
     }
-    
-    const result = await res.json();
-    if (result.ok) {
-      setMessage({ type: 'success', text: result.message });
-      await fetchSeancesReelles();
-    } else {
-      setMessage({ type: 'error', text: result.error || 'Erreur inconnue' });
+    setCopyLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://195.179.229.230:5000/api/seances/copier-semaine-precedente', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          lundiDestination: lundiActuel
+        })
+      });
+      const result = await res.json();
+      if (result.ok) {
+        setMessage({ type: 'success', text: result.message });
+        await fetchSeancesReelles();
+      } else {
+        setMessage({ type: 'error', text: result.error });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Erreur de connexion' });
+    } finally {
+      setCopyLoading(false);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     }
-  } catch (err) {
-    console.error('Erreur copie semaine:', err);
-    setMessage({ type: 'error', text: 'Erreur de connexion au serveur' });
-  } finally {
-    setCopyLoading(false);
-    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-  }
-};
+  };
+
   // COMPOSANT MODAL MODIFIÉ POUR CRÉNEAUX SEMAINE PAR SEMAINE
   const ModalCreneaux = () => {
     if (!showCreneauxModal) return null;
@@ -1265,52 +1178,210 @@ const copierSemainePrecedente = async () => {
             Historique Général
           </button>
         </div>
-
-        {/* MODIFIÉ: Affichage des créneaux par jour pour la semaine actuelle */}
+{/* AFFICHAGE DES CRÉNEAUX CONFIGURÉS PAR COURS */}
         {selectedCours.length > 0 && (
           <div className="creneaux-display">
             <h4>
               <Clock size={16} />
-              Configuration des créneaux pour la semaine du {formatDate(weekDates[0])} :
+              Configuration des créneaux pour la semaine du {formatDate(weekDates[0])} au {formatDate(weekDates[6])}
             </h4>
             
-            <div className="creneaux-grid">
-              {jours.map(jour => {
-                const creneauxJour = getCreneauxPourJour(selectedCours[0], jour);
-                return (
-                  <div key={jour} className="creneaux-jour">
-                    <div className="creneaux-jour-title">
-                      {jour}
+            {selectedCours.map(coursId => {
+              const cours = coursList.find(c => c._id === coursId);
+              if (!cours) return null;
+              
+              const semaineKey = getSemaineKey(currentWeek);
+              const creneauxCetteSemaine = creneauxCours[coursId]?.[semaineKey];
+              const hasCreneaux = creneauxCetteSemaine && Object.keys(creneauxCetteSemaine).length > 0;
+              
+              // Vérifier s'il y a des séances réelles
+              const hasSeances = emploiDuTemps[coursId] && Object.keys(emploiDuTemps[coursId]).length > 0;
+              
+              // Calculer le nombre total de créneaux
+              let totalCreneaux = 0;
+              if (hasCreneaux) {
+                jours.forEach(jour => {
+                  const creneauxJour = creneauxCetteSemaine[jour] || [];
+                  totalCreneaux += creneauxJour.length;
+                });
+              }
+              
+              // Calculer le nombre de séances
+              let totalSeances = 0;
+              if (hasSeances) {
+                totalSeances = Object.keys(emploiDuTemps[coursId]).length;
+              }
+              
+              return (
+                <div key={coursId} className="creneaux-cours-container">
+                  <div className="creneaux-cours-header">
+                    <div className="cours-name-badge">
+                      📚 {cours.nom}
                     </div>
-                    
-                    {creneauxJour.length > 0 ? (
-                      <div className="creneaux-jour-list">
-                        {creneauxJour.map((creneau, index) => (
-                          <span key={creneau.id || index} className="creneau-item">
-                            {genererLabel(creneau.debut, creneau.fin)}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="creneaux-jour-empty">
-                        Aucun créneau
-                      </div>
-                    )}
-                    
-                    <div className="creneaux-jour-count">
-                      {creneauxJour.length} séance(s)
+                    <div className="creneaux-status">
+                      {hasCreneaux ? (
+                        <span className="badge-configured">
+                          ✓ {totalCreneaux} créneau(x) configuré(s)
+                        </span>
+                      ) : hasSeances ? (
+                        <span className="badge-has-seances">
+                          📋 {totalSeances} séance(s) programmée(s)
+                        </span>
+                      ) : (
+                        <span className="badge-not-configured">
+                          ⚠ Aucune séance ni créneau
+                        </span>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  
+                  {hasCreneaux ? (
+                    <div className="creneaux-grid">
+                      {jours.map(jour => {
+                        const creneauxJour = getCreneauxPourJour(coursId, jour);
+                        return (
+                          <div key={jour} className="creneaux-jour">
+                            <div className="creneaux-jour-title">
+                              {jour}
+                            </div>
+                            
+                            {creneauxJour.length > 0 ? (
+                              <div className="creneaux-jour-list">
+                                {creneauxJour.map((creneau, index) => (
+                                  <span key={creneau.id || index} className="creneau-item">
+                                    {genererLabel(creneau.debut, creneau.fin)}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="creneaux-jour-empty">
+                                Aucun créneau
+                              </div>
+                            )}
+                            
+                            <div className="creneaux-jour-count">
+                              {creneauxJour.length} séance(s)
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : hasSeances ? (
+                    <div>
+                      <div className="creneaux-info-seances">
+                        <div className="info-icon">ℹ️</div>
+                        <div className="info-text">
+                          <strong>Séances détectées automatiquement</strong>
+                          <p>
+                            Cette classe a {totalSeances} séance(s) programmée(s) cette semaine. 
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => ouvrirModalCreneaux(coursId)}
+                          className="configure-button-inline"
+                        >
+                          <Settings size={14} />
+                          Configurer des créneaux
+                        </button>
+                      </div>
+                      
+                      {/* Afficher les séances par jour */}
+                      <div className="seances-detected-grid">
+                        {jours.map(jour => {
+                          // Récupérer toutes les séances pour ce jour
+                          const seancesJour = [];
+                          if (emploiDuTemps[coursId]) {
+                            Object.keys(emploiDuTemps[coursId]).forEach(key => {
+                              // key format: "Lundi-08:00-10:00"
+                              const parties = key.split('-');
+                              if (parties.length >= 3) {
+                                const keyJour = parties[0];
+                                const debut = parties[parties.length - 2];
+                                const fin = parties[parties.length - 1];
+                                
+                                if (keyJour === jour) {
+                                  seancesJour.push({ debut, fin });
+                                }
+                              }
+                            });
+                          }
+                          
+                          // Trier les séances par heure
+                          seancesJour.sort((a, b) => a.debut.localeCompare(b.debut));
+                          
+                          return (
+                            <div key={jour} className="seance-detected-jour">
+                              <div className="seance-detected-jour-title">
+                                {jour}
+                              </div>
+                              
+                              {seancesJour.length > 0 ? (
+                                <div className="seance-detected-jour-list">
+                                  {seancesJour.map((seance, index) => (
+                                    <span key={index} className="seance-detected-item">
+                                      {genererLabel(seance.debut, seance.fin)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="seance-detected-jour-empty">
+                                  Aucune séance
+                                </div>
+                              )}
+                              
+                              <div className="seance-detected-jour-count">
+                                {seancesJour.length} séance(s)
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      <div style={{ 
+                        fontSize: '11px', 
+                        marginTop: '10px', 
+                        padding: '10px', 
+                        background: '#fff9e6',
+                        borderRadius: '6px',
+                        color: '#856404'
+                      }}>
+                        💡 <strong>Astuce :</strong> Configurez des créneaux fixes pour définir votre planning hebdomadaire standard.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="creneaux-empty-state">
+                      <div className="empty-icon">📅</div>
+                      <div className="empty-text">
+                        Aucune séance ni créneau pour cette semaine
+                      </div>
+                      <button
+                        onClick={() => ouvrirModalCreneaux(coursId)}
+                        className="configure-button-inline"
+                      >
+                        <Settings size={14} />
+                        Configurer maintenant
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             
             <div className="creneaux-help">
-              Configuration spécifique à cette semaine. Changez de semaine pour voir/modifier d'autres planifications.
+              💡 <strong>Info :</strong> Les séances s'affichent automatiquement. 
+              Configurez des créneaux fixes pour mieux organiser votre emploi du temps.
             </div>
           </div>
         )}
 
+        {selectedCours.length > 0 && (
+          <div className="text-center" style={{ marginTop: '25px' }}>
+            <button className="download-button" onClick={() => {}}>
+              <Download size={18} />
+              Télécharger l'emploi du temps
+            </button>
+          </div>
+        )}
         {selectedCours.length > 0 && (
           <div className="text-center" style={{ marginTop: '25px' }}>
             <button className="download-button" onClick={() => {}}>
@@ -1377,209 +1448,270 @@ const copierSemainePrecedente = async () => {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {(() => {
-                    // NOUVEAU: Collecter tous les créneaux uniques de tous les jours
-                    const tousLesCreneaux = [];
-                    jours.forEach(jour => {
-                      const creneauxJour = getCreneauxPourJour(coursId, jour);
-                      creneauxJour.forEach(creneau => {
-                        const key = `${creneau.debut}-${creneau.fin}`;
-                        if (!tousLesCreneaux.find(c => `${c.debut}-${c.fin}` === key)) {
-                          tousLesCreneaux.push(creneau);
-                        }
-                      });
-                    });
-                    
-                    // Trier tous les créneaux par heure de début
-                    tousLesCreneaux.sort((a, b) => a.debut.localeCompare(b.debut));
-                    
-                    return tousLesCreneaux.map(creneauRef => (
-                      <tr key={`${creneauRef.debut}-${creneauRef.fin}`}>
-                        <td className="time-cell">
-                          {genererLabel(creneauRef.debut, creneauRef.fin)}
-                        </td>
-                        {jours.map(jour => {
-                          // Vérifier si ce jour a ce créneau spécifique
-                          const creneauxJour = getCreneauxPourJour(coursId, jour);
-                          const creneauExiste = creneauxJour.find(c => 
-                            c.debut === creneauRef.debut && c.fin === creneauRef.fin
-                          );
-                          
-                          if (!creneauExiste) {
-                            // Cellule vide si ce jour n'a pas ce créneau
-                            return (
-                              <td key={jour} className="cell-empty">
-                                Pas de cours
-                              </td>
-                            );
-                          }
-                          
-                          // Cellule avec possibilité de séance
-                          const key = `${jour}-${creneauRef.debut}-${creneauRef.fin}`;
-                          const seanceData = emploiDuTemps[coursId]?.[key] || {};
-                          
-                          return (
-                            <td key={jour} className="cell">
-                              {/* Affichage séance existante */}
-                              {((seanceData.seanceId || seanceData.typeSeance) && editing?.coursId !== coursId && editing?.key !== key) ? (
-                                <div className="cell-content-readonly">
-                                  <div className="professor-name">
-                                    {profList.find(p => p._id === seanceData.professeur)?.nom || '—'}
-                                  </div>
-                                  {seanceData.matiere && (
-                                    <div className="matiere-info">
-                                      {seanceData.matiere}
-                                    </div>
-                                  )}
-                                  {seanceData.salle && (
-                                    <div className="salle-info">
-                                      Salle: {seanceData.salle}
-                                    </div>
-                                  )}
-                                  <div style={{ fontSize: '9px', marginTop: '4px' }}>
-                                    <span className={`status-badge ${seanceData.actif ? 'status-active' : 'status-inactive'}`}>
-                                      {seanceData.typeSeance || 'reelle'}
-                                    </span>
-                                  </div>
-                                  {seanceData.actif === false && (
-                                    <div className="canceled-label">
-                                      ANNULÉ
-                                    </div>
-                                  )}
+           
 
-                                  <div className="cell-actions">
-                                    <button
-                                      className="action-button edit"
-                                      onClick={() => startEdit(coursId, jour, creneauRef)}
-                                    >
-                                      <Edit size={8} />
-                                      Modifier
-                                    </button>
+           <tbody>
+  {(() => {
+    // SOLUTION COMPLÈTE : Fusionner créneaux configurés ET séances existantes
+    const tousLesCreneauxMap = new Map();
+    
+    // ÉTAPE 1 : Récupérer TOUTES les séances existantes pour ce cours
+    if (emploiDuTemps[coursId]) {
+      Object.keys(emploiDuTemps[coursId]).forEach(seanceKey => {
+        // Format: "Lundi-08:00-10:00" ou "Mardi-14:30-16:30"
+        const parties = seanceKey.split('-');
+        if (parties.length >= 3) {
+          // Extraire les heures (les 2 derniers éléments)
+          const debut = parties[parties.length - 2];
+          const fin = parties[parties.length - 1];
+          const creneauKey = `${debut}-${fin}`;
+          
+          if (!tousLesCreneauxMap.has(creneauKey)) {
+            tousLesCreneauxMap.set(creneauKey, {
+              debut: debut,
+              fin: fin,
+              id: creneauKey,
+              source: 'seance' // Provient d'une séance réelle
+            });
+          }
+        }
+      });
+    }
+    
+    // ÉTAPE 2 : Ajouter les créneaux configurés (sans écraser les existants)
+    jours.forEach(jour => {
+      const creneauxJour = getCreneauxPourJour(coursId, jour);
+      creneauxJour.forEach(creneau => {
+        const creneauKey = `${creneau.debut}-${creneau.fin}`;
+        if (!tousLesCreneauxMap.has(creneauKey)) {
+          tousLesCreneauxMap.set(creneauKey, {
+            ...creneau,
+            source: 'config' // Provient de la configuration
+          });
+        }
+      });
+    });
+    
+    // Convertir en tableau et trier par heure de début
+    const tousLesCreneaux = Array.from(tousLesCreneauxMap.values())
+      .sort((a, b) => a.debut.localeCompare(b.debut));
+    
+    // Si aucun créneau (ni configuré ni séance), afficher message
+    if (tousLesCreneaux.length === 0) {
+      return (
+        <tr>
+          <td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>
+            <div className="empty-state">
+              Aucun créneau configuré et aucune séance existante.
+              <br />
+              Cliquez sur "Configurer les heures" pour définir vos créneaux horaires.
+            </div>
+          </td>
+        </tr>
+      );
+    }
+    
+    return tousLesCreneaux.map(creneauRef => (
+      <tr key={`${creneauRef.debut}-${creneauRef.fin}`}>
+        <td className="time-cell">
+          {genererLabel(creneauRef.debut, creneauRef.fin)}
+          {/* Badge pour voir la source du créneau (debug) */}
+          {process.env.NODE_ENV === 'development' && (
+            <small style={{ display: 'block', fontSize: '9px', color: '#888' }}>
+              {creneauRef.source === 'seance' ? '(séance)' : '(config)'}
+            </small>
+          )}
+        </td>
+        {jours.map(jour => {
+          const key = `${jour}-${creneauRef.debut}-${creneauRef.fin}`;
+          const seanceData = emploiDuTemps[coursId]?.[key];
+          
+          // Vérifier si ce jour a ce créneau dans la configuration
+          const creneauxJour = getCreneauxPourJour(coursId, jour);
+          const creneauExiste = creneauxJour.some(c => 
+            c.debut === creneauRef.debut && c.fin === creneauRef.fin
+          );
+          
+          // LOGIQUE D'AFFICHAGE:
+          // 1. Si séance existe → toujours afficher
+          // 2. Si pas de séance MAIS créneau configuré → afficher "Ajouter"
+          // 3. Si pas de séance ET pas configuré → afficher "Pas de cours"
+          
+          const aSeance = seanceData && (seanceData.seanceId || seanceData.professeur);
+          
+          return (
+            <td key={jour} className={`cell ${!creneauExiste && !aSeance ? 'cell-disabled' : ''}`}>
+              {/* CAS 1: Séance existante (lecture seule) */}
+              {aSeance && editing?.coursId !== coursId && editing?.key !== key ? (
+                <div className="cell-content-readonly">
+                  <div className="professor-name">
+                    {profList.find(p => p._id === seanceData.professeur)?.nom || '—'}
+                  </div>
+                  {seanceData.matiere && (
+                    <div className="matiere-info">
+                      {seanceData.matiere}
+                    </div>
+                  )}
+                  {seanceData.salle && (
+                    <div className="salle-info">
+                      Salle: {seanceData.salle}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '9px', marginTop: '4px' }}>
+                    <span className={`status-badge ${seanceData.actif ? 'status-active' : 'status-inactive'}`}>
+                      {seanceData.typeSeance || 'reelle'}
+                    </span>
+                  </div>
+                  {seanceData.actif === false && (
+                    <div className="canceled-label">
+                      ANNULÉ
+                    </div>
+                  )}
 
-                                    <button
-                                      className="action-button history"
-                                      onClick={() => {
-                                        setSelectedSeanceForHistory(seanceData.seanceId);
-                                        setShowHistorique(true);
-                                      }}
-                                      title="Voir l'historique de cette séance"
-                                    >
-                                      <Clock size={8} />
-                                      Historique
-                                    </button>
+                  <div className="cell-actions">
+                    <button
+                      className="action-button edit"
+                      onClick={() => startEdit(coursId, jour, creneauRef)}
+                    >
+                      <Edit size={8} />
+                      Modifier
+                    </button>
 
-                                    <button
-                                      className="action-button delete"
-                                      onClick={() => deleteSeance(coursId, jour, creneauRef, seanceData)}
-                                      title="Supprimer cette séance"
-                                    >
-                                      <Trash2 size={8} />
-                                      Supprimer
-                                    </button>
+                    <button
+                      className="action-button history"
+                      onClick={() => {
+                        setSelectedSeanceForHistory(seanceData.seanceId);
+                        setShowHistorique(true);
+                      }}
+                      title="Voir l'historique de cette séance"
+                    >
+                      <Clock size={8} />
+                      Historique
+                    </button>
 
-                                    <button
-                                      className="action-button rattrapage"
-                                      onClick={() => marquerRattrapage(coursId, jour, creneauRef, seanceData)}
-                                      title="Marquer comme rattrapage"
-                                    >
-                                      Rattrapage
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                // Bouton ajouter si pas de séance
-                                editing?.coursId !== coursId && editing?.key !== key && (
-                                  <div style={{ textAlign: 'center' }}>
-                                    <button
-                                      className="add-button"
-                                      onClick={() => startEdit(coursId, jour, creneauRef)}
-                                    >
-                                      <Plus size={12} />
-                                      Ajouter séance
-                                    </button>
-                                  </div>
-                                )
-                              )}
+                    <button
+                      className="action-button delete"
+                      onClick={() => deleteSeance(coursId, jour, creneauRef, seanceData)}
+                      title="Supprimer cette séance"
+                    >
+                      <Trash2 size={8} />
+                      Supprimer
+                    </button>
 
-                              {/* Mode édition */}
-                              {editing?.coursId === coursId && editing?.key === key && (
-                                <div className="cell-content-edit">
-                                  <select
-                                    className="form-select"
-                                    value={seanceData.professeur || ''}
-                                    onChange={(e) => updateCase(coursId, jour, creneauRef, 'professeur', e.target.value)}
-                                  >
-                                    <option value="">-- Professeur --</option>
-                                    {getProfesseursPourCours(coursId).map(prof => (
-                                      <option key={prof._id} value={prof._id}>
-                                        {prof.nom} {prof.estPermanent ? '(Permanent)' : '(Entrepreneur)'}
-                                      </option>
-                                    ))}
-                                  </select>
+                    <button
+                      className="action-button rattrapage"
+                      onClick={() => marquerRattrapage(coursId, jour, creneauRef, seanceData)}
+                      title="Marquer comme rattrapage"
+                    >
+                      Rattrapage
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
-                                  {seanceData.professeur ? (
-                                    (() => {
-                                      const mats = getMatieresProfesseurPourCours(seanceData.professeur, coursId);
-                                      return mats.length > 0 ? (
-                                        <select
-                                          className="form-select"
-                                          value={seanceData.matiere || ''}
-                                          onChange={(e) => updateCase(coursId, jour, creneauRef, 'matiere', e.target.value)}
-                                        >
-                                          <option value="">-- Matière --</option>
-                                          {mats.map(m => <option key={m} value={m}>{m}</option>)}
-                                        </select>
-                                      ) : (
-                                        <input
-                                          className="form-input"
-                                          placeholder="Matière..."
-                                          value={seanceData.matiere || ''}
-                                          onChange={(e) => updateCase(coursId, jour, creneauRef, 'matiere', e.target.value)}
-                                        />
-                                      );
-                                    })()
-                                  ) : (
-                                    <input
-                                      className="form-input disabled"
-                                      placeholder="Sélectionnez d'abord un professeur"
-                                      value=""
-                                      disabled
-                                    />
-                                  )}
+              {/* CAS 2: Mode édition */}
+              {editing?.coursId === coursId && editing?.key === key && (
+                <div className="cell-content-edit">
+                  <select
+                    className="form-select"
+                    value={seanceData?.professeur || ''}
+                    onChange={(e) => updateCase(coursId, jour, creneauRef, 'professeur', e.target.value)}
+                  >
+                    <option value="">-- Professeur --</option>
+                    {getProfesseursPourCours(coursId).map(prof => (
+                      <option key={prof._id} value={prof._id}>
+                        {prof.nom} {prof.estPermanent ? '(Permanent)' : '(Entrepreneur)'}
+                      </option>
+                    ))}
+                  </select>
 
-                                  <input
-                                    className="form-input"
-                                    placeholder="Salle..."
-                                    value={seanceData.salle || ''}
-                                    onChange={(e) => updateCase(coursId, jour, creneauRef, 'salle', e.target.value)}
-                                  />
+                  {seanceData?.professeur ? (
+                    (() => {
+                      const mats = getMatieresProfesseurPourCours(seanceData.professeur, coursId);
+                      return mats.length > 0 ? (
+                        <select
+                          className="form-select"
+                          value={seanceData.matiere || ''}
+                          onChange={(e) => updateCase(coursId, jour, creneauRef, 'matiere', e.target.value)}
+                        >
+                          <option value="">-- Matière --</option>
+                          {mats.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          className="form-input"
+                          placeholder="Matière..."
+                          value={seanceData.matiere || ''}
+                          onChange={(e) => updateCase(coursId, jour, creneauRef, 'matiere', e.target.value)}
+                        />
+                      );
+                    })()
+                  ) : (
+                    <input
+                      className="form-input disabled"
+                      placeholder="Sélectionnez d'abord un professeur"
+                      value=""
+                      disabled
+                    />
+                  )}
 
-                                  <div className="form-actions">
-                                    <button
-                                      className="form-button save"
-                                      onClick={() => saveEdit(coursId, jour, creneauRef)}
-                                    >
-                                      <Save size={10} />
-                                      Enregistrer
-                                    </button>
-                                    <button
-                                      className="form-button cancel"
-                                      onClick={cancelEdit}
-                                    >
-                                      <X size={10} />
-                                      Annuler
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ));
-                  })()}
-                </tbody>
+                  <input
+                    className="form-input"
+                    placeholder="Salle..."
+                    value={seanceData?.salle || ''}
+                    onChange={(e) => updateCase(coursId, jour, creneauRef, 'salle', e.target.value)}
+                  />
+
+                  <div className="form-actions">
+                    <button
+                      className="form-button save"
+                      onClick={() => saveEdit(coursId, jour, creneauRef)}
+                    >
+                      <Save size={10} />
+                      Enregistrer
+                    </button>
+                    <button
+                      className="form-button cancel"
+                      onClick={cancelEdit}
+                    >
+                      <X size={10} />
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* CAS 3: Bouton "Ajouter" (seulement si créneau configuré ET pas de séance) */}
+              {!aSeance && editing?.coursId !== coursId && editing?.key !== key && creneauExiste && (
+                <div style={{ textAlign: 'center' }}>
+                  <button
+                    className="add-button"
+                    onClick={() => startEdit(coursId, jour, creneauRef)}
+                  >
+                    <Plus size={12} />
+                    Ajouter séance
+                  </button>
+                </div>
+              )}
+
+              {/* CAS 4: Cellule désactivée (pas de créneau configuré, pas de séance) */}
+              {!aSeance && !creneauExiste && editing?.coursId !== coursId && (
+                <div style={{ 
+                  textAlign: 'center', 
+                  color: '#999', 
+                  fontSize: '11px',
+                  padding: '10px'
+                }}>
+                  Pas de cours
+                </div>
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    ));
+  })()}
+</tbody>
               </table>
             </div>
           </div>
@@ -1633,478 +1765,70 @@ const copierSemainePrecedente = async () => {
       {/* Modal pour configurer les créneaux */}
       <ModalCreneaux />
 
-{/* Modal Statistiques Rattrapages avec Détails - VERSION COMPLÈTE */}
-{showStatsRattrapages && (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(15, 23, 42, 0.75)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: '20px'
-  }}>
-    <div style={{
-      background: 'white',
-      borderRadius: '8px',
-      width: '100%',
-      maxWidth: '1200px',
-      maxHeight: '90vh',
-      overflow: 'hidden',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: '24px 32px',
-        borderBottom: '1px solid #e2e8f0',
-        background: '#f8fafc',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div>
-          <h3 style={{
-            margin: 0,
-            fontSize: '20px',
-            fontWeight: '600',
-            color: '#0f172a'
-          }}>
-            Rapport des Rattrapages
-          </h3>
-          <p style={{
-            margin: '4px 0 0 0',
-            fontSize: '14px',
-            color: '#64748b'
-          }}>
-            Vue détaillée des séances de rattrapage par professeur
-          </p>
-        </div>
-        <button
-          onClick={() => setShowStatsRattrapages(false)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '8px',
-            color: '#64748b',
-            borderRadius: '4px'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-        >
-          <X size={20} />
-        </button>
-      </div>
-      
-      {/* Content */}
-      <div style={{ 
-        flex: 1,
-        overflowY: 'auto',
-        padding: '24px 32px'
-      }}>
-        {loadingStats ? (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '300px',
-            flexDirection: 'column',
-            gap: '16px'
-          }}>
-            <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
-            <p style={{ color: '#64748b', fontSize: '15px' }}>
-              Chargement des statistiques...
-            </p>
-          </div>
-        ) : statsRattrapages.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            color: '#94a3b8'
-          }}>
-            <Clock size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
-            <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 8px 0' }}>
-              Aucune donnée disponible
-            </h4>
-            <p style={{ fontSize: '14px', margin: 0 }}>
-              Il n'y a actuellement aucun rattrapage enregistré dans le système.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Résumé Global */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '16px',
-              marginBottom: '32px'
-            }}>
-              <div style={{
-                padding: '20px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px'
-              }}>
-                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
-                  Total professeurs
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a' }}>
-                  {statsRattrapages.length}
-                </div>
+      {/* Modal Statistiques Rattrapages */}
+      {showStatsRattrapages && (
+        <div className="modal-overlay">
+          <div className="modal-content-large">
+            <h3>📊 Statistiques des Rattrapages</h3>
+            
+            {loadingStats ? (
+              <div className="loading-stats">
+                <div>Chargement des statistiques...</div>
               </div>
-              <div style={{
-                padding: '20px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px'
-              }}>
-                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
-                  Total séances
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#0f172a' }}>
-                  {statsRattrapages.reduce((sum, s) => sum + s.totalSeances, 0)}
-                </div>
-              </div>
-              <div style={{
-                padding: '20px',
-                background: '#fef3c7',
-                border: '1px solid #fde047',
-                borderRadius: '6px'
-              }}>
-                <div style={{ fontSize: '13px', color: '#a16207', marginBottom: '8px' }}>
-                  Total rattrapages
-                </div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#a16207' }}>
-                  {statsRattrapages.reduce((sum, s) => sum + s.seancesRattrapage, 0)}
-                </div>
-              </div>
-            </div>
-
-            {/* Liste des Professeurs */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {statsRattrapages.map(stat => (
-                <div 
-                  key={stat._id}
-                  style={{
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    background: 'white'
-                  }}
-                >
-                  {/* Header Professeur */}
-                  <div style={{
-                    padding: '20px',
-                    background: stat.seancesRattrapage > 0 ? '#fef3c7' : '#f8fafc',
-                    borderBottom: '1px solid #e2e8f0'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: '16px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <h4 style={{
-                          margin: 0,
-                          fontSize: '17px',
-                          fontWeight: '600',
-                          color: '#0f172a'
-                        }}>
-                          {stat.nomProfesseur}
-                        </h4>
-                        {stat.seancesRattrapage > 0 && (
-                          <span style={{
-                            padding: '4px 12px',
-                            background: '#fbbf24',
-                            color: '#78350f',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            borderRadius: '12px'
-                          }}>
-                            {stat.seancesRattrapage} rattrapage{stat.seancesRattrapage > 1 ? 's' : ''}
-                          </span>
-                        )}
+            ) : (
+              <div>
+                {statsRattrapages.map(stat => (
+                  <div key={stat._id} className={`stat-card ${stat.seancesRattrapage > 0 ? 'has-rattrapage' : ''}`}>
+                    <div className="stat-header">
+                      {stat.nomProfesseur}
+                    </div>
+                    
+                    <div className="stat-grid">
+                      <div className="stat-item">
+                        <div className="stat-label">Total séances:</div>
+                        <div className="stat-value">{stat.totalSeances}</div>
                       </div>
-                      
-                      <div style={{ display: 'flex', gap: '24px' }}>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>
-                            {stat.totalSeances}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#64748b' }}>Total</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#15803d' }}>
-                            {stat.seancesNormales}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#64748b' }}>Effectuées</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#a16207' }}>
-                            {stat.seancesRattrapage}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#64748b' }}>Rattrapages</div>
-                        </div>
+                      <div className="stat-item">
+                        <div className="stat-label">Séances normales:</div>
+                        <div className="stat-value normal">{stat.seancesNormales}</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-label">Rattrapages requis:</div>
+                        <div className="stat-value rattrapage">{stat.seancesRattrapage}</div>
                       </div>
                     </div>
                     
-                    {/* Progress Bar */}
                     {stat.totalSeances > 0 && (
-                      <div style={{ marginTop: '16px' }}>
-                        <div style={{
-                          height: '8px',
-                          background: '#e2e8f0',
-                          borderRadius: '4px',
-                          overflow: 'hidden',
-                          display: 'flex'
-                        }}>
-                          <div style={{
-                            background: '#22c55e',
-                            width: `${(stat.seancesNormales / stat.totalSeances) * 100}%`,
-                            transition: 'width 0.3s ease'
-                          }}></div>
-                          <div style={{
-                            background: '#eab308',
-                            width: `${(stat.seancesRattrapage / stat.totalSeances) * 100}%`,
-                            transition: 'width 0.3s ease'
-                          }}></div>
-                        </div>
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          marginTop: '8px',
-                          fontSize: '13px'
-                        }}>
-                          <span style={{ color: '#15803d' }}>
-                            Présence: {Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%
-                          </span>
-                          <span style={{ color: '#a16207' }}>
-                            Rattrapage: {stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%
-                          </span>
-                        </div>
+                      <div className="stat-taux">
+                        <span>Taux de présence: <strong>{Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%</strong></span>
+                        <span>Taux de rattrapage: <strong className="rattrapage">{stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%</strong></span>
                       </div>
                     )}
                   </div>
-
-                  {/* Détails des Rattrapages */}
-                  {stat.detailsRattrapages && stat.detailsRattrapages.length > 0 && (
-                    <details style={{ padding: '20px' }}>
-                      <summary style={{
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        color: '#0f172a',
-                        fontSize: '14px',
-                        marginBottom: '16px',
-                        userSelect: 'none'
-                      }}>
-                        Voir les {stat.detailsRattrapages.length} rattrapage{stat.detailsRattrapages.length > 1 ? 's' : ''} en détail
-                      </summary>
-                      
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
-                        marginTop: '16px'
-                      }}>
-                        {stat.detailsRattrapages.map((rattrapage, idx) => {
-                          // Résolution du nom du cours depuis l'ID
-                          const nomCours = coursList.find(c => c._id === rattrapage.cours)?.nom || rattrapage.cours;
-                          
-                          return (
-                            <div 
-                              key={idx}
-                              style={{
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '6px',
-                                padding: '16px'
-                              }}
-                            >
-                              {/* Header Rattrapage */}
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '12px',
-                                paddingBottom: '12px',
-                                borderBottom: '1px solid #e2e8f0'
-                              }}>
-                                <span style={{
-                                  background: '#fbbf24',
-                                  color: '#78350f',
-                                  padding: '4px 10px',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  fontWeight: '600'
-                                }}>
-                                  Rattrapage #{idx + 1}
-                                </span>
-                                <span style={{
-                                  fontSize: '13px',
-                                  color: '#64748b',
-                                  fontWeight: '500'
-                                }}>
-                                  {new Date(rattrapage.dateSeance).toLocaleDateString('fr-FR', {
-                                    weekday: 'long',
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric'
-                                  })}
-                                </span>
-                              </div>
-                              
-                              {/* Infos du Rattrapage */}
-                              <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'auto 1fr',
-                                gap: '8px 16px',
-                                fontSize: '14px'
-                              }}>
-                                <span style={{ color: '#64748b', fontWeight: '500' }}>Cours:</span>
-                                <span style={{ color: '#0f172a' }}>{nomCours}</span>
-                                
-                                <span style={{ color: '#64748b', fontWeight: '500' }}>Matière:</span>
-                                <span style={{ color: '#0f172a' }}>{rattrapage.matiere}</span>
-                                
-                                <span style={{ color: '#64748b', fontWeight: '500' }}>Horaire:</span>
-                                <span style={{ color: '#0f172a' }}>
-                                  {rattrapage.jour} de {rattrapage.heureDebut} à {rattrapage.heureFin}
-                                </span>
-                                
-                                {rattrapage.salle && (
-                                  <>
-                                    <span style={{ color: '#64748b', fontWeight: '500' }}>Salle:</span>
-                                    <span style={{ color: '#0f172a' }}>{rattrapage.salle}</span>
-                                  </>
-                                )}
-                              </div>
-                              
-                              {/* Footer Rattrapage */}
-                              <div style={{
-                                marginTop: '12px',
-                                paddingTop: '12px',
-                                borderTop: '1px solid #e2e8f0',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                fontSize: '12px',
-                                color: '#64748b',
-                                flexWrap: 'wrap',
-                                gap: '8px'
-                              }}>
-                                <div>
-                                  <span>Marqué par: </span>
-                                  <span style={{ fontWeight: '500', color: '#0f172a' }}>
-                                    {rattrapage.marqueParNom || 'Système'}
-                                  </span>
-                                  {rattrapage.marqueParRole && (
-                                    <span style={{ marginLeft: '4px' }}>
-                                      ({rattrapage.marqueParRole})
-                                    </span>
-                                  )}
-                                </div>
-                                {rattrapage.dateRattrapage && (
-                                  <span>
-                                    Le {new Date(rattrapage.dateRattrapage).toLocaleDateString('fr-FR')}
-                                    {' à '}
-                                    {new Date(rattrapage.dateRattrapage).toLocaleTimeString('fr-FR', { 
-                                      hour: '2-digit', 
-                                      minute: '2-digit' 
-                                    })}
-                                  </span>
-                                )}
-                              </div>
-                              
-                              {/* Notes */}
-                              {rattrapage.notes && (
-                                <div style={{
-                                  marginTop: '12px',
-                                  padding: '12px',
-                                  background: 'white',
-                                  border: '1px solid #e2e8f0',
-                                  borderRadius: '4px',
-                                  fontSize: '13px'
-                                }}>
-                                  <strong style={{ color: '#64748b' }}>Notes: </strong>
-                                  <span style={{ color: '#0f172a' }}>{rattrapage.notes}</span>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </details>
-                  )}
-                </div>
-              ))}
+                ))}
+                
+                {statsRattrapages.length === 0 && (
+                  <div className="empty-stats">
+                    <div>📊</div>
+                    <div>Aucune donnée de rattrapage disponible</div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="modal-footer">
+              <button
+                onClick={() => setShowStatsRattrapages(false)}
+                className="modal-button cancel"
+              >
+                Fermer
+              </button>
             </div>
-          </>
-        )}
-      </div>
-      
-      {/* Footer */}
-      <div style={{
-        padding: '16px 32px',
-        borderTop: '1px solid #e2e8f0',
-        background: '#f8fafc',
-        display: 'flex',
-        justifyContent: 'flex-end'
-      }}>
-        <button
-          onClick={() => setShowStatsRattrapages(false)}
-          style={{
-            padding: '10px 20px',
-            background: '#0f172a',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'background 0.2s ease'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#1e293b'}
-          onMouseLeave={(e) => e.currentTarget.style.background = '#0f172a'}
-        >
-          Fermer
-        </button>
-      </div>
-    </div>
+          </div>
+        </div>
+      )}
 
-    <style>{`
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-      details summary::-webkit-details-marker {
-        display: none;
-      }
-      details summary::marker {
-        display: none;
-      }
-      details summary::before {
-        content: '▶';
-        display: inline-block;
-        margin-right: 8px;
-        transition: transform 0.2s;
-        color: #64748b;
-      }
-      details[open] summary::before {
-        transform: rotate(90deg);
-      }
-      details summary:hover {
-        color: #0f172a;
-      }
-    `}</style>
-  </div>
-)}  {/* Modal Historique */}
+      {/* Modal Historique */}
       <HistoriqueModal
         show={showHistorique}
         onClose={() => setShowHistorique(false)}
