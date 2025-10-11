@@ -159,39 +159,42 @@ const autoAssignCours = (form, setForm, listeCours, isLockedByUser) => {
 
 // STRUCTURE CORRIGÉE POUR CORRESPONDRE AU BACKEND
 const STRUCTURE_FORMATION = {
-  MASI: {
-    nom: 'MASI',
-    niveauxManuels: true,
-    // لاستعمال بسيط سريع (مثلاً عرض عام)
-    specialites: [
-      'Entreprenariat, audit et finance',
-      'Développement commercial et marketing digital'
-    ],
-    // 👇 الهيكلة اللي كيعتمد عليها الفرونت لاشتقاق الاختيارات حسب المستوى
-    niveaux: {
-      1: { specialites: [] },
-      2: { specialites: [] },
-      3: { specialites: [
+MASI: {
+  nom: 'MASI',
+  niveauxManuels: true,
+  specialites: [
+    'Entreprenariat, audit et finance',
+    'Développement commercial et marketing digital'
+  ],
+  niveaux: {
+    1: { specialites: [] },
+    2: { specialites: [] },
+    3: { 
+      specialites: [
         'Entreprenariat, audit et finance',
         'Développement commercial et marketing digital'
-      ]},
-      4: { specialites: ["Management des affaires et systèmes d'information"] },
-      5: { 
-        specialites: ["Management des affaires et systèmes d'information"],
-        // 👇 OPTIONS ديال MASI كيكونو غير فالمستوى 5 حسب التخصص
-        options: {
-          "Management des affaires et systèmes d'information": [
-            'Finance & Audit',
-            'Management SI',
-            'Entrepreneuriat & Innovation',
-            'Marketing & Ventes',
-            'Contrôle de Gestion'
-          ]
-        }
-      }
+      ]
+    },
+    4: { 
+      specialites: [
+        'Finance et Stratégie Entrepreneuriale Master 1',
+        'Développement Commercial et Marketing Digital Master 1'
+      ]
+    },
+    5: { 
+      specialites: [
+        'Finance et Stratégie Entrepreneuriale Master 2',
+        'Développement Commercial et Marketing Digital Master 2'
+      ],
+      options: {}
     }
   },
-
+  // Mapping automatique Master 1 → Master 2
+  autoMapping: {
+    'Finance et Stratégie Entrepreneuriale Master 1': 'Finance et Stratégie Entrepreneuriale Master 2',
+    'Développement Commercial et Marketing Digital Master 1': 'Développement Commercial et Marketing Digital Master 2'
+  }
+},
   IRM: {
     nom: 'IRM',
     niveauxManuels: true,
@@ -292,7 +295,9 @@ const STRUCTURE_FORMATION = {
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
        'Informatique – Cnam',
-      'Achat & Logistique'
+      'Ingénierie QHSE',
+      'Achat & Logistique',
+      'Ingénierie industrielle'
       
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
@@ -324,7 +329,8 @@ const STRUCTURE_FORMATION = {
       'Cybersécurité et Transformation Digitale',
       'Génie Informatique et Innovation Technologique',
       'Finance, Audit & Entrepreneuriat',
-      'Développement Commercial et Marketing Digital'
+      'Développement Commercial et Marketing Digital',
+      'Ingénierie et Management industriel'
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {
@@ -363,13 +369,21 @@ const getSpecialitesDisponibles = (filiere, niveau) => {
   const niveauInt = parseInt(niveau);
   if (niveauInt < 3) return [];
   
-  if (filiere === 'MASI') {
-    if (niveauInt === 3) {
-      return ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'];
-    } else if (niveauInt >= 4) {
-      return ['Management des affaires et systèmes d\'information'];
-    }
+if (filiere === 'MASI') {
+  if (niveauInt === 3) {
+    return ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'];
+  } else if (niveauInt === 4) {
+    return [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ];
+  } else if (niveauInt === 5) {
+    return [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ];
   }
+}
   
   if (filiere === 'IRM') {
     if (niveauInt === 3) {
@@ -1158,6 +1172,7 @@ const Commercialetudiants = () => {
   const [imageFile, setImageFile] = useState(null);
   const [listeCours, setListeCours] = useState([]);
   const [listeCommerciaux, setListeCommerciaux] = useState([]);
+  const [listePartners, setListePartners] = useState([]);
   const [messageAjout, setMessageAjout] = useState('');
   const [loadingAjout, setLoadingAjout] = useState(false);
   
@@ -1301,6 +1316,7 @@ const Commercialetudiants = () => {
     fetchEtudiants();
     fetchCours();
     fetchCommerciaux();
+    fetchPartners();
   }, []);
 
   useEffect(() => {
@@ -1410,19 +1426,45 @@ const Commercialetudiants = () => {
     }
   };
 
-const getCoursFiltre = (listeCours, form) => {
-  if (!form.filiere || !listeCours.length) return [];
-  const candidats = buildCoursCandidates(form);
-  if (!candidats.length) return [];
-  
-  return listeCours.filter(cours => {
-    const nomCours = normalize(cours.nom || cours);
-    return candidats.some(candidat => {
-      const nc = normalize(candidat);
-      return nomCours.includes(nc) || nc.includes(nomCours);
+  const fetchPartners = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://195.179.229.230:5000/api/partners/active-list', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setListePartners(res.data.data || []);
+    } catch (err) {
+      console.error('Erreur lors du chargement des partners:', err);
+      setListePartners([]);
+    }
+  };
+
+  const refreshPartners = async () => {
+    await fetchPartners();
+  };
+
+  const getNomPartner = (nomPartner) => {
+    if (!nomPartner) return 'Aucun';
+    if (typeof nomPartner === 'object' && nomPartner.nomPartner) {
+      return nomPartner.nomPartner;
+    }
+    const partner = listePartners.find(p => p.id === nomPartner);
+    return partner ? partner.nom : nomPartner;
+  };
+
+  const getCoursFiltre = (listeCours, form) => {
+    if (!form.filiere || !listeCours.length) return [];
+    const candidats = buildCoursCandidates(form);
+    if (!candidats.length) return [];
+    
+    return listeCours.filter(cours => {
+      const nomCours = normalize(cours.nom || cours);
+      return candidats.some(candidat => {
+        const nc = normalize(candidat);
+        return nomCours.includes(nc) || nc.includes(nomCours);
+      });
     });
-  });
-};
+  };
 
   const filtrerEtudiants = () => {
     let resultats = etudiants;
@@ -1458,8 +1500,8 @@ const getCoursFiltre = (listeCours, form) => {
     setEtudiantsFiltres(resultats);
     setPageActuelle(1);
   };
-const coursFiltres = getCoursFiltre(listeCours, formAjout);
-const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
+  const coursFiltres = getCoursFiltre(listeCours, formAjout);
+  const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
 
   // Fonctions pour le modal d'ajout
   const openModal = () => {
@@ -1616,30 +1658,32 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       cycle: etudiant.cycle || '',
       specialiteIngenieur: etudiant.specialiteIngenieur || '',
       optionIngenieur: etudiant.optionIngenieur || '',
-      specialiteLicencePro: etudiant.specialiteLicencePro || '',
-      optionLicencePro: etudiant.optionLicencePro || '',
-      specialiteMasterPro: etudiant.specialiteMasterPro || '',
-      optionMasterPro: etudiant.optionMasterPro || '',
+      nomPartner: etudiant.nomPartner?._id || etudiant.nomPartner || '',
+      // Nouveaux champs pour le modèle backend
+      specialiteLicencePro: '',
+      optionLicencePro: '',
+      specialiteMasterPro: '',
+      optionMasterPro: '',
       // NOUVEAUX CHAMPS
-      modePaiement: etudiant.modePaiement || 'mensuel',
-      telephoneResponsable: etudiant.telephoneResponsable || '',
-      codeBaccalaureat: etudiant.codeBaccalaureat || '',
-      // NOUVEAUX CHAMPS PARTNER
-      isPartner: etudiant.isPartner ?? false,
-      nomPartner: etudiant.nomPartner || '',
-      prixTotalPartner: etudiant.prixTotalPartner || '',
-      // COMMENTAIRES DOCUMENTS
-      commentaireCin: etudiant.documents?.cin?.commentaire || '',
-      commentaireBacCommentaire: etudiant.documents?.bacCommentaire?.commentaire || '',
-      commentaireReleveNoteBac: etudiant.documents?.releveNoteBac?.commentaire || '',
-      commentaireDiplomeCommentaire: etudiant.documents?.diplomeCommentaire?.commentaire || '',
-      commentaireAttestationReussiteCommentaire: etudiant.documents?.attestationReussiteCommentaire?.commentaire || '',
-      commentaireReleveNotesFormationCommentaire: etudiant.documents?.releveNotesFormationCommentaire?.commentaire || '',
-      commentairePasseport: etudiant.documents?.passeport?.commentaire || '',
-      commentaireBacOuAttestationBacCommentaire: etudiant.documents?.bacOuAttestationBacCommentaire?.commentaire || '',
-      commentaireAuthentificationBac: etudiant.documents?.authentificationBac?.commentaire || '',
-      commentaireAuthenticationDiplome: etudiant.documents?.authenticationDiplome?.commentaire || '',
-      commentaireEngagementCommentaire: etudiant.documents?.engagementCommentaire?.commentaire || ''
+      modePaiement: 'mensuel',
+      telephoneResponsable: '',
+      codeBaccalaureat: '',
+      // NOUVEAUX CHAMPS PARTNER  
+      isPartner: false,
+      nomPartner: '',
+      prixTotalPartner: '',
+      // COMMENTAIRES POUR LES DOCUMENTS
+      commentaireCin: '',
+      commentaireBacCommentaire: '',
+      commentaireReleveNoteBac: '',
+      commentaireDiplomeCommentaire: '',
+      commentaireAttestationReussiteCommentaire: '',
+      commentaireReleveNotesFormationCommentaire: '',
+      commentairePasseport: '',
+      commentaireBacOuAttestationBacCommentaire: '',
+      commentaireAuthentificationBac: '',
+      commentaireAuthenticationDiplome: '',
+      commentaireEngagementCommentaire: ''
     });
     setImageFileModifier(null);
     setMessageModifier('');
@@ -1696,6 +1740,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       cycle: '',
       specialiteIngenieur: '',
       optionIngenieur: '',
+      nomPartner: '',
       // Nouveaux champs pour le modèle backend
       specialiteLicencePro: '',
       optionLicencePro: '',
@@ -2820,7 +2865,25 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
               {/* Section Étudiant Partenaire */}
               <div className="form-section">
                 <h4><Shield size={20} className="inline mr-2" />Étudiant Partenaire</h4>
-                
+                <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
+      <span style={{fontSize: '14px', color: '#666'}}>
+        {listePartners.length} partenaire(s) disponible(s)
+      </span>
+      <button
+        type="button"
+        onClick={refreshPartners}
+        style={{
+          padding: '4px 8px',
+          fontSize: '12px',
+          background: '#f0f0f0',
+          border: '1px solid #ddd',
+          borderRadius: '4px',
+          cursor: 'pointer'
+        }}
+      >
+        ↻ Actualiser
+      </button>
+    </div>
                 <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -2832,21 +2895,30 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     Étudiant Partenaire
                   </label>
                 </div>
-
                 {formAjout.isPartner && (
                   <div className="form-row">
                     <div className="form-group">
                       <label>Nom du Partenaire *</label>
-                      <input
-                        type="text"
+                      <select
                         name="nomPartner"
-                        placeholder="Nom du partenaire"
                         value={formAjout.nomPartner}
                         onChange={handleChangeAjout}
                         required={formAjout.isPartner}
-                      />
+                      >
+                        <option value="">Sélectionner un partenaire...</option>
+                        {listePartners.map((partner) => (
+                          <option key={partner.id} value={partner.id}>
+                            {partner.nom}
+                          </option>
+                        ))}
+                      </select>
+                      {listePartners.length === 0 && (
+                        <small style={{color: '#ff6b6b', fontSize: '12px'}}>
+                          Aucun partenaire disponible. Contactez l'administrateur.
+                        </small>
+                      )}
                       <small style={{color: '#666', fontSize: '12px'}}>
-                        Nom de l'organisation partenaire
+                        Sélectionnez l'organisation partenaire dans la liste
                       </small>
                     </div>
                     <div className="form-group">
@@ -2937,8 +3009,8 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
     <label>Mode de Paiement</label>
     <select
       name="modePaiement"
-      value={formModifier.modePaiement}
-      onChange={handleChangeModifier}
+      value={formAjout.modePaiement}
+      onChange={handleChangeAjout}
     >
       <option value="semestriel">Semestriel</option>
       <option value="trimestriel">Trimestriel</option>
@@ -2952,8 +3024,8 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
       type="text"
       name="typePaiement"
       placeholder="Type de paiement"
-      value={formModifier.typePaiement}
-      onChange={handleChangeModifier}
+      value={formAjout.typePaiement}
+      onChange={handleChangeAjout}
     />
   </div>
 </div>
@@ -2963,7 +3035,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
     type="file"
     name="image"
     accept="image/*"
-    onChange={handleImageChangeModifier}
+    onChange={handleImageChangeAjout}
   />
 </div>
 
@@ -3760,7 +3832,25 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
               {/* Section Étudiant Partenaire */}
               <div className="form-section">
                 <h4><Shield size={20} className="inline mr-2" />Étudiant Partenaire</h4>
-                
+                <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
+      <span style={{fontSize: '14px', color: '#666'}}>
+        {listePartners.length} partenaire(s) disponible(s)
+      </span>
+      <button
+        type="button"
+        onClick={refreshPartners}
+        style={{
+          padding: '4px 8px',
+          fontSize: '12px',
+          background: '#f0f0f0',
+          border: '1px solid #ddd',
+          borderRadius: '4px',
+          cursor: 'pointer'
+        }}
+      >
+        ↻ Actualiser
+      </button>
+    </div>
                 <div className="form-group checkbox-group">
                   <label className="checkbox-label">
                     <input
@@ -3772,21 +3862,30 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                     Étudiant Partenaire
                   </label>
                 </div>
-
                 {formModifier.isPartner && (
                   <div className="form-row">
                     <div className="form-group">
                       <label>Nom du Partenaire *</label>
-                      <input
-                        type="text"
+                      <select
                         name="nomPartner"
-                        placeholder="Nom du partenaire"
                         value={formModifier.nomPartner}
                         onChange={handleChangeModifier}
                         required={formModifier.isPartner}
-                      />
+                      >
+                        <option value="">Sélectionner un partenaire...</option>
+                        {listePartners.map((partner) => (
+                          <option key={partner.id} value={partner.id}>
+                            {partner.nom}
+                          </option>
+                        ))}
+                      </select>
+                      {listePartners.length === 0 && (
+                        <small style={{color: '#ff6b6b', fontSize: '12px'}}>
+                          Aucun partenaire disponible. Contactez l'administrateur.
+                        </small>
+                      )}
                       <small style={{color: '#666', fontSize: '12px'}}>
-                        Nom de l'organisation partenaire
+                        Sélectionnez l'organisation partenaire dans la liste
                       </small>
                     </div>
                     <div className="form-group">
@@ -3951,7 +4050,6 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                       <label>Document CIN</label>
                       <input
                         type="file"
-
                         name="documentCin"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         onChange={handleFileChangeModifier}
@@ -4655,7 +4753,7 @@ const coursFiltresModif = getCoursFiltre(listeCours, formModifier);
                   {etudiantSelectionne.isPartner && etudiantSelectionne.nomPartner && (
                     <div className="info-row">
                       <span className="info-label">Nom du Partenaire:</span>
-                      <span className="info-value">{etudiantSelectionne.nomPartner}</span>
+                      <span className="info-value">{getNomPartner(etudiantSelectionne.nomPartner)}</span>
                     </div>
                   )}
                   {etudiantSelectionne.isPartner && etudiantSelectionne.prixTotalPartner && (

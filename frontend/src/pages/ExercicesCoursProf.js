@@ -438,7 +438,7 @@ const ExercicesCoursProf = () => {
           Exercices Envoyés
         </h1>
         <p style={styles.subtitle}>
-          Cours: {nomCours} • {Object.keys(exercicesParEtudiant).length} étudiants
+          Classe {nomCours} • {Object.keys(exercicesParEtudiant).length} étudiants
         </p>
 
         <div style={styles.filtersContainer}>

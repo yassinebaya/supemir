@@ -4,7 +4,7 @@ import {
   UserCheck, UserX, Mail, Phone, IdCard, Calendar, GraduationCap,
   CheckCircle, XCircle, FileText, AlertCircle, User, 
   TrendingUp, BarChart3, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-  Table, Grid3X3
+  Table, Grid3X3, Clock, Briefcase
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 
@@ -47,7 +47,7 @@ const EtudiantsPedagogiquePage = () => {
   const [filtreStatut, setFiltreStatut] = useState('tous');
   const [filtreCours, setFiltreCours] = useState('tous');
   const [filtreTypeFormation, setFiltreTypeFormation] = useState('tous');
-  const [filtreNiveauFormation, setFiltreNiveauFormation] = useState('tous');
+  const [filtreRegimeFormation, setFiltreRegimeFormation] = useState('tous'); // 'tous', 'FI', 'TA', 'EXECUTIVE', 'LICENCE_MASTER_PRO', 'MIXTE'
   const [filtreCommercial, setFiltreCommercial] = useState('tous');
   const [filtrePays, setFiltrePays] = useState('tous');
   const [filtreFiliere, setFiltreFiliere] = useState('toutes');
@@ -130,6 +130,133 @@ const EtudiantsPedagogiquePage = () => {
     }
   };
 
+  // Fonction pour vérifier si un cours est Licence Pro ou Master Pro
+  const isLicenceProOrMasterPro = (nomCours) => {
+    const coursLower = nomCours.toLowerCase();
+    return coursLower.includes('licence pro') || coursLower.includes('master pro');
+  };
+
+  // Fonction pour déterminer le régime de formation d'un étudiant
+  const getRegimeFormationEtudiant = (etudiant) => {
+    const coursEtudiant = etudiant.cours;
+    let etudiantCours = [];
+    
+    if (Array.isArray(coursEtudiant)) {
+      etudiantCours = coursEtudiant;
+    } else if (typeof coursEtudiant === 'string') {
+      etudiantCours = coursEtudiant.split(',').map(s => s.trim());
+    }
+
+    // Vérifier s'il a des cours Executive
+    const hasExecutiveCours = etudiantCours.some(coursName => {
+      const coursNameLower = coursName.toLowerCase();
+      return coursNameLower.includes('executive') || coursNameLower.includes('exécutif');
+    });
+
+    if (hasExecutiveCours) {
+      return 'EXECUTIVE';
+    }
+
+    // Vérifier s'il a des cours Licence Pro ou Master Pro
+    const hasLicenceProMasterPro = etudiantCours.some(coursName => {
+      return isLicenceProOrMasterPro(coursName);
+    });
+
+    if (hasLicenceProMasterPro) {
+      return 'LICENCE_MASTER_PRO';
+    }
+
+    // Vérifier FI/TA pour les autres cours
+    const hasTA = etudiantCours.some(coursName => {
+      if (isLicenceProOrMasterPro(coursName)) return false;
+      const coursNameLower = coursName.toLowerCase();
+      return coursNameLower.includes(' ta');
+    });
+
+    const hasFI = etudiantCours.some(coursName => {
+      if (isLicenceProOrMasterPro(coursName)) return false;
+      const coursNameLower = coursName.toLowerCase();
+      return !coursNameLower.includes(' ta');
+    });
+
+    if (hasTA && hasFI) {
+      return 'MIXTE'; // Étudiant avec cours FI et TA
+    } else if (hasTA) {
+      return 'TA';
+    } else if (hasFI) {
+      return 'FI';
+    }
+
+    return 'AUTRE';
+  };
+
+  // Fonction pour obtenir le badge du régime de formation
+  const getRegimeBadge = (etudiant) => {
+    const regime = getRegimeFormationEtudiant(etudiant);
+    
+    const badgeStyles = {
+      'FI': {
+        background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+        color: '#1e40af',
+        borderColor: '#3b82f6',
+        icon: <GraduationCap size={12} />
+      },
+      'TA': {
+        background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+        color: '#92400e',
+        borderColor: '#f59e0b',
+        icon: <Clock size={12} />
+      },
+      'EXECUTIVE': {
+        background: 'linear-gradient(135deg, #f3e8ff, #e9d5ff)',
+        color: '#6b21a8',
+        borderColor: '#8b5cf6',
+        icon: <Briefcase size={12} />
+      },
+      'LICENCE_MASTER_PRO': {
+        background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+        color: '#166534',
+        borderColor: '#22c55e',
+        icon: <GraduationCap size={12} />
+      },
+      'MIXTE': {
+        background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
+        color: '#4338ca',
+        borderColor: '#6366f1',
+        icon: <Users size={12} />
+      },
+      'AUTRE': {
+        background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+        color: '#6b7280',
+        borderColor: '#9ca3af',
+        icon: <User size={12} />
+      }
+    };
+
+    const style = badgeStyles[regime] || badgeStyles['AUTRE'];
+    
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '0.25rem 0.75rem',
+        borderRadius: '1rem',
+        fontSize: '0.75rem',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        border: '1px solid',
+        background: style.background,
+        color: style.color,
+        borderColor: style.borderColor
+      }}>
+        {style.icon}
+        {regime === 'LICENCE_MASTER_PRO' ? 'L/M PRO' : regime}
+      </span>
+    );
+  };
+
   // Fonction pour filtrer les étudiants
   const getFilteredEtudiants = () => {
     let filtered = [...etudiants];
@@ -152,6 +279,14 @@ const EtudiantsPedagogiquePage = () => {
     // Filtre par année scolaire
     if (filtreAnneeScolaire !== 'toutes') {
       filtered = filtered.filter(e => e.anneeScolaire === filtreAnneeScolaire);
+    }
+
+    // NOUVEAU: Filtre par régime de formation (FI/TA/Executive détecté automatiquement)
+    if (filtreRegimeFormation !== 'tous') {
+      filtered = filtered.filter(e => {
+        const regime = getRegimeFormationEtudiant(e);
+        return regime === filtreRegimeFormation;
+      });
     }
 
     // Filtre par filière
@@ -206,11 +341,6 @@ const EtudiantsPedagogiquePage = () => {
       filtered = filtered.filter(e => e.typeFormation === filtreTypeFormation);
     }
 
-    // Filtre par niveau de formation (FI/TA/Executive)
-    if (filtreNiveauFormation !== 'tous') {
-      filtered = filtered.filter(e => e.niveauFormation === filtreNiveauFormation);
-    }
-
     return filtered;
   };
 
@@ -245,7 +375,6 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
   const genresDisponibles = [...new Set(etudiants.map(e => e.genre).filter(Boolean))].sort();
   const coursDisponibles = [...new Set(etudiants.flatMap(e => e.cours || []))].filter(Boolean).sort();
   const typesFormationDisponibles = [...new Set(etudiants.map(e => e.typeFormation).filter(Boolean))].sort();
-  const niveauxFormationDisponibles = [...new Set(etudiants.map(e => e.niveauFormation).filter(Boolean))].sort();
   const commerciauxDisponibles = [...new Set(etudiants.map(e => e.commercial).filter(Boolean))].sort();
   const paysDisponibles = [...new Set(etudiants.map(e => e.pays).filter(Boolean))].sort();
 
@@ -331,14 +460,14 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
   const resetFilters = () => {
     setSearchTerm('');
     setFiltreAnneeScolaire('2025/2026');
-    setFiltreFiliere('toutes'); // Ajouter cette ligne
+    setFiltreFiliere('toutes');
     setFiltreNiveau('tous');
     setFiltreSpecialite('toutes');
     setFiltreGenre('tous');
     setFiltreStatut('tous');
     setFiltreCours('tous');
     setFiltreTypeFormation('tous');
-    setFiltreNiveauFormation('tous');
+    setFiltreRegimeFormation('tous'); // REMPLACÉ
     setCurrentPage(1);
   };
 
@@ -393,7 +522,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
   };
 
   const handleExportSelected = () => {
-    const selectedData = etudiants.filter(e => selectedStudents.includes(e._id));
+    const selectedData = etudiantsFiltres.filter(e => selectedStudents.includes(e._id));
     exportStudentsToCSV(selectedData, `etudiants_selection_${new Date().toISOString().split('T')[0]}`);
   };
 
@@ -1050,6 +1179,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                 </select>
               </div>
 
+              {/* REMPLACÉ: Niveau Formation par Régime Formation */}
               <div>
                 <label style={{
                   display: 'block',
@@ -1058,11 +1188,11 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                   color: styles.darkGray,
                   marginBottom: '0.5rem'
                 }}>
-                  Niveau Formation
+                  Régime Formation
                 </label>
                 <select 
-                  value={filtreNiveauFormation} 
-                  onChange={(e) => setFiltreNiveauFormation(e.target.value)}
+                  value={filtreRegimeFormation} 
+                  onChange={(e) => setFiltreRegimeFormation(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -1072,14 +1202,14 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                     background: styles.white
                   }}
                 >
-                  <option value="tous">Tous</option>
-                  {niveauxFormationDisponibles.map(niveau => (
-                    <option key={niveau} value={niveau}>{niveau}</option>
-                  ))}
+                  <option value="tous">Tous les régimes</option>
+                  <option value="FI">Formation Initiale (FI)</option>
+                  <option value="TA">Temps Aménagé (TA)</option>
+                  <option value="EXECUTIVE">Executive</option>
+                  <option value="LICENCE_MASTER_PRO">Licence/Master Pro</option>
+                  <option value="MIXTE">Mixte (FI+TA)</option>
                 </select>
               </div>
-
-
 
               <div style={{
                 display: 'flex',
@@ -1318,6 +1448,28 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
               </button>
             </div>
           )}
+
+          {/* Nouveau bouton d'export de tous les étudiants filtrés */}
+          <button
+            onClick={() => exportStudentsToCSV(etudiantsFiltres, `etudiants_filtres_${new Date().toISOString().split('T')[0]}`)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: styles.primaryColor,
+              color: styles.white,
+              border: 'none',
+              padding: '0.75rem 1rem',
+              borderRadius: styles.borderRadius,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: styles.transition
+            }}
+          >
+            <Download size={16} />
+            Exporter tout ({etudiantsFiltres.length})
+          </button>
         </div>
 
         {/* Contenu principal */}
@@ -1424,8 +1576,6 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                     
                 
                    
-                     
-                  
                       <th style={{
                         padding: '1rem 0.75rem',
                         textAlign: 'left',
@@ -1434,6 +1584,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                       }}>Formation</th>
+                      {/* REMPLACÉ: Niveau Formation par Régime */}
                       <th style={{
                         padding: '1rem 0.75rem',
                         textAlign: 'left',
@@ -1441,7 +1592,7 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                         fontSize: '0.8125rem',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
-                      }}>Niveau Formation</th>
+                      }}>Régime</th>
                       <th style={{
                         padding: '1rem 0.75rem',
                         textAlign: 'left',
@@ -1609,35 +1760,9 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                             </span>
                           )}
                         </td>
+                        {/* REMPLACÉ: Cellule Niveau Formation par Régime */}
                         <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
-                          {etudiant.niveauFormation ? (
-                            <span style={{
-                              background: etudiant.niveauFormation === 'FI' ? 
-                                'linear-gradient(135deg, #dbeafe, #bfdbfe)' : 
-                                etudiant.niveauFormation === 'TA' ?
-                                'linear-gradient(135deg, #dcfce7, #bbf7d0)' :
-                                'linear-gradient(135deg, #fef3c7, #fde68a)',
-                              color: etudiant.niveauFormation === 'FI' ? 
-                                '#1e40af' : 
-                                etudiant.niveauFormation === 'TA' ?
-                                '#166534' :
-                                '#92400e',
-                              padding: '0.25rem 0.75rem',
-                              borderRadius: '1rem',
-                              fontSize: '0.75rem',
-                              fontWeight: '600',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
-                              border: '1px solid',
-                              borderColor: etudiant.niveauFormation === 'FI' ? 
-                                '#3b82f6' : 
-                                etudiant.niveauFormation === 'TA' ?
-                                '#22c55e' :
-                                '#f59e0b'
-                            }}>
-                              {etudiant.niveauFormation}
-                            </span>
-                          ) : 'N/A'}
+                          {getRegimeBadge(etudiant)}
                         </td>
                         <td style={{ padding: '0.875rem 0.75rem', verticalAlign: 'middle' }}>
                           {etudiant.niveau || 'N/A'}
@@ -1974,34 +2099,9 @@ const filieresDisponibles = [...new Set(etudiants.map(e => e.filiere || e.typeFo
                           {etudiant.typeFormation.replace('_', ' ')}
                         </span>
                       )}
-                      {etudiant.niveauFormation && (
-                        <span style={{
-                          background: etudiant.niveauFormation === 'FI' ? 
-                            'linear-gradient(135deg, #dbeafe, #bfdbfe)' : 
-                            etudiant.niveauFormation === 'TA' ?
-                            'linear-gradient(135deg, #dcfce7, #bbf7d0)' :
-                            'linear-gradient(135deg, #fef3c7, #fde68a)',
-                          color: etudiant.niveauFormation === 'FI' ? 
-                            '#1e40af' : 
-                            etudiant.niveauFormation === 'TA' ?
-                            '#166534' :
-                            '#92400e',
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '1rem',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          border: '1px solid',
-                          borderColor: etudiant.niveauFormation === 'FI' ? 
-                            '#3b82f6' : 
-                            etudiant.niveauFormation === 'TA' ?
-                            '#22c55e' :
-                            '#f59e0b'
-                        }}>
-                          {etudiant.niveauFormation}
-                        </span>
-                      )}
+                      {/* NOUVEAU: Badge régime dans les cartes */}
+                      {getRegimeBadge(etudiant)}
+                      {/* SUPPRIMÉ: Badge niveauFormation de la base de données */}
                       <span style={{
                         background: etudiant.actif ? '#dcfce7' : '#fee2e2',
                         color: etudiant.actif ? '#166534' : '#991b1b',

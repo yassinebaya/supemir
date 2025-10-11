@@ -241,7 +241,9 @@ const etudiantSchema = new mongoose.Schema({
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
       'Informatique – Cnam',
-      'Achat & Logistique'
+      'Ingénierie QHSE',
+      'Achat & Logistique',
+      'Ingénierie industrielle'
     ]
   },
   
@@ -270,7 +272,8 @@ const etudiantSchema = new mongoose.Schema({
       'Cybersécurité et Transformation Digitale',
       'Génie Informatique et Innovation Technologique',
       'Finance, Audit & Entrepreneuriat',
-      'Développement Commercial et Marketing Digital'
+      'Développement Commercial et Marketing Digital',
+      'Ingénierie et Management industriel'
     ]
   },
   
@@ -308,9 +311,9 @@ const etudiantSchema = new mongoose.Schema({
     default: false
   },
   nomPartner: {
-  type: String,
-  default: '',
-  trim: true
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Partner',
+  default: null
 },
 // Dans votre modèle Etudiant, AJOUTER si pas encore fait :
 validationPedagogique: {
@@ -380,6 +383,11 @@ validationPedagogique: {
   commercial: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Commercial',
+    default: null
+  },
+    partner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Partner',
     default: null
   },
   actif: {
@@ -711,11 +719,18 @@ etudiantSchema.methods.validerParcours = function() {
     
     if (this.typeFormation && this.specialite && this.niveau) {
       const STRUCTURE_FORMATION = {
-        MASI: {
-          3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-          4: ['Management des affaires et systèmes d\'information'],
-          5: ['Management des affaires et systèmes d\'information']
-        },
+       3: [
+    'Entreprenariat, audit et finance',
+    'Développement commercial et marketing digital'
+  ],
+  4: [
+    'Finance et Stratégie Entrepreneuriale Master 1',
+    'Développement Commercial et Marketing Digital Master 1'
+  ],
+  5: [
+    'Finance et Stratégie Entrepreneuriale Master 2',
+    'Développement Commercial et Marketing Digital Master 2'
+  ],
         IRM: {
           3: ['Développement informatique', 'Réseaux et cybersécurité'],
           4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -818,39 +833,53 @@ etudiantSchema.methods.getPrixEffectif = function() {
   return this.isPartner ? this.prixTotalPartner : this.prixTotal;
 };
 
-// Méthode statique pour les statistiques Partners
+// Méthode pour obtenir les infos du partner
+etudiantSchema.methods.getPartnerInfo = async function() {
+  if (!this.nomPartner) return null;
+  await this.populate('nomPartner');
+  return this.nomPartner;
+};
+
+// Méthode pour obtenir les étudiants avec leurs partners
+etudiantSchema.statics.getEtudiantsAvecPartners = function() {
+  return this.find({ isPartner: true })
+             .populate('nomPartner', 'nomPartner active')
+             .sort({ createdAt: -1 });
+};
+
+// Méthode statique modifiée pour les statistiques Partners
 etudiantSchema.statics.getStatsPartners = async function() {
   const stats = await this.aggregate([
     {
-      $group: {
-        _id: "$isPartner",
-        count: { $sum: 1 },
-        totalChiffreAffaire: { 
-          $sum: { 
-            $cond: [
-              "$isPartner", 
-              "$prixTotalPartner", 
-              "$prixTotal"
-            ] 
-          } 
-        }
+      $match: { isPartner: true }
+    },
+    {
+      $lookup: {
+        from: 'partners',
+        localField: 'nomPartner',
+        foreignField: '_id',
+        as: 'partnerInfo'
       }
+    },
+    {
+      $unwind: {
+        path: '$partnerInfo',
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
+      $group: {
+        _id: '$partnerInfo.nomPartner',
+        count: { $sum: 1 },
+        totalChiffreAffaire: { $sum: '$prixTotalPartner' },
+        partnerId: { $first: '$partnerInfo._id' }
+      }
+    },
+    {
+      $sort: { count: -1 }
     }
   ]);
-  
-  const partnersStats = stats.find(s => s._id === true) || { count: 0, totalChiffreAffaire: 0 };
-  const normalStats = stats.find(s => s._id === false) || { count: 0, totalChiffreAffaire: 0 };
-  
-  return {
-    partners: {
-      nombre: partnersStats.count,
-      chiffreAffaire: partnersStats.totalChiffreAffaire
-    },
-    normal: {
-      nombre: normalStats.count,
-      chiffreAffaire: normalStats.totalChiffreAffaire
-    }
-  };
+  return stats;
 };
 
 etudiantSchema.statics.getOptionsParSpecialiteIngenieur = function(specialite) {
@@ -919,7 +948,9 @@ etudiantSchema.statics.getSpecialitesLicencePro = function() {
     'Management et Conduite de Travaux – Cnam',
     'Electrotechnique et systèmes – Cnam',
     'Informatique – Cnam',
-    'Achat & Logistique'
+'Ingénierie QHSE',
+      'Achat & Logistique',
+      'Ingénierie industrielle'    
   ];
 };
 
@@ -933,7 +964,8 @@ etudiantSchema.statics.getSpecialitesMasterPro = function() {
     'Cybersécurité et Transformation Digitale',
     'Génie Informatique et Innovation Technologique',
     'Finance, Audit & Entrepreneuriat',
-    'Développement Commercial et Marketing Digital'
+    'Développement Commercial et Marketing Digital',
+    'Ingénierie et Management industriel'
   ];
 };
 

@@ -1,646 +1,920 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend,
-} from 'recharts';
-import { 
-  Users, GraduationCap, Calendar, CreditCard, 
-  UserCheck, UserX, TrendingUp, AlertTriangle 
+  Calendar, Home, AlertCircle, Filter, TrendingUp, 
+  DollarSign, BarChart3, Eye, Download, Users,
+  CreditCard, Clock, Target, Wallet, ArrowUp, ArrowDown, RefreshCw
 } from 'lucide-react';
-import './AdminDashboard.css';
-import Sidebar from '../components/Sidebarpaiment'; // ✅ استيراد صحيح
-import RappelModal from '../components/RappelModal'; // adapte le chemin si besoin
-
-import Header from '../components/Headermanager';
+import Sidebar from '../components/Sidebarpaiment';
+import Header from '../components/Header';
+import RappelModal from '../components/RappelModal';
 import { useNavigate } from 'react-router-dom';
 
-const Dashboardmanager = () => {
-   const navigate = useNavigate();
-
-  useEffect(() => {
-    const role = localStorage.getItem('role');
-    if (role !== 'admin' && role !== 'paiement_manager') {
-      navigate('/'); // أو navigate('/unauthorized')
-    }
-  }, [navigate]);
-  
-  const [admin, setAdmin] = useState(null);
-  const [dashboardData, setDashboardData] = useState({
-    totalEtudiants: 0,
-    etudiantsActifs: 0,
-    etudiantsInactifs: 0,
-    totalCours: 0,
-    totalPaiements: 0,
-    paiementsExpires: 0,
-    totalEvenements: 0,
-    presencesRecentes: 0,
-    totalProfesseurs: 0 // ✅ حقل جديد
-  });
-  const [chartData, setChartData] = useState({
-    coursStats: [],
-    paiementsParMois: [],
-    presenceStats: [],
-    genreStats: []
-  });
+const RevenusMensuels = () => {
+  const navigate = useNavigate();
+  const [etudiants, setEtudiants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-const [rappelModal, setRappelModal] = useState(null);
-const [editDate, setEditDate] = useState('');
-const [editNote, setEditNote] = useState('');
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-  useEffect(() => {
-  const fetchRappels = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      const res = await fetch('http://195.179.229.230:5000/api/rappels', { headers });
-      if (!res.ok) throw new Error('Erreur lors du chargement des rappels');
-
-      const data = await res.json();
-
-      // ✅ تصفية التذكيرات حسب التاريخ الحالي
-      const today = new Date();
-      const rappelsAujourdhui = data.filter(r =>
-        r.status === 'actif' &&
-new Date(r.dateRappel).toDateString() <= today.toDateString()
-      );
-
-      console.log('📢 Rappels à afficher aujourd’hui:', rappelsAujourdhui);
-
-      if (rappelsAujourdhui.length > 0) {
-        setRappelModal(rappelsAujourdhui[0]);
-        setEditDate(rappelsAujourdhui[0].dateRappel?.split('T')[0] || '');
-        setEditNote(rappelsAujourdhui[0].note || '');
-      }
-
-    } catch (err) {
-      console.error('❌ Erreur rappels:', err.message);
-    }
-  };
-
-  fetchRappels();
-}, []);
-
-const handleUpdateRappel = async (id) => {
-  const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dateRappel: editDate, note: editNote })
+  const [anneeScolaireFilter, setAnneeScolaireFilter] = useState('');
+  const [anneesDisponibles, setAnneesDisponibles] = useState([]);
+  const [previsionsMensuelles, setPrevisionsMensuelles] = useState([]);
+  const [statistiquesAnnee, setStatistiquesAnnee] = useState({
+    totalEtudiants: 0,
+    totalInscriptions: 0,
+    totalFormation: 0,
+    totalCA: 0,
+    repartitionModes: {}
   });
+  
+  // États pour les rappels
+  const [rappelModal, setRappelModal] = useState(null);
+  const [editDate, setEditDate] = useState('');
+  const [editNote, setEditNote] = useState('');
 
-  const updated = await res.json();
-  setRappelModal(null);
-  alert("تم التحديث بنجاح");
-};
-
-const handleDeleteRappel = async (id) => {
-  const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
-    method: 'DELETE'
-  });
-
-  if (res.ok) {
-    setRappelModal(null);
-    alert("تم الحذف بنجاح");
-  }
-};
-
-  const fetchDashboardData = async () => {
+  // Fonction pour récupérer les données
+  const fetchData = async () => {
     try {
+      setLoading(true);
+      setError('');
       const token = localStorage.getItem('token');
-      if (!token) {
-        setError('Token manquant - veuillez vous reconnecter');
-        setLoading(false);
-        return;
-      }
 
-      const headers = { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      console.log('🔄 Début de récupération des données...');
-
-      // Récupération parallèle des données - ✅ إضافة الأساتذة
-      const [adminRes, etudiantsRes, coursRes, paiementsRes, evenementsRes, presencesRes, professeursRes] = await Promise.all([
-        fetch('http://195.179.229.230:5000/api/admin/dashboard', { headers }),
-        fetch('http://195.179.229.230:5000/api/etudiants', { headers }),
-        fetch('http://195.179.229.230:5000/api/cours', { headers }),
-        fetch('http://195.179.229.230:5000/api/paiements', { headers }),
-        fetch('http://195.179.229.230:5000/api/evenements', { headers }),
-        fetch('http://195.179.229.230:5000/api/presences', { headers }),
-        fetch('http://195.179.229.230:5000/api/professeurs', { headers }) // ✅ جديد
-      ]);
-
-      // Vérification des statuts de réponse
-      if (!adminRes.ok) throw new Error(`Erreur admin: ${adminRes.status}`);
-      if (!etudiantsRes.ok) throw new Error(`Erreur étudiants: ${etudiantsRes.status}`);
-      if (!coursRes.ok) throw new Error(`Erreur cours: ${coursRes.status}`);
-      if (!paiementsRes.ok) throw new Error(`Erreur paiements: ${paiementsRes.status}`);
-      if (!evenementsRes.ok) throw new Error(`Erreur événements: ${evenementsRes.status}`);
-      if (!presencesRes.ok) throw new Error(`Erreur présences: ${presencesRes.status}`);
-      if (!professeursRes.ok) throw new Error(`Erreur professeurs: ${professeursRes.status}`); // ✅ جديد
-
-      // Conversion en JSON
-      const adminData = await adminRes.json();
-      const etudiants = await etudiantsRes.json();
-      const cours = await coursRes.json();
-      const paiements = await paiementsRes.json();
-      const evenements = await evenementsRes.json();
-      const presences = await presencesRes.json();
-      const professeurs = await professeursRes.json(); // ✅ جديد
-
-      console.log('📊 Données récupérées:', {
-        admin: adminData,
-        etudiants: etudiants.length,
-        cours: cours.length,
-        paiements: paiements.length,
-        evenements: evenements.length,
-        presences: presences.length,
-        professeurs: professeurs.length // ✅ جديد
+      // Récupérer les étudiants pour avoir les années disponibles
+      const etudiantsRes = await fetch('http://195.179.229.230:5000/api/etudiant', {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Vérification de l'authentification
-      if (adminData.message && adminData.message.includes('Token')) {
-        setError('Session expirée - veuillez vous reconnecter');
-        setLoading(false);
-        return;
+      if (!etudiantsRes.ok) {
+        throw new Error('Erreur lors du chargement des données');
       }
 
-      setAdmin(adminData.admin);
-      
-      // Validation des données
-      const etudiantsValid = Array.isArray(etudiants) ? etudiants : [];
-      const coursValid = Array.isArray(cours) ? cours : [];
-      const paiementsValid = Array.isArray(paiements) ? paiements : [];
-      const evenementsValid = Array.isArray(evenements) ? evenements : [];
-      const presencesValid = Array.isArray(presences) ? presences : [];
-      const professeursValid = Array.isArray(professeurs) ? professeurs : []; // ✅ جديد
+      const etudiantsData = await etudiantsRes.json();
+      setEtudiants(etudiantsData);
 
-      // Calcul des statistiques réelles
-      const etudiantsActifs = etudiantsValid.filter(e => e.actif === true).length;
-      const etudiantsInactifs = etudiantsValid.length - etudiantsActifs;
+      const annees = [...new Set(etudiantsData.map((e) => e.anneeScolaire).filter(Boolean))]
+        .sort()
+        .reverse();
+      setAnneesDisponibles(annees);
 
-      // Récupération des paiements expirés
-      let paiementsExpiresCount = 0;
-      try {
-        const paiementsExpRes = await fetch('http://195.179.229.230:5000/api/paiements/exp', { headers });
-        if (paiementsExpRes.ok) {
-          const paiementsExpires = await paiementsExpRes.json();
-          paiementsExpiresCount = Array.isArray(paiementsExpires) ? paiementsExpires.length : 0;
+      // Sélectionner automatiquement 2025/2026 ou la première année
+      let anneeASelectionner = anneeScolaireFilter;
+      if (!anneeASelectionner && annees.length > 0) {
+        if (annees.includes('2025/2026')) {
+          anneeASelectionner = '2025/2026';
+        } else {
+          anneeASelectionner = annees[0];
         }
-      } catch (err) {
-        console.warn('⚠️ Impossible de récupérer les paiements expirés:', err);
+        setAnneeScolaireFilter(anneeASelectionner);
       }
 
-      const dashboardStats = {
-        totalEtudiants: etudiantsValid.length,
-        etudiantsActifs,
-        etudiantsInactifs,
-        totalCours: coursValid.length,
-        totalPaiements: paiementsValid.length,
-        paiementsExpires: paiementsExpiresCount,
-        totalEvenements: evenementsValid.length,
-        presencesRecentes: presencesValid.length,
-        totalProfesseurs: professeursValid.length // ✅ جديد
-      };
-
-      setDashboardData(dashboardStats);
-      console.log('📈 Statistiques calculées:', dashboardStats);
-
-      // Préparation des données pour les graphiques
-      prepareChartData(etudiantsValid, coursValid, paiementsValid, presencesValid);
+      // Calculer les prévisions avec la nouvelle API
+      let totalInscrits = 0;
+      if ((anneeASelectionner || anneeScolaireFilter) === '2025/2026') {
+        totalInscrits = etudiantsData.filter(e => e.anneeScolaire === '2025/2026' && parseFloat(e.prixTotal) > 0).length;
+      } else {
+        totalInscrits = etudiantsData.filter(e => (e.nouvelleInscription === true || e.nouvelleInscription === false) && parseFloat(e.prixTotal) > 0).length;
+      }
+      await fetchRevenusAPI(anneeASelectionner || anneeScolaireFilter, token, totalInscrits);
       
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération des données:', error);
-      setError(`Erreur de connexion: ${error.message}`);
+    } catch (err) {
+      console.error('Erreur lors du chargement des données:', err);
+      setError('Impossible de charger les données');
+      setEtudiants([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const prepareChartData = (etudiants, cours, paiements, presences) => {
-    console.log('🎨 Préparation des graphiques...');
-
-    // 1. Statistiques par cours (étudiants inscrits)
-    const coursStats = cours.map(c => {
-      const etudiantsInscrit = etudiants.filter(e => 
-        Array.isArray(e.cours) && e.cours.includes(c.nom)
-      ).length;
+  // Fonction pour utiliser l'API revenus
+  const fetchRevenusAPI = async (anneeScolaire, token, totalInscrits) => {
+    try {
+      const anneeScolaireEncoded = encodeURIComponent(anneeScolaire);
       
-      return {
-        nom: c.nom.length > 15 ? c.nom.substring(0, 15) + '...' : c.nom,
-        nomComplet: c.nom,
-        etudiants: etudiantsInscrit
-      };
-    }).filter(c => c.etudiants > 0);
-
-    // 2. Statistiques par genre
-    const hommes = etudiants.filter(e => e.genre === 'Homme').length;
-    const femmes = etudiants.filter(e => e.genre === 'Femme').length;
-    const genreStats = [
-      { name: 'Hommes', value: hommes },
-      { name: 'Femmes', value: femmes }
-    ].filter(g => g.value > 0);
-
-    // 3. Paiements par mois (derniers 6 mois)
-    const paiementsParMois = [];
-    const today = new Date();
-    
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const moisNom = date.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+      console.log('Appel API avec année:', anneeScolaire, 'encodée:', anneeScolaireEncoded);
       
-      const count = paiements.filter(p => {
-        if (!p.moisDebut) return false;
-        const paiementDate = new Date(p.moisDebut);
-        return paiementDate.getMonth() === date.getMonth() && 
-               paiementDate.getFullYear() === date.getFullYear();
-      }).length;
+      const revenusRes = await fetch(`http://195.179.229.230:5000/api/revenus/previsions/${anneeScolaireEncoded}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!revenusRes.ok) {
+        const errorText = await revenusRes.text();
+        console.error('Erreur API details:', errorText);
+        throw new Error(`Erreur API revenus: ${revenusRes.status} ${revenusRes.statusText}`);
+      }
+
+      const revenusData = await revenusRes.json();
       
-      paiementsParMois.push({ mois: moisNom, paiements: count });
+      if (revenusData.success) {
+        setStatistiquesAnnee({
+          totalEtudiants: totalInscrits,
+          totalInscriptions: revenusData.statistiques.totalInscriptionReel,
+          totalFormation: revenusData.statistiques.totalFormationReel,
+          totalCA: revenusData.statistiques.totalCAPrevisionnel,
+          repartitionModes: revenusData.statistiques.repartitionModes
+        });
+        
+        setPrevisionsMensuelles(revenusData.previsionsMensuelles);
+        
+        console.log('API Revenus - Succès:', revenusData.debug);
+        console.log('Prévisions mensuelles:', revenusData.previsionsMensuelles);
+      } else {
+        throw new Error(revenusData.message || 'Erreur dans la réponse API');
+      }
+      
+    } catch (err) {
+      console.error('Erreur API revenus:', err);
+      setError(`Erreur API: ${err.message}`);
+      calculerPrevisionsLocal(etudiants, anneeScolaire);
     }
+  };
 
-    // 4. Statistiques de présence
-    const presents = presences.filter(p => p.present === true).length;
-    const absents = presences.filter(p => p.present === false).length;
+  // Fallback - ancienne méthode en cas d'échec de l'API
+  const calculerPrevisionsLocal = (data, anneeFilter) => {
+    console.log('Utilisation de la méthode locale de calcul');
     
-    const presenceStats = [
-      { name: 'Présents', value: presents, color: '#10B981' },
-      { name: 'Absents', value: absents, color: '#EF4444' }
-    ].filter(p => p.value > 0);
+    const etudiantsFiltres = anneeFilter === 'toutes' 
+      ? data 
+      : data.filter(e => e.anneeScolaire === anneeFilter && e.actif);
 
-    const chartDataResult = {
-      coursStats,
-      paiementsParMois,
-      presenceStats,
-      genreStats
+    const stats = {
+      totalEtudiants: etudiantsFiltres.length,
+      totalInscriptions: etudiantsFiltres.length * 3000,
+      totalFormation: etudiantsFiltres.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0),
+      totalCA: 0,
+      repartitionModes: {
+        annuel: { count: 0, ca: 0 },
+        semestriel: { count: 0, ca: 0 },
+        trimestriel: { count: 0, ca: 0 },
+        mensuel: { count: 0, ca: 0 }
+      }
     };
 
-    console.log('📊 Données graphiques préparées:', chartDataResult);
-    setChartData(chartDataResult);
+    stats.totalCA = stats.totalInscriptions + stats.totalFormation;
+
+    etudiantsFiltres.forEach(etudiant => {
+      const mode = etudiant.modePaiement || 'semestriel';
+      const prixTotal = parseFloat(etudiant.prixTotal) || 0;
+      
+      if (stats.repartitionModes[mode]) {
+        stats.repartitionModes[mode].count += 1;
+        stats.repartitionModes[mode].ca += prixTotal + 3000;
+      }
+    });
+
+    setStatistiquesAnnee(stats);
+
+    const mois = [
+      'Septembre', 'Octobre', 'Novembre', 'Décembre',
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août'
+    ];
+
+    const previsions = mois.map((nomMois, indexMois) => {
+      const revenus = {
+        mois: nomMois,
+        inscription: 0,
+        annuel: 0,
+        semestriel: 0,
+        trimestriel: 0,
+        mensuel: 0,
+        total: 0,
+        details: {
+          inscription: { etudiants: 0 },
+          annuel: { etudiants: 0 },
+          semestriel: { etudiants: 0 },
+          trimestriel: { etudiants: 0 },
+          mensuel: { etudiants: 0 }
+        }
+      };
+
+      etudiantsFiltres.forEach(etudiant => {
+        const prixFormation = parseFloat(etudiant.prixTotal) || 0;
+        const mode = etudiant.modePaiement || 'semestriel';
+
+        if (indexMois === 0) {
+          revenus.inscription += 3000;
+          revenus.details.inscription.etudiants += 1;
+        }
+
+        switch (mode) {
+          case 'annuel':
+            if (indexMois === 0) {
+              revenus.annuel += prixFormation;
+              revenus.details.annuel.etudiants += 1;
+            }
+            break;
+          case 'semestriel':
+            if (indexMois === 0 || indexMois === 5) {
+              revenus.semestriel += Math.round(prixFormation / 2);
+              revenus.details.semestriel.etudiants += 1;
+            }
+            break;
+          case 'trimestriel':
+            if (indexMois === 0 || indexMois === 4 || indexMois === 8) {
+              revenus.trimestriel += Math.round(prixFormation / 3);
+              revenus.details.trimestriel.etudiants += 1;
+            }
+            break;
+          case 'mensuel':
+            if (indexMois >= 0 && indexMois <= 9) {
+              revenus.mensuel += Math.round(prixFormation / 10);
+              revenus.details.mensuel.etudiants += 1;
+            }
+            break;
+        }
+      });
+
+      revenus.total = revenus.inscription + revenus.annuel + revenus.semestriel + revenus.trimestriel + revenus.mensuel;
+      return revenus;
+    });
+
+    setPrevisionsMensuelles(previsions);
   };
+
+  const formatMoney = (amount) =>
+    new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/';
   };
 
+  const handleAnneeChange = async (nouvelleAnnee) => {
+    console.log('Changement d\'année vers:', nouvelleAnnee);
+    setAnneeScolaireFilter(nouvelleAnnee);
+    if (nouvelleAnnee) {
+      const token = localStorage.getItem('token');
+      await fetchRevenusAPI(nouvelleAnnee, token);
+    }
+  };
+
+  // UseEffect pour charger les données
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // UseEffect pour récupérer les rappels
+  useEffect(() => {
+    const fetchRappels = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
+        const res = await fetch('http://195.179.229.230:5000/api/rappels', { headers });
+        if (!res.ok) throw new Error('Erreur lors du chargement des rappels');
+
+        const data = await res.json();
+
+        const today = new Date();
+        const rappelsAujourdhui = data.filter(r =>
+          r.status === 'actif' &&
+          new Date(r.dateRappel).toDateString() <= today.toDateString()
+        );
+
+        console.log('Rappels à afficher aujourd\'hui:', rappelsAujourdhui);
+
+        if (rappelsAujourdhui.length > 0) {
+          setRappelModal(rappelsAujourdhui[0]);
+          setEditDate(rappelsAujourdhui[0].dateRappel?.split('T')[0] || '');
+          setEditNote(rappelsAujourdhui[0].note || '');
+        }
+
+      } catch (err) {
+        console.error('Erreur rappels:', err.message);
+      }
+    };
+
+    fetchRappels();
+  }, []);
+
+  // Fonctions pour gérer les rappels
+  const handleUpdateRappel = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ dateRappel: editDate, note: editNote })
+      });
+
+      if (res.ok) {
+        setRappelModal(null);
+        alert("Rappel mis à jour avec succès");
+      }
+    } catch (err) {
+      console.error('Erreur mise à jour rappel:', err);
+      alert("Erreur lors de la mise à jour");
+    }
+  };
+
+  const handleDeleteRappel = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://195.179.229.230:5000/api/rappels/${id}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        setRappelModal(null);
+        alert("Rappel supprimé avec succès");
+      }
+    } catch (err) {
+      console.error('Erreur suppression rappel:', err);
+      alert("Erreur lors de la suppression");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-content">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">Chargement des données réelles...</p>
-          <p className="loading-subtext">Récupération depuis la base de données</p>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid #e2e8f0',
+              borderTop: '4px solid #2563eb',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem'
+            }}
+          ></div>
+          <p style={{ color: '#64748b', fontSize: '1.1rem' }}>Chargement des prévisions...</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="error-container">
-        <div className="error-content">
-          <AlertTriangle className="error-icon" />
-          <h2 className="error-title">Erreur de Connexion</h2>
-          <p className="error-message">{error}</p>
-          <div className="error-actions">
-            <button 
-              onClick={fetchDashboardData}
-              className="error-btn primary"
-            >
-              Réessayer
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="error-btn secondary"
-            >
-              Se reconnecter
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const StatCard = ({ title, value, icon: Icon, colorClass, trend, subtitle }) => (
-    <div className={`stat-card ${colorClass}`}>
-      <div className="stat-card-content">
-        <div className="stat-card-info">
-          <p className="stat-card-title">{title}</p>
-          <p className="stat-card-value">{value || 0}</p>
-          {subtitle && (
-            <p className="stat-card-subtitle">{subtitle}</p>
-          )}
-          {trend && (
-            <p className="stat-card-trend">
-              <TrendingUp />
-              {trend}
-            </p>
-          )}
-        </div>
-        <div className="stat-card-icon">
-          <Icon />
-        </div>
-      </div>
-    </div>
-  );
-
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
+  const totalAnnuelPrevu = previsionsMensuelles.reduce((sum, mois) => sum + mois.total, 0);
+  const moyenneMensuelle = previsionsMensuelles.length > 0 ? totalAnnuelPrevu / 12 : 0;
+  const moisMaxRevenu = previsionsMensuelles.reduce((max, mois) => 
+    mois.total > max.total ? mois : max, { total: 0, mois: 'Aucun' });
 
   return (
-    <div className="admin-dashboard"style={{
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)'
-        }}>
-      {/* Header */}
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <Sidebar onLogout={handleLogout} />
-      <Header />
-{rappelModal && (
-  <RappelModal
-    rappel={rappelModal}
-    onClose={() => setRappelModal(null)}
-    onUpdate={() => handleUpdateRappel(rappelModal._id)}
-    onDelete={() => handleDeleteRappel(rappelModal._id)}
-    editDate={editDate}
-    setEditDate={setEditDate}
-    editNote={editNote}
-    setEditNote={setEditNote}
-  />
-)}
-
-      <div className="dashboard-container">
-        <div className="dashboard-content">
-          {/* Cartes de statistiques principales */}
-          <div className="stats-grid">
-            <StatCard
-              title="Total Étudiants"
-              value={dashboardData.totalEtudiants}
-              icon={Users}
-              colorClass="blue"
-              subtitle="Inscrits dans la base"
-            />
-            <StatCard
-              title="Étudiants Actifs"
-              value={dashboardData.etudiantsActifs}
-              icon={UserCheck}
-              colorClass="green"
-              subtitle="En cours de formation"
-            />
-            <StatCard
-              title="Total Classes"
-              value={dashboardData.totalCours}
-              icon={GraduationCap}
-              colorClass="purple"
-              subtitle="Disponibles"
-            />
-            <StatCard
-              title="Paiements Expirés"
-              value={dashboardData.paiementsExpires}
-              icon={AlertTriangle}
-              colorClass="red"
-              subtitle="Nécessitent suivi"
-            />
-          </div>
-
-          {/* Cartes de statistiques secondaires */}
-          <div className="stats-grid">
-            <StatCard
-              title="Total Paiements"
-              value={dashboardData.totalPaiements}
-              icon={CreditCard}
-              colorClass="yellow"
-              subtitle="Enregistrés en DB"
-            />
-            <StatCard
-              title="Événements"
-              value={dashboardData.totalEvenements}
-              icon={Calendar}
-              colorClass="indigo"
-              subtitle="Planifiés"
-            />
-            <StatCard
-              title="Étudiants Inactifs"
-              value={dashboardData.etudiantsInactifs}
-              icon={UserX}
-              colorClass="gray"
-              subtitle="Suspendus"
-            />
-            {/* ✅ البطاقة الجديدة - Total Professeurs */}
-            <StatCard
-              title="Total Professeurs"
-              value={dashboardData.totalProfesseurs}
-              icon={Users}
-              colorClass="orange"
-              subtitle="Enseignants enregistrés"
-            />
-          </div>
-
-          {/* Graphiques principaux */}
-          <div className="charts-grid">
-            {/* Graphique des étudiants par cours */}
-            <div className="chart-card">
-              <div className="chart-header">
-                <GraduationCap />
-                <h3>Étudiants par Classe (Données Réelles)</h3>
+      
+      <div style={{ flex: 1, paddingLeft: '0' }}>
+        <Header />
+        
+        {rappelModal && (
+          <RappelModal
+            rappel={rappelModal}
+            onClose={() => setRappelModal(null)}
+            onUpdate={() => handleUpdateRappel(rappelModal._id)}
+            onDelete={() => handleDeleteRappel(rappelModal._id)}
+            editDate={editDate}
+            setEditDate={setEditDate}
+            editNote={editNote}
+            setEditNote={setEditNote}
+          />
+        )}
+        
+        <div style={{ padding: '2rem' }}>
+          {/* Header */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div>
+                <h1
+                  style={{
+                    fontSize: '1.75rem',
+                    fontWeight: 'bold',
+                    color: '#1f2937',
+                    margin: '0 0 0.5rem 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem'
+                  }}
+                >
+                  <BarChart3 size={28} />
+                  Prévisions Revenus Mensuels {anneeScolaireFilter}
+                </h1>
+                <p style={{ color: '#6b7280', margin: 0 }}>
+                  Prévisions basées sur les paiements réels (inscription + formation séparées)
+                </p>
               </div>
-              {chartData.coursStats && chartData.coursStats.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData.coursStats}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="nom" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value, name) => [value, 'Étudiants inscrits']}
-                      labelFormatter={(label) => {
-                        const cours = chartData.coursStats.find(c => c.nom === label);
-                        return cours ? cours.nomComplet : label;
-                      }}
-                    />
-                    <Bar dataKey="etudiants" fill="#3B82F6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-empty">
-                  <GraduationCap />
-                  <div>
-                    <h4>Aucune classe avec étudiants inscrits</h4>
-                    <p>Ajoutez des classes et des étudiants</p>
-                  </div>
+              <button
+                onClick={fetchData}
+                style={{
+                  background: '#374151',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '0.75rem 1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                <RefreshCw size={16} />
+                Actualiser
+              </button>
+            </div>
+
+            {/* Filtre par année scolaire */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                padding: '1rem',
+                background: '#f9fafb',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb'
+              }}
+            >
+              <Filter size={18} />
+              <span style={{ fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>Année scolaire:</span>
+              <select
+                value={anneeScolaireFilter}
+                onChange={(e) => handleAnneeChange(e.target.value)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: 'white',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="toutes">Toutes les années</option>
+                {anneesDisponibles.map((annee) => (
+                  <option key={annee} value={annee}>
+                    {annee}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Statistiques globales */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Users size={32} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9 }}>Total Étudiants</h3>
+                  <p style={{ margin: 0, fontSize: '1.8rem', fontWeight: 'bold' }}>{statistiquesAnnee.totalEtudiants}</p>
                 </div>
-              )}
-            </div>
-
-            {/* Graphique des paiements par mois */}
-            <div className="chart-card">
-              <div className="chart-header">
-                <TrendingUp />
-                <h3>Évolution Paiements (6 derniers mois)</h3>
               </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData.paiementsParMois}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="mois" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [value, 'Paiements']} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="paiements" 
-                    stroke="#10B981" 
-                    strokeWidth={3} 
-                    dot={{ fill: '#10B981', strokeWidth: 2, r: 6 }} 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Graphiques circulaires */}
-          <div className="pie-charts-grid">
-            {/* Répartition par genre */}
-            <div className="chart-card">
-              <div className="chart-header">
-                <Users />
-                <h3>Répartition par Genre</h3>
-              </div>
-              {chartData.genreStats && chartData.genreStats.length > 0 && chartData.genreStats.some(stat => stat.value > 0) ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={chartData.genreStats}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {chartData.genreStats.map((entry, index) => (
-                        <Cell key={`cell-gender-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-empty">
-                  <Users />
-                  <div>
-                    <h4>Aucun étudiant enregistré</h4>
-                    <p>Ajoutez des étudiants pour voir les statistiques</p>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Statistiques de présence */}
-            <div className="chart-card">
-              <div className="chart-header">
-                <UserCheck />
-                <h3>Statistiques de Présence</h3>
-              </div>
-              {chartData.presenceStats && chartData.presenceStats.length > 0 && chartData.presenceStats.some(stat => stat.value > 0) ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={chartData.presenceStats}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {chartData.presenceStats.map((entry, index) => (
-                        <Cell key={`cell-presence-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-empty">
-                  <UserCheck />
-                  <div>
-                    <h4>Aucun enregistrement de présence</h4>
-                    <p>Commencez à enregistrer les présences</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Section d'alertes */}
-          {dashboardData.paiementsExpires > 0 && (
-            <div className="alert-section">
-              <div className="alert-content">
-                <AlertTriangle />
-                <div className="alert-text">
-                  <h3>⚠️ Paiements Expirés Détectés</h3>
-                  <p>
-                    <strong>{dashboardData.paiementsExpires}</strong> étudiant(s) ont des paiements expirés dans votre base de données.
+            <div style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Wallet size={32} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9 }}>CA Total Prévu</h3>
+                  <p style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold' }}>{formatMoney(totalAnnuelPrevu)} MAD</p>
+                  <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>
+                    Inscription: {formatMoney(statistiquesAnnee.totalInscriptions)} | 
+                    Formation: {formatMoney(statistiquesAnnee.totalFormation)}
                   </p>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Résumé avec données réelles */}
-          <div className="summary-card">
-            <h3 className="summary-header">
-              📊 Résumé en Temps Réel
-            </h3>
-            <div className="summary-grid">
-              <div className="summary-item blue">
-                <p className="summary-item-label">Taux d'Activité</p>
-                <p className="summary-item-value">
-                  {dashboardData.totalEtudiants ? Math.round((dashboardData.etudiantsActifs / dashboardData.totalEtudiants) * 100) : 0}%
-                </p>
-                <p className="summary-item-detail">
-                  {dashboardData.etudiantsActifs}/{dashboardData.totalEtudiants} étudiants actifs
-                </p>
+            <div style={{
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Target size={32} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9 }}>Pic de Revenus</h3>
+                  <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>{moisMaxRevenu.mois}</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.8 }}>{formatMoney(moisMaxRevenu.total)} MAD</p>
+                </div>
               </div>
-              <div className="summary-item green">
-                <p className="summary-item-label">Moyenne Étudiants/Classes</p>
-                <p className="summary-item-value">
-                  {dashboardData.totalCours ? Math.round(dashboardData.totalEtudiants / dashboardData.totalCours) : 0}
-                </p>
-                <p className="summary-item-detail">
-                  {dashboardData.totalEtudiants} étudiants / {dashboardData.totalCours} classe
-                </p>
-              </div>
-              <div className="summary-item purple">
-                <p className="summary-item-label">Ratio Profs/Étudiants</p>
-                <p className="summary-item-value">
-                  {dashboardData.totalProfesseurs ? Math.round(dashboardData.totalEtudiants / dashboardData.totalProfesseurs) : 0}
-                </p>
-                <p className="summary-item-detail">
-                  {dashboardData.totalEtudiants} étudiants / {dashboardData.totalProfesseurs} professeurs
-                </p>
+            </div>
+
+            <div style={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <BarChart3 size={32} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9 }}>Moyenne Mensuelle</h3>
+                  <p style={{ margin: 0, fontSize: '1.3rem', fontWeight: 'bold' }}>{formatMoney(moyenneMensuelle)} MAD</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Informations de debug */}
-      
+          {/* Répartition par modes de paiement */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                marginBottom: '2rem',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <CreditCard size={24} />
+              Répartition par Modes de Paiement
+            </h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              {Object.entries(statistiquesAnnee.repartitionModes).map(([mode, data]) => (
+                <div key={mode} style={{
+                  background: '#f9fafb',
+                  padding: '1.5rem',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h3 style={{ 
+                    fontWeight: 'bold', 
+                    marginBottom: '1rem', 
+                    color: '#374151',
+                    textTransform: 'capitalize'
+                  }}>
+                    {mode}
+                  </h3>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>
+                      {data.count}
+                    </span>
+                    <span style={{ fontSize: '0.9rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                      étudiants
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#059669' }}>
+                    {formatMoney(data.ca)} MAD
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                    {statistiquesAnnee.totalEtudiants > 0 ? 
+                      ((data.count / statistiquesAnnee.totalEtudiants) * 100).toFixed(1) : 0}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tableau des prévisions mensuelles */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '2rem',
+              marginBottom: '2rem',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                marginBottom: '2rem',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Calendar size={24} />
+              Prévisions Mensuelles Détaillées (Inscription + Formation)
+            </h2>
+
+            {previsionsMensuelles.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '3rem',
+                color: '#6b7280',
+                fontSize: '1.1rem'
+              }}>
+                <AlertCircle size={48} style={{ margin: '0 auto 1rem', display: 'block' }} />
+                Aucune donnée disponible pour cette année scolaire
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+                  <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                    <tr>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'left', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Mois</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Inscription</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Annuel</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Semestriel</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Trimestriel</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Mensuel</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Total Mensuel</th>
+                      <th style={{ 
+                        padding: '1rem 1.25rem', 
+                        textAlign: 'center', 
+                        fontWeight: '700', 
+                        color: '#374151', 
+                        fontSize: '0.875rem',
+                        borderBottom: '2px solid #e5e7eb'
+                      }}>Tendance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previsionsMensuelles.map((mois, index) => {
+                      const prevMois = index > 0 ? previsionsMensuelles[index - 1] : null;
+                      const tendance = prevMois ? mois.total - prevMois.total : 0;
+                      const isPeak = mois.total === moisMaxRevenu.total && mois.total > 0;
+                      
+                      return (
+                        <tr key={index} style={{ 
+                          borderBottom: '1px solid #f3f4f6',
+                          backgroundColor: isPeak ? '#fef3c7' : 'transparent'
+                        }}>
+                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontWeight: '600', color: '#1e293b' }}>{mois.mois}</span>
+                              {isPeak && (
+                                <span style={{
+                                  background: '#fbbf24',
+                                  color: '#92400e',
+                                  padding: '0.125rem 0.5rem',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600'
+                                }}>
+                                  PIC
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#dc2626' }}>
+                                {mois.inscription > 0 ? formatMoney(mois.inscription) : '-'}
+                              </div>
+                              {mois.details.inscription.etudiants > 0 && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                  {mois.details.inscription.etudiants} étud.
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#059669' }}>
+                                {mois.annuel > 0 ? formatMoney(mois.annuel) : '-'}
+                              </div>
+                              {mois.details.annuel.etudiants > 0 && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                  {mois.details.annuel.etudiants} étud.
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#3b82f6' }}>
+                                {mois.semestriel > 0 ? formatMoney(mois.semestriel) : '-'}
+                              </div>
+                              {mois.details.semestriel.etudiants > 0 && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                  {mois.details.semestriel.etudiants} étud.
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#8b5cf6' }}>
+                                {mois.trimestriel > 0 ? formatMoney(mois.trimestriel) : '-'}
+                              </div>
+                              {mois.details.trimestriel.etudiants > 0 && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                  {mois.details.trimestriel.etudiants} étud.
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#f59e0b' }}>
+                                {mois.mensuel > 0 ? formatMoney(mois.mensuel) : '-'}
+                              </div>
+                              {mois.details.mensuel.etudiants > 0 && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                  {mois.details.mensuel.etudiants} étud.
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <span style={{
+                              fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                              fontSize: '1rem',
+                              fontWeight: '700',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '0.5rem',
+                              background: mois.total > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(156, 163, 175, 0.1)',
+                              color: mois.total > 0 ? '#047857' : '#6b7280'
+                            }}>
+                              {mois.total > 0 ? formatMoney(mois.total) : '0'} MAD
+                            </span>
+                          </td>
+                          
+                          <td style={{ padding: '1rem 1.25rem', textAlign: 'center', verticalAlign: 'middle' }}>
+                            {index > 0 && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+                                {tendance > 0 ? (
+                                  <>
+                                    <ArrowUp size={16} style={{ color: '#059669' }} />
+                                    <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: '600' }}>
+                                      +{formatMoney(tendance)}
+                                    </span>
+                                  </>
+                                ) : tendance < 0 ? (
+                                  <>
+                                    <ArrowDown size={16} style={{ color: '#dc2626' }} />
+                                    <span style={{ fontSize: '0.875rem', color: '#dc2626', fontWeight: '600' }}>
+                                      {formatMoney(tendance)}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>-</span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot style={{ background: '#f9fafb', borderTop: '2px solid #e5e7eb' }}>
+                    <tr>
+                      <td style={{ padding: '1rem 1.25rem', fontWeight: 'bold', color: '#374151' }}>
+                        TOTAL ANNUEL
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: 'bold', color: '#dc2626' }}>
+                        {formatMoney(previsionsMensuelles.reduce((sum, m) => sum + m.inscription, 0))}
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: 'bold', color: '#059669' }}>
+                        {formatMoney(previsionsMensuelles.reduce((sum, m) => sum + m.annuel, 0))}
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: 'bold', color: '#3b82f6' }}>
+                        {formatMoney(previsionsMensuelles.reduce((sum, m) => sum + m.semestriel, 0))}
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: 'bold', color: '#8b5cf6' }}>
+                        {formatMoney(previsionsMensuelles.reduce((sum, m) => sum + m.trimestriel, 0))}
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: 'bold', color: '#f59e0b' }}>
+                        {formatMoney(previsionsMensuelles.reduce((sum, m) => sum + m.mensuel, 0))}
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#1f2937' }}>
+                        {formatMoney(totalAnnuelPrevu)} MAD
+                      </td>
+                      <td style={{ padding: '1rem 1.25rem' }}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div
+              style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+                padding: '1rem',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginBottom: '2rem'
+              }}
+            >
+              <AlertCircle size={20} />
+              {error}
+            </div>
+          )}
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1024px) {
+          div[style*="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 768px) {
+          div[style*="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))"] {
+            grid-template-columns: 1fr !important;
+          }
+          table { font-size: 0.8rem; }
+          th, td { padding: 0.5rem !important; }
+        }
+      `}</style>
     </div>
   );
 };
 
-export default Dashboardmanager;
+export default RevenusMensuels;

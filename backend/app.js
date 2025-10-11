@@ -10,7 +10,8 @@ const Commercial = require('./models/commercialModel');
 const Administratif = require('./models/Administratif');
 const PaiementProfesseur = require('./models/PaiementProfesseur');
 const CyclePaiement = require('./models/CyclePaiement');
-
+const Partner = require('./models/partner'); // Ajuste le chemin selon ta structure
+const Test = require('./models/Test.js');
 const FinanceProf = require('./models/financeProfModel');
 const FormulaireEvaluation = require('./models/FormulaireEvaluation');
 const PenaliteProfesseur = require('./models/PenaliteProfesseur');
@@ -148,6 +149,10 @@ const authAdminOrPedagogique = async (req, res, next) => {
     res.status(401).json({ message: 'Token invalide' });
   }
 };
+
+
+// REMPLACEZ votre middleware authCommercial par celui-ci dans server.js
+
 const authCommercial = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -156,24 +161,85 @@ const authCommercial = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, 'jwt_secret_key');
-    const commercial = await Commercial.findById(decoded.id);
+    console.log('🔍 Token décodé:', decoded);
+    
+    // Check token type and handle accordingly
+    if (decoded.type === 'partner') {
+      // Handle partner authentication
+      const partner = await Partner.findById(decoded.id);
 
-    if (!commercial) {
-      return res.status(404).json({ message: 'Commercial non trouvé' });
+      if (!partner) {
+        return res.status(404).json({ message: 'Partner non trouvé' });
+      }
+
+      if (!partner.active) {
+        return res.status(403).json({ message: '⛔ Compte partner inactif' });
+      }
+
+      console.log('✅ Authentification Partner réussie pour:', partner.email);
+
+      // Set partner-specific request properties
+      req.partnerId = partner._id;        // IMPORTANT: Pour les opérations partner
+      req.commercial = partner;           // Keep for compatibility
+      req.isPartner = true;              // Flag pour identifier un partner
+      req.isAdmin = false;               // Pas un admin
+      req.user = partner;                // Référence générique
+      
+    } else if (decoded.type === 'admin' || decoded.role === 'admin') {
+      // Handle admin authentication
+      const admin = await Admin.findById(decoded.id);
+
+      if (!admin) {
+        return res.status(404).json({ message: 'Admin non trouvé' });
+      }
+
+      if (!admin.actif) {
+        return res.status(403).json({ message: '⛔ Compte admin inactif' });
+      }
+
+      console.log('✅ Authentification Admin réussie pour:', admin.email);
+
+      // Set admin-specific request properties
+      req.adminId = admin._id;
+      req.commercial = admin;            // Keep for compatibility
+      req.isPartner = false;
+      req.isAdmin = true;                // Flag pour identifier un admin
+      req.user = admin;
+      
+    } else {
+      // Handle commercial authentication (comportement par défaut)
+      const commercial = await Commercial.findById(decoded.id);
+
+      if (!commercial) {
+        return res.status(404).json({ message: 'Commercial non trouvé' });
+      }
+
+      if (!commercial.actif) {
+        return res.status(403).json({ message: '⛔ Compte commercial inactif' });
+      }
+
+      console.log('✅ Authentification Commercial réussie pour:', commercial.email);
+
+      // Set commercial-specific request properties
+      req.commercialId = commercial._id;
+      req.commercial = commercial;
+      req.isPartner = false;
+      req.isAdmin = false;
+      req.user = commercial;
+      req.userRole = 'commercial';
     }
-
-    if (!commercial.actif) {
-      return res.status(403).json({ message: '⛔ Compte commercial inactif' });
-    }
-
-    req.commercialId = commercial._id;
-    req.commercial = commercial;
-    req.userRole = 'commercial';
+    
     next();
   } catch (err) {
-    res.status(401).json({ message: 'Token invalide ou expiré', error: err.message });
+    console.error('❌ Erreur middleware auth:', err);
+    res.status(401).json({ 
+      message: 'Token invalide ou expiré', 
+      error: err.message 
+    });
   }
 };
+
+
 // Stockage pour les professeurs (gardez l'existant)
 const multerDocuments = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -799,10 +865,19 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
         if (specialite) {
           const STRUCTURE_FORMATION = {
             MASI: {
-              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-              4: ['Management des affaires et systèmes d\'information'],
-              5: ['Management des affaires et systèmes d\'information']
-            },
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
             IRM: {
               3: ['Développement informatique', 'Réseaux et cybersécurité'],
               4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -826,7 +901,7 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
       }
 
       // GESTION DES COURS AVEC LIMITE
-      const MAX_ETUDIANTS = 20;
+      const MAX_ETUDIANTS = 50;
       let coursArray = [];
 
       if (cours) {
@@ -1423,11 +1498,20 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
         const specialiteAValider = specialite !== undefined ? specialite : etudiantExistant.specialite;
         if (specialiteAValider && specialiteAValider.trim() !== '') {
           const STRUCTURE_FORMATION = {
-            MASI: {
-              3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-              4: ['Management des affaires et systèmes d\'information'],
-              5: ['Management des affaires et systèmes d\'information']
-            },
+           MASI: {
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
             IRM: {
               3: ['Développement informatique', 'Réseaux et cybersécurité'],
               4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -1448,7 +1532,7 @@ app.put('/api/commercial/etudiants/:id', authCommercial, uploadEtudiants, async 
     }
 
     // GESTION DES COURS AVEC LIMITE
-    const MAX_ETUDIANTS = 20;
+    const MAX_ETUDIANTS = 50;
     let coursArray = etudiantExistant.cours || [];
 
     if (cours !== undefined) {
@@ -2097,11 +2181,20 @@ app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (re
 
       if (typeFormationFinal && specialite) {
         const STRUCTURE_FORMATION = {
-          MASI: {
-            3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-            4: ['Management des affaires et systèmes d\'information'],
-            5: ['Management des affaires et systèmes d\'information']
-          },
+        MASI: {
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
           IRM: {
             3: ['Développement informatique', 'Réseaux et cybersécurité'],
             4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -2119,7 +2212,7 @@ app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (re
     }
 
     // ===== GESTION DES COURS AVEC LIMITE =====
-    const MAX_ETUDIANTS = 20;
+    const MAX_ETUDIANTS = 50;
     let coursArray = [];
 
     if (cours) {
@@ -2439,8 +2532,474 @@ app.post('/api/commercial/etudiants', authCommercial, uploadEtudiants, async (re
   }
 });
 
+app.put('/api/pedagogique/etudiant/:id/cours', authPedagogique, async (req, res) => {
+  try {
+    const { cours } = req.body;
+    const etudiantId = req.params.id;
+    
+    // Utiliser directement req.pedagogique si disponible
+    const pedagogique = req.pedagogique || await Pedagogique.findById(req.pedagogiqueId || req.user.id);
+    
+    if (!pedagogique) {
+      return res.status(403).json({ message: 'Pédagogique non trouvé' });
+    }
+    
+    // Récupérer l'étudiant
+    const etudiant = await Etudiant.findById(etudiantId);
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+    
+    // Vérifier les permissions
+    const filiereEtudiant = etudiant.typeFormation || etudiant.filiere;
+    let hasAccess = false;
+    
+    if (pedagogique.type === 'GENERAL') {
+      hasAccess = pedagogique.filieresList.includes(filiereEtudiant);
+    } else {
+      hasAccess = pedagogique.filiere === filiereEtudiant;
+    }
+    
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        message: `Vous n'avez pas accès à cette filière (${filiereEtudiant})`
+      });
+    }
+    
+    // Mettre à jour UNIQUEMENT les cours
+    etudiant.cours = cours;
+    await etudiant.save({ validateBeforeSave: false });
+    
+    res.status(200).json({
+      message: 'Classes mis à jour avec succès',
+      etudiant: {
+        _id: etudiant._id,
+        nomComplet: etudiant.nomComplet,
+        cours: etudiant.cours
+      }
+    });
+    
+  } catch (err) {
+    console.error('Erreur:', err);
+    res.status(500).json({ 
+      message: 'Erreur serveur',
+      error: err.message 
+    });
+  }
+});
+// À ajouter dans votre fichier principal du serveur (après les autres routes)
+
+// ===== ROUTES PARTNERS =====
+
+// 1. Route pour récupérer les étudiants partners
+app.get('/api/partners/etudiants', authCommercial, async (req, res) => {
+  try {
+    let etudiants;
+
+    if (req.isPartner) {
+      // Si c'est un partner, récupérer seulement ses étudiants
+      if (!req.partnerId) {
+        return res.status(400).json({ message: 'Partner ID manquant' });
+      }
+      
+      etudiants = await Etudiant.find({ 
+        nomPartner: req.partnerId,
+        isPartner: true 
+      })
+      .populate('nomPartner', 'nomPartner active')
+      .sort({ createdAt: -1 });
+      
+      console.log(`Partner ${req.partnerId} has ${etudiants.length} students`);
+      
+    } else if (req.isAdmin) {
+      // Si c'est un admin, récupérer tous les étudiants partners
+      etudiants = await Etudiant.find({ isPartner: true })
+        .populate('nomPartner', 'nomPartner active')
+        .sort({ createdAt: -1 });
+        
+      console.log(`Admin retrieved ${etudiants.length} total partner students`);
+      
+    } else {
+      return res.status(403).json({ 
+        message: 'Accès non autorisé - seuls les partners et admins peuvent accéder à cette route' 
+      });
+    }
+    
+    res.json(etudiants);
+  } catch (err) {
+    console.error('Erreur récupération étudiants partner:', err);
+    res.status(500).json({ 
+      error: 'Erreur serveur lors de la récupération des étudiants',
+      details: err.message 
+    });
+  }
+});
+
+// REMPLACEZ votre route POST /api/partners/etudiants par celle-ci dans server.js
+
+app.post('/api/partners/etudiants', authCommercial, uploadEtudiants, async (req, res) => {
+  try {
+    console.log('Route POST /api/partners/etudiants appelée');
+    console.log('req.isPartner:', req.isPartner);
+    console.log('req.partnerId:', req.partnerId);
+
+    // Vérifier l'accès partner
+    if (!req.isPartner && !req.isAdmin) {
+      return res.status(403).json({ 
+        message: 'Accès non autorisé - seuls les partners peuvent créer des étudiants',
+        debug: { isPartner: req.isPartner, isAdmin: req.isAdmin }
+      });
+    }
+    
+    if (req.isPartner && !req.partnerId) {
+      return res.status(400).json({ message: 'Partner ID manquant' });
+    }
+
+    const {
+      prenom, nomDeFamille, genre, dateNaissance, telephone, email, motDePasse,
+      cin, passeport, lieuNaissance, pays, cours, niveau, niveauFormation, filiere,
+      option, specialite, typeDiplome, diplomeAcces, specialiteDiplomeAcces,
+      mention, lieuObtentionDiplome, serieBaccalaureat, anneeBaccalaureat,
+      premiereAnneeInscription, sourceInscription, dateInscription, typePaiement,
+      prixTotal, pourcentageBourse, situation, codeEtudiant, dateEtReglement,
+      actif, nouvelleInscription, paye, handicape, resident, fonctionnaire,
+      mobilite, cycle, specialiteIngenieur, optionIngenieur,
+      specialiteLicencePro, optionLicencePro, specialiteMasterPro, optionMasterPro,
+      anneeScolaire, modePaiement, telephoneResponsable, codeBaccalaureat,
+      prixTotalPartner, typeFormation,
+      // Document comments
+      commentaireCin, commentaireBacCommentaire, commentaireReleveNoteBac,
+      commentaireDiplomeCommentaire, commentaireAttestationReussiteCommentaire,
+      commentaireReleveNotesFormationCommentaire, commentairePasseport,
+      commentaireBacOuAttestationBacCommentaire, commentaireAuthentificationBac,
+      commentaireAuthenticationDiplome, commentaireEngagementCommentaire
+    } = req.body;
+
+    // Validation des champs obligatoires
+    if (!prenom || !nomDeFamille || !telephone || !email || !motDePasse || !dateNaissance) {
+      return res.status(400).json({
+        message: 'Les champs prenom, nomDeFamille, telephone, email, motDePasse et dateNaissance sont obligatoires'
+      });
+    }
+
+    // Validation email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Format d\'email invalide' });
+    }
+
+    // Vérifier l'unicité de l'email
+    const existingStudent = await Etudiant.findOne({ email });
+    if (existingStudent) {
+      return res.status(400).json({ error: 'Un étudiant avec cet email existe déjà' });
+    }
+
+    // Hash du mot de passe
+    const hashedPassword = await bcrypt.hash(motDePasse, 12);
+
+    // Traitement des fichiers
+    const processFiles = () => {
+      const files = {};
+      if (req.files) {
+        if (req.files.image) {
+          files.image = `/uploads/${req.files.image[0].filename}`;
+        }
+      }
+      return files;
+    };
+
+    const files = processFiles();
+
+    // Traitement des documents avec commentaires
+    const documentsData = {};
+    const documentsMapping = {
+      'documentCin': 'cin',
+      'documentBacCommentaire': 'bacCommentaire',
+      'documentReleveNoteBac': 'releveNoteBac',
+      'documentDiplomeCommentaire': 'diplomeCommentaire',
+      'documentAttestationReussiteCommentaire': 'attestationReussiteCommentaire',
+      'documentReleveNotesFormationCommentaire': 'releveNotesFormationCommentaire',
+      'documentPasseport': 'passeport',
+      'documentBacOuAttestationBacCommentaire': 'bacOuAttestationBacCommentaire',
+      'documentAuthentificationBac': 'authentificationBac',
+      'documentAuthenticationDiplome': 'authenticationDiplome',
+      'documentEngagementCommentaire': 'engagementCommentaire'
+    };
+
+    // Initialiser la structure des documents
+    Object.keys(documentsMapping).forEach(fileKey => {
+      const docKey = documentsMapping[fileKey];
+      
+      if (!documentsData[docKey]) {
+        documentsData[docKey] = {
+          fichier: '',
+          commentaire: ''
+        };
+      }
+      
+      if (req.files && req.files[fileKey]) {
+        documentsData[docKey].fichier = `/documents/${req.files[fileKey][0].filename}`;
+      }
+    });
+
+    // Ajouter les commentaires
+    const commentairesMapping = {
+      'commentaireCin': 'cin',
+      'commentaireBacCommentaire': 'bacCommentaire',
+      'commentaireReleveNoteBac': 'releveNoteBac',
+      'commentaireDiplomeCommentaire': 'diplomeCommentaire',
+      'commentaireAttestationReussiteCommentaire': 'attestationReussiteCommentaire',
+      'commentaireReleveNotesFormationCommentaire': 'releveNotesFormationCommentaire',
+      'commentairePasseport': 'passeport',
+      'commentaireBacOuAttestationBacCommentaire': 'bacOuAttestationBacCommentaire',
+      'commentaireAuthentificationBac': 'authentificationBac',
+      'commentaireAuthenticationDiplome': 'authenticationDiplome',
+      'commentaireEngagementCommentaire': 'engagementCommentaire'
+    };
+
+    Object.keys(commentairesMapping).forEach(commentKey => {
+      const docKey = commentairesMapping[commentKey];
+      const commentValue = req.body[commentKey];
+      
+      if (!documentsData[docKey]) {
+        documentsData[docKey] = {
+          fichier: '',
+          commentaire: ''
+        };
+      }
+      
+      if (commentValue) {
+        documentsData[docKey].commentaire = commentValue;
+      }
+    });
+
+    // ===== FONCTION POUR NETTOYER LES VALEURS ENUM =====
+    const cleanEnumValue = (value) => {
+      // Si la valeur est undefined, null, ou chaîne vide, retourner undefined
+      if (value === undefined || value === null || value === '') {
+        return undefined;
+      }
+      // Sinon, retourner la valeur nettoyée
+      return value.trim();
+    };
+
+    // Préparer les données de l'étudiant avec nettoyage des enum
+    const etudiantData = {
+      prenom, nomDeFamille, genre, 
+      dateNaissance: new Date(dateNaissance),
+      telephone, email, motDePasse: hashedPassword,
+      cin: cin || '', passeport: passeport || '',
+      lieuNaissance: lieuNaissance || '', pays: pays || '',
+      cours: Array.isArray(cours) ? cours : (cours ? [cours] : []),
+      niveau: parseInt(niveau) || undefined,
+      niveauFormation, filiere, option, specialite, typeDiplome,
+      diplomeAcces, specialiteDiplomeAcces, mention, lieuObtentionDiplome,
+      serieBaccalaureat, anneeBaccalaureat: parseInt(anneeBaccalaureat) || undefined,
+      premiereAnneeInscription: parseInt(premiereAnneeInscription) || undefined,
+      sourceInscription, dateInscription, typePaiement,
+      prixTotal: parseFloat(prixTotal) || 0,
+      pourcentageBourse: parseFloat(pourcentageBourse) || 0,
+      situation, codeEtudiant, dateEtReglement,
+      actif: actif !== 'false',
+      nouvelleInscription: nouvelleInscription !== 'false',
+      paye: paye === 'true',
+      handicape: handicape === 'true',
+      resident: resident === 'true',
+      fonctionnaire: fonctionnaire === 'true',
+      mobilite: mobilite === 'true',
+      
+      // ===== NETTOYAGE DES CHAMPS ENUM CRITIQUES =====
+      cycle: cleanEnumValue(cycle),
+      specialiteIngenieur: cleanEnumValue(specialiteIngenieur),
+      optionIngenieur: cleanEnumValue(optionIngenieur),
+      specialiteLicencePro: cleanEnumValue(specialiteLicencePro),
+      optionLicencePro: cleanEnumValue(optionLicencePro),
+      specialiteMasterPro: cleanEnumValue(specialiteMasterPro),
+      optionMasterPro: cleanEnumValue(optionMasterPro),
+      
+      typeFormation: cleanEnumValue(typeFormation),
+      anneeScolaire: anneeScolaire || Etudiant.getAnneeScolaireActuelle(),
+      modePaiement: modePaiement || 'mensuel',
+      telephoneResponsable, codeBaccalaureat,
+      
+      // Champs partner spécifiques
+      isPartner: true,
+      nomPartner: req.isPartner ? req.partnerId : null,
+      prixTotalPartner: parseFloat(prixTotalPartner) || 0,
+      
+      // Fichiers et documents
+      ...files,
+      documents: documentsData
+    };
+
+    console.log('Creating student for partner:', req.partnerId);
+    console.log('Enum values after cleaning:', {
+      cycle: etudiantData.cycle,
+      specialiteIngenieur: etudiantData.specialiteIngenieur,
+      optionIngenieur: etudiantData.optionIngenieur,
+      specialiteLicencePro: etudiantData.specialiteLicencePro,
+      specialiteMasterPro: etudiantData.specialiteMasterPro
+    });
+
+    const nouvelEtudiant = new Etudiant(etudiantData);
+    await nouvelEtudiant.save();
+
+    // Populer les infos du partner avant de répondre
+    if (req.isPartner) {
+      await nouvelEtudiant.populate('nomPartner', 'nomPartner active');
+    }
+
+    console.log('Student created successfully:', nouvelEtudiant.codeEtudiant);
+    
+    // Retourner sans le mot de passe
+    const etudiantResponse = nouvelEtudiant.toObject();
+    delete etudiantResponse.motDePasse;
+    
+    res.status(201).json(etudiantResponse);
+
+  } catch (error) {
+    console.error('Erreur création étudiant partner:', error);
+    res.status(400).json({ 
+      error: 'Erreur lors de la création de l\'étudiant',
+      details: error.message 
+    });
+  }
+});
+
+// 3. Route pour modifier un étudiant partner
+app.put('/api/partners/etudiants/:id', authCommercial, uploadEtudiants, async (req, res) => {
+  try {
+    // Trouver l'étudiant existant (doit appartenir à ce partner)
+    const etudiantExistant = await Etudiant.findOne({ 
+      _id: req.params.id, 
+      nomPartner: req.partnerId,
+      isPartner: true
+    });
+    
+    if (!etudiantExistant) {
+      return res.status(404).json({ 
+        message: 'Étudiant non trouvé ou vous n\'êtes pas autorisé à le modifier' 
+      });
+    }
+
+    // Utiliser la même logique de modification que dans le code commercial
+    // mais avec les validations partner
+    
+    const modifications = {};
+    
+    // Traiter tous les champs de modification (similaire au code commercial)
+    Object.keys(req.body).forEach(key => {
+      if (req.body[key] !== undefined) {
+        modifications[key] = req.body[key];
+      }
+    });
+
+    // S'assurer que les champs partner sont maintenus
+    modifications.isPartner = true;
+    modifications.nomPartner = req.partnerId;
+    modifications.updatedAt = new Date();
+
+    const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
+      req.params.id,
+      modifications,
+      { 
+        new: true,
+        runValidators: true
+      }
+    );
+
+    await etudiantMiseAJour.populate('nomPartner', 'nomPartner active');
+
+    const etudiantResponse = etudiantMiseAJour.toObject();
+    delete etudiantResponse.motDePasse;
+
+    res.status(200).json({
+      message: 'Étudiant mis à jour avec succès',
+      data: etudiantResponse
+    });
+
+  } catch (err) {
+    console.error('Erreur mise à jour étudiant partner:', err);
+    res.status(500).json({
+      message: 'Erreur interne du serveur',
+      error: err.message
+    });
+  }
+});
+
+// 4. Route pour supprimer un étudiant partner
+app.delete('/api/partners/etudiants/:id', authCommercial, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findOne({
+      _id: req.params.id,
+      nomPartner: req.partnerId,
+      isPartner: true
+    });
+
+    if (!etudiant) {
+      return res.status(404).json({ 
+        message: 'Étudiant non trouvé ou vous n\'êtes pas autorisé à le supprimer' 
+      });
+    }
+
+    await Etudiant.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'Étudiant supprimé avec succès' });
+  } catch (err) {
+    console.error('Erreur suppression étudiant partner:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Route pour toggle le statut actif d'un étudiant partner
+app.patch('/api/partners/etudiants/:id/actif', authCommercial, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findOne({
+      _id: req.params.id,
+      nomPartner: req.partnerId,
+      isPartner: true
+    });
+
+    if (!etudiant) {
+      return res.status(404).json({ 
+        message: 'Étudiant non trouvé ou vous n\'êtes pas autorisé à le modifier' 
+      });
+    }
+
+    etudiant.actif = !etudiant.actif;
+    await etudiant.save();
+    
+    await etudiant.populate('nomPartner', 'nomPartner active');
+    
+    res.json(etudiant);
+  } catch (err) {
+    console.error('Erreur toggle actif étudiant partner:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. Route pour récupérer les cours (fallback)
+app.get('/api/partnerscours', authCommercial, async (req, res) => {
+  try {
+    // Si c'est un partner ou admin, retourner tous les cours
+    if (req.isPartner || req.isAdmin) {
+      const cours = await Cours.find({}).sort({ nom: 1 });
+      res.json(cours);
+    } else {
+      res.status(403).json({ message: 'Accès interdit' });
+    }
+  } catch (err) {
+    console.error('Erreur récupération cours partner:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+
+
 // Route pour obtenir les statistiques des étudiants Partners
-app.get('/api/stats/partners', authAdmin, async (req, res) => {
+app.get('/api/stats/partners', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Obtenir les statistiques avec la méthode du schéma
     const stats = await Etudiant.getStatsPartners();
@@ -2461,7 +3020,7 @@ app.get('/api/stats/partners', authAdmin, async (req, res) => {
 });
 
 // Route alternative plus détaillée pour les statistiques
-app.get('/api/stats/partners/detailed', authAdmin, async (req, res) => {
+app.get('/api/stats/partners/detailed', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Statistiques détaillées
     const partnersDetail = await Etudiant.find({ isPartner: true })
@@ -2512,7 +3071,7 @@ app.get('/api/stats/partners/detailed', authAdmin, async (req, res) => {
 });
 
 // Route pour obtenir les types de documents disponibles
-app.get('/api/documents/types', authAdmin, (req, res) => {
+app.get('/api/documents/types', authAdminOrPaiementManager, (req, res) => {
   try {
     const typesDocuments = Etudiant.getTypesDocuments();
     res.status(200).json(typesDocuments);
@@ -2590,7 +3149,409 @@ app.post('/api/etudiants/:id/documents/:typeDocument', authAdmin, uploadEtudiant
     res.status(500).json({ message: 'Erreur interne du serveur', error: err.message });
   }
 });
+// ===== ROUTES POUR LES TESTS DE LANGUE =====
+// Importer le modèle Test en haut de votre fichier app.js
+// const Test = require('./models/Test');
+// GET - Liste des étudiants avec leurs niveaux de langue (Admin/Administratif)
+// GET - Liste des étudiants avec leurs niveaux de langue (Admin/Administratif)
+app.get('/api/admin/etudiants-tests', authAdmin, async (req, res) => {
+  try {
+    console.log('📋 Récupération des tests pour tous les étudiants');
+    
+    // Récupérer tous les étudiants actifs
+    const etudiants = await Etudiant.find({ actif: true })
+      .select('prenom nomDeFamille email telephone nouvelleInscription anneeScolaire') // AJOUT de anneeScolaire
+      .sort({ nomDeFamille: 1 });
 
+    // Pour chaque étudiant, récupérer ses résultats de tests
+    const etudiantsAvecTests = await Promise.all(
+      etudiants.map(async (etudiant) => {
+        const statutTests = await Test.aTermineLesDeuxTests(etudiant._id);
+        
+        return {
+          _id: etudiant._id,
+          nomComplet: `${etudiant.nomDeFamille} ${etudiant.prenom}`,
+          email: etudiant.email,
+          telephone: etudiant.telephone,
+          nouvelleInscription: etudiant.nouvelleInscription,
+          anneeScolaire: etudiant.anneeScolaire, // AJOUT
+          tests: {
+            anglaisTermine: statutTests.anglaisTermine,
+            francaisTermine: statutTests.francaisTermine,
+            tousTermines: statutTests.tousTermines,
+            niveauAnglais: statutTests.niveaux.anglais,
+            niveauFrancais: statutTests.niveaux.francais
+          }
+        };
+      })
+    );
+
+    console.log(`✅ ${etudiantsAvecTests.length} étudiants récupérés avec leurs tests`);
+
+    res.json({
+      success: true,
+      total: etudiantsAvecTests.length,
+      etudiants: etudiantsAvecTests
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération étudiants-tests:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des données',
+      error: error.message
+    });
+  }
+});
+
+// GET - Détails des tests d'un étudiant spécifique (Admin)
+app.get('/api/admin/etudiants/:id/tests-details', authAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const etudiant = await Etudiant.findById(id).select('prenom nomDeFamille email');
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    // Récupérer tous les tests de cet étudiant
+    const tests = await Test.find({ etudiant: id }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      etudiant: {
+        _id: etudiant._id,
+        nomComplet: `${etudiant.nomDeFamille} ${etudiant.prenom}`,
+        email: etudiant.email
+      },
+      tests: tests
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération détails tests:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des détails',
+      error: error.message
+    });
+  }
+});
+app.get('/api/tests/statut', authEtudiant, async (req, res) => {
+  console.log('🎯 Route /api/tests/statut appelée');
+  console.log('👤 req.etudiantId:', req.etudiantId);
+  
+  try {
+    const etudiantId = req.etudiantId;
+    
+    if (!etudiantId) {
+      console.log('❌ Pas d\'etudiantId dans la requête');
+      return res.status(401).json({ message: 'Non authentifié' });
+    }
+    
+    console.log('🔍 Recherche étudiant:', etudiantId);
+    const etudiant = await Etudiant.findById(etudiantId);
+    
+    if (!etudiant) {
+      console.log('❌ Étudiant non trouvé');
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+    
+    console.log('✅ Étudiant trouvé:', etudiant.email);
+    console.log('📝 nouvelleInscription:', etudiant.nouvelleInscription);
+    
+    const statutTests = await Test.aTermineLesDeuxTests(etudiantId);
+    console.log('📊 Statut tests:', statutTests);
+    
+    res.json({
+      success: true,
+      nouvelleInscription: etudiant.nouvelleInscription,
+      ...statutTests
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération statut tests:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération du statut', 
+      error: error.message 
+    });
+  }
+});
+
+// POST - Démarrer un nouveau test
+app.post('/api/tests/demarrer', authEtudiant, async (req, res) => {
+  try {
+    const etudiantId = req.etudiantId;
+    const { langue } = req.body;
+    
+    if (!['anglais', 'francais'].includes(langue)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Langue invalide. Utilisez "anglais" ou "francais"' 
+      });
+    }
+    
+    // Vérifier si un test en cours existe déjà
+    const testEnCours = await Test.findOne({
+      etudiant: etudiantId,
+      langue: langue,
+      statut: 'en_cours'
+    });
+    
+    if (testEnCours) {
+      // Vérifier si le test est expiré
+      if (testEnCours.estExpire()) {
+        testEnCours.statut = 'expire';
+        await testEnCours.save();
+      } else {
+        return res.json({
+          success: true,
+          test: testEnCours,
+          message: 'Test en cours trouvé'
+        });
+      }
+    }
+    
+    // Créer un nouveau test
+    const nouveauTest = new Test({
+      etudiant: etudiantId,
+      langue: langue,
+      totalQuestions: langue === 'anglais' ? 60 : 26,
+      dateDebut: new Date(),
+      statut: 'en_cours'
+    });
+    
+    await nouveauTest.save();
+    
+    res.json({
+      success: true,
+      test: nouveauTest,
+      message: 'Test démarré avec succès'
+    });
+    
+  } catch (error) {
+    console.error('Erreur démarrage test:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors du démarrage du test', 
+      error: error.message 
+    });
+  }
+});
+
+// PUT - Sauvegarder une réponse
+app.put('/api/tests/:testId/reponse', authEtudiant, async (req, res) => {
+  try {
+    const { testId } = req.params;
+    const { questionId, reponseIndex } = req.body;
+    
+    const test = await Test.findById(testId);
+    
+    if (!test) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Test non trouvé' 
+      });
+    }
+    
+    // Vérifier que c'est bien le test de cet étudiant
+    if (test.etudiant.toString() !== req.etudiantId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+    
+    if (test.statut !== 'en_cours') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Ce test est déjà terminé ou expiré' 
+      });
+    }
+    
+    // Vérifier si le test est expiré (20 minutes)
+    if (test.estExpire()) {
+      test.statut = 'expire';
+      await test.save();
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Le test a expiré (temps limite de 20 minutes dépassé)',
+        expire: true
+      });
+    }
+    
+    // Sauvegarder la réponse
+    test.reponses.set(questionId.toString(), reponseIndex);
+    await test.save();
+    
+    res.json({
+      success: true,
+      message: 'Réponse sauvegardée',
+      test: test
+    });
+    
+  } catch (error) {
+    console.error('Erreur sauvegarde réponse:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la sauvegarde de la réponse', 
+      error: error.message 
+    });
+  }
+});
+
+// POST - Terminer le test et calculer le niveau
+app.post('/api/tests/:testId/terminer', authEtudiant, async (req, res) => {
+  try {
+    const { testId } = req.params;
+    
+    const test = await Test.findById(testId);
+    
+    if (!test) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Test non trouvé' 
+      });
+    }
+    
+    // Vérifier que c'est bien le test de cet étudiant
+    if (test.etudiant.toString() !== req.etudiantId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+    
+    if (test.statut !== 'en_cours') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Ce test est déjà terminé' 
+      });
+    }
+    
+    // ===== APPEL DE LA NOUVELLE MÉTHODE calculerNiveau() =====
+    const resultat = test.terminerTest();
+    await test.save();
+    
+    // Log pour debug (vous pouvez enlever après les tests)
+    console.log('📊 Test terminé:', {
+      langue: test.langue,
+      niveau: resultat.niveau,
+      score: resultat.score,
+      totalQuestions: resultat.totalQuestions,
+      premiereErreur: resultat.premiereErreur
+    });
+    
+    // Vérifier si les deux tests sont terminés pour mettre à jour nouvelleInscription
+    const statutTests = await Test.aTermineLesDeuxTests(req.etudiantId);
+    
+    if (statutTests.tousTermines) {
+      await Etudiant.findByIdAndUpdate(req.etudiantId, {
+        nouvelleInscription: false
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Test terminé avec succès',
+      resultat: resultat,
+      tousTestsTermines: statutTests.tousTermines
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur terminaison test:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la terminaison du test', 
+      error: error.message 
+    });
+  }
+});
+
+// GET - Obtenir le résultat d'un test terminé
+app.get('/api/tests/:testId/resultat', authEtudiant, async (req, res) => {
+  try {
+    const { testId } = req.params;
+    
+    const test = await Test.findById(testId);
+    
+    if (!test) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Test non trouvé' 
+      });
+    }
+    
+    // Vérifier que c'est bien le test de cet étudiant
+    if (test.etudiant.toString() !== req.etudiantId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+    
+    if (test.statut === 'en_cours') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Le test n\'est pas encore terminé' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      test: {
+        langue: test.langue,
+        niveau: test.niveau,
+        score: test.score,
+        totalQuestions: test.totalQuestions,
+        tempsEcoule: test.tempsEcoule,
+        dateDebut: test.dateDebut,
+        dateFin: test.dateFin,
+        premiereErreur: test.premiereErreur
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erreur récupération résultat:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération du résultat', 
+      error: error.message 
+    });
+  }
+});
+
+// GET - Obtenir les questions du test (sans les réponses correctes)
+app.get('/api/tests/questions/:langue', authEtudiant, async (req, res) => {
+  try {
+    const { langue } = req.params;
+    
+    if (!['anglais', 'francais'].includes(langue)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Langue invalide' 
+      });
+    }
+    
+    // Importer les questions depuis un fichier séparé ou les définir ici
+    const questions = require(`./data/questions_${langue}.json`);
+    
+    res.json({
+      success: true,
+      questions: questions,
+      totalQuestions: questions.length,
+      dureeMinutes: 20
+    });
+    
+  } catch (error) {
+    console.error('Erreur récupération questions:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération des questions', 
+      error: error.message 
+    });
+  }
+});
 // Route pour supprimer un document spécifique
 app.delete('/api/etudiants/:id/documents/:typeDocument', authAdmin, async (req, res) => {
   try {
@@ -2702,7 +3663,7 @@ const addTraceabilityToSeance = (seanceData, userInfo, actionType) => {
   };
 };
 // Ajoutez cette route pour que le frontend puisse récupérer les informations sans envoyer le niveau
-app.get('/api/formations/info', authAdmin, (req, res) => {
+app.get('/api/formations/info', authAdminOrPaiementManager, (req, res) => {
   try {
     const formationsInfo = {
       CYCLE_INGENIEUR: {
@@ -3404,9 +4365,8 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     });
   }
 });
-// Route pour valider un étudiant (PUT)
 
-// ===== ROUTE GET MODIFIÉE POUR FILTRAGE PAR ANNÉE =====
+
 // Route POST pour créer un étudiant
 app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
   try {
@@ -3442,7 +4402,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
     }
 
-    // Validation du mode de paiement avec toutes les valeurs
+    // Validation du mode de paiement
     if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
       return res.status(400).json({ 
         message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
@@ -3487,9 +4447,9 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
     let niveauFinal = parseInt(niveau) || null;
     
     if (typeFormationFinal === 'LICENCE_PRO') {
-      niveauFinal = 3; // Licence Pro = toujours niveau 3
+      niveauFinal = 3;
     } else if (typeFormationFinal === 'MASTER_PRO') {
-      niveauFinal = 4; // Master Pro = toujours niveau 4
+      niveauFinal = 4;
     }
 
     // Validation selon le type de formation
@@ -3649,11 +4609,20 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
 
       if (specialite) {
         const STRUCTURE_FORMATION = {
-          MASI: {
-            3: ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'],
-            4: ['Management des affaires et systèmes d\'information'],
-            5: ['Management des affaires et systèmes d\'information']
-          },
+         MASI: {
+    3: [
+      'Entreprenariat, audit et finance', 
+      'Développement commercial et marketing digital'
+    ],
+    4: [
+      'Finance et Stratégie Entrepreneuriale Master 1',
+      'Développement Commercial et Marketing Digital Master 1'
+    ],
+    5: [
+      'Finance et Stratégie Entrepreneuriale Master 2',
+      'Développement Commercial et Marketing Digital Master 2'
+    ]
+  },
           IRM: {
             3: ['Développement informatique', 'Réseaux et cybersécurité'],
             4: ['Génie informatique et innovation technologique', 'Cybersécurité et transformation digitale'],
@@ -3691,7 +4660,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
     }
 
     // Gestion des cours avec limite
-    const MAX_ETUDIANTS = 20;
+    const MAX_ETUDIANTS = 50;
     let coursArray = [];
 
     if (cours) {
@@ -3765,7 +4734,7 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       }
     }
 
-    // Traitement des fichiers pour les documents (NOUVEAU)
+    // Traitement des fichiers
     const getFilePath = (fileField) => {
       return req.files && req.files[fileField] && req.files[fileField][0] 
         ? `/uploads/${req.files[fileField][0].filename}` 
@@ -3793,7 +4762,6 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       }
     });
 
-    // Traitement des anciens fichiers (compatibilité)
     const imagePath = getFilePath('image');
     
     // Hashage du mot de passe
@@ -3875,15 +4843,15 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
       cours: coursArray,
       modePaiement: modePaiement || 'mensuel',
       
-      // Nouveaux champs Partner
+      // Nouveaux champs Partner - CORRIGÉ
       isPartner: req.body.isPartner || false,
-      nomPartner: nomPartner?.trim() || '',
+      nomPartner: (nomPartner && nomPartner.trim() !== '') ? nomPartner.trim() : null,
       prixTotalPartner: prixTotalPartnerNum || 0,
       
       // Système de documents
       documents: documents,
       
-      // Image (ancien système, maintenu pour compatibilité)
+      // Image
       image: imagePath,
       
       // Champs booléens
@@ -3950,7 +4918,6 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
     const etudiant = new Etudiant(etudiantData);
     const etudiantSauve = await etudiant.save();
     
-    // Préparer la réponse sans le mot de passe
     const etudiantResponse = etudiantSauve.toObject();
     delete etudiantResponse.motDePasse;
 
@@ -3975,7 +4942,177 @@ app.post('/api/etudiants', authAdmin, uploadEtudiants, async (req, res) => {
     });
   }
 });
+// PUT - Mise à jour du profil par l'étudiant (informations limitées)
+app.put('/api/etudiant/mon-profil', authEtudiant, uploadEtudiants, async (req, res) => {
+  try {
+    const etudiantId = req.etudiantId;
+    const etudiant = await Etudiant.findById(etudiantId);
+    
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
 
+    const {
+      telephone,
+      telephoneResponsable,
+      dateNaissance,
+      lieuNaissance,
+      pays,
+      cin,
+      codeMassar,
+      passeport,
+      codeBaccalaureat,
+      serieBaccalaureat,
+      anneeBaccalaureat,
+      lieuObtentionDiplome,
+      diplomeAcces,
+      specialiteDiplomeAcces,
+      mention,
+      email,
+      nouveauMotDePasse,
+      motDePasseActuel
+    } = req.body;
+
+    const modifications = {};
+
+    const toDate = (val) => {
+      if (!val) return undefined;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? undefined : date;
+    };
+
+    const toNumber = (val) => {
+      if (val === undefined || val === '' || val === null) return undefined;
+      const n = parseFloat(val);
+      return isNaN(n) ? undefined : n;
+    };
+
+    // Informations personnelles
+    if (telephone !== undefined) modifications.telephone = telephone.trim();
+    if (telephoneResponsable !== undefined) modifications.telephoneResponsable = telephoneResponsable?.trim() || '';
+    if (dateNaissance !== undefined) modifications.dateNaissance = toDate(dateNaissance);
+    if (lieuNaissance !== undefined) modifications.lieuNaissance = lieuNaissance?.trim() || '';
+    if (pays !== undefined) modifications.pays = pays?.trim() || '';
+    if (cin !== undefined) modifications.cin = cin?.trim() || '';
+    if (codeMassar !== undefined) modifications.codeMassar = codeMassar?.trim() || '';
+    if (passeport !== undefined) modifications.passeport = passeport?.trim() || '';
+    if (codeBaccalaureat !== undefined) modifications.codeBaccalaureat = codeBaccalaureat?.trim() || '';
+
+    // Informations académiques secondaires
+    if (serieBaccalaureat !== undefined) modifications.serieBaccalaureat = serieBaccalaureat?.trim() || '';
+    if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
+    if (lieuObtentionDiplome !== undefined) modifications.lieuObtentionDiplome = lieuObtentionDiplome?.trim() || '';
+    if (diplomeAcces !== undefined) modifications.diplomeAcces = diplomeAcces?.trim() || '';
+    if (specialiteDiplomeAcces !== undefined) modifications.specialiteDiplomeAcces = specialiteDiplomeAcces?.trim() || '';
+    if (mention !== undefined) modifications.mention = mention?.trim() || '';
+
+    // Gestion de l'image
+    if (req.files && req.files['image'] && req.files['image'][0]) {
+      modifications.image = `/uploads/${req.files['image'][0].filename}`;
+    }
+
+    // Gestion de l'email
+    if (email && email !== etudiant.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: 'Format d\'email invalide' });
+      }
+
+      const emailExiste = await Etudiant.findOne({ 
+        email: email.toLowerCase().trim(), 
+        _id: { $ne: etudiantId } 
+      });
+      
+      if (emailExiste) {
+        return res.status(400).json({ message: 'Cet email est déjà utilisé' });
+      }
+      
+      modifications.email = email.toLowerCase().trim();
+    }
+
+    // Gestion du mot de passe
+    if (nouveauMotDePasse && nouveauMotDePasse.trim() !== '') {
+      if (!motDePasseActuel) {
+        return res.status(400).json({ message: 'Mot de passe actuel requis' });
+      }
+
+      const motDePasseValide = await bcrypt.compare(motDePasseActuel, etudiant.motDePasse);
+      if (!motDePasseValide) {
+        return res.status(400).json({ message: 'Mot de passe actuel incorrect' });
+      }
+
+      if (nouveauMotDePasse.length < 6) {
+        return res.status(400).json({ 
+          message: 'Le nouveau mot de passe doit contenir au moins 6 caractères' 
+        });
+      }
+
+      modifications.motDePasse = await bcrypt.hash(nouveauMotDePasse.trim(), 10);
+    }
+
+    // ===== GESTION DES DOCUMENTS =====
+    const documentsExistants = etudiant.documents || {};
+    const nouveauxDocuments = {};
+
+    const typesDocuments = [
+      { key: 'cin', fileField: 'documentCin' },
+      { key: 'bacCommentaire', fileField: 'documentBacCommentaire' },
+      { key: 'releveNoteBac', fileField: 'documentReleveNoteBac' },
+      { key: 'diplomeCommentaire', fileField: 'documentDiplomeCommentaire' },
+      { key: 'attestationReussiteCommentaire', fileField: 'documentAttestationReussiteCommentaire' },
+      { key: 'passeport', fileField: 'documentPasseport' }
+    ];
+
+    typesDocuments.forEach(type => {
+      const documentExistant = documentsExistants[type.key] || {};
+      const nouveauFichier = req.files && req.files[type.fileField] && req.files[type.fileField][0]
+        ? `/documents/${req.files[type.fileField][0].filename}`
+        : undefined;
+
+      nouveauxDocuments[type.key] = {
+        fichier: nouveauFichier !== undefined ? nouveauFichier : documentExistant.fichier || '',
+        commentaire: documentExistant.commentaire || ''
+      };
+    });
+
+    modifications.documents = nouveauxDocuments;
+
+    // Appliquer les modifications
+    Object.keys(modifications).forEach(key => {
+      etudiant[key] = modifications[key];
+    });
+
+    etudiant.markModified('documents');
+    await etudiant.save();
+
+    const etudiantResponse = etudiant.toObject();
+    delete etudiantResponse.motDePasse;
+
+    res.json({
+      success: true,
+      message: 'Profil mis à jour avec succès',
+      etudiant: etudiantResponse
+    });
+
+  } catch (error) {
+    console.error('Erreur mise à jour profil étudiant:', error);
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ message: 'Erreur de validation', errors });
+    }
+    
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email ou code déjà utilisé' });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour',
+      error: error.message
+    });
+  }
+});
 // Route PUT pour modifier un étudiant
 app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
   try {
@@ -3992,13 +5129,9 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       modePaiement,
       telephoneResponsable,
       codeBaccalaureat,
-      
-      // NOUVEAUX CHAMPS PARTNER
       isPartner,
       nomPartner,
       prixTotalPartner,
-      
-      // COMMENTAIRES POUR LES DOCUMENTS
       commentaireCin,
       commentaireBacCommentaire,
       commentaireReleveNoteBac,
@@ -4012,25 +5145,21 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       commentaireEngagementCommentaire
     } = req.body;
 
-    // Rechercher l'étudiant existant
     const etudiantExistant = await Etudiant.findById(req.params.id);
     if (!etudiantExistant) {
       return res.status(404).json({ message: 'Étudiant non trouvé' });
     }
 
-    // Validation du mode de paiement
     if (modePaiement && !['semestriel', 'trimestriel', 'mensuel', 'annuel'].includes(modePaiement)) {
       return res.status(400).json({ 
         message: 'Le mode de paiement doit être "semestriel", "trimestriel", "mensuel" ou "annuel"' 
       });
     }
 
-    // NOUVEAU: Validation des champs Partner
     if (isPartner !== undefined) {
       const isPartnerBool = isPartner === 'true' || isPartner === true;
       
       if (isPartnerBool) {
-        // Validation du nom du partner
         if (nomPartner !== undefined && (!nomPartner || nomPartner.trim() === '')) {
           return res.status(400).json({ 
             message: 'Le nom du partner est obligatoire pour les étudiants partenaires' 
@@ -4045,19 +5174,16 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       }
     }
 
-    // Fonction pour obtenir le chemin des nouveaux documents
     const getDocumentPath = (documentField) => {
       return req.files && req.files[documentField] && req.files[documentField][0] 
         ? `/documents/${req.files[documentField][0].filename}` 
         : undefined;
     };
 
-    // Image de profil
     const imagePath = req.files && req.files['image'] && req.files['image'][0] 
       ? `/uploads/${req.files['image'][0].filename}` 
       : undefined;
 
-    // Fonctions utilitaires
     const toDate = (val) => {
       if (!val) return undefined;
       const date = new Date(val);
@@ -4067,12 +5193,11 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     const toNumber = (val) => {
       if (val === undefined || val === '' || val === null) return undefined;
       const n = parseFloat(val);
-      return isNaN(n) ? undefined : n;
+      return isNaN(n)? undefined : n;
     };
 
     const toBool = (val) => val === 'true' || val === true;
 
-    // Validation de l'email si fourni
     if (email && email !== etudiantExistant.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -4088,7 +5213,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       }
     }
 
-    // Validation du code étudiant si fourni
     if (codeEtudiant && codeEtudiant !== etudiantExistant.codeEtudiant) {
       const codeExiste = await Etudiant.findOne({ 
         codeEtudiant: codeEtudiant.trim(),
@@ -4099,10 +5223,8 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       }
     }
 
-    // Créer l'objet de modifications
     const modifications = {};
 
-    // Appliquer toutes les modifications reçues
     if (prenom !== undefined) modifications.prenom = prenom.trim();
     if (nomDeFamille !== undefined) modifications.nomDeFamille = nomDeFamille.trim();
     if (genre !== undefined) modifications.genre = genre;
@@ -4145,12 +5267,29 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     if (anneeBaccalaureat !== undefined) modifications.anneeBaccalaureat = toNumber(anneeBaccalaureat);
     if (premiereAnneeInscription !== undefined) modifications.premiereAnneeInscription = toNumber(premiereAnneeInscription);
     
-    // NOUVEAUX CHAMPS PARTNER
-    if (isPartner !== undefined) modifications.isPartner = toBool(isPartner);
-    if (nomPartner !== undefined) modifications.nomPartner = nomPartner?.trim() || '';
-    if (prixTotalPartner !== undefined) modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
+    // NOUVEAUX CHAMPS PARTNER - VERSION CORRIGÉE
+    if (isPartner !== undefined) {
+      const isPartnerBool = toBool(isPartner);
+      modifications.isPartner = isPartnerBool;
+      
+      if (!isPartnerBool) {
+        modifications.nomPartner = null;
+        modifications.prixTotalPartner = 0;
+      }
+    }
+
+    if (nomPartner !== undefined) {
+      if (nomPartner && nomPartner.trim() !== '') {
+        modifications.nomPartner = nomPartner.trim();
+      } else {
+        modifications.nomPartner = null;
+      }
+    }
+
+    if (prixTotalPartner !== undefined) {
+      modifications.prixTotalPartner = toNumber(prixTotalPartner) || 0;
+    }
     
-    // Champs spécifiques selon le type de formation
     if (specialite !== undefined) modifications.specialite = specialite?.trim() || '';
     if (option !== undefined) modifications.option = option?.trim() || '';
     if (cycle !== undefined) modifications.cycle = cycle;
@@ -4161,10 +5300,8 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
     if (specialiteMasterPro !== undefined) modifications.specialiteMasterPro = specialiteMasterPro?.trim() || undefined;
     if (optionMasterPro !== undefined) modifications.optionMasterPro = optionMasterPro?.trim() || undefined;
     
-    // Image de profil
     if (imagePath !== undefined) modifications.image = imagePath;
 
-    // Validation du mot de passe si fourni
     if (motDePasse !== undefined && motDePasse !== null && motDePasse.trim() !== '') {
       if (motDePasse.length < 6) {
         return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
@@ -4173,23 +5310,19 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       modifications.motDePasse = hashedPassword;
     }
 
-    // Validation du pourcentage de bourse
     if (modifications.pourcentageBourse !== undefined && modifications.pourcentageBourse !== null) {
       if (modifications.pourcentageBourse < 0 || modifications.pourcentageBourse > 100) {
         return res.status(400).json({ message: 'Le pourcentage de bourse doit être entre 0 et 100' });
       }
     }
 
-    // Logique automatique pour le mode de paiement annuel
     if (modePaiement === 'annuel' && paye === undefined) {
       modifications.paye = true;
     }
 
-    // Mise à jour des documents (seulement si de nouveaux fichiers ou commentaires sont fournis)
     const documentsExistants = etudiantExistant.documents || {};
     const nouveauxDocuments = {};
 
-    // Types de documents avec leurs commentaires
     const typesDocuments = [
       { key: 'cin', fileField: 'documentCin', commentField: 'commentaireCin' },
       { key: 'bacCommentaire', fileField: 'documentBacCommentaire', commentField: 'commentaireBacCommentaire' },
@@ -4217,7 +5350,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
 
     modifications.documents = nouveauxDocuments;
 
-    // Mise à jour du document existant
     const etudiantMiseAJour = await Etudiant.findByIdAndUpdate(
       req.params.id,
       modifications,
@@ -4231,7 +5363,6 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
       return res.status(404).json({ message: 'Étudiant non trouvé lors de la mise à jour' });
     }
 
-    // Retourner le document mis à jour (sans mot de passe)
     const etudiantResponse = etudiantMiseAJour.toObject();
     delete etudiantResponse.motDePasse;
 
@@ -4264,7 +5395,7 @@ app.put('/api/etudiants/:id', authAdmin, uploadEtudiants, async (req, res) => {
   }
 });
 // ===== NOUVELLE ROUTE POUR STATISTIQUES DÉTAILLÉES =====
-app.get('/api/statistiques', authAdmin, async (req, res) => {
+app.get('/api/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { anneeScolaire } = req.query;
     
@@ -4389,7 +5520,7 @@ app.delete('/api/bulletins/:id', authProfesseur, async (req, res) => {
 });
 
 // Lister tous les étudiants
-app.get('/api/etudiants', authAdminOrPaiementManager, async (req, res) => {
+app.get('/api/etudiants', authAdmin, async (req, res) => {
   try {
     // 🎯 FILTRE PRINCIPAL: Exclure seulement les étudiants avec email archivé
     const baseFilter = {
@@ -4414,7 +5545,7 @@ app.get('/api/etudiants', authAdminOrPaiementManager, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.get('/api/etudiant', authAdmin, async (req, res) => {
+app.get('/api/etudiant', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiants = await Etudiant.find()
       .select('-motDePasse') // ❌ إخفاء كلمة المرور
@@ -4479,7 +5610,7 @@ app.post('/api/cours', authAdmin , async (req, res) => {
 
 // Mise à jour de l'état actif de l'étudiant
 // ✅ Basculer le statut actif d’un étudiant
-app.patch('/api/etudiants/:id/actif', authAdminOrPaiementManager, async (req, res) => {
+app.patch('/api/etudiants/:id/actif', authAdmin, async (req, res) => {
   try {
     const etudiant = await Etudiant.findById(req.params.id);
     if (!etudiant) return res.status(404).json({ message: 'Étudiant non trouvé' });
@@ -4540,7 +5671,7 @@ app.get('/api/evenements', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 // ✅ Route pour modifier un événement
-app.put('/api/evenements/:id', authAdmin, async (req, res) => {
+app.put('/api/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { titre, description, dateDebut, dateFin, type } = req.body;
     
@@ -4579,7 +5710,7 @@ app.put('/api/evenements/:id', authAdmin, async (req, res) => {
 });
 
 // ✅ Route pour supprimer un événement
-app.delete('/api/evenements/:id', authAdmin, async (req, res) => {
+app.delete('/api/evenements/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     // Vérifier que l'événement existe
     const evenement = await Evenement.findById(req.params.id);
@@ -5085,7 +6216,7 @@ app.post('/api/presences/bulk', authProfesseur, async (req, res) => {
 
 
 // 🔧 Route de débogage spéciale
-app.get('/api/debug/notifications', authAdmin, async (req, res) => {
+app.get('/api/debug/notifications', authAdminOrPaiementManager, async (req, res) => {
   try {
     const aujourdHui = new Date();
     const debutMois = new Date(aujourdHui.getFullYear(), aujourdHui.getMonth(), 1);
@@ -5133,7 +6264,7 @@ app.get('/api/debug/notifications', authAdmin, async (req, res) => {
 });
 
 // ✅ Route pour les statistiques du dashboard
-app.get('/api/dashboard/stats', authAdmin, async (req, res) => {
+app.get('/api/dashboard/stats', authAdminOrPaiementManager, async (req, res) => {
   try {
     const aujourdHui = new Date();
     
@@ -5307,204 +6438,70 @@ app.get('/api/professeurs/mon-profil', authProfesseur, async (req, res) => {
 });
 
 // Modification de votre route existante pour supporter le paramètre semaine
-app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
-  try {
-    const { semaine } = req.query; // Format: YYYY-MM-DD (lundi de la semaine)
-    
-    let dateFilter = {};
-    if (semaine) {
-      const lundiSemaine = new Date(semaine);
-      // CORRECTION : 6 jours pour aller jusqu'au dimanche (Lundi + 6 = Dimanche)
-      const dimancheSemaine = new Date(lundiSemaine.getTime() + 6 * 24 * 60 * 60 * 1000);
-      dimancheSemaine.setHours(23, 59, 59, 999);
-      
-      dateFilter = {
-        dateSeance: {
-          $gte: lundiSemaine,
-          $lte: dimancheSemaine
-        }
-      };
-    }
-    
-    const seances = await Seance.find({
-      professeur: req.professeurId,
-      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
-      actif: true,
-      ...dateFilter
-    })
-    .populate('professeur', 'nom estPermanent tarifHoraire')
-    .populate('coursId', 'nom') // Populate le cours si coursId existe
-    .sort({ dateSeance: 1, heureDebut: 1 });
-    
-    // Ajouter les calculs à chaque séance
-    const seancesAvecCalculs = await Promise.all(
-      seances.map(async (seance) => {
-        const calculs = await seance.calculerDureeEtMontant();
-        return {
-          ...seance.toObject(),
-          dureeHeures: calculs.dureeHeures,
-          montant: calculs.montant
-        };
-      })
-    );
-    
-    res.json(seancesAvecCalculs);
-  } catch (err) {
-    console.error('Erreur récupération séances professeur:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
-  }
-});
+// Fonction pour fusionner les doublons (même date + même horaire)
+function fusionnerDoublons(seances) {
+  const groupes = {};
 
-// Fonction utilitaire corrigée pour inclure dimanche
-function calculerStatistiquesProfesseur(seances, professeur) {
-  const stats = {
-    totalSeances: seances.length,
-    totalHeures: 0,
-    coursUniques: 0,
-    moyenneHeuresParJour: 0,
-    totalAPayer: 0,
-    repartitionJours: {}
-  };
-
-  // CORRECTION : Inclure le dimanche
-  const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  jours.forEach(jour => {
-    stats.repartitionJours[jour] = 0;
-  });
-
-  // Calculer les statistiques
-  const coursSet = new Set();
   seances.forEach(seance => {
-    // Durée de la séance
-    const duree = calculerDureeSeance(seance.heureDebut, seance.heureFin);
-    stats.totalHeures += duree;
-    
-    // Répartition par jour
-    if (stats.repartitionJours[seance.jour] !== undefined) {
-      stats.repartitionJours[seance.jour] += duree;
-    }
-    
-    // Cours unique
-    if (seance.cours) {
-      coursSet.add(seance.cours);
-    }
-    
-    // Montant à payer (entrepreneurs uniquement)
-    if (!professeur.estPermanent && professeur.tarifHoraire) {
-      stats.totalAPayer += duree * professeur.tarifHoraire;
-    }
-  });
+    // Créer une clé unique basée sur: date + jour + horaire
+    const dateStr = seance.dateSeance ? seance.dateSeance.toISOString().split('T')[0] : '';
+    const cle = `${dateStr}-${seance.jour}-${seance.heureDebut}-${seance.heureFin}`;
 
-  stats.coursUniques = coursSet.size;
-  stats.totalHeures = Math.round(stats.totalHeures * 100) / 100;
-  stats.totalAPayer = Math.round(stats.totalAPayer * 100) / 100;
-  
-  // Moyenne par jour (sur les jours travaillés)
-  const joursTravaills = Object.values(stats.repartitionJours).filter(h => h > 0).length;
-  stats.moyenneHeuresParJour = joursTravaills > 0 
-    ? Math.round((stats.totalHeures / joursTravaills) * 100) / 100 
-    : 0;
-
-  return stats;
-}
-
-function calculerDureeSeance(heureDebut, heureFin) {
-  const [heureD, minuteD] = heureDebut.split(':').map(Number);
-  const [heureF, minuteF] = heureFin.split(':').map(Number);
-  
-  const minutesDebut = heureD * 60 + minuteD;
-  const minutesFin = heureF * 60 + minuteF;
-  
-  return (minutesFin - minutesDebut) / 60;
-}
-
-// Votre route de rapport existante (pas de modification nécessaire car elle utilise déjà les bonnes données)
-app.get('/api/professeurs/mon-rapport', authProfesseur, async (req, res) => {
-  try {
-    const { mois, annee } = req.query;
-    
-    const professeur = await Professeur.findById(req.professeurId);
-    if (!professeur) {
-      return res.status(404).json({ message: 'Professeur non trouvé' });
-    }
-
-    // Construire le filtre de date
-    let dateFilter = {};
-    if (mois && annee) {
-      const startDate = new Date(annee, mois - 1, 1);
-      const endDate = new Date(annee, mois, 0, 23, 59, 59);
-      dateFilter = {
-        dateSeance: { // CHANGÉ : utiliser dateSeance au lieu de createdAt
-          $gte: startDate,
-          $lte: endDate
-        }
-      };
-    } else if (annee) {
-      const startDate = new Date(annee, 0, 1);
-      const endDate = new Date(annee, 11, 31, 23, 59, 59);
-      dateFilter = {
-        dateSeance: {
-          $gte: startDate,
-          $lte: endDate
-        }
+    if (!groupes[cle]) {
+      // Première séance de ce créneau
+      groupes[cle] = {
+        ...seance.toObject ? seance.toObject() : seance,
+        coursMultiples: [seance.coursId?.nom || seance.cours || 'Cours'],
+        matieresMultiples: [seance.matiere].filter(Boolean),
+        sallesMultiples: [seance.salle].filter(Boolean),
+        estFusionne: false
       };
     } else {
-      // Par défaut, mois actuel
-      const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      dateFilter = {
-        dateSeance: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      };
+      // Doublon détecté - fusionner les informations
+      groupes[cle].estFusionne = true;
+      
+      // Ajouter le cours si différent
+      const nouveauCours = seance.coursId?.nom || seance.cours;
+      if (nouveauCours && !groupes[cle].coursMultiples.includes(nouveauCours)) {
+        groupes[cle].coursMultiples.push(nouveauCours);
+      }
+      
+      // Ajouter la matière si différente
+      if (seance.matiere && !groupes[cle].matieresMultiples.includes(seance.matiere)) {
+        groupes[cle].matieresMultiples.push(seance.matiere);
+      }
+      
+      // Ajouter la salle si différente
+      if (seance.salle && !groupes[cle].sallesMultiples.includes(seance.salle)) {
+        groupes[cle].sallesMultiples.push(seance.salle);
+      }
     }
+  });
 
-    const seances = await Seance.find({
-      professeur: req.professeurId,
-      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
-      actif: true,
-      ...dateFilter
-    })
-    .populate('coursId', 'nom')
-    .sort({ dateSeance: 1, heureDebut: 1 });
+  // Convertir les groupes fusionnés en tableau
+  return Object.values(groupes).map(groupe => {
+    // Créer un objet avec les informations fusionnées
+    const seanceFusionnee = {
+      ...groupe,
+      cours: groupe.coursMultiples.join(' + '),
+      matiere: groupe.matieresMultiples.join(' / ') || null,
+      salle: groupe.sallesMultiples.join(' / ') || null,
+      nombreCoursSimultanes: groupe.coursMultiples.length
+    };
 
-    const statistiques = calculerStatistiquesProfesseur(seances, professeur);
+    // Supprimer les propriétés temporaires
+    delete seanceFusionnee.coursMultiples;
+    delete seanceFusionnee.matieresMultiples;
+    delete seanceFusionnee.sallesMultiples;
 
-    res.json({
-      professeur: {
-        nom: professeur.nom,
-        email: professeur.email,
-        estPermanent: professeur.estPermanent,
-        tarifHoraire: professeur.tarifHoraire
-      },
-      periode: {
-        mois: mois ? parseInt(mois) : null,
-        annee: annee ? parseInt(annee) : null
-      },
-      statistiques,
-      seances: seances.map(seance => ({
-        jour: seance.jour,
-        heureDebut: seance.heureDebut,
-        heureFin: seance.heureFin,
-        cours: seance.cours || seance.coursId?.nom,
-        coursId: seance.coursId,
-        matiere: seance.matiere,
-        salle: seance.salle,
-        dateSeance: seance.dateSeance,
-        typeSeance: seance.typeSeance,
-        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin)
-      }))
-    });
+    return seanceFusionnee;
+  });
+}
 
-  } catch (err) {
-    console.error('Erreur rapport professeur:', err);
-    res.status(500).json({ message: 'Erreur serveur', error: err.message });
-  }
-});app.get('/api/seances/professeur/semaine/:lundiSemaine', authProfesseur, async (req, res) => {
+// Route pour récupérer les séances d'une semaine avec fusion des doublons
+app.get('/api/seances/professeur/semaine/:lundiSemaine', authProfesseur, async (req, res) => {
   try {
-    const { lundiSemaine } = req.params; // Format: YYYY-MM-DD
+    const { lundiSemaine } = req.params;
     
     const dateLundi = new Date(lundiSemaine);
     const dateDimanche = new Date(dateLundi.getTime() + 6 * 24 * 60 * 60 * 1000);
@@ -5525,19 +6522,41 @@ app.get('/api/professeurs/mon-rapport', authProfesseur, async (req, res) => {
     .populate('coursId', 'nom')
     .sort({ dateSeance: 1, heureDebut: 1 });
 
-    // Ajouter les calculs
+    console.log(`${seances.length} séances brutes trouvées avant fusion`);
+
+    // FUSIONNER LES DOUBLONS
+    const seancesFusionnees = fusionnerDoublons(seances);
+
+    console.log(`${seancesFusionnees.length} séances après fusion des doublons`);
+
+    // Ajouter les calculs (une seule fois par créneau unique)
     const seancesAvecCalculs = await Promise.all(
-      seances.map(async (seance) => {
-        const calculs = await seance.calculerDureeEtMontant();
-        return {
-          ...seance.toObject(),
-          dureeHeures: calculs.dureeHeures,
-          montant: calculs.montant
-        };
+      seancesFusionnees.map(async (seance) => {
+        // Recréer un objet Seance-like pour utiliser la méthode calculerDureeEtMontant
+        if (seance.calculerDureeEtMontant) {
+          const calculs = await seance.calculerDureeEtMontant();
+          return {
+            ...seance,
+            dureeHeures: calculs.dureeHeures,
+            montant: calculs.montant
+          };
+        } else {
+          // Calcul manuel si la méthode n'est pas disponible
+          const dureeHeures = calculerDureeSeance(seance.heureDebut, seance.heureFin);
+          const professeur = seance.professeur;
+          const montant = professeur && !professeur.estPermanent && professeur.tarifHoraire
+            ? dureeHeures * professeur.tarifHoraire
+            : 0;
+          
+          return {
+            ...seance,
+            dureeHeures: Math.round(dureeHeures * 100) / 100,
+            montant: Math.round(montant * 100) / 100
+          };
+        }
       })
     );
 
-    console.log(`${seancesAvecCalculs.length} séances trouvées pour la semaine`);
     res.json(seancesAvecCalculs);
 
   } catch (err) {
@@ -5546,11 +6565,78 @@ app.get('/api/professeurs/mon-rapport', authProfesseur, async (req, res) => {
   }
 });
 
-// ===== FONCTION UTILITAIRE POUR CALCULS STATISTIQUES =====
+// Route pour récupérer les séances avec paramètre semaine
+app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
+  try {
+    const { semaine } = req.query;
+    
+    let dateFilter = {};
+    if (semaine) {
+      const lundiSemaine = new Date(semaine);
+      const dimancheSemaine = new Date(lundiSemaine.getTime() + 6 * 24 * 60 * 60 * 1000);
+      dimancheSemaine.setHours(23, 59, 59, 999);
+      
+      dateFilter = {
+        dateSeance: {
+          $gte: lundiSemaine,
+          $lte: dimancheSemaine
+        }
+      };
+    }
+    
+    const seances = await Seance.find({
+      professeur: req.professeurId,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      actif: true,
+      ...dateFilter
+    })
+    .populate('professeur', 'nom estPermanent tarifHoraire')
+    .populate('coursId', 'nom')
+    .sort({ dateSeance: 1, heureDebut: 1 });
+    
+    // FUSIONNER LES DOUBLONS
+    const seancesFusionnees = fusionnerDoublons(seances);
 
+    // Ajouter les calculs
+    const seancesAvecCalculs = await Promise.all(
+      seancesFusionnees.map(async (seance) => {
+        if (seance.calculerDureeEtMontant) {
+          const calculs = await seance.calculerDureeEtMontant();
+          return {
+            ...seance,
+            dureeHeures: calculs.dureeHeures,
+            montant: calculs.montant
+          };
+        } else {
+          const dureeHeures = calculerDureeSeance(seance.heureDebut, seance.heureFin);
+          const professeur = seance.professeur;
+          const montant = professeur && !professeur.estPermanent && professeur.tarifHoraire
+            ? dureeHeures * professeur.tarifHoraire
+            : 0;
+          
+          return {
+            ...seance,
+            dureeHeures: Math.round(dureeHeures * 100) / 100,
+            montant: Math.round(montant * 100) / 100
+          };
+        }
+      })
+    );
+    
+    res.json(seancesAvecCalculs);
+  } catch (err) {
+    console.error('Erreur récupération séances professeur:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Fonction de calcul des statistiques avec fusion des doublons
 function calculerStatistiquesProfesseur(seances, professeur) {
+  // D'abord fusionner les doublons
+  const seancesFusionnees = fusionnerDoublons(seances);
+  
   const stats = {
-    totalSeances: seances.length,
+    totalSeances: seancesFusionnees.length, // Nombre de créneaux uniques
     totalHeures: 0,
     coursUniques: 0,
     moyenneHeuresParJour: 0,
@@ -5558,16 +6644,14 @@ function calculerStatistiquesProfesseur(seances, professeur) {
     repartitionJours: {}
   };
 
-  // Initialiser la répartition par jour
   const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
   jours.forEach(jour => {
     stats.repartitionJours[jour] = 0;
   });
 
-  // Calculer les statistiques
   const coursSet = new Set();
-  seances.forEach(seance => {
-    // Durée de la séance
+  seancesFusionnees.forEach(seance => {
+    // Durée de la séance (comptée une seule fois même si plusieurs cours)
     const duree = calculerDureeSeance(seance.heureDebut, seance.heureFin);
     stats.totalHeures += duree;
     
@@ -5576,12 +6660,14 @@ function calculerStatistiquesProfesseur(seances, professeur) {
       stats.repartitionJours[seance.jour] += duree;
     }
     
-    // Cours unique
-    if (seance.cours) {
+    // Cours uniques (compte tous les cours même fusionnés)
+    if (seance.nombreCoursSimultanes > 1) {
+      seance.cours.split(' + ').forEach(c => coursSet.add(c.trim()));
+    } else if (seance.cours) {
       coursSet.add(seance.cours);
     }
     
-    // Montant à payer (entrepreneurs uniquement)
+    // Montant à payer (une seule fois par créneau, même si plusieurs cours)
     if (!professeur.estPermanent && professeur.tarifHoraire) {
       stats.totalAPayer += duree * professeur.tarifHoraire;
     }
@@ -5591,7 +6677,6 @@ function calculerStatistiquesProfesseur(seances, professeur) {
   stats.totalHeures = Math.round(stats.totalHeures * 100) / 100;
   stats.totalAPayer = Math.round(stats.totalAPayer * 100) / 100;
   
-  // Moyenne par jour (sur les jours travaillés)
   const joursTravaills = Object.values(stats.repartitionJours).filter(h => h > 0).length;
   stats.moyenneHeuresParJour = joursTravaills > 0 
     ? Math.round((stats.totalHeures / joursTravaills) * 100) / 100 
@@ -5600,6 +6685,7 @@ function calculerStatistiquesProfesseur(seances, professeur) {
   return stats;
 }
 
+// Fonction de calcul de durée
 function calculerDureeSeance(heureDebut, heureFin) {
   const [heureD, minuteD] = heureDebut.split(':').map(Number);
   const [heureF, minuteF] = heureFin.split(':').map(Number);
@@ -5610,6 +6696,75 @@ function calculerDureeSeance(heureDebut, heureFin) {
   return (minutesFin - minutesDebut) / 60;
 }
 
+app.get('/api/professeurs/mon-rapport', authProfesseur, async (req, res) => {
+  try {
+    const { mois, annee } = req.query;
+    
+    const professeur = await Professeur.findById(req.professeurId);
+    if (!professeur) {
+      return res.status(404).json({ message: 'Professeur non trouvé' });
+    }
+
+    let dateFilter = {};
+    if (mois && annee) {
+      const startDate = new Date(annee, mois - 1, 1);
+      const endDate = new Date(annee, mois, 0, 23, 59, 59);
+      dateFilter = { dateSeance: { $gte: startDate, $lte: endDate } };
+    } else if (annee) {
+      const startDate = new Date(annee, 0, 1);
+      const endDate = new Date(annee, 11, 31, 23, 59, 59);
+      dateFilter = { dateSeance: { $gte: startDate, $lte: endDate } };
+    } else {
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      dateFilter = { dateSeance: { $gte: startDate, $lte: endDate } };
+    }
+
+    const seances = await Seance.find({
+      professeur: req.professeurId,
+      typeSeance: { $in: ['reelle', 'exception', 'rattrapage'] },
+      actif: true,
+      ...dateFilter
+    })
+    .populate('coursId', 'nom')
+    .sort({ dateSeance: 1, heureDebut: 1 });
+
+    // Calculer les statistiques AVEC fusion (pour éviter double comptage)
+    const statistiques = calculerStatistiquesProfesseur(seances, professeur);
+
+    // Retourner les séances SANS fusion pour affichage détaillé
+    res.json({
+      professeur: {
+        nom: professeur.nom,
+        email: professeur.email,
+        estPermanent: professeur.estPermanent,
+        tarifHoraire: professeur.tarifHoraire
+      },
+      periode: {
+        mois: mois ? parseInt(mois) : null,
+        annee: annee ? parseInt(annee) : null
+      },
+      statistiques, // Stats avec fusion
+      seances: seances.map(seance => ({ // Séances SANS fusion
+        jour: seance.jour,
+        heureDebut: seance.heureDebut,
+        heureFin: seance.heureFin,
+        cours: seance.cours || seance.coursId?.nom,
+        coursId: seance.coursId,
+        matiere: seance.matiere, // Matière individuelle, pas fusionnée
+        salle: seance.salle,
+        dateSeance: seance.dateSeance,
+        typeSeance: seance.typeSeance,
+        dureeHeures: calculerDureeSeance(seance.heureDebut, seance.heureFin)
+      }))
+    });
+
+  } catch (err) {
+    console.error('Erreur rapport professeur:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
 
 
 // ✅ BACKEND: Retourne les cours de l'étudiant + leurs professeurs
@@ -5781,6 +6936,314 @@ app.get('/api/notifications/unread-count', authAdminOrPaiementManager, async (re
     res.status(500).json({ error: err.message });
   }
 });
+// Route pour sauvegarder les templates jour par jour
+app.post('/api/pedagogique/cours/:coursId/templates-planning', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { coursId } = req.params;
+    const { planningCreneaux } = req.body; // { "Lundi": [...], "Mardi": [...] }
+    
+    console.log(`📅 Création templates pour cours ${coursId}`);
+    
+    // Vérifier que le cours existe
+    const cours = await Cours.findById(coursId);
+    if (!cours) {
+      return res.status(404).json({ error: 'Cours non trouvé' });
+    }
+    
+    // Supprimer les anciens templates de ce cours
+    await Seance.deleteMany({
+      typeSeance: 'template',
+      coursId: coursId
+    });
+    
+    const nouveauxTemplates = [];
+    const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    
+    for (const jour of jours) {
+      const creneauxJour = planningCreneaux[jour] || [];
+      
+      for (const creneau of creneauxJour) {
+        // Créer un template pour chaque créneau
+        const template = new Seance({
+          typeSeance: 'template',
+          jour: jour,
+          heureDebut: creneau.debut,
+          heureFin: creneau.fin,
+          cours: cours.nom,
+          coursId: coursId,
+          
+          // Professeur par défaut (vous devrez l'adapter selon votre logique)
+          professeur: null, // À définir lors de la génération des séances réelles
+          matiere: '',
+          salle: '',
+          
+          // Période de validité du template
+          dateDebutTemplate: new Date(), // À partir d'aujourd'hui
+          dateFinTemplate: null, // Pas de fin = permanent
+          
+          actif: true,
+          
+          // Traçabilité
+          lastActionById: req.user.id,
+          lastActionByName: req.userInfo?.nom || 'Pédagogique',
+          lastActionByEmail: req.userInfo?.email || '',
+          lastActionByRole: req.userInfo?.role || 'pedagogique',
+          lastActionType: 'creation',
+          lastActionAt: new Date()
+        });
+        
+        await template.save();
+        nouveauxTemplates.push(template);
+        
+        console.log(`✅ Template créé: ${cours.nom} - ${jour} ${creneau.debut}-${creneau.fin}`);
+      }
+    }
+    
+    console.log(`🎉 ${nouveauxTemplates.length} templates créés pour ${cours.nom}`);
+    
+    res.json({
+      ok: true,
+      message: `${nouveauxTemplates.length} templates créés avec succès`,
+      templates: nouveauxTemplates.length,
+      coursNom: cours.nom
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur création templates:', error);
+    res.status(500).json({
+      error: 'Erreur serveur lors de la création des templates',
+      details: error.message
+    });
+  }
+});
+
+// Route pour récupérer les templates d'un cours
+app.get('/api/pedagogique/cours/:coursId/templates-planning', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { coursId } = req.params;
+    
+    // Récupérer tous les templates de ce cours
+    const templates = await Seance.find({
+      typeSeance: 'template',
+      coursId: coursId,
+      actif: true
+    }).sort({ jour: 1, heureDebut: 1 });
+    
+    // Organiser par jour
+    const planningCreneaux = {};
+    const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    
+    jours.forEach(jour => {
+      planningCreneaux[jour] = [];
+    });
+    
+    templates.forEach(template => {
+      if (planningCreneaux[template.jour]) {
+        planningCreneaux[template.jour].push({
+          id: template._id,
+          debut: template.heureDebut,
+          fin: template.heureFin,
+          professeur: template.professeur,
+          matiere: template.matiere,
+          salle: template.salle
+        });
+      }
+    });
+    
+    const cours = await Cours.findById(coursId);
+    const totalCreneaux = templates.length;
+    
+    res.json({
+      ok: true,
+      coursNom: cours?.nom || 'Cours inconnu',
+      planningCreneaux,
+      totalCreneaux,
+      templates: templates
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération templates:', error);
+    res.status(500).json({
+      error: 'Erreur serveur lors de la récupération des templates'
+    });
+  }
+});
+
+// Route pour générer les séances réelles à partir des templates
+app.post('/api/pedagogique/generer-semaine-depuis-templates', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { lundiSemaine, coursId } = req.body;
+    
+    console.log(`🔄 Génération séances depuis templates pour ${coursId}, semaine ${lundiSemaine}`);
+    
+    const dateLundi = new Date(lundiSemaine);
+    const dateDimanche = new Date(dateLundi.getTime() + 6 * 24 * 60 * 60 * 1000);
+    
+    // Vérifier si les séances existent déjà
+    const seancesExistantes = await Seance.find({
+      typeSeance: 'reelle',
+      coursId: coursId,
+      dateSeance: {
+        $gte: dateLundi,
+        $lte: dateDimanche
+      }
+    });
+    
+    if (seancesExistantes.length > 0) {
+      return res.json({
+        ok: true,
+        message: `${seancesExistantes.length} séances déjà générées pour cette semaine`,
+        seancesGenerees: seancesExistantes.length,
+        nouvelles: 0
+      });
+    }
+    
+    // Récupérer les templates du cours
+    const templates = await Seance.find({
+      typeSeance: 'template',
+      coursId: coursId,
+      actif: true
+    }).populate('professeur');
+    
+    console.log(`📋 ${templates.length} templates trouvés pour le cours`);
+    
+    const nouvellesSeances = [];
+    const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    
+    for (const template of templates) {
+      const jourIndex = jours.indexOf(template.jour);
+      if (jourIndex === -1) continue;
+      
+      const dateSeance = new Date(dateLundi.getTime() + jourIndex * 24 * 60 * 60 * 1000);
+      
+      // Vérifier s'il y a une exception pour cette date
+      const exception = await Seance.findOne({
+        typeSeance: 'exception',
+        templateOriginal: template._id,
+        dateSeance: dateSeance
+      });
+      
+      if (exception) {
+        nouvellesSeances.push(exception);
+        console.log(`🔄 Exception utilisée: ${template.cours} - ${template.jour}`);
+        continue;
+      }
+      
+      // Créer la séance réelle
+      const nouvelleSeance = new Seance({
+        typeSeance: 'reelle',
+        dateSeance,
+        jour: template.jour,
+        heureDebut: template.heureDebut,
+        heureFin: template.heureFin,
+        cours: template.cours,
+        coursId: template.coursId,
+        professeur: template.professeur, // Peut être null, à assigner manuellement
+        matiere: template.matiere,
+        salle: template.salle,
+        actif: true,
+        payee: false,
+        statutPaiement: 'en_attente',
+        
+        // Traçabilité
+        lastActionById: req.user.id,
+        lastActionByName: req.userInfo?.nom || 'Système',
+        lastActionByEmail: req.userInfo?.email || '',
+        lastActionByRole: req.userInfo?.role || 'pedagogique',
+        lastActionType: 'creation',
+        lastActionAt: new Date()
+      });
+      
+      await nouvelleSeance.save();
+      nouvellesSeances.push(nouvelleSeance);
+      
+      console.log(`✅ Séance créée: ${template.cours} - ${template.jour} ${template.heureDebut}-${template.heureFin}`);
+    }
+    
+    console.log(`🎉 ${nouvellesSeances.length} séances générées`);
+    
+    res.json({
+      ok: true,
+      message: `${nouvellesSeances.length} séances générées avec succès`,
+      seancesGenerees: nouvellesSeances.length,
+      nouvelles: nouvellesSeances.length,
+      semaine: lundiSemaine
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur génération depuis templates:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la génération des séances',
+      details: error.message
+    });
+  }
+});
+
+// Route pour supprimer tous les templates d'un cours
+app.delete('/api/pedagogique/cours/:coursId/templates', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { coursId } = req.params;
+    
+    const result = await Seance.deleteMany({
+      typeSeance: 'template',
+      coursId: coursId
+    });
+    
+    console.log(`🗑️ ${result.deletedCount} templates supprimés pour le cours ${coursId}`);
+    
+    res.json({
+      ok: true,
+      message: `${result.deletedCount} templates supprimés`,
+      supprimés: result.deletedCount
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur suppression templates:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la suppression des templates'
+    });
+  }
+});
+
+// Route pour obtenir tous les cours avec leurs templates
+app.get('/api/pedagogique/cours-avec-templates', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    // Récupérer tous les cours
+    const cours = await Cours.find({ actif: { $ne: false } }).select('nom filiere');
+    
+    // Pour chaque cours, compter ses templates
+    const coursAvecTemplates = [];
+    
+    for (const coursItem of cours) {
+      const countTemplates = await Seance.countDocuments({
+        typeSeance: 'template',
+        coursId: coursItem._id,
+        actif: true
+      });
+      
+      coursAvecTemplates.push({
+        _id: coursItem._id,
+        nom: coursItem.nom,
+        filiere: coursItem.filiere,
+        nombreTemplates: countTemplates,
+        hasTemplates: countTemplates > 0
+      });
+    }
+    
+    res.json({
+      ok: true,
+      cours: coursAvecTemplates,
+      totalCours: coursAvecTemplates.length,
+      coursAvecTemplates: coursAvecTemplates.filter(c => c.hasTemplates).length
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération cours avec templates:', error);
+    res.status(500).json({
+      error: 'Erreur serveur'
+    });
+  }
+});
 // ✅ Route pour supprimer une notification
 app.delete('/api/notifications/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
@@ -5875,7 +7338,7 @@ app.get('/api/live/:cours', authProfesseur, (req, res) => {
   const lien = genererLienLive(cours);
   res.json({ lien });
 });
-app.delete('/api/cours/:id', authAdmin, async (req, res) => {
+app.delete('/api/cours/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const coursId = req.params.id;
 
@@ -5921,7 +7384,7 @@ app.post('/api/contact/send', async (req, res) => {
 });
 
 // 🔐 Route protégée - vue admin
-app.get('/api/admin/contact-messages', authAdmin, async (req, res) => {
+app.get('/api/admin/contact-messages', authAdminOrPaiementManager, async (req, res) => {
   try {
     const messages = await ContactMessage.find().sort({ date: -1 });
     res.status(200).json(messages);
@@ -5930,7 +7393,7 @@ app.get('/api/admin/contact-messages', authAdmin, async (req, res) => {
     res.status(500).json({ message: '❌ Erreur serveur' });
   }
 });
-app.delete('/api/admin/contact-messages/:id', authAdmin, async (req, res) => {
+app.delete('/api/admin/contact-messages/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -6105,7 +7568,7 @@ heure: horaire, // ✅ استخدم التوقيت الرسمي للجلسة
 
 
 // ✅ Route: Supprimer toutes les QR sessions d'un jour donné
-app.delete('/api/admin/qr-day-delete', authAdmin, async (req, res) => {
+app.delete('/api/admin/qr-day-delete', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { date } = req.body;
     if (!date) {
@@ -6126,7 +7589,7 @@ app.delete('/api/admin/qr-day-delete', authAdmin, async (req, res) => {
 });
 
 // ✅ Route: Récupérer toutes les sessions QR planifiées pour une date donnée
-app.get('/api/admin/qr-day-sessions', authAdmin, async (req, res) => {
+app.get('/api/admin/qr-day-sessions', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { date } = req.query;
     if (!date) {
@@ -6142,7 +7605,7 @@ app.get('/api/admin/qr-day-sessions', authAdmin, async (req, res) => {
 });
 
 // Modifier une session individuelle
-app.put('/api/admin/qr-session/:id', authAdmin, async (req, res) => {
+app.put('/api/admin/qr-session/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { matiere, professeur, periode, horaire } = req.body;
@@ -6165,7 +7628,7 @@ app.put('/api/admin/qr-session/:id', authAdmin, async (req, res) => {
 });
 
 // Supprimer une session individuelle
-app.delete('/api/admin/qr-session/:id', authAdmin, async (req, res) => {
+app.delete('/api/admin/qr-session/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const session = await QrSession.findByIdAndDelete(id);
@@ -6238,7 +7701,7 @@ app.get('/api/notifications/deleted', authAdminOrPaiementManager, (req, res) => 
 // APIs de gestion des paiements - À ajouter dans votre fichier routes
 
 // 1. API pour créer/récupérer un paiement
-app.post('/api/finance/paiements/creer-ou-recuperer', authAdmin, async (req, res) => {
+app.post('/api/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee } = req.body;
 
@@ -6366,7 +7829,7 @@ app.post('/api/finance/paiements/creer-ou-recuperer', authAdmin, async (req, res
 });
 
 // 2. API pour valider un paiement
-app.post('/api/finance/paiements/valider', authAdmin, async (req, res) => {
+app.post('/api/finance/paiements/valider', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { paiementId, notes } = req.body;
 
@@ -6401,7 +7864,7 @@ app.post('/api/finance/paiements/valider', authAdmin, async (req, res) => {
 });
 
 // 3. API pour marquer un paiement comme payé
-app.post('/api/finance/paiements/marquer-paye', authAdmin, async (req, res) => {
+app.post('/api/finance/paiements/marquer-paye', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { paiementId, methodePaiement, referencePaiement, notes } = req.body;
 
@@ -6440,7 +7903,7 @@ app.post('/api/finance/paiements/marquer-paye', authAdmin, async (req, res) => {
 });
 
 // 4. API pour annuler un paiement
-app.post('/api/finance/paiements/annuler', authAdmin, async (req, res) => {
+app.post('/api/finance/paiements/annuler', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { paiementId, motifAnnulation } = req.body;
 
@@ -6471,7 +7934,7 @@ app.post('/api/finance/paiements/annuler', authAdmin, async (req, res) => {
 });
 
 // 5. API pour récupérer l'historique des paiements d'un professeur
-app.get('/api/finance/paiements/historique/:professeurId', authAdmin, async (req, res) => {
+app.get('/api/finance/paiements/historique/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     const { limit = 12 } = req.query;
@@ -6499,7 +7962,7 @@ app.get('/api/finance/paiements/historique/:professeurId', authAdmin, async (req
 });
 
 // 6. API pour récupérer tous les paiements en attente
-app.get('/api/finance/paiements/en-attente', authAdmin, async (req, res) => {
+app.get('/api/finance/paiements/en-attente', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -6531,7 +7994,7 @@ app.get('/api/finance/paiements/en-attente', authAdmin, async (req, res) => {
 });
 
 // 7. API pour les statistiques de paiements
-app.get('/api/finance/paiements/statistiques', authAdmin, async (req, res) => {
+app.get('/api/finance/paiements/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -6581,7 +8044,7 @@ app.get('/api/finance/paiements/statistiques', authAdmin, async (req, res) => {
 
 
 // API pour rapport individuel mensuel - Correction pour les noms de cours
-app.get('/api/professeurs/:id/rapport', authAdmin, async (req, res) => {
+app.get('/api/professeurs/:id/rapport', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     const professeurId = req.params.id;
@@ -6688,7 +8151,7 @@ app.get('/api/professeurs/:id/rapport', authAdmin, async (req, res) => {
 });
 
 // API pour rapport annuel - Correction pour les noms de cours
-app.get('/api/professeurs/:id/rapport/annuel', authAdmin, async (req, res) => {
+app.get('/api/professeurs/:id/rapport/annuel', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { annee } = req.query;
     const professeurId = req.params.id;
@@ -6800,7 +8263,7 @@ app.get('/api/professeurs/:id/rapport/annuel', authAdmin, async (req, res) => {
 });
 
 // API pour les rattrapages - Correction pour les noms de cours
-app.get('/api/professeurs/:id/rattrapages', authAdmin, async (req, res) => {
+app.get('/api/professeurs/:id/rattrapages', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     const professeurId = req.params.id;
@@ -6896,11 +8359,10 @@ app.get('/api/professeurs/:id/rattrapages', authAdmin, async (req, res) => {
 });
 
 // 2. API POUR APPLIQUER UNE PÉNALITÉ
-app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
+app.post('/api/finance/appliquer-penalite', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee, type, valeur, motif, appliquePour } = req.body;
 
-    // Validations
     if (!professeurId || !mois || !annee || !type || valeur === undefined || !motif) {
       return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
     }
@@ -6913,7 +8375,6 @@ app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Le pourcentage doit être entre -100 et 100' });
     }
 
-    // Vérifier que le professeur existe
     const professeur = await Professeur.findById(professeurId);
     if (!professeur) {
       return res.status(404).json({ error: 'Professeur non trouvé' });
@@ -6923,7 +8384,6 @@ app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Les pénalités ne s\'appliquent qu\'aux entrepreneurs' });
     }
 
-    // Calculer le montant original pour ce mois
     const dateDebut = new Date(parseInt(annee), parseInt(mois) - 1, 1);
     const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
 
@@ -6949,7 +8409,6 @@ app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Aucune activité trouvée pour ce professeur ce mois-ci' });
     }
 
-    // Calculer l'ajustement
     let ajustement = 0;
     if (type === 'pourcentage') {
       ajustement = (montantOriginal * parseFloat(valeur)) / 100;
@@ -6959,22 +8418,22 @@ app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
 
     const montantAjuste = montantOriginal - ajustement;
 
-    // Vérifier s'il existe déjà une pénalité pour cette période
     const penaliteExistante = await PenaliteProfesseur.findOne({
       professeur: professeurId,
       mois: parseInt(mois),
       annee: parseInt(annee)
     });
 
+    const userId = req.adminId || req.userId || req.user?._id;
+
     if (penaliteExistante) {
-      // Mettre à jour la pénalité existante
       penaliteExistante.type = type;
       penaliteExistante.valeur = parseFloat(valeur);
       penaliteExistante.montantOriginal = Math.round(montantOriginal * 100) / 100;
       penaliteExistante.montantAjuste = Math.round(montantAjuste * 100) / 100;
       penaliteExistante.motif = motif;
       penaliteExistante.appliquePour = appliquePour;
-      penaliteExistante.appliquePar = req.adminId;
+      penaliteExistante.appliquePar = userId;
       penaliteExistante.dateApplication = new Date();
       
       await penaliteExistante.save();
@@ -6987,7 +8446,6 @@ app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
         nouveauMontant: Math.round(montantAjuste * 100) / 100
       });
     } else {
-      // Créer une nouvelle pénalité
       const nouvellePenalite = new PenaliteProfesseur({
         professeur: professeurId,
         mois: parseInt(mois),
@@ -6998,7 +8456,7 @@ app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
         montantAjuste: Math.round(montantAjuste * 100) / 100,
         motif,
         appliquePour,
-        appliquePar: req.adminId
+        appliquePar: userId
       });
 
       await nouvellePenalite.save();
@@ -7021,275 +8479,16 @@ app.post('/api/finance/appliquer-penalite', authAdmin, async (req, res) => {
 // CORRECTION pour votre app.js/server.js - SANS les méthodes de schéma
 
 // 1. API CORRIGÉE pour récupération des rapports financiers
-app.get('/api/professeurs/rapports/mensuel', authAdmin, async (req, res) => {
-  try {
-    const { mois, annee } = req.query;
-    
-    if (!mois || !annee) {
-      return res.status(400).json({ error: 'Mois et année requis' });
-    }
 
-    // Récupérer tous les professeurs entrepreneurs
-    const professeurs = await Professeur.find({ 
-      estPermanent: false, 
-      actif: true 
-    }).lean();
-
-    const rapports = [];
-
-    // Pour chaque professeur, récupérer son cycle EN COURS uniquement
-    for (const professeur of professeurs) {
-      try {
-        // Récupérer le cycle en cours
-        const cycleEnCours = await CyclePaiement.findOne({
-          professeur: professeur._id,
-          statut: 'en_cours',
-          actif: true
-        });
-        
-        if (!cycleEnCours) {
-          continue; // Pas de cycle en cours
-        }
-
-        // Récupérer UNIQUEMENT les séances non payées
-        const seancesNonPayees = await Seance.find({
-          professeur: professeur._id,
-          actif: true,
-          payee: { $ne: true }, // Séances pas encore payées
-          typeSeance: { $ne: 'rattrapage' }
-        }).populate('coursId', 'nom').lean();
-
-        if (seancesNonPayees.length === 0) {
-          continue; // Pas de séances non payées
-        }
-
-        // Calculer le montant brut des séances non payées
-        let montantBrut = 0;
-        let totalHeures = 0;
-        const seancesIncluses = [];
-
-        for (const seance of seancesNonPayees) {
-          const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
-          const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
-          const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
-          
-          const montantSeance = dureeHeures * (professeur.tarifHoraire || 0);
-          montantBrut += montantSeance;
-          totalHeures += dureeHeures;
-
-          // Résoudre le nom du cours
-          let nomCours = 'Cours non spécifié';
-          if (seance.coursId && seance.coursId.nom) {
-            nomCours = seance.coursId.nom;
-          } else if (seance.cours) {
-            nomCours = seance.cours;
-          }
-          
-          seancesIncluses.push({
-            seanceId: seance._id,
-            cours: nomCours,
-            date: seance.dateSeance,
-            heures: Math.round(dureeHeures * 100) / 100,
-            montant: Math.round(montantSeance * 100) / 100
-          });
-        }
-
-        // Récupérer UNIQUEMENT les pénalités actives
-        const penalitesActives = await PenaliteProfesseur.find({
-          professeur: professeur._id,
-          actif: true,
-          $or: [
-            { 
-              appliquePour: 'mois_actuel',
-              mois: parseInt(mois),
-              annee: parseInt(annee)
-            },
-            { appliquePour: 'permanent' }
-          ]
-        }).lean();
-
-        // Calculer les ajustements
-        let totalAjustements = 0;
-        let penaliteInfo = null;
-
-        for (const penalite of penalitesActives) {
-          let ajustement = 0;
-          if (penalite.type === 'pourcentage') {
-            ajustement = (montantBrut * penalite.valeur) / 100;
-          } else {
-            ajustement = penalite.valeur;
-          }
-          
-          totalAjustements += ajustement;
-          
-          if (!penaliteInfo) {
-            penaliteInfo = {
-              type: penalite.type,
-              valeur: penalite.valeur,
-              motif: penalite.motif,
-              dateApplication: penalite.dateApplication
-            };
-          }
-        }
-
-        // Mettre à jour le cycle avec les nouvelles données
-        await CyclePaiement.findByIdAndUpdate(cycleEnCours._id, {
-          montantBrut: Math.round(montantBrut * 100) / 100,
-          ajustements: Math.round(totalAjustements * 100) / 100,
-          montantNet: Math.round((montantBrut - totalAjustements) * 100) / 100,
-          seancesIncluses: seancesIncluses,
-          updatedAt: new Date()
-        });
-
-        // Construire le rapport
-        const rapport = {
-          professeur: {
-            _id: professeur._id,
-            nom: professeur.nom,
-            email: professeur.email,
-            estPermanent: false,
-            tarifHoraire: professeur.tarifHoraire
-          },
-          seances: [],
-          statistiques: {
-            totalHeures: Math.round(totalHeures * 100) / 100,
-            totalSeances: seancesNonPayees.length,
-            totalAPayerOriginal: Math.round(montantBrut * 100) / 100,
-            totalAPayer: Math.round((montantBrut - totalAjustements) * 100) / 100,
-            penaliteAppliquee: Math.round(totalAjustements * 100) / 100,
-            tarifHoraire: professeur.tarifHoraire || 0,
-            coursUniques: new Set(seancesIncluses.map(s => s.cours)).size,
-            matieresUniques: 1,
-            
-            // Informations du cycle
-            cycleId: cycleEnCours._id,
-            numeroCycle: cycleEnCours.numeroCycle,
-            statutCycle: cycleEnCours.statut,
-            dateValidationFinance: cycleEnCours.dateValidationFinance,
-            datePaiementAdmin: cycleEnCours.datePaiementAdmin
-          },
-          penaliteInfo
-        };
-
-        rapports.push(rapport);
-
-      } catch (profError) {
-        console.error(`Erreur pour professeur ${professeur._id}:`, profError);
-        continue;
-      }
-    }
-
-    res.json({
-      rapports,
-      periode: {
-        mois: parseInt(mois),
-        annee: parseInt(annee),
-        nomMois: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'][parseInt(mois) - 1]
-      },
-      totalProfesseurs: rapports.length
-    });
-
-  } catch (error) {
-    console.error('Erreur rapports mensuels:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
 
 // 2. API CORRIGÉE pour validation par Finance
-app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
+
+
+app.post('/api/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
   try {
-    if (req.userType !== 'finance_prof') {
-      return res.status(403).json({ error: 'Accès réservé au service Finance' });
-    }
-
-    const { professeurId, notes } = req.body;
-
-    if (!professeurId) {
-      return res.status(400).json({ error: 'ID du professeur requis' });
-    }
-
-    // Trouver le cycle en cours pour ce professeur
-    let cycle = await CyclePaiement.findOne({
-      professeur: professeurId,
-      statut: 'en_cours',
-      actif: true
-    });
-    
-    if (!cycle) {
-      // Créer un nouveau cycle s'il n'y en a pas
-      const dernierCycle = await CyclePaiement.findOne({
-        professeur: professeurId
-      }).sort({ numeroCycle: -1 });
-      
-      const nouveauNumero = dernierCycle ? dernierCycle.numeroCycle + 1 : 1;
-      
-      cycle = new CyclePaiement({
-        professeur: professeurId,
-        numeroCycle: nouveauNumero,
-        dateDebut: new Date(),
-        creeParAdmin: req.adminId
-      });
-      
-      await cycle.save();
-    }
-
-    // Recalculer le cycle avant validation
-    const seancesNonPayees = await Seance.find({
-      professeur: professeurId,
-      actif: true,
-      payee: { $ne: true },
-      typeSeance: { $ne: 'rattrapage' }
-    });
-
-    let montantBrut = 0;
-    for (const seance of seancesNonPayees) {
-      const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
-      const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
-      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
-      
-      const professeur = await Professeur.findById(professeurId);
-      if (professeur && professeur.tarifHoraire) {
-        montantBrut += dureeHeures * professeur.tarifHoraire;
-      }
-    }
-
-    // Mettre à jour le montant du cycle
-    cycle.montantBrut = Math.round(montantBrut * 100) / 100;
-    cycle.montantNet = Math.round(montantBrut * 100) / 100;
-
-    if (cycle.montantNet <= 0) {
-      return res.status(400).json({ 
-        error: 'Impossible de valider un cycle avec un montant négatif ou nul' 
-      });
-    }
-
-    // Valider le cycle
-    cycle.statut = 'valide_finance';
-    cycle.valideParFinance = req.adminId;
-    cycle.dateValidationFinance = new Date();
-    cycle.notesFinance = notes || '';
-    
-    await cycle.save();
-
-    await cycle.populate('professeur', 'nom email tarifHoraire');
-
-    res.json({
-      message: 'Cycle validé par Finance',
-      cycle: cycle
-    });
-
-  } catch (error) {
-    console.error('Erreur validation Finance:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-// 3. API CORRIGÉE pour paiement par Admin
-app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
-  try {
-    if (req.userType !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    // Autoriser admin OU paiement_manager
+    if (req.userType !== 'admin' && req.userType !== 'paiement_manager' && req.userRole !== 'admin' && req.userRole !== 'paiement_manager') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs ou gestionnaires de paiement' });
     }
 
     const { cycleId, methodePaiement, referencePaiement, notes } = req.body;
@@ -7307,9 +8506,12 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Ce cycle doit être validé par Finance avant le paiement' });
     }
 
+    // Utiliser req.adminId OU req.managerId selon qui fait l'action
+    const userId = req.adminId || req.managerId || req.userId;
+
     // 1. Marquer le cycle comme payé
     cycle.statut = 'paye_admin';
-    cycle.payeParAdmin = req.adminId;
+    cycle.payeParAdmin = userId;
     cycle.datePaiementAdmin = new Date();
     cycle.methodePaiement = methodePaiement;
     cycle.referencePaiement = referencePaiement || '';
@@ -7356,7 +8558,7 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
       professeur: cycle.professeur._id,
       numeroCycle: nouveauNumero,
       dateDebut: new Date(),
-      creeParAdmin: req.adminId
+      creeParAdmin: userId
     });
     
     await nouveauCycle.save();
@@ -7373,7 +8575,7 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
       },
       nouveauCycle: {
         id: nouveauCycle._id,
-        numero: nouveauCycle.numeroCycle,
+        numeroCycle: nouveauCycle.numeroCycle,
         dateDebut: nouveauCycle.dateDebut
       }
     });
@@ -7385,7 +8587,7 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
 });
 
 // 4. API utilitaire pour créer un cycle manquant
-app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdmin, async (req, res) => {
+app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -7432,7 +8634,7 @@ app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdmin, async (req
 });
 
 // 5. API de diagnostic pour vérifier l'état des cycles
-app.get('/api/admin/cycles/diagnostic/:professeurId', authAdmin, async (req, res) => {
+app.get('/api/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -7484,7 +8686,7 @@ app.get('/api/admin/cycles/diagnostic/:professeurId', authAdmin, async (req, res
 // SOLUTION SIMPLE : Utiliser directement les cycles payés pour l'historique
 
 // 1. API pour historique d'un professeur (utilise les cycles existants)
-app.get('/api/professeurs/:id/historique-paiements', authAdmin, async (req, res) => {
+app.get('/api/professeurs/:id/historique-paiements', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { page = 1, limit = 10, annee } = req.query;
@@ -7568,7 +8770,7 @@ app.get('/api/professeurs/:id/historique-paiements', authAdmin, async (req, res)
 });
 
 // 2. API pour historique global (tous professeurs)
-app.get('/api/admin/historique-paiements-global', authAdmin, async (req, res) => {
+app.get('/api/admin/historique-paiements-global', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { page = 1, limit = 20, annee, mois, professeurId } = req.query;
     
@@ -7661,7 +8863,7 @@ app.get('/api/admin/historique-paiements-global', authAdmin, async (req, res) =>
 });
 
 // 3. API pour détail d'un paiement
-app.get('/api/admin/historique-paiements/:id/detail', authAdmin, async (req, res) => {
+app.get('/api/admin/historique-paiements/:id/detail', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -7710,7 +8912,7 @@ app.get('/api/admin/historique-paiements/:id/detail', authAdmin, async (req, res
 });
 
 // 4. API pour créer des données de test (optionnel - pour tester)
-app.post('/api/admin/test-paiement/:professeurId', authAdmin, async (req, res) => {
+app.post('/api/admin/test-paiement/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     
@@ -7782,8 +8984,82 @@ app.post('/api/admin/test-paiement/:professeurId', authAdmin, async (req, res) =
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+const dedupliquerSeancesPartagees = (seances) => {
+  const seancesMap = new Map();
+  
+  seances.forEach(seance => {
+    try {
+      // Validation des données essentielles
+      if (!seance.dateSeance || !seance.heureDebut || !seance.heureFin || !seance.professeur) {
+        console.warn('⚠️ Séance incomplète ignorée:', seance._id);
+        return;
+      }
 
-app.get('/api/professeur/rapports/mensuel', authAdmin, async (req, res) => {
+      // Extraire l'ID du professeur (peut être un ObjectId ou un objet populé)
+      const profId = seance.professeur._id 
+        ? seance.professeur._id.toString() 
+        : seance.professeur.toString();
+
+      // Date au format YYYY-MM-DD
+      const dateStr = new Date(seance.dateSeance).toISOString().split('T')[0];
+      
+      // CLÉ UNIQUE : professeur + date + heure début + heure fin
+      // Cette clé ignore le cours/matière - si même prof, même moment = 1 séance
+      const cle = `${profId}_${dateStr}_${seance.heureDebut}_${seance.heureFin}`;
+      
+      if (!seancesMap.has(cle)) {
+        // Première séance pour ce professeur à ce créneau
+        const nomCours = (seance.coursId && seance.coursId.nom) || seance.cours || 'Cours non spécifié';
+        
+        seancesMap.set(cle, {
+          ...seance,
+          coursGroupe: [nomCours],
+          matieresGroupe: seance.matiere ? [seance.matiere] : [],
+          nombreGroupes: 1,
+          estCoursMultiple: false
+        });
+        
+      } else {
+        // DOUBLON DÉTECTÉ - même professeur au même moment
+        const seanceExistante = seancesMap.get(cle);
+        const nomCours = (seance.coursId && seance.coursId.nom) || seance.cours || 'Cours non spécifié';
+        
+        // Ajouter le cours s'il n'est pas déjà dans la liste
+        if (!seanceExistante.coursGroupe.includes(nomCours)) {
+          seanceExistante.coursGroupe.push(nomCours);
+          seanceExistante.nombreGroupes++;
+          seanceExistante.estCoursMultiple = true;
+        }
+        
+        // Ajouter la matière si elle existe et n'est pas déjà listée
+        if (seance.matiere && !seanceExistante.matieresGroupe.includes(seance.matiere)) {
+          seanceExistante.matieresGroupe.push(seance.matiere);
+        }
+        
+        // Log pour traçabilité
+        const profNom = seance.professeur.nom || profId;
+        console.log(`🔄 Doublon fusionné: ${profNom} - ${dateStr} ${seance.heureDebut}-${seance.heureFin}`);
+        console.log(`   Cours: ${seanceExistante.coursGroupe.join(' + ')}`);
+      }
+      
+    } catch (err) {
+      console.error('❌ Erreur lors de la déduplication:', err.message, seance._id);
+    }
+  });
+  
+  const resultat = Array.from(seancesMap.values());
+  const doublonsSupprimes = seances.length - resultat.length;
+  
+  if (doublonsSupprimes > 0) {
+    console.log(`✅ Déduplication terminée: ${seances.length} séances → ${resultat.length} séances uniques`);
+    console.log(`   ${doublonsSupprimes} doublon(s) supprimé(s)`);
+  } else {
+    console.log(`✅ Aucun doublon détecté: ${seances.length} séances uniques`);
+  }
+  
+  return resultat;
+};
+app.get('/api/professeur/rapports/mensuel', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
     
@@ -7795,7 +9071,7 @@ app.get('/api/professeur/rapports/mensuel', authAdmin, async (req, res) => {
     const dateFin = new Date(parseInt(annee), parseInt(mois), 0, 23, 59, 59);
 
     // 1. Récupérer les séances
-    const seances = await Seance.find({
+    let seances = await Seance.find({
       dateSeance: { $gte: dateDebut, $lte: dateFin },
       actif: true,
       typeSeance: { $ne: 'rattrapage' }
@@ -7804,7 +9080,11 @@ app.get('/api/professeur/rapports/mensuel', authAdmin, async (req, res) => {
     .populate('coursId', 'nom')
     .lean();
 
-    // 2. ⚠️ CRUCIAL : Récupérer les pénalités
+    // *** AJOUT : Dédupliquer les séances partagées ***
+    seances = dedupliquerSeancesPartagees(seances);
+    console.log(`📊 Séances après déduplication: ${seances.length}`);
+
+    // 2. Récupérer les pénalités
     const penalites = await PenaliteProfesseur.find({
       mois: parseInt(mois),
       annee: parseInt(annee),
@@ -7817,10 +9097,9 @@ app.get('/api/professeur/rapports/mensuel', authAdmin, async (req, res) => {
     const penalitesMap = new Map();
     penalites.forEach(penalite => {
       penalitesMap.set(penalite.professeur.toString(), penalite);
-      console.log(`Pénalité: ${penalite.professeur} - ${penalite.motif}`);
     });
 
-    // 4. Grouper par professeur (votre logique existante)
+    // 4. Grouper par professeur
     const rapportsMap = new Map();
     
     for (const seance of seances) {
@@ -7859,16 +9138,21 @@ app.get('/api/professeur/rapports/mensuel', authAdmin, async (req, res) => {
         const montantSeance = dureeHeures * seance.professeur.tarifHoraire;
         rapport.statistiques.totalAPayerOriginal += montantSeance;
       }
+
+      // *** AJOUT : Garder l'info des groupes ***
+      rapport.seances.push({
+        ...seance,
+        coursGroupe: seance.coursGroupe,
+        nombreGroupes: seance.nombreGroupes
+      });
     }
 
-    // 5. ⚠️ CRUCIAL : Appliquer les pénalités
+    // 5. Appliquer les pénalités
     const rapports = Array.from(rapportsMap.values()).map(rapport => {
       const profId = rapport.professeur._id.toString();
       const penalite = penalitesMap.get(profId);
       
       if (penalite && !rapport.professeur.estPermanent) {
-        console.log(`✅ Application pénalité pour ${rapport.professeur.nom}`);
-        
         rapport.statistiques.penaliteAppliquee = rapport.statistiques.totalAPayerOriginal - penalite.montantAjuste;
         rapport.statistiques.totalAPayer = penalite.montantAjuste;
         rapport.penaliteInfo = {
@@ -7913,30 +9197,353 @@ app.get('/api/professeur/rapports/mensuel', authAdmin, async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-// 2. CORRIGER l'API de validation par Finance
-app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
+app.get('/api/professeurs/rapports/mensuel', authAdminOrPaiementManager, async (req, res) => {
   try {
-    if (req.userType !== 'finance_prof') {
-      return res.status(403).json({ error: 'Accès réservé au service Finance' });
+    const { mois, annee } = req.query;
+    
+    if (!mois || !annee) {
+      return res.status(400).json({ error: 'Mois et année requis' });
     }
 
+    console.log(`Rapports pour ${mois}/${annee}`);
+
+    const userId = req.adminId || req.userId || req.user?.id || req.user?._id;
+
+    const professeurs = await Professeur.find({ 
+      estPermanent: false, 
+      actif: true 
+    }).lean();
+
+    console.log(`${professeurs.length} entrepreneurs trouves`);
+
+    const rapports = [];
+
+    for (const professeur of professeurs) {
+      try {
+        // Chercher le cycle en cours
+        let cycleEnCours = await CyclePaiement.findOne({
+          professeur: professeur._id,
+          statut: 'en_cours',
+          actif: true
+        });
+        
+        // Si pas de cycle en cours, créer un nouveau
+        if (!cycleEnCours) {
+          console.log(`Creation cycle pour ${professeur.nom}`);
+          
+          const dernierCycle = await CyclePaiement.findOne({
+            professeur: professeur._id
+          }).sort({ numeroCycle: -1 });
+          
+          const nouveauNumero = dernierCycle ? dernierCycle.numeroCycle + 1 : 1;
+          
+          cycleEnCours = new CyclePaiement({
+            professeur: professeur._id,
+            numeroCycle: nouveauNumero,
+            dateDebut: new Date(),
+            statut: 'en_cours',
+            actif: true,
+            montantBrut: 0,
+            ajustements: 0,
+            montantNet: 0,
+            seancesIncluses: [],
+            creeParAdmin: userId
+          });
+          
+          await cycleEnCours.save();
+          console.log(`Cycle ${nouveauNumero} cree`);
+        }
+
+        // Récupérer SEULEMENT les séances non payées ET non validées
+        let seancesNonPayees = await Seance.find({
+          professeur: professeur._id,
+          actif: true,
+          payee: { $ne: true },
+          typeSeance: { $ne: 'rattrapage' },
+          $or: [
+            { statutPaiement: { $exists: false } },
+            { statutPaiement: null },
+            { statutPaiement: 'en_attente' }
+          ]
+        }).populate('coursId', 'nom').lean();
+
+        console.log(`${seancesNonPayees.length} seances non validees pour ${professeur.nom}`);
+
+        // Si aucune séance non validée, passer au suivant
+        if (seancesNonPayees.length === 0) {
+          console.log(`Aucune seance a afficher pour ${professeur.nom}`);
+          continue;
+        }
+
+        // Dédupliquer
+        if (seancesNonPayees.length > 0) {
+          seancesNonPayees = dedupliquerSeancesPartagees(seancesNonPayees);
+        }
+
+        // Calculer le montant brut
+        let montantBrut = 0;
+        let totalHeures = 0;
+        const seancesIncluses = [];
+
+        for (const seance of seancesNonPayees) {
+          const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+          const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+          const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+          
+          const montantSeance = dureeHeures * (professeur.tarifHoraire || 0);
+          montantBrut += montantSeance;
+          totalHeures += dureeHeures;
+
+          let nomCours = 'Cours non specifie';
+          if (seance.coursId && seance.coursId.nom) {
+            nomCours = seance.coursId.nom;
+          } else if (seance.cours) {
+            nomCours = seance.cours;
+          }
+
+          if (seance.nombreGroupes > 1) {
+            nomCours = `${nomCours} (${seance.nombreGroupes} groupes)`;
+          }
+          
+          seancesIncluses.push({
+            seanceId: seance._id,
+            cours: nomCours,
+            coursGroupe: seance.coursGroupe,
+            nombreGroupes: seance.nombreGroupes,
+            date: seance.dateSeance,
+            heures: Math.round(dureeHeures * 100) / 100,
+            montant: Math.round(montantSeance * 100) / 100
+          });
+        }
+
+        // Récupérer les pénalités actives
+        const penalitesActives = await PenaliteProfesseur.find({
+          professeur: professeur._id,
+          actif: true,
+          $or: [
+            { 
+              appliquePour: 'mois_actuel',
+              mois: parseInt(mois),
+              annee: parseInt(annee)
+            },
+            { appliquePour: 'permanent' }
+          ]
+        }).lean();
+
+        let totalAjustements = 0;
+        let penaliteInfo = null;
+
+        for (const penalite of penalitesActives) {
+          let ajustement = 0;
+          if (penalite.type === 'pourcentage') {
+            ajustement = (montantBrut * penalite.valeur) / 100;
+          } else {
+            ajustement = penalite.valeur;
+          }
+          
+          totalAjustements += ajustement;
+          
+          if (!penaliteInfo) {
+            penaliteInfo = {
+              type: penalite.type,
+              valeur: penalite.valeur,
+              motif: penalite.motif,
+              dateApplication: penalite.dateApplication
+            };
+          }
+        }
+
+        // Mettre à jour le cycle
+        await CyclePaiement.findByIdAndUpdate(cycleEnCours._id, {
+          montantBrut: Math.round(montantBrut * 100) / 100,
+          ajustements: Math.round(totalAjustements * 100) / 100,
+          montantNet: Math.round((montantBrut - totalAjustements) * 100) / 100,
+          seancesIncluses: seancesIncluses,
+          updatedAt: new Date()
+        });
+
+        // Construire le rapport
+        const rapport = {
+          professeur: {
+            _id: professeur._id,
+            nom: professeur.nom,
+            email: professeur.email,
+            estPermanent: false,
+            tarifHoraire: professeur.tarifHoraire
+          },
+          seances: [],
+          statistiques: {
+            totalHeures: Math.round(totalHeures * 100) / 100,
+            totalSeances: seancesNonPayees.length,
+            totalAPayerOriginal: Math.round(montantBrut * 100) / 100,
+            totalAPayer: Math.round((montantBrut - totalAjustements) * 100) / 100,
+            penaliteAppliquee: Math.round(totalAjustements * 100) / 100,
+            tarifHoraire: professeur.tarifHoraire || 0,
+            coursUniques: new Set(seancesIncluses.map(s => s.cours)).size,
+            matieresUniques: 1,
+            
+            cycleId: cycleEnCours._id,
+            numeroCycle: cycleEnCours.numeroCycle,
+            statutCycle: cycleEnCours.statut,
+            dateValidationFinance: cycleEnCours.dateValidationFinance,
+            datePaiementAdmin: cycleEnCours.datePaiementAdmin
+          },
+          penaliteInfo
+        };
+
+        console.log(`${professeur.nom}: ${rapport.statistiques.totalSeances} seances`);
+        rapports.push(rapport);
+
+      } catch (profError) {
+        console.error(`Erreur ${professeur.nom}:`, profError);
+        continue;
+      }
+    }
+
+    console.log(`Total: ${rapports.length} rapports`);
+
+    res.json({
+      rapports,
+      periode: {
+        mois: parseInt(mois),
+        annee: parseInt(annee),
+        nomMois: ['Janvier', 'Fevrier', 'Mars', 'Avril', 'Mai', 'Juin',
+          'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'][parseInt(mois) - 1]
+      },
+      totalProfesseurs: rapports.length
+    });
+
+  } catch (error) {
+    console.error('Erreur rapports mensuels:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+app.post('/api/finance/cycles/valider', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    console.log('🟢 BACKEND: Route appelée');
+    console.log('🟢 BACKEND: professeurId:', req.body.professeurId);
+    console.log('🟢 BACKEND: userType:', req.userType);
+    
     const { professeurId, notes } = req.body;
 
     if (!professeurId) {
       return res.status(400).json({ error: 'ID du professeur requis' });
     }
 
-    // Trouver le cycle en cours pour ce professeur
-    let cycle = await CyclePaiement.getCycleEnCours(professeurId);
+    // Trouver le cycle en cours
+    let cycle = await CyclePaiement.findOne({
+      professeur: professeurId,
+      statut: 'en_cours',
+      actif: true
+    });
     
     if (!cycle) {
-      // Créer un nouveau cycle s'il n'y en a pas
-      cycle = await CyclePaiement.creerNouveauCycle(professeurId, req.userId);
+      const dernierCycle = await CyclePaiement.findOne({
+        professeur: professeurId
+      }).sort({ numeroCycle: -1 });
+      
+      const nouveauNumero = dernierCycle ? dernierCycle.numeroCycle + 1 : 1;
+      
+      cycle = new CyclePaiement({
+        professeur: professeurId,
+        numeroCycle: nouveauNumero,
+        dateDebut: new Date(),
+        statut: 'en_cours',
+        actif: true,
+        montantBrut: 0,
+        ajustements: 0,
+        montantNet: 0,
+        seancesIncluses: [],
+        creeParAdmin: req.adminId || req.userId
+      });
+      
+      await cycle.save();
     }
 
-    // Calculer les montants avant validation
-    await CyclePaiement.calculerCycle(professeurId, cycle._id);
-    cycle = await CyclePaiement.findById(cycle._id);
+    console.log('🟢 BACKEND: Cycle trouvé/créé:', cycle._id);
+
+    // Récupérer les séances NON validées
+    const seancesNonValidees = await Seance.find({
+      professeur: professeurId,
+      actif: true,
+      payee: { $ne: true },
+      typeSeance: { $ne: 'rattrapage' },
+      $or: [
+        { statutPaiement: { $exists: false } },
+        { statutPaiement: null },
+        { statutPaiement: 'en_attente' }
+      ]
+    });
+
+    console.log('🟢 BACKEND:', seancesNonValidees.length, 'séances non validées trouvées');
+
+    if (seancesNonValidees.length === 0) {
+      return res.status(400).json({ error: 'Aucune séance à valider' });
+    }
+
+    // Calculer le montant brut
+    const professeur = await Professeur.findById(professeurId);
+    let montantBrut = 0;
+    const seancesIncluses = [];
+
+    for (const seance of seancesNonValidees) {
+      const [heureD, minuteD] = seance.heureDebut.split(':').map(Number);
+      const [heureF, minuteF] = seance.heureFin.split(':').map(Number);
+      const dureeHeures = ((heureF * 60 + minuteF) - (heureD * 60 + minuteD)) / 60;
+      
+      if (professeur && professeur.tarifHoraire) {
+        const montant = dureeHeures * professeur.tarifHoraire;
+        montantBrut += montant;
+        
+        seancesIncluses.push({
+          seanceId: seance._id,
+          cours: seance.cours || 'Non spécifié',
+          date: seance.dateSeance,
+          heures: Math.round(dureeHeures * 100) / 100,
+          montant: Math.round(montant * 100) / 100
+        });
+      }
+    }
+
+    console.log('🟢 BACKEND: Montant brut calculé:', montantBrut);
+
+    // Récupérer et appliquer les pénalités/ajustements
+    let ajustements = 0;
+    const penalites = await PenaliteProfesseur.find({
+      professeur: professeurId,
+      actif: true,
+      $or: [
+        { appliquePour: 'permanent' },
+        { 
+          appliquePour: 'mois_actuel',
+          mois: new Date().getMonth() + 1,
+          annee: new Date().getFullYear()
+        }
+      ]
+    });
+
+    console.log('🟢 BACKEND:', penalites.length, 'pénalités trouvées');
+
+    for (const penalite of penalites) {
+      let ajustement = 0;
+      if (penalite.type === 'pourcentage') {
+        ajustement = (montantBrut * penalite.valeur) / 100;
+      } else {
+        ajustement = penalite.valeur;
+      }
+      ajustements += ajustement;
+      console.log('🟢 BACKEND: Pénalité appliquée:', penalite.motif, '=', ajustement, 'DH');
+    }
+
+    // Mettre à jour le cycle avec les ajustements
+    cycle.montantBrut = Math.round(montantBrut * 100) / 100;
+    cycle.ajustements = Math.round(ajustements * 100) / 100;
+    cycle.montantNet = Math.round((montantBrut - ajustements) * 100) / 100;
+    cycle.seancesIncluses = seancesIncluses;
+
+    console.log('🟢 BACKEND: Montant brut:', cycle.montantBrut);
+    console.log('🟢 BACKEND: Ajustements:', cycle.ajustements);
+    console.log('🟢 BACKEND: Montant net:', cycle.montantNet);
 
     if (cycle.montantNet <= 0) {
       return res.status(400).json({ 
@@ -7945,8 +9552,31 @@ app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
     }
 
     // Valider le cycle
-    cycle.validerParFinance(req.userId, notes || '');
+    cycle.statut = 'valide_finance';
+    cycle.valideParFinance = req.adminId || req.userId;
+    cycle.dateValidationFinance = new Date();
+    cycle.notesFinance = notes || '';
+    
     await cycle.save();
+    console.log('🟢 BACKEND: Cycle validé');
+
+    // MARQUER LES SÉANCES
+    const seanceIds = seancesIncluses.map(s => s.seanceId);
+    
+    if (seanceIds.length > 0) {
+      const result = await Seance.updateMany(
+        { _id: { $in: seanceIds } },
+        { 
+          $set: {
+            statutPaiement: 'valide_finance',
+            cycleValidationId: cycle._id,
+            dateValidation: new Date()
+          }
+        }
+      );
+      
+      console.log('✅ BACKEND:', result.modifiedCount, 'séances marquées sur', seanceIds.length);
+    }
 
     await cycle.populate('professeur', 'nom email tarifHoraire');
 
@@ -7956,13 +9586,12 @@ app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Erreur validation Finance:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('❌ BACKEND: Erreur:', error);
+    res.status(500).json({ error: 'Erreur serveur', details: error.message });
   }
 });
-
 // 3. CORRIGER l'API de paiement par Admin - AVEC CRÉATION AUTOMATIQUE DU NOUVEAU CYCLE
-app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
+app.post('/api/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (req.userType !== 'admin') {
       return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
@@ -8027,7 +9656,7 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
 });
 
 // 4. API pour forcer la création d'un cycle manquant (utilitaire de débogage)
-app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdmin, async (req, res) => {
+app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -8058,7 +9687,7 @@ app.post('/api/admin/cycles/creer-manquant/:professeurId', authAdmin, async (req
 });
 
 // 5. API de diagnostic pour vérifier l'état des cycles d'un professeur
-app.get('/api/admin/cycles/diagnostic/:professeurId', authAdmin, async (req, res) => {
+app.get('/api/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -8106,7 +9735,7 @@ app.get('/api/admin/cycles/diagnostic/:professeurId', authAdmin, async (req, res
 // const PenaliteProfesseur = require('./models/PenaliteProfesseur');
 
 // 4. API POUR RÉCUPÉRER L'HISTORIQUE DES PÉNALITÉS
-app.get('/api/finance/penalites/historique/:professeurId', authAdmin, async (req, res) => {
+app.get('/api/finance/penalites/historique/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     
@@ -8131,7 +9760,7 @@ app.get('/api/finance/penalites/historique/:professeurId', authAdmin, async (req
 });
 
 // 5. API POUR SUPPRIMER/DÉSACTIVER UNE PÉNALITÉ
-app.delete('/api/finance/penalites/:penaliteId', authAdmin, async (req, res) => {
+app.delete('/api/finance/penalites/:penaliteId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { penaliteId } = req.params;
     
@@ -8213,7 +9842,7 @@ function obtenirNomMois(numeroMois) {
   ];
   return mois[numeroMois - 1] || 'Inconnu';
 }
-app.post('/api/seances', authAdmin, async (req, res) => {
+app.post('/api/seances', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { jour, heureDebut, heureFin, cours, professeur, matiere, salle } = req.body;
 
@@ -8246,7 +9875,7 @@ app.post('/api/seances', authAdmin, async (req, res) => {
   }
 });
 // Route pour créer un template (emploi du temps de base)
-app.post('/api/seances/template', authAdmin, async (req, res) => {
+app.post('/api/seances/template', authAdminOrPaiementManager, async (req, res) => {
   try {
     const {
       jour, heureDebut, heureFin, cours, professeur, 
@@ -8281,7 +9910,7 @@ app.post('/api/seances/template', authAdmin, async (req, res) => {
 });
 
 // Route pour obtenir tous les templates
-app.get('/api/seances/templates', authAdmin, async (req, res) => {
+app.get('/api/seances/templates', authAdminOrPaiementManager, async (req, res) => {
   try {
     const templates = await Seance.find({ typeSeance: 'template' })
       .populate('professeur', 'nom email estPermanent')
@@ -8294,7 +9923,7 @@ app.get('/api/seances/templates', authAdmin, async (req, res) => {
 });
 
 // Route pour générer les séances automatiquement
-app.post('/api/seances/generer/:nbSemaines', authAdmin, async (req, res) => {
+app.post('/api/seances/generer/:nbSemaines', authAdminOrPaiementManager, async (req, res) => {
   try {
     const nbSemaines = parseInt(req.params.nbSemaines) || 4;
     
@@ -8324,7 +9953,7 @@ app.post('/api/seances/generer/:nbSemaines', authAdmin, async (req, res) => {
 });
 
 // Route pour créer une exception (modifier une séance pour une semaine spécifique)
-app.post('/api/seances/template/exception', authAdmin, async (req, res) => {
+app.post('/api/seances/template/exception', authAdminOrPaiementManager, async (req, res) => {
   try {
     const {
       templateId, dateSeance, action, // 'modifier' ou 'annuler'
@@ -8425,7 +10054,7 @@ app.get('/api/seances/professeur', authProfesseur, async (req, res) => {
 });
 
 // Route pour calculs mensuels d'un professeur
-app.get('/api/professeurs/:id/calculs/:annee/:mois', authAdmin, async (req, res) => {
+app.get('/api/professeurs/:id/calculs/:annee/:mois', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id, annee, mois } = req.params;
     
@@ -8513,7 +10142,7 @@ const genererSeancesAutomatique = async () => {
 
 
 // Route pour récupérer toutes les séances (pour admin) - INCHANGÉE
-app.get('/api/seances', authAdmin, async (req, res) => {
+app.get('/api/seances', authAdminOrPaiementManager, async (req, res) => {
   try {
     const seances = await Seance.find()
       .populate('professeur', 'nom')
@@ -8528,7 +10157,7 @@ app.get('/api/seances', authAdmin, async (req, res) => {
 // Route pour récupérer les séances pour les étudiants - MODIFIÉE
 
 // إضافة هذا Route في ملف routes الخاص بك
-app.get('/api/professeurs/periodes-disponibles', authAdmin, async (req, res) => {
+app.get('/api/professeurs/periodes-disponibles', authAdminOrPaiementManager, async (req, res) => {
   try {
     // الحصول على كل السنوات والشهور المتاحة من الحصص
     const periodesSeances = await Seance.aggregate([
@@ -8582,7 +10211,7 @@ app.get('/api/professeurs/periodes-disponibles', authAdmin, async (req, res) => 
   }
 });
 // للتحقق من وجود بيانات لفترة معينة
-app.get('/api/professeurs/verifier-periode/:annee/:mois', authAdmin, async (req, res) => {
+app.get('/api/professeurs/verifier-periode/:annee/:mois', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { annee, mois } = req.params;
     
@@ -8606,7 +10235,7 @@ app.get('/api/professeurs/verifier-periode/:annee/:mois', authAdmin, async (req,
   }
 });
 
-app.get('/api/seances/semaine/:lundiSemaine', authAdmin, async (req, res) => {
+app.get('/api/seances/semaine/:lundiSemaine', authAdminOrPaiementManager, async (req, res) => {
   try {
     const toStartOfDay = d => { const nd = new Date(d); nd.setHours(0,0,0,0); return nd; };
     const toEndOfDay   = d => { const nd = new Date(d); nd.setHours(23,59,59,999); return nd; };
@@ -9301,7 +10930,7 @@ app.get('/api/pedagogique/seances/semaines-avec-seances', authPedagogique, async
 
 
 // Route pour obtenir les semaines disponibles (optionnel)
-app.get('/api/seances/semaines-disponibles', authAdmin, async (req, res) => {
+app.get('/api/seances/semaines-disponibles', authAdminOrPaiementManager, async (req, res) => {
   try {
     const semaines = await Seance.aggregate([
       {
@@ -9617,6 +11246,37 @@ app.post('/api/login', async (req, res) => {
     return res.json({ user: commercial, token, role: 'commercial' });
   }
 
+  // ✅ NOUVEAU : Essayer comme partenaire
+  const partner = await Partner.findOne({ email });
+  if (partner && await partner.comparePassword(motDePasse)) {
+    if (!partner.active) {
+      return res.status(403).json({ message: '⛔️ Votre compte partenaire est inactif.' });
+    }
+    
+    // Mettre à jour la dernière connexion
+    partner.lastLogin = new Date();
+    await partner.save();
+    
+    const token = jwt.sign({ 
+      id: partner._id, 
+      type: 'partner', // Important : type partner pour le middleware
+      role: 'partner',
+      nomPartner: partner.nomPartner
+    }, 'jwt_secret_key', { expiresIn: '7d' });
+    
+    return res.json({ 
+      user: {
+        id: partner._id,
+        nomPartner: partner.nomPartner,
+        email: partner.email,
+        telephone: partner.telephone,
+        role: 'partner'
+      }, 
+      token, 
+      role: 'partner' 
+    });
+  }
+
   // ✅ Essayer comme étudiant
   const etudiant = await Etudiant.findOne({ email });
   if (etudiant && await bcrypt.compare(motDePasse, etudiant.motDePasse)) {
@@ -9633,8 +11293,6 @@ app.post('/api/login', async (req, res) => {
   // ❌ Si aucun ne correspond
   return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
 });
-// route: POST /api/professeurs/login
-;
 
 
 
@@ -9727,7 +11385,293 @@ app.get('/api/presences/etudiant/:id', authAdminOrPaiementManager, async (req, r
 });
 // ✅ Modifier un étudiant
 
+// ============================================
+// ROUTES PÉDAGOGIQUES - Gestion des cours
+// ============================================
 
+// 1️⃣ GET - Liste des étudiants accessibles au pédagogue
+// Route pour "Gestion des Étudiants"
+
+// Route pour "Gestion des Cours"
+// ============================================
+// ROUTE: Mes Étudiants (Pédagogique) - SANS FILTRE PRIX
+// ============================================
+app.get('/api/pedagogique/mes-etudiants', authPedagogique, async (req, res) => {
+  try {
+    const estGeneral = req.user.estGeneral;
+    
+    // ✅ Query simplifiée : Seulement année scolaire
+    let query = {
+      anneeScolaire: '2025/2026'
+    };
+    
+    // Si pas général, filtrer par filière
+    if (!estGeneral) {
+      query.filiere = req.user.filiere;
+    }
+    
+    // Récupérer TOUS les étudiants de 2025/2026 (avec ou sans prixTotal)
+    const etudiants = await Etudiant.find(query)
+      .populate('commercial', 'nom nomComplet')
+      .sort({ createdAt: -1 });
+
+    console.log(`📚 Gestion Cours - ${etudiants.length} étudiants (2025/2026, TOUS)`);
+    
+    res.json(etudiants);
+  } catch (error) {
+    console.error('Erreur récupération étudiants:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+// 2️⃣ GET - Détails d'un étudiant (pédagogue)
+app.get('/api/pedagogique/mes-etudiants/:id', authPedagogique, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findById(req.params.id);
+    
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    // Vérifier les permissions
+    if (!req.user.estGeneral && req.user.filiere !== etudiant.filiere) {
+      return res.status(403).json({ 
+        message: `Vous n'avez pas accès aux étudiants de la filière ${etudiant.filiere}` 
+      });
+    }
+
+    res.json(etudiant);
+  } catch (error) {
+    console.error('Erreur récupération étudiant:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 3️⃣ GET - Cours compatibles pour un étudiant
+app.get('/api/pedagogique/mes-etudiants/:id/cours-compatibles', authPedagogique, async (req, res) => {
+  try {
+    console.log('🔍 Recherche cours compatibles pour étudiant:', req.params.id);
+    console.log('👤 Pédagogique:', req.user);
+
+    const etudiant = await Etudiant.findById(req.params.id);
+    
+    if (!etudiant) {
+      console.log('❌ Étudiant non trouvé');
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    console.log('📚 Étudiant trouvé:', {
+      nom: `${etudiant.prenom} ${etudiant.nomDeFamille}`,
+      filiere: etudiant.filiere,
+      niveau: etudiant.niveau,
+      specialite: etudiant.specialite || etudiant.specialiteIngenieur
+    });
+
+    // Vérifier les permissions
+    if (!req.user.estGeneral && req.user.filiere !== etudiant.filiere) {
+      console.log('❌ Accès refusé - filière incompatible');
+      return res.status(403).json({ 
+        message: `Vous n'avez pas accès aux étudiants de la filière ${etudiant.filiere}` 
+      });
+    }
+
+    // Construire la requête de recherche
+    let searchQuery = {};
+    
+    if (etudiant.filiere === 'CYCLE_INGENIEUR') {
+      if (etudiant.niveau >= 1 && etudiant.niveau <= 2) {
+        searchQuery.nom = { 
+          $regex: `Classes Préparatoires ${etudiant.niveau} Année`, 
+          $options: 'i' 
+        };
+      } else if (etudiant.specialiteIngenieur) {
+        searchQuery.nom = { 
+          $regex: `${etudiant.specialiteIngenieur} ${etudiant.niveau} Année`, 
+          $options: 'i' 
+        };
+      }
+    } 
+    else if (etudiant.filiere === 'LICENCE_PRO' && etudiant.specialiteLicencePro) {
+      searchQuery.nom = { 
+        $regex: `Licence Pro ${etudiant.specialiteLicencePro}`, 
+        $options: 'i' 
+      };
+    } 
+    else if (etudiant.filiere === 'MASTER_PRO' && etudiant.specialiteMasterPro) {
+      searchQuery.nom = { 
+        $regex: `Master Pro ${etudiant.specialiteMasterPro}`, 
+        $options: 'i' 
+      };
+    } 
+    else if (etudiant.filiere === 'IRM' || etudiant.filiere === 'MASI') {
+      if (etudiant.niveau <= 2) {
+        searchQuery.nom = { 
+          $regex: `${etudiant.filiere} ${etudiant.niveau} Année`, 
+          $options: 'i' 
+        };
+      } else if (etudiant.specialite) {
+        searchQuery.nom = { 
+          $regex: `${etudiant.filiere} ${etudiant.specialite} ${etudiant.niveau} Année`, 
+          $options: 'i' 
+        };
+      }
+    }
+
+    console.log('🔎 Requête MongoDB:', JSON.stringify(searchQuery));
+
+    // Récupérer les cours compatibles
+    const coursCompatibles = await Cours.find(searchQuery).sort({ nom: 1 });
+
+    console.log(`✅ ${coursCompatibles.length} cours compatibles trouvés`);
+    
+    res.json({
+      etudiant: {
+        id: etudiant._id,
+        nom: `${etudiant.prenom} ${etudiant.nomDeFamille}`,
+        filiere: etudiant.filiere,
+        niveau: etudiant.niveau,
+        specialite: etudiant.specialite || etudiant.specialiteIngenieur || etudiant.specialiteLicencePro || etudiant.specialiteMasterPro
+      },
+      coursActuels: etudiant.cours || [],
+      coursCompatibles: coursCompatibles.map(c => ({
+        _id: c._id,
+        nom: c.nom,
+        professeur: c.professeur
+      }))
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération cours compatibles:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Erreur serveur', 
+      error: error.message 
+    });
+  }
+});
+
+// 4️⃣ PUT - Modifier les cours d'un étudiant (VERSION OPTIMISÉE)
+app.put('/api/pedagogique/mes-etudiants/:id/cours', authPedagogique, async (req, res) => {
+  try {
+    const { cours: nouveauxCours } = req.body;
+
+    if (!Array.isArray(nouveauxCours)) {
+      return res.status(400).json({ 
+        message: 'Le champ "cours" doit être un tableau' 
+      });
+    }
+
+    const etudiant = await Etudiant.findById(req.params.id);
+    
+    if (!etudiant) {
+      return res.status(404).json({ message: 'Étudiant non trouvé' });
+    }
+
+    // Vérifier les permissions
+    if (!req.user.estGeneral && req.user.filiere !== etudiant.filiere) {
+      return res.status(403).json({ 
+        message: `Vous n'avez pas accès aux étudiants de la filière ${etudiant.filiere}` 
+      });
+    }
+
+    // Validation stricte
+    const erreursValidation = [];
+    
+    for (const nomCours of nouveauxCours) {
+      const coursExiste = await Cours.findOne({ nom: nomCours });
+      
+      if (!coursExiste) {
+        erreursValidation.push(`Le cours "${nomCours}" n'existe pas`);
+        continue;
+      }
+
+      const estCompatible = validerCompatibiliteCours(etudiant, nomCours);
+      
+      if (!estCompatible) {
+        erreursValidation.push(
+          `Le cours "${nomCours}" n'est pas compatible avec la formation de l'étudiant`
+        );
+      }
+    }
+
+    if (erreursValidation.length > 0) {
+      return res.status(400).json({ 
+        message: 'Certains cours ne sont pas compatibles',
+        erreurs: erreursValidation
+      });
+    }
+
+    // ✅ Mise à jour directe sans déclencher la validation complète
+    await Etudiant.findByIdAndUpdate(
+      req.params.id,
+      { $set: { cours: nouveauxCours } },
+      { runValidators: false }
+    );
+
+    console.log(`✅ Cours modifiés pour ${etudiant.prenom} ${etudiant.nomDeFamille}`);
+
+    res.json({
+      message: 'Cours modifiés avec succès',
+      etudiant: {
+        id: etudiant._id,
+        nom: `${etudiant.prenom} ${etudiant.nomDeFamille}`,
+        nouveauxCours: nouveauxCours
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur modification cours:', error);
+    res.status(500).json({ 
+      message: 'Erreur serveur', 
+      error: error.message 
+    });
+  }
+});
+// ============================================
+// FONCTION DE VALIDATION
+// ============================================
+
+function validerCompatibiliteCours(etudiant, nomCours) {
+  const coursLower = nomCours.toLowerCase();
+  
+  if (etudiant.filiere === 'CYCLE_INGENIEUR') {
+    if (etudiant.niveau >= 1 && etudiant.niveau <= 2) {
+      return coursLower.includes('classes préparatoires') && 
+             coursLower.includes(`${etudiant.niveau} année`);
+    }
+    
+    if (etudiant.specialiteIngenieur) {
+      return coursLower.includes(etudiant.specialiteIngenieur.toLowerCase()) &&
+             coursLower.includes(`${etudiant.niveau} année`);
+    }
+  }
+  
+  else if (etudiant.filiere === 'LICENCE_PRO') {
+    return coursLower.includes('licence pro') && 
+           etudiant.specialiteLicencePro &&
+           coursLower.includes(etudiant.specialiteLicencePro.toLowerCase());
+  }
+  
+  else if (etudiant.filiere === 'MASTER_PRO') {
+    return coursLower.includes('master pro') &&
+           etudiant.specialiteMasterPro &&
+           coursLower.includes(etudiant.specialiteMasterPro.toLowerCase());
+  }
+  
+  else if (etudiant.filiere === 'IRM' || etudiant.filiere === 'MASI') {
+    if (etudiant.niveau <= 2) {
+      return coursLower.includes(etudiant.filiere.toLowerCase()) &&
+             coursLower.includes(`${etudiant.niveau} année`);
+    }
+    
+    if (etudiant.specialite) {
+      return coursLower.includes(etudiant.filiere.toLowerCase()) &&
+             coursLower.includes(etudiant.specialite.toLowerCase()) &&
+             coursLower.includes(`${etudiant.niveau} année`);
+    }
+  }
+
+  return false;
+}
 
 app.get('/api/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
@@ -9776,10 +11720,37 @@ app.get('/api/paiements/etudiant/:etudiantId', authAdminOrPaiementManager, async
 // Récupérer un seul cours avec détails
 // 📌 Route: GET /api/cours/:id
 // ✅ Lister tous les cours (IMPORTANT!)
-app.get('/api/cours', authAdminOrPaiementManager  , async (req, res) => {
+app.get('/api/cours', authAdminOrPaiementManager, async (req, res) => {
   try {
-    const cours = await Cours.find();
+    // ✅ EXCLURE les cours de langue
+    const cours = await Cours.find({ 
+      estLangue: { $ne: true } 
+    }).sort({ nom: 1 });
+    
     res.json(cours);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// Script de migration à exécuter dans MongoDB ou via une route temporaire
+app.post('/api/cours/marquer-langues', authAdmin, async (req, res) => {
+  try {
+    // Liste des noms de cours de langue
+    const coursLangues = [
+      'Français A1', 'Français A2', 'Français B1', 'Français B2',
+      'Anglais A1', 'Anglais A2', 'Anglais B1', 'Anglais B2'
+    ];
+    
+    // Mettre à jour tous les cours de langue
+    const result = await Cours.updateMany(
+      { nom: { $in: coursLangues } },
+      { $set: { estLangue: true } }
+    );
+    
+    res.json({ 
+      success: true, 
+      message: `${result.modifiedCount} cours marqués comme langue` 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -9799,7 +11770,7 @@ app.get('/api/admin/professeurs-par-cours/:coursNom', async (req, res) => {
 // À ajouter dans votre app.js - Routes CRUD pour gérer les Administratifs
 
 // GET - Liste de tous les administratifs
-app.get('/api/administratifs', authAdmin, async (req, res) => {
+app.get('/api/administratifs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratifs = await Administratif.find()
       .select('-motDePasse') // Exclure le mot de passe
@@ -9811,7 +11782,7 @@ app.get('/api/administratifs', authAdmin, async (req, res) => {
 });
 
 // GET - Un administratif par ID
-app.get('/api/administratifs/:id', authAdmin, async (req, res) => {
+app.get('/api/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratif = await Administratif.findById(req.params.id)
       .select('-motDePasse');
@@ -9827,7 +11798,7 @@ app.get('/api/administratifs/:id', authAdmin, async (req, res) => {
 });
 
 // POST - Créer un nouvel administratif
-app.post('/api/administratifs', authAdmin, async (req, res) => {
+app.post('/api/administratifs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, actif } = req.body;
 
@@ -9874,7 +11845,7 @@ app.post('/api/administratifs', authAdmin, async (req, res) => {
 });
 
 // PUT - Modifier un administratif
-app.put('/api/administratifs/:id', authAdmin, async (req, res) => {
+app.put('/api/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, actif } = req.body;
 
@@ -9925,7 +11896,7 @@ app.put('/api/administratifs/:id', authAdmin, async (req, res) => {
 });
 
 // DELETE - Supprimer un administratif
-app.delete('/api/administratifs/:id', authAdmin, async (req, res) => {
+app.delete('/api/administratifs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratif = await Administratif.findById(req.params.id);
     if (!administratif) {
@@ -9948,7 +11919,7 @@ app.delete('/api/administratifs/:id', authAdmin, async (req, res) => {
 });
 
 // PATCH - Activer/Désactiver un administratif
-app.patch('/api/administratifs/:id/actif', authAdmin, async (req, res) => {
+app.patch('/api/administratifs/:id/actif', authAdminOrPaiementManager, async (req, res) => {
   try {
     const administratif = await Administratif.findById(req.params.id);
     if (!administratif) {
@@ -9972,7 +11943,7 @@ app.patch('/api/administratifs/:id/actif', authAdmin, async (req, res) => {
 });
 
 // GET - Statistiques des administratifs (optionnel)
-app.get('/api/administratifs/stats/dashboard', authAdmin, async (req, res) => {
+app.get('/api/administratifs/stats/dashboard', authAdminOrPaiementManager, async (req, res) => {
   try {
     const totalAdministratifs = await Administratif.countDocuments();
     const administratifsActifs = await Administratif.countDocuments({ actif: true });
@@ -10002,8 +11973,7 @@ app.get('/api/professeur/profile', authProfesseur, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-// Route pour permettre aux commerciaux d'accéder à la liste des cours
-// À ajouter dans votre fichier de routes backend
+
 
 // GET - Liste des cours accessible aux commerciaux (lecture seule)
 app.get('/api/commercial/cours', authCommercial, async (req, res) => {
@@ -10162,7 +12132,7 @@ app.get('/api/actualites', async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
-app.post('/api/actualites', authAdmin, upload.single('image'), async (req, res) => {
+app.post('/api/actualites', authAdminOrPaiementManager, upload.single('image'), async (req, res) => {
   try {
     const { title, excerpt, content, category, author, date, tags, type, isPinned } = req.body;
 
@@ -10185,7 +12155,7 @@ app.post('/api/actualites', authAdmin, upload.single('image'), async (req, res) 
     res.status(400).json({ message: 'Erreur ajout actualité', error: err.message });
   }
 });
-app.delete('/api/actualites/:id', authAdmin, async (req, res) => {
+app.delete('/api/actualites/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const deleted = await Actualite.findByIdAndDelete(req.params.id);
     if (!deleted) {
@@ -10197,7 +12167,7 @@ app.delete('/api/actualites/:id', authAdmin, async (req, res) => {
   }
 });
 // ✏️ تعديل actualité
-app.put('/api/actualites/:id', authAdmin, upload.single('image'), async (req, res) => {
+app.put('/api/actualites/:id', authAdminOrPaiementManager, upload.single('image'), async (req, res) => {
   try {
     const { title, excerpt, content, category, author, date, tags, type, isPinned } = req.body;
 
@@ -10694,21 +12664,84 @@ app.get('/api/paiements/etudiant/:etudiantId/info', authAdminOrPaiementManager, 
   }
 });
 
-// API POST inchangée
 app.post('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
   try {
-    const { etudiant, cours, moisDebut, nombreMois, montant, note, estInscription, typePaiement } = req.body;
-    const coursArray = Array.isArray(cours) ? cours : [cours];
+    // 🔍 LOG 1: Afficher les données reçues
+    console.log('📥 ===== DÉBUT CRÉATION PAIEMENT =====');
+    console.log('📦 Body reçu:', JSON.stringify(req.body, null, 2));
+    console.log('👤 Admin ID:', req.adminId);
+    
+    const { etudiant, cours, moisDebut, nombreMois, montant, note, estInscription, typePaiement, numeroSerie } = req.body;
+    
+    // ✅ VALIDATION 1: Vérifier si le numéro de série est fourni
+    if (!numeroSerie || numeroSerie.trim() === '') {
+      console.log('❌ ERREUR: Numéro de série manquant');
+      return res.status(400).json({ 
+        error: 'Le numéro de série est obligatoire' 
+      });
+    }
+
+    // ✅ VALIDATION 2: Vérifier si l'étudiant est fourni
+    if (!etudiant || etudiant.trim() === '') {
+      console.log('❌ ERREUR: Étudiant manquant');
+      return res.status(400).json({ 
+        error: 'L\'identifiant de l\'étudiant est obligatoire' 
+      });
+    }
+
+    // ✅ VALIDATION 3: Vérifier le montant
+    if (!montant || parseFloat(montant) <= 0) {
+      console.log('❌ ERREUR: Montant invalide');
+      return res.status(400).json({ 
+        error: 'Le montant doit être supérieur à 0' 
+      });
+    }
+
+    // 🔍 LOG 2: Vérification unicité du numéro de série
+    console.log('🔍 Vérification unicité du numéro de série:', numeroSerie);
+    const serieExiste = await Paiement.findOne({ 
+      numeroSerie: numeroSerie.trim().toUpperCase() 
+    });
+    
+    if (serieExiste) {
+      console.log('❌ ERREUR: Numéro de série déjà utilisé');
+      return res.status(400).json({ 
+        error: `Ce numéro de série (${numeroSerie}) est déjà utilisé pour un autre paiement`,
+        paiementExistant: {
+          etudiant: serieExiste.etudiant,
+          montant: serieExiste.montant,
+          date: serieExiste.createdAt
+        }
+      });
+    }
+    console.log('✅ Numéro de série disponible');
+
+    // 🔍 LOG 3: Vérification existence de l'étudiant
+    console.log('🔍 Recherche de l\'étudiant:', etudiant);
+    const etudiantDoc = await Etudiant.findById(etudiant);
+    if (!etudiantDoc) {
+      console.log('❌ ERREUR: Étudiant non trouvé');
+      return res.status(404).json({ 
+        error: 'Étudiant non trouvé' 
+      });
+    }
+    console.log('✅ Étudiant trouvé:', etudiantDoc.nomComplet || `${etudiantDoc.prenom} ${etudiantDoc.nomDeFamille}`);
+
+    // Traitement des cours
+    const coursArray = Array.isArray(cours) ? cours : (cours ? [cours] : []);
+    console.log('📚 Cours associés:', coursArray);
 
     // Déterminer le type de paiement
     let typePaymentFinal = typePaiement || 'formation';
     if (estInscription === true) {
       typePaymentFinal = 'inscription';
     }
+    console.log('💳 Type de paiement final:', typePaymentFinal);
 
     // Calculer le numéro de tranche SEULEMENT pour les paiements de formation
     let numeroTranche = null;
     if (typePaymentFinal === 'formation') {
+      console.log('🔍 Calcul du numéro de tranche...');
       const paiementsFormationExistants = await Paiement.find({
         etudiant,
         $or: [
@@ -10717,24 +12750,36 @@ app.post('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
         ]
       });
       numeroTranche = paiementsFormationExistants.length + 1;
+      console.log('📊 Numéro de tranche:', numeroTranche);
     }
 
-    const paiement = new Paiement({
+    // Préparer les données du paiement
+    const paiementData = {
       etudiant,
       cours: coursArray,
       moisDebut: new Date(moisDebut || Date.now()),
       nombreMois: nombreMois || (typePaymentFinal === 'inscription' ? 0 : 1),
-      montant,
-      note,
+      montant: parseFloat(montant),
+      note: note || '',
+      numeroSerie: numeroSerie.trim().toUpperCase(),
       typePaiement: typePaymentFinal,
       estInscription: typePaymentFinal === 'inscription',
       numeroTranche: numeroTranche,
       creePar: req.adminId
-    });
+    };
 
+    console.log('📝 Création du paiement avec les données:', JSON.stringify(paiementData, null, 2));
+
+    // Créer le paiement
+    const paiement = new Paiement(paiementData);
+
+    // 🔍 LOG 4: Tentative de sauvegarde
+    console.log('💾 Tentative de sauvegarde du paiement...');
     await paiement.save();
+    console.log('✅ Paiement sauvegardé avec succès, ID:', paiement._id);
 
     // Calcul pour marquer l'étudiant comme payé
+    console.log('📊 Calcul des totaux payés...');
     const paiementsFormation = await Paiement.find({ 
       etudiant, 
       $or: [
@@ -10750,44 +12795,398 @@ app.post('/api/paiements', authAdminOrPaiementManager, async (req, res) => {
       ]
     });
     
-    const totalPayeFormation = paiementsFormation.reduce((acc, p) => acc + p.montant, 0);
-    const totalInscription = paiementsInscription.reduce((acc, p) => acc + p.montant, 0);
+    const totalPayeFormation = paiementsFormation.reduce((acc, p) => acc + (p.montant || 0), 0);
+    const totalInscription = paiementsInscription.reduce((acc, p) => acc + (p.montant || 0), 0);
+    
+    console.log('💰 Total formation payé:', totalPayeFormation);
+    console.log('💰 Total inscription payé:', totalInscription);
 
     // Mise à jour du statut de l'étudiant
-    const etudiantDoc = await Etudiant.findById(etudiant);
-    if (etudiantDoc) {
-      if (etudiantDoc.modePaiement === 'annuel') {
-        // Pour mode annuel : ne pas modifier automatiquement
+    const montantFormationRequis = Math.max(0, etudiantDoc.prixTotal - totalInscription);
+    console.log('💰 Montant formation requis:', montantFormationRequis);
+
+    if (etudiantDoc.modePaiement === 'annuel') {
+      console.log('ℹ️ Mode annuel: pas de mise à jour automatique du statut');
+    } else {
+      const ancienStatut = etudiantDoc.paye;
+      
+      if (totalPayeFormation >= montantFormationRequis) {
+        etudiantDoc.paye = true;
       } else {
-        // Calculer le montant formation requis après inscription
-        const montantFormationRequis = Math.max(0, etudiantDoc.prixTotal - totalInscription);
-        
-        if (totalPayeFormation >= montantFormationRequis) {
-          etudiantDoc.paye = true;
-        } else {
-          etudiantDoc.paye = false;
-        }
+        etudiantDoc.paye = false;
+      }
+      
+      if (ancienStatut !== etudiantDoc.paye) {
         await etudiantDoc.save();
+        console.log('✅ Statut étudiant mis à jour:', ancienStatut, '→', etudiantDoc.paye);
+      } else {
+        console.log('ℹ️ Statut étudiant inchangé:', etudiantDoc.paye);
       }
     }
 
-    res.status(201).json({ 
-      message: 'Paiement ajouté avec succès', 
-      paiement,
-      totalPayeFormation,
-      montantFormationRequis: etudiantDoc ? Math.max(0, etudiantDoc.prixTotal - totalInscription) : 0,
-      modePaiement: etudiantDoc?.modePaiement,
-      typePaiement: typePaymentFinal,
-      numeroTranche: numeroTranche
-    });
+    // Préparer la réponse
+    const response = {
+      message: 'Paiement ajouté avec succès',
+      paiement: {
+        _id: paiement._id,
+        numeroSerie: paiement.numeroSerie,
+        montant: paiement.montant,
+        typePaiement: paiement.typePaiement,
+        numeroTranche: paiement.numeroTranche,
+        moisDebut: paiement.moisDebut,
+        nombreMois: paiement.nombreMois,
+        createdAt: paiement.createdAt
+      },
+      totaux: {
+        totalPayeFormation,
+        totalInscription,
+        montantFormationRequis,
+        resteAPayer: Math.max(0, montantFormationRequis - totalPayeFormation),
+        pourcentagePaye: montantFormationRequis > 0 
+          ? Math.round((totalPayeFormation / montantFormationRequis) * 100) 
+          : 100
+      },
+      etudiant: {
+        id: etudiantDoc._id,
+        nomComplet: etudiantDoc.nomComplet || `${etudiantDoc.prenom} ${etudiantDoc.nomDeFamille}`,
+        modePaiement: etudiantDoc.modePaiement,
+        paye: etudiantDoc.paye
+      }
+    };
+
+    console.log('✅ ===== PAIEMENT CRÉÉ AVEC SUCCÈS =====');
+    console.log('📤 Réponse envoyée:', JSON.stringify(response, null, 2));
+
+    res.status(201).json(response);
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    // 🔍 LOG D'ERREUR DÉTAILLÉ
+    console.error('❌ ===== ERREUR LORS DE LA CRÉATION DU PAIEMENT =====');
+    console.error('❌ Type d\'erreur:', err.name);
+    console.error('❌ Message:', err.message);
+    console.error('❌ Code:', err.code);
+    console.error('❌ Stack:', err.stack);
+    
+    // Erreur de duplication (MongoDB code 11000)
+    if (err.code === 11000) {
+      console.error('❌ Erreur de duplication détectée');
+      const field = Object.keys(err.keyPattern || {})[0] || 'champ inconnu';
+      return res.status(400).json({ 
+        error: `Une valeur dupliquée existe déjà pour le champ: ${field}`,
+        details: 'Ce numéro de série existe déjà dans la base de données'
+      });
+    }
+
+    // Erreur de validation Mongoose
+    if (err.name === 'ValidationError') {
+      console.error('❌ Erreur de validation:', err.errors);
+      const errors = Object.values(err.errors).map(e => ({
+        field: e.path,
+        message: e.message
+      }));
+      return res.status(400).json({ 
+        error: 'Erreur de validation',
+        details: errors
+      });
+    }
+
+    // Erreur de cast (ID invalide)
+    if (err.name === 'CastError') {
+      console.error('❌ Erreur de cast:', err.path, err.value);
+      return res.status(400).json({ 
+        error: 'Identifiant invalide',
+        field: err.path,
+        value: err.value
+      });
+    }
+
+    // Erreur générique
+    console.error('❌ Erreur non gérée:', err);
+    res.status(500).json({ 
+      error: 'Erreur serveur lors de l\'ajout du paiement',
+      message: err.message,
+      type: err.name
+    });
   }
 });
 // Nouvelle route API à ajouter dans votre serveur
 // À ajouter dans votre fichier serveur (app.js ou server.js)
+// ============================================
+// ROUTE PUT: Modifier un paiement
+// ============================================
+app.put('/api/paiements/:id', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    console.log('📝 ===== MODIFICATION PAIEMENT =====');
+    console.log('🆔 ID:', req.params.id);
+    console.log('📦 Données reçues:', JSON.stringify(req.body, null, 2));
+    
+    const { id } = req.params;
+    const { montant, note, numeroSerie, nombreMois, moisDebut } = req.body;
+    
+    // ✅ VALIDATION 1: Vérifier si le paiement existe
+    const paiement = await Paiement.findById(id);
+    if (!paiement) {
+      console.log('❌ Paiement introuvable');
+      return res.status(404).json({ 
+        error: 'Paiement introuvable' 
+      });
+    }
+    
+    console.log('✅ Paiement trouvé:', paiement.numeroSerie);
+    
+    // ✅ VALIDATION 2: Si la série est modifiée, vérifier qu'elle n'existe pas déjà
+    if (numeroSerie && numeroSerie !== paiement.numeroSerie) {
+      const serieFormatee = numeroSerie.trim().toUpperCase();
+      
+      console.log('🔍 Vérification nouvelle série:', serieFormatee);
+      
+      const serieExiste = await Paiement.findOne({ 
+        numeroSerie: serieFormatee,
+        _id: { $ne: id }
+      });
+      
+      if (serieExiste) {
+        console.log('❌ Série déjà utilisée');
+        return res.status(400).json({ 
+          error: `Ce numéro de série (${numeroSerie}) est déjà utilisé par un autre paiement` 
+        });
+      }
+      
+      paiement.numeroSerie = serieFormatee;
+      console.log('✅ Nouvelle série acceptée');
+    }
+    
+    // ✅ VALIDATION 3: Vérifier le montant
+    if (montant !== undefined) {
+      if (parseFloat(montant) <= 0) {
+        console.log('❌ Montant invalide');
+        return res.status(400).json({ 
+          error: 'Le montant doit être supérieur à 0' 
+        });
+      }
+      paiement.montant = parseFloat(montant);
+    }
+    
+    // Mettre à jour les autres champs
+    if (note !== undefined) paiement.note = note;
+    if (nombreMois !== undefined && nombreMois > 0) paiement.nombreMois = parseInt(nombreMois);
+    if (moisDebut !== undefined) paiement.moisDebut = new Date(moisDebut);
+    
+    console.log('💾 Sauvegarde des modifications...');
+    await paiement.save();
+    console.log('✅ Paiement modifié avec succès');
+    
+    // ✅ RECALCULER le statut de l'étudiant
+    const etudiantId = paiement.etudiant;
+    
+    console.log('📊 Recalcul du statut de l\'étudiant...');
+    
+    const paiementsFormation = await Paiement.find({ 
+      etudiant: etudiantId, 
+      $or: [
+        { typePaiement: 'formation' },
+        { estInscription: false }
+      ]
+    });
+    
+    const paiementsInscription = await Paiement.find({ 
+      etudiant: etudiantId, 
+      $or: [
+        { typePaiement: 'inscription' },
+        { estInscription: true }
+      ]
+    });
+    
+    const totalPayeFormation = paiementsFormation.reduce((acc, p) => acc + (p.montant || 0), 0);
+    const totalInscription = paiementsInscription.reduce((acc, p) => acc + (p.montant || 0), 0);
+    
+    const etudiantDoc = await Etudiant.findById(etudiantId);
+    
+    if (etudiantDoc && etudiantDoc.modePaiement !== 'annuel') {
+      const montantFormationRequis = Math.max(0, etudiantDoc.prixTotal - totalInscription);
+      const ancienStatut = etudiantDoc.paye;
+      
+      etudiantDoc.paye = totalPayeFormation >= montantFormationRequis;
+      
+      if (ancienStatut !== etudiantDoc.paye) {
+        await etudiantDoc.save();
+        console.log('✅ Statut étudiant mis à jour:', ancienStatut, '→', etudiantDoc.paye);
+      } else {
+        console.log('ℹ️ Statut étudiant inchangé');
+      }
+    }
+    
+    console.log('✅ ===== MODIFICATION TERMINÉE =====');
+    
+    res.json({ 
+      message: 'Paiement modifié avec succès', 
+      paiement: {
+        _id: paiement._id,
+        numeroSerie: paiement.numeroSerie,
+        montant: paiement.montant,
+        nombreMois: paiement.nombreMois,
+        moisDebut: paiement.moisDebut,
+        note: paiement.note,
+        updatedAt: paiement.updatedAt
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ ===== ERREUR MODIFICATION =====');
+    console.error('❌ Type:', err.name);
+    console.error('❌ Message:', err.message);
+    console.error('❌ Stack:', err.stack);
+    
+    // Erreur de duplication
+    if (err.code === 11000) {
+      return res.status(400).json({ 
+        error: 'Ce numéro de série existe déjà dans la base de données' 
+      });
+    }
+    
+    // Erreur de validation
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => ({
+        field: e.path,
+        message: e.message
+      }));
+      return res.status(400).json({ 
+        error: 'Erreur de validation',
+        details: errors
+      });
+    }
+    
+    // Erreur de cast (ID invalide)
+    if (err.name === 'CastError') {
+      return res.status(400).json({ 
+        error: 'Identifiant invalide',
+        field: err.path
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erreur serveur lors de la modification',
+      message: err.message 
+    });
+  }
+});
 
-app.get('/api/revenus/previsions/:anneeScolaire', authAdmin, async (req, res) => {
+// ============================================
+// ROUTE DELETE: Supprimer un paiement
+// ============================================
+app.delete('/api/paiements/:id', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    console.log('🗑️ ===== SUPPRESSION PAIEMENT =====');
+    console.log('🆔 ID:', req.params.id);
+    
+    const { id } = req.params;
+    
+    // ✅ VALIDATION: Vérifier si le paiement existe
+    const paiement = await Paiement.findById(id);
+    if (!paiement) {
+      console.log('❌ Paiement introuvable');
+      return res.status(404).json({ 
+        error: 'Paiement introuvable' 
+      });
+    }
+    
+    console.log('✅ Paiement trouvé:', {
+      numeroSerie: paiement.numeroSerie,
+      montant: paiement.montant,
+      etudiant: paiement.etudiant
+    });
+    
+    const etudiantId = paiement.etudiant;
+    const paiementInfo = {
+      _id: paiement._id,
+      numeroSerie: paiement.numeroSerie,
+      montant: paiement.montant,
+      etudiant: paiement.etudiant,
+      typePaiement: paiement.typePaiement,
+      createdAt: paiement.createdAt
+    };
+    
+    // ✅ SUPPRESSION du paiement
+    console.log('🗑️ Suppression en cours...');
+    await Paiement.findByIdAndDelete(id);
+    console.log('✅ Paiement supprimé');
+    
+    // ✅ RECALCULER le statut de l'étudiant
+    console.log('📊 Recalcul du statut de l\'étudiant...');
+    
+    const paiementsFormation = await Paiement.find({ 
+      etudiant: etudiantId, 
+      $or: [
+        { typePaiement: 'formation' },
+        { estInscription: false }
+      ]
+    });
+    
+    const paiementsInscription = await Paiement.find({ 
+      etudiant: etudiantId, 
+      $or: [
+        { typePaiement: 'inscription' },
+        { estInscription: true }
+      ]
+    });
+    
+    const totalPayeFormation = paiementsFormation.reduce((acc, p) => acc + (p.montant || 0), 0);
+    const totalInscription = paiementsInscription.reduce((acc, p) => acc + (p.montant || 0), 0);
+    
+    console.log('💰 Nouveaux totaux:', {
+      formation: totalPayeFormation,
+      inscription: totalInscription
+    });
+    
+    const etudiantDoc = await Etudiant.findById(etudiantId);
+    
+    if (etudiantDoc && etudiantDoc.modePaiement !== 'annuel') {
+      const montantFormationRequis = Math.max(0, etudiantDoc.prixTotal - totalInscription);
+      const ancienStatut = etudiantDoc.paye;
+      
+      etudiantDoc.paye = totalPayeFormation >= montantFormationRequis;
+      
+      if (ancienStatut !== etudiantDoc.paye) {
+        await etudiantDoc.save();
+        console.log('✅ Statut étudiant mis à jour:', ancienStatut, '→', etudiantDoc.paye);
+      } else {
+        console.log('ℹ️ Statut étudiant inchangé');
+      }
+    }
+    
+    console.log('✅ ===== SUPPRESSION TERMINÉE =====');
+    
+    res.json({ 
+      message: 'Paiement supprimé avec succès',
+      paiementSupprime: paiementInfo,
+      nouveauxTotaux: {
+        totalFormation: totalPayeFormation,
+        totalInscription: totalInscription,
+        resteAPayer: etudiantDoc ? Math.max(0, etudiantDoc.prixTotal - totalInscription - totalPayeFormation) : 0
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ ===== ERREUR SUPPRESSION =====');
+    console.error('❌ Type:', err.name);
+    console.error('❌ Message:', err.message);
+    console.error('❌ Stack:', err.stack);
+    
+    // Erreur de cast (ID invalide)
+    if (err.name === 'CastError') {
+      return res.status(400).json({ 
+        error: 'Identifiant invalide',
+        field: err.path
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erreur serveur lors de la suppression',
+      message: err.message 
+    });
+  }
+});
+app.get('/api/revenus/previsions/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
   try {
     const anneeScolaire = decodeURIComponent(req.params.anneeScolaire);
     
@@ -11520,7 +13919,7 @@ app.post('/api/notifications/seuils-absence', authAdminOrPaiementManager, async 
 });
 
 // Route de statistiques détaillées pour les absences
-app.get('/api/notifications/stats-absences', authAdmin, async (req, res) => {
+app.get('/api/notifications/stats-absences', authAdminOrPaiementManager, async (req, res) => {
   try {
     const etudiantsActifs = await Etudiant.find({ actif: true });
     const stats = {
@@ -11568,6 +13967,527 @@ app.get('/api/notifications/stats-absences', authAdmin, async (req, res) => {
   } catch (err) {
     console.error('❌ Erreur stats absences:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+// ===== CRUD ROUTES POUR PARTNER =====
+
+// 📊 GET - Statistiques partners (DOIT ÊTRE EN PREMIER - ROUTES SPÉCIFIQUES)
+app.get('/api/partners/stats', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const [totalPartners, partnersActifs, partnersInactifs] = await Promise.all([
+      Partner.countDocuments({}),
+      Partner.countDocuments({ active: true }),
+      Partner.countDocuments({ active: false })
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        partners: {
+          total: totalPartners,
+          actifs: partnersActifs,
+          inactifs: partnersInactifs
+        },
+        etudiants: [] // Temporairement vide
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur stats partners:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 📋 GET - Obtenir partners actifs pour select (ROUTES SPÉCIFIQUES AVANT /:id)
+app.get('/api/partners/active-list', authCommercial, async (req, res) => {
+  try {
+    const partners = await Partner.getPartnersActifs();
+    
+    // Format spécial pour les selects
+    const partnersList = partners.map(partner => ({
+      value: partner._id,
+      label: partner.nomPartner,
+      id: partner._id,
+      nom: partner.nomPartner,
+      email: partner.email
+    }));
+    
+    res.json({
+      success: true,
+      data: partnersList
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur liste partners actifs:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 🔐 POST - Connexion partner (ROUTES SPÉCIFIQUES AVANT /:id)
+app.post('/api/partners/login', async (req, res) => {
+  try {
+    const { email, motDePasse } = req.body;
+    
+    if (!email || !motDePasse) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et mot de passe requis'
+      });
+    }
+    
+    // Chercher le partner par email
+    const partner = await Partner.findOne({ 
+      email: email.toLowerCase(),
+      active: true 
+    });
+    
+    if (!partner) {
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+    
+    // Vérifier le mot de passe
+    const isPasswordValid = await partner.comparePassword(motDePasse);
+    
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+    
+    // Générer le token JWT
+    const token = jwt.sign(
+      { 
+        id: partner._id, 
+        email: partner.email,
+        role: 'partner',
+        nomPartner: partner.nomPartner
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Connexion réussie',
+      token,
+      partner: {
+        id: partner._id,
+        nomPartner: partner.nomPartner,
+        email: partner.email,
+        role: 'partner'
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur connexion partner:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 📊 GET - Obtenir tous les partners (ROUTES GÉNÉRALES)
+app.get('/api/partners', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { active } = req.query;
+    
+    let filter = {};
+    if (active !== undefined) {
+      filter.active = active === 'true';
+    }
+    
+    const partners = await Partner.find(filter).sort({ nomPartner: 1 });
+    
+    res.json({
+      success: true,
+      data: partners,
+      count: partners.length
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur récupération partners:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// ➕ POST - Créer un nouveau partner
+app.post('/api/partners', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { nomPartner, email, motDePasse, active } = req.body;
+    
+    // Validation
+    if (!nomPartner || nomPartner.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nom du partner est obligatoire'
+      });
+    }
+    
+    if (!email || email.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'L\'email du partner est obligatoire'
+      });
+    }
+    
+    if (!motDePasse || motDePasse.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le mot de passe doit contenir au moins 6 caractères'
+      });
+    }
+    
+    // Vérifier si le partner existe déjà (nom ou email)
+    const existingPartner = await Partner.findOne({ 
+      $or: [
+        { nomPartner: nomPartner.trim() },
+        { email: email.trim().toLowerCase() }
+      ]
+    });
+    
+    if (existingPartner) {
+      return res.status(400).json({
+        success: false,
+        message: existingPartner.nomPartner === nomPartner.trim() 
+          ? 'Ce nom de partner existe déjà'
+          : 'Cet email est déjà utilisé'
+      });
+    }
+    
+    const partner = new Partner({
+      nomPartner: nomPartner.trim(),
+      email: email.trim().toLowerCase(),
+      motDePasse: motDePasse,
+      active: active !== undefined ? active : true
+    });
+    
+    await partner.save();
+    
+    res.status(201).json({
+      success: true,
+      message: 'Partner créé avec succès',
+      data: partner
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur création partner:', err);
+    
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      const message = field === 'email' 
+        ? 'Cet email est déjà utilisé'
+        : 'Ce nom de partner existe déjà';
+      
+      return res.status(400).json({
+        success: false,
+        message: message
+      });
+    }
+    
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(', ')
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 🔍 GET - Obtenir un partner par ID (DOIT ÊTRE APRÈS LES ROUTES SPÉCIFIQUES)
+app.get('/api/partners/:id', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    // Validation de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de partner invalide'
+      });
+    }
+    
+    const partner = await Partner.findById(req.params.id);
+    
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Partner non trouvé'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: partner
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur récupération partner:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// ✏️ PUT - Modifier un partner
+app.put('/api/partners/:id', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    // Validation de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de partner invalide'
+      });
+    }
+    
+    const { nomPartner, email, motDePasse, active } = req.body;
+    
+    // Validation
+    if (!nomPartner || nomPartner.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nom du partner est obligatoire'
+      });
+    }
+    
+    if (!email || email.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'L\'email du partner est obligatoire'
+      });
+    }
+    
+    // Vérifier si un autre partner a déjà ce nom ou cet email
+    const existingPartner = await Partner.findOne({ 
+      $or: [
+        { nomPartner: nomPartner.trim() },
+        { email: email.trim().toLowerCase() }
+      ],
+      _id: { $ne: req.params.id }
+    });
+    
+    if (existingPartner) {
+      return res.status(400).json({
+        success: false,
+        message: existingPartner.nomPartner === nomPartner.trim()
+          ? 'Ce nom de partner est déjà utilisé'
+          : 'Cet email est déjà utilisé'
+      });
+    }
+    
+    const updateData = {
+      nomPartner: nomPartner.trim(),
+      email: email.trim().toLowerCase(),
+      active: active !== undefined ? active : true
+    };
+    
+    // Si un nouveau mot de passe est fourni
+    if (motDePasse && motDePasse.trim() !== '') {
+      if (motDePasse.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Le mot de passe doit contenir au moins 6 caractères'
+        });
+      }
+      updateData.motDePasse = motDePasse;
+    }
+    
+    const partner = await Partner.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Partner non trouvé'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Partner modifié avec succès',
+      data: partner
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur modification partner:', err);
+    
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      const message = field === 'email' 
+        ? 'Cet email est déjà utilisé'
+        : 'Ce nom de partner existe déjà';
+      
+      return res.status(400).json({
+        success: false,
+        message: message
+      });
+    }
+    
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: errors.join(', ')
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 🔄 PATCH - Toggle actif/inactif
+app.patch('/api/partners/:id/toggle', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    // Validation de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de partner invalide'
+      });
+    }
+    
+    const partner = await Partner.findById(req.params.id);
+    
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Partner non trouvé'
+      });
+    }
+    
+    await partner.toggleActive();
+    
+    res.json({
+      success: true,
+      message: `Partner ${partner.active ? 'activé' : 'désactivé'} avec succès`,
+      data: partner
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur toggle partner:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 🔑 PATCH - Changer le mot de passe
+app.patch('/api/partners/:id/change-password', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    // Validation de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de partner invalide'
+      });
+    }
+    
+    const { nouveauMotDePasse } = req.body;
+    
+    if (!nouveauMotDePasse || nouveauMotDePasse.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le mot de passe doit contenir au moins 6 caractères'
+      });
+    }
+    
+    const partner = await Partner.findById(req.params.id);
+    
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Partner non trouvé'
+      });
+    }
+    
+    await partner.changerMotDePasse(nouveauMotDePasse);
+    
+    res.json({
+      success: true,
+      message: 'Mot de passe modifié avec succès'
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur changement mot de passe:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
+// 🗑️ DELETE - Supprimer un partner
+app.delete('/api/partners/:id', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    // Validation de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de partner invalide'
+      });
+    }
+    
+    // Vérifier si des étudiants utilisent ce partner
+    const etudiantsUtilisant = await Etudiant.countDocuments({ 
+      nomPartner: req.params.id 
+    });
+    
+    if (etudiantsUtilisant > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Impossible de supprimer ce partner car ${etudiantsUtilisant} étudiant(s) l'utilisent encore`
+      });
+    }
+    
+    const partner = await Partner.findByIdAndDelete(req.params.id);
+    
+    if (!partner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Partner non trouvé'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Partner supprimé avec succès',
+      data: partner
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur suppression partner:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
   }
 });
 
@@ -11773,7 +14693,7 @@ app.get('/api/vie-scolaire/:id', async (req, res) => {
 });
 
 // POST créer une nouvelle activité (admin uniquement)
-app.post('/api/vie-scolaire', authAdmin, uploadVieScolaire.array('images', 10), async (req, res) => {
+app.post('/api/vie-scolaire', authAdminOrPaiementManager, uploadVieScolaire.array('images', 10), async (req, res) => {
   try {
     const {
       title,
@@ -11864,7 +14784,7 @@ app.get('/api/commerciaux', authAdmin, async (req, res) => {
 });
 
 // ✅ Create new commercial
-app.post('/api/commerciaux', authAdmin, async (req, res) => {
+app.post('/api/commerciaux', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, estAdminInscription, actif } = req.body;
 
@@ -11913,7 +14833,7 @@ app.post('/api/commerciaux', authAdmin, async (req, res) => {
 });
 
 // ✅ Update commercial
-app.put('/api/commerciaux/:id', authAdmin, async (req, res) => {
+app.put('/api/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, estAdminInscription, actif } = req.body;
 
@@ -11965,7 +14885,7 @@ app.put('/api/commerciaux/:id', authAdmin, async (req, res) => {
 });
 
 // ✅ Delete commercial but keep students (set commercial to null)
-app.delete('/api/commerciaux/:id', authAdmin, async (req, res) => {
+app.delete('/api/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commercial = await Commercial.findById(req.params.id);
     if (!commercial) {
@@ -12000,7 +14920,7 @@ app.delete('/api/commerciaux/:id', authAdmin, async (req, res) => {
 });
 
 // Alternative version: Delete commercial and assign students to a default/admin commercial
-app.delete('/api/commerciaux/:id', authAdmin, async (req, res) => {
+app.delete('/api/commerciaux/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commercial = await Commercial.findById(req.params.id);
     if (!commercial) {
@@ -12046,7 +14966,7 @@ app.delete('/api/commerciaux/:id', authAdmin, async (req, res) => {
 });
 
 // Also update the statistics endpoint to handle students without commercials
-app.get('/api/commerciaux/statistiques', authAdmin, async (req, res) => {
+app.get('/api/commerciaux/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commerciauxStats = await Etudiant.aggregate([
       { $match: { commercial: { $ne: null, $exists: true } } }, // Only students with commercials
@@ -12189,7 +15109,7 @@ app.get('/api/commerciaux/statistiques', authAdmin, async (req, res) => {
 });
 
 // ✅ Toggle commercial active status
-app.patch('/api/commerciaux/:id/actif', authAdmin, async (req, res) => {
+app.patch('/api/commerciaux/:id/actif', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commercial = await Commercial.findById(req.params.id);
     if (!commercial) {
@@ -12214,7 +15134,7 @@ app.patch('/api/commerciaux/:id/actif', authAdmin, async (req, res) => {
 // ===== ROUTES SPÉCIFIQUES POUR LE DASHBOARD PÉDAGOGIQUE =====
 
 // ✅ Get statistics for commercials
-app.get('/api/commerciaux/statistiques', authAdmin, async (req, res) => {
+app.get('/api/commerciaux/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const commerciauxStats = await Etudiant.aggregate([
       { $match: { commercial: { $ne: null } } },
@@ -12294,7 +15214,7 @@ app.get('/api/commerciaux/statistiques', authAdmin, async (req, res) => {
   }
 });
 // PUT modifier une activité (admin uniquement)
-app.put('/api/vie-scolaire/:id', authAdmin, uploadVieScolaire.array('images', 10), async (req, res) => {
+app.put('/api/vie-scolaire/:id', authAdminOrPaiementManager, uploadVieScolaire.array('images', 10), async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -12395,7 +15315,7 @@ app.put('/api/vie-scolaire/:id', authAdmin, uploadVieScolaire.array('images', 10
 });
 
 // DELETE supprimer une activité (admin uniquement)
-app.delete('/api/vie-scolaire/:id', authAdmin, async (req, res) => {
+app.delete('/api/vie-scolaire/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -12439,7 +15359,7 @@ app.delete('/api/vie-scolaire/:id', authAdmin, async (req, res) => {
 });
 
 // DELETE supprimer une image spécifique d'une activité (admin uniquement)
-app.delete('/api/vie-scolaire/:id/images/:imageIndex', authAdmin, async (req, res) => {
+app.delete('/api/vie-scolaire/:id/images/:imageIndex', authAdminOrPaiementManager, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -13027,7 +15947,7 @@ app.get('/notifications-etudiant', authEtudiant, async (req, res) => {
 // Exemple Express
 // backend route
 
-app.put('/update-profil', authAdmin, async (req, res) => {
+app.put('/update-profil', authAdminOrPaiementManager, async (req, res) => {
   const { nom, email, ancienMotDePasse, nouveauMotDePasse } = req.body;
 
   try {
@@ -13077,9 +15997,10 @@ app.get('/api/professeur/mes-etudiants-messages', authProfesseur, async (req, re
     }
 
     // 2. Trouver les étudiants qui ont au moins un cours commun
+    // ✅ CORRECTION: Enlever 'nomComplet' du select et ajouter 'prenom' et 'nomDeFamille'
     const etudiants = await Etudiant.find({
       cours: { $in: professeur.cours }
-    }).select('_id nomComplet email image genre lastSeen cours');
+    }).select('_id prenom nomDeFamille email image genre lastSeen cours');
 
     // 3. Récupérer les messages de ce professeur
     const messages = await Message.find({ professeur: req.professeurId }).sort({ date: -1 });
@@ -13099,10 +16020,13 @@ app.get('/api/professeur/mes-etudiants-messages', authProfesseur, async (req, re
     }
 
     // 5. Fusionner les données des étudiants avec leur dernier message
-    const result = etudiants.map(etudiant => ({
-      ...etudiant.toObject(),
-      dernierMessage: lastMessagesMap.get(etudiant._id.toString()) || null
-    }));
+    const result = etudiants.map(etudiant => {
+      const etudiantObj = etudiant.toObject({ virtuals: true }); // ✅ Activer les virtuals
+      return {
+        ...etudiantObj,
+        dernierMessage: lastMessagesMap.get(etudiant._id.toString()) || null
+      };
+    });
 
     res.json(result);
   } catch (err) {
@@ -14792,7 +17716,7 @@ app.delete('/api/commercial/etudiants/:id', authCommercial, async (req, res) => 
 
 
 // 1. Créer un gestionnaire de paiement (POST)
-app.post('/api/admin/paiement-managers', authAdmin, async (req, res) => {
+app.post('/api/admin/paiement-managers', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, email, telephone, motDePasse } = req.body;
 
@@ -14830,7 +17754,7 @@ app.post('/api/admin/paiement-managers', authAdmin, async (req, res) => {
 });
 
 // 2. Lire tous les gestionnaires (GET)
-app.get('/api/admin/paiement-managers', authAdmin, async (req, res) => {
+app.get('/api/admin/paiement-managers', authAdminOrPaiementManager, async (req, res) => {
   try {
     const managers = await PaiementManager.find({}, { motDePasse: 0 });
     res.json(managers);
@@ -14840,7 +17764,7 @@ app.get('/api/admin/paiement-managers', authAdmin, async (req, res) => {
 });
 
 // 3. Lire un gestionnaire spécifique (GET)
-app.get('/api/admin/paiement-managers/:id', authAdmin, async (req, res) => {
+app.get('/api/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const manager = await PaiementManager.findById(req.params.id, { motDePasse: 0 });
     if (!manager) {
@@ -14853,7 +17777,7 @@ app.get('/api/admin/paiement-managers/:id', authAdmin, async (req, res) => {
 });
 
 // 4. Mettre à jour un gestionnaire (PUT)
-app.put('/api/admin/paiement-managers/:id', authAdmin, async (req, res) => {
+app.put('/api/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, email, telephone, motDePasse, actif } = req.body;
     const updates = {};
@@ -14885,7 +17809,7 @@ app.put('/api/admin/paiement-managers/:id', authAdmin, async (req, res) => {
 });
 
 // 5. Supprimer un gestionnaire (DELETE)
-app.delete('/api/admin/paiement-managers/:id', authAdmin, async (req, res) => {
+app.delete('/api/admin/paiement-managers/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const manager = await PaiementManager.findByIdAndDelete(req.params.id);
     if (!manager) {
@@ -14898,7 +17822,7 @@ app.delete('/api/admin/paiement-managers/:id', authAdmin, async (req, res) => {
 });
 
 // 6. Activer/Désactiver un gestionnaire (PATCH)
-app.patch('/api/admin/paiement-managers/:id/toggle-active', authAdmin, async (req, res) => {
+app.patch('/api/admin/paiement-managers/:id/toggle-active', authAdminOrPaiementManager, async (req, res) => {
   try {
     const manager = await PaiementManager.findById(req.params.id);
     if (!manager) {
@@ -15352,7 +18276,7 @@ app.get('/api/paiement-manager/paiements', authPaiementManager, async (req, res)
     });
   }
 });
-app.get('/api/admin/profile', authAdmin, async (req, res) => {
+app.get('/api/admin/profile', authAdminOrPaiementManager, async (req, res) => {
   try {
     console.log('📝 Route profile GET appelée - Admin ID:', req.adminId);
     
@@ -15370,61 +18294,16 @@ app.get('/api/admin/profile', authAdmin, async (req, res) => {
   }
 });
 
-// 1. API pour que FINANCE valide un cycle (Étape 1)
-app.post('/api/finance/cycles/valider', authAdmin, async (req, res) => {
-  try {
-    // Vérifier que c'est un utilisateur Finance
-    if (req.userType !== 'finance_prof') {
-      return res.status(403).json({ error: 'Accès réservé aux utilisateurs Finance' });
-    }
 
-    const { professeurId, notes } = req.body;
-
-    if (!professeurId) {
-      return res.status(400).json({ error: 'ID du professeur requis' });
-    }
-
-    // Trouver ou créer le cycle en cours
-    let cycle = await CyclePaiement.getCycleEnCours(professeurId);
-    
-    if (!cycle) {
-      // Créer un nouveau cycle si aucun n'existe
-      cycle = await CyclePaiement.creerNouveauCycle(professeurId, req.adminId);
-    }
-
-    // Calculer les montants du cycle
-    cycle = await CyclePaiement.calculerCycle(professeurId, cycle._id);
-
-    if (cycle.montantNet <= 0) {
-      return res.status(400).json({ error: 'Aucun montant à payer pour ce cycle' });
-    }
-
-    // Valider par Finance
-    cycle.validerParFinance(req.adminId, notes || '');
-    await cycle.save();
-
-    // Populate pour la réponse
-    await cycle.populate('professeur', 'nom email tarifHoraire');
-    await cycle.populate('valideParFinance', 'nom email');
-
-    res.json({
-      message: 'Cycle validé par Finance avec succès',
-      cycle
-    });
-
-  } catch (error) {
-    console.error('Erreur validation Finance:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
 
 // 2. API pour récupérer les cycles validés par Finance (pour Admin)
-app.get('/api/admin/cycles/valides-finance', authAdmin, async (req, res) => {
+// 2. API pour récupérer les cycles validés par Finance
+app.get('/api/admin/cycles/valides-finance', authAdminOrPaiementManager, async (req, res) => {
   try {
-    // Vérifier que c'est un admin
-    if (req.userType !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
-    }
+    // SUPPRIMER CETTE VÉRIFICATION qui bloque paiement_manager
+    // if (req.userType !== 'admin') {
+    //   return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    // }
 
     const cycles = await CyclePaiement.find({
       statut: 'valide_finance',
@@ -15446,13 +18325,13 @@ app.get('/api/admin/cycles/valides-finance', authAdmin, async (req, res) => {
   }
 });
 
-// 3. API pour qu'ADMIN paie un cycle (Étape 2)
-app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
+// 3. API pour qu'ADMIN paie un cycle
+app.post('/api/admin/cycles/payer', authAdminOrPaiementManager, async (req, res) => {
   try {
-    // Vérifier que c'est un admin
-    if (req.userType !== 'admin') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
-    }
+    // SUPPRIMER CETTE VÉRIFICATION
+    // if (req.userType !== 'admin') {
+    //   return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    // }
 
     const { cycleId, methodePaiement, referencePaiement, notes } = req.body;
 
@@ -15469,11 +18348,12 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Ce cycle doit être validé par Finance avant le paiement' });
     }
 
-    // Marquer le cycle comme payé
-    cycle.payerParAdmin(req.adminId, methodePaiement, referencePaiement || '', notes || '');
+    // Utiliser req.userId au lieu de req.adminId pour supporter les deux rôles
+    const userId = req.adminId || req.paiementManagerId || req.userId;
+    
+    cycle.payerParAdmin(userId, methodePaiement, referencePaiement || '', notes || '');
     await cycle.save();
 
-    // IMPORTANT: Marquer toutes les séances incluses comme payées
     const Seance = mongoose.model('Seance');
     const seanceIds = cycle.seancesIncluses.map(s => s.seanceId);
     
@@ -15486,10 +18366,8 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
       }
     );
 
-    // Créer automatiquement le nouveau cycle pour ce professeur
-    const nouveauCycle = await CyclePaiement.creerNouveauCycle(cycle.professeur, req.adminId);
+    const nouveauCycle = await CyclePaiement.creerNouveauCycle(cycle.professeur, userId);
 
-    // Populate pour la réponse
     await cycle.populate('professeur', 'nom email');
     await cycle.populate('payeParAdmin', 'nom email');
 
@@ -15508,9 +18386,8 @@ app.post('/api/admin/cycles/payer', authAdmin, async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-
 // 4. API pour récupérer les détails d'un cycle spécifique
-app.get('/api/cycles/:cycleId', authAdmin, async (req, res) => {
+app.get('/api/cycles/:cycleId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { cycleId } = req.params;
 
@@ -15533,7 +18410,7 @@ app.get('/api/cycles/:cycleId', authAdmin, async (req, res) => {
 });
 
 // 5. API pour récupérer le cycle en cours d'un professeur
-app.get('/api/cycles/professeur/:professeurId/en-cours', authAdmin, async (req, res) => {
+app.get('/api/cycles/professeur/:professeurId/en-cours', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
 
@@ -15558,7 +18435,7 @@ app.get('/api/cycles/professeur/:professeurId/en-cours', authAdmin, async (req, 
 });
 
 // 6. API pour l'historique des cycles d'un professeur
-app.get('/api/cycles/professeur/:professeurId/historique', authAdmin, async (req, res) => {
+app.get('/api/cycles/professeur/:professeurId/historique', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     const { limit = 10 } = req.query;
@@ -15585,7 +18462,7 @@ app.get('/api/cycles/professeur/:professeurId/historique', authAdmin, async (req
 });
 
 // 7. API pour annuler un cycle (avant paiement)
-app.post('/api/cycles/:cycleId/annuler', authAdmin, async (req, res) => {
+app.post('/api/cycles/:cycleId/annuler', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { cycleId } = req.params;
     const { motif } = req.body;
@@ -15619,7 +18496,7 @@ app.post('/api/cycles/:cycleId/annuler', authAdmin, async (req, res) => {
 });
 
 // 8. API pour les statistiques des cycles
-app.get('/api/cycles/statistiques', authAdmin, async (req, res) => {
+app.get('/api/cycles/statistiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -15666,7 +18543,7 @@ app.get('/api/cycles/statistiques', authAdmin, async (req, res) => {
 });
 
 // 9. API pour récupérer tous les cycles à différents statuts (dashboard)
-app.get('/api/cycles/dashboard', authAdmin, async (req, res) => {
+app.get('/api/cycles/dashboard', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { statut } = req.query;
 
@@ -15703,7 +18580,7 @@ app.get('/api/cycles/dashboard', authAdmin, async (req, res) => {
 });
 
 
-app.put('/api/admin/profile', authAdmin, async (req, res) => {
+app.put('/api/admin/profile', authAdminOrPaiementManager, async (req, res) => {
   try {
     console.log('📝 Route profile PUT appelée - Admin ID:', req.adminId);
     console.log('📝 Body reçu:', req.body);
@@ -16822,7 +19699,7 @@ app.get('/api/pedagogique/me', authPedagogique, async (req, res) => {
 // ===== ROUTES GESTION PÉDAGOGIQUES (Admin seulement) =====
 
 // 1. Créer un nouveau pédagogique
-app.post('/api/pedagogiques', authAdmin, async (req, res) => {
+app.post('/api/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse, filiere } = req.body;
 
@@ -16889,7 +19766,7 @@ app.post('/api/pedagogiques', authAdmin, async (req, res) => {
 });
 
 // 2. Lister tous les pédagogiques
-app.get('/api/pedagogiques', authAdmin, async (req, res) => {
+app.get('/api/pedagogiques', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogiques = await Pedagogique.find({})
       .select('-motDePasse')
@@ -16903,7 +19780,7 @@ app.get('/api/pedagogiques', authAdmin, async (req, res) => {
 });
 
 // 3. Modifier un pédagogique
-app.put('/api/pedagogiques/:id', authAdmin, async (req, res) => {
+app.put('/api/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, filiere, actif, motDePasse } = req.body;
     
@@ -16956,7 +19833,7 @@ app.put('/api/pedagogiques/:id', authAdmin, async (req, res) => {
 });
 
 // 4. Supprimer un pédagogique
-app.delete('/api/pedagogiques/:id', authAdmin, async (req, res) => {
+app.delete('/api/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findByIdAndDelete(req.params.id);
     
@@ -16981,7 +19858,7 @@ app.delete('/api/pedagogiques/:id', authAdmin, async (req, res) => {
 });
 
 // 5. Obtenir un pédagogique par ID
-app.get('/api/pedagogiques/:id', authAdmin, async (req, res) => {
+app.get('/api/pedagogiques/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findById(req.params.id)
       .select('-motDePasse');
@@ -16998,7 +19875,7 @@ app.get('/api/pedagogiques/:id', authAdmin, async (req, res) => {
 });
 
 // 6. Toggle actif/inactif
-app.patch('/api/pedagogiques/:id/toggle-actif', authAdmin, async (req, res) => {
+app.patch('/api/pedagogiques/:id/toggle-actif', authAdminOrPaiementManager, async (req, res) => {
   try {
     const pedagogique = await Pedagogique.findById(req.params.id);
     
@@ -17022,28 +19899,28 @@ app.patch('/api/pedagogiques/:id/toggle-actif', authAdmin, async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
-// ===== CONFIGURATION MULTER POUR DOCUMENTS PROFESSEUR =====
+// ===== ROUTE GET - RÉCUPÉRER TOUS LES PROFESSEURS =====
 app.get('/api/pedagogique/mes-professeurs', 
-  authPedagogique, // Middleware qui vérifie que c'est un pédagogique
+  authPedagogique,
   async (req, res) => {
     try {
-      // Récupérer uniquement les professeurs créés par ce pédagogique
-      const professeurs = await Professeur.find({ 
-        creeParPedagogique: req.user.id 
-      })
-      .select('-motDePasse') // Exclure le mot de passe
-      .sort({ createdAt: -1 });
+      // Récupérer TOUS les professeurs sans filtre
+      const professeurs = await Professeur.find({})
+        .select('-motDePasse')
+        .sort({ createdAt: -1 });
 
       res.json(professeurs);
     } catch (err) {
-      console.error('Erreur récupération professeurs du pédagogique:', err);
+      console.error('Erreur récupération professeurs:', err);
       res.status(500).json({ message: 'Erreur serveur', error: err.message });
     }
   }
 );
 
-// ===== ROUTE POST - CRÉER PROFESSEUR AVEC NOUVEAU SYSTÈME =====
-app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
+// ===== ROUTE POST - CRÉER PROFESSEUR =====
+app.post('/api/professeurs',  
+  authAdminOrPedagogique,
+  uploadDocuments.fields([
     { name: 'image', maxCount: 1 },
     { name: 'diplome', maxCount: 1 },
     { name: 'cv', maxCount: 1 },
@@ -17071,7 +19948,7 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
       console.log('Données reçues:', { nom, email, genre, estPermanent, tarifHoraire, coursEnseignes });
       console.log('Utilisateur créateur:', req.user);
 
-      // ===== VALIDATIONS =====
+      // Validations
       if (!nom || !email || !motDePasse || !genre) {
         return res.status(400).json({ message: 'Nom, email, mot de passe et genre sont obligatoires' });
       }
@@ -17089,17 +19966,14 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
         return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
       }
 
-      // Vérification email unique
       const existe = await Professeur.findOne({ email });
       if (existe) {
         return res.status(400).json({ message: 'Cet email est déjà utilisé' });
       }
 
-      // Conversion des booléens
       const actifBool = actif === 'true' || actif === true;
       const estPermanentBool = estPermanent === 'true' || estPermanent === true;
 
-      // Validation entrepreneur
       if (!estPermanentBool) {
         if (!tarifHoraire || parseFloat(tarifHoraire) <= 0) {
           return res.status(400).json({ 
@@ -17108,7 +19982,7 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
         }
       }
 
-      // ===== TRAITEMENT DES COURS ENSEIGNES =====
+      // Traitement des cours enseignés
       let coursEnseignesArray = [];
       if (coursEnseignes) {
         try {
@@ -17116,12 +19990,10 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
             ? JSON.parse(coursEnseignes) 
             : coursEnseignes;
           
-          // Validation du format
           if (!Array.isArray(coursEnseignesArray)) {
             coursEnseignesArray = [];
           }
           
-          // Validation de chaque cours
           coursEnseignesArray = coursEnseignesArray.filter(cours => 
             cours.nomCours && cours.nomCours.trim() !== '' &&
             cours.matiere && cours.matiere.trim() !== ''
@@ -17132,7 +20004,7 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
         }
       }
 
-      // ===== TRAITEMENT DES FICHIERS =====
+      // Traitement des fichiers
       const getFilePath = (fileField) => {
         return req.files && req.files[fileField] && req.files[fileField][0] 
           ? `/uploads/professeurs/documents/${req.files[fileField][0].filename}` 
@@ -17152,11 +20024,11 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
         vacataire: getFilePath('vacataire')
       };
 
-      // ===== CRÉATION DU PROFESSEUR AVEC TRAÇABILITÉ =====
+      // Création du professeur avec traçabilité
       const professeurData = {
         nom: nom.trim(),
         email: email.toLowerCase().trim(),
-        motDePasse: motDePasse, // Sera hashé automatiquement
+        motDePasse: motDePasse,
         genre,
         telephone: telephone?.trim() || '',
         dateNaissance: dateNaissance ? new Date(dateNaissance) : null,
@@ -17168,7 +20040,7 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
         notes: notes?.trim() || ''
       };
 
-      // ===== TRAÇABILITÉ - QUI A CRÉÉ CE PROFESSEUR =====
+      // Traçabilité - qui a créé ce professeur
       if (req.user.role === 'pedagogique') {
         professeurData.creeParPedagogique = req.user.id;
         professeurData.typeDeCree = 'pedagogique';
@@ -17177,7 +20049,6 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
         professeurData.typeDeCree = 'admin';
       }
 
-      // Ajouter le tarif horaire seulement si entrepreneur
       if (!estPermanentBool && tarifHoraire) {
         professeurData.tarifHoraire = parseFloat(tarifHoraire);
       }
@@ -17185,7 +20056,7 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
       const professeur = new Professeur(professeurData);
       await professeur.save();
 
-      // ===== MISE À JOUR DES COURS (Système de compatibilité) =====
+      // Mise à jour des cours
       if (coursEnseignesArray.length > 0) {
         const coursUniques = [...new Set(coursEnseignesArray.map(c => c.nomCours))];
         
@@ -17198,7 +20069,6 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
         }
       }
 
-      // Réponse sans mot de passe
       const professeurResponse = professeur.toObject();
       delete professeurResponse.motDePasse;
 
@@ -17220,7 +20090,7 @@ app.post('/api/professeurs',  authAdminOrPedagogique,uploadDocuments.fields([
   }
 );
 
-// ===== ROUTE PUT MODIFIÉE - MODIFIER PROFESSEUR AVEC VÉRIFICATION DE PROPRIÉTÉ =====
+// ===== ROUTE PUT - MODIFIER PROFESSEUR (SANS VÉRIFICATION DE PROPRIÉTÉ) =====
 app.put(
   '/api/professeurs/:id',
   authAdminOrPedagogique,
@@ -17242,7 +20112,7 @@ app.put(
         dateNaissance,
         telephone,
         email,
-        motDePasse,          // ← سيتهشّى تلقائيًا عبر pre('save') إذا تبدّل
+        motDePasse,
         actif,
         estPermanent,
         tarifHoraire,
@@ -17250,23 +20120,16 @@ app.put(
         notes,
       } = req.body;
 
-      // 1) جلب الأستاذ
+      // Récupérer le professeur
       const prof = await Professeur.findById(professeurId);
       if (!prof) {
         return res.status(404).json({ message: 'Professeur introuvable' });
       }
 
-      // 2) التحقّق من الصلاحيات: pédagogue يقدر يبدّل غير اللي هو خلقو
-      if (req.user.role === 'pedagogique') {
-        if (!prof.creeParPedagogique || prof.creeParPedagogique.toString() !== req.user.id) {
-          return res.status(403).json({
-            message: "Vous n'êtes pas autorisé à modifier ce professeur",
-          });
-        }
-      }
-      // Admin يقدر يبدّل الكل
+      // PLUS DE VÉRIFICATION DE PROPRIÉTÉ
+      // Tous les pédagogiques et admins peuvent modifier tous les professeurs
 
-      // 3) فحص تفرد الإيميل إذا تبدّل
+      // Vérification unicité email
       if (email && email.toLowerCase().trim() !== (prof.email || '').toLowerCase()) {
         const emailExiste = await Professeur.findOne({
           email: email.toLowerCase().trim(),
@@ -17277,7 +20140,7 @@ app.put(
         }
       }
 
-      // 4) تحويلات/Parsing
+      // Fonctions utilitaires
       const toBool = (v) => v === true || v === 'true';
       const toFloat = (v) => (v === undefined || v === '' ? undefined : parseFloat(v));
       const toDate = (v) => (v ? new Date(v) : undefined);
@@ -17286,25 +20149,22 @@ app.put(
       const actifBool = actif !== undefined ? toBool(actif) : prof.actif;
       const tarifNum = toFloat(tarifHoraire);
 
-      // 5) Parse coursEnseignes (support string JSON أو array)
+      // Parse coursEnseignes
       let coursEnseignesArray = prof.coursEnseignes || [];
       if (coursEnseignes !== undefined) {
         try {
-          const parsed =
-            typeof coursEnseignes === 'string' ? JSON.parse(coursEnseignes) : coursEnseignes;
+          const parsed = typeof coursEnseignes === 'string' ? JSON.parse(coursEnseignes) : coursEnseignes;
           coursEnseignesArray = Array.isArray(parsed) ? parsed : [];
-          // validation minimale
           coursEnseignesArray = coursEnseignesArray.filter(
             (c) => c && c.nomCours && c.nomCours.trim() !== '' && c.matiere && c.matiere.trim() !== ''
           );
         } catch (e) {
           console.error('Erreur parsing coursEnseignes:', e.message);
-          // إذا الپارسينگ فشل، نخلي القديم
           coursEnseignesArray = prof.coursEnseignes || [];
         }
       }
 
-      // 6) مسارات الملفات
+      // Gestion des fichiers
       const getDocPath = (field) =>
         req.files && req.files[field] && req.files[field][0]
           ? `/uploads/professeurs/documents/${req.files[field][0].filename}`
@@ -17321,7 +20181,7 @@ app.put(
         newImage = `/uploads/${req.files['image'][0].filename}`;
       }
 
-      // 7) تحديث حقول الـprof (load → set → save)
+      // Mise à jour des champs
       if (nom !== undefined) prof.nom = nom.trim();
       if (genre !== undefined) prof.genre = genre;
       if (dateNaissance !== undefined) prof.dateNaissance = toDate(dateNaissance);
@@ -17333,56 +20193,46 @@ app.put(
       prof.image = newImage;
       prof.documents = newDocuments;
 
-      // مسألة الأجر: مطلوب فقط إذا كان Entrepreneur
+      // Gestion du tarif horaire
       if (prof.estPermanent) {
-        // إذا ولى Permanent، نحيدو tarifHoraire
         prof.tarifHoraire = undefined;
       } else {
         if (tarifNum !== undefined) {
           if (isNaN(tarifNum) || tarifNum <= 0) {
             return res.status(400).json({
-              message:
-                'Le tarif horaire doit être supérieur à 0 pour les entrepreneurs',
+              message: 'Le tarif horaire doit être supérieur à 0 pour les entrepreneurs',
             });
           }
           prof.tarifHoraire = tarifNum;
         } else if (!prof.tarifHoraire || prof.tarifHoraire <= 0) {
           return res.status(400).json({
-            message:
-              'Le tarif horaire est obligatoire pour les entrepreneurs et doit être supérieur à 0',
+            message: 'Le tarif horaire est obligatoire pour les entrepreneurs et doit être supérieur à 0',
           });
         }
       }
 
-      // كلمة السر: إذا عطيتها، نخلي pre('save') يتهشّيها وحدو
+      // Mot de passe
       if (motDePasse && motDePasse.trim() !== '') {
         prof.motDePasse = motDePasse.trim();
       }
 
-      // الدروس: نحسب الفرق باش نحدّث Collection Cours (pull/add)
+      // Synchronisation des cours
       const anciensCours = [...new Set((prof.coursEnseignes || []).map((c) => c.nomCours))];
       const nouveauxCours = [...new Set(coursEnseignesArray.map((c) => c.nomCours))];
-
       const coursSupprimes = anciensCours.filter((c) => !nouveauxCours.includes(c));
       const coursAjoutes = nouveauxCours.filter((c) => !anciensCours.includes(c));
-
-      // نحدّث الدروس على الـprof
       prof.coursEnseignes = coursEnseignesArray;
 
-      // 8) حفظ (سيُفعّل pre('save'): hash + sync cours/matiere … إلخ)
       await prof.save();
 
-      // 9) مزامنة جدول Cours (compatibilité)
-      // سحب الأستاذ من الدروس اللي تحيّدات
+      // Mise à jour collection Cours
       for (const nomCours of coursSupprimes) {
         await Cours.updateOne({ nom: nomCours }, { $pull: { professeur: prof.nom } });
       }
-      // إضافة الأستاذ للدروس الجديدة
       for (const nomCours of coursAjoutes) {
         await Cours.updateOne({ nom: nomCours }, { $addToSet: { professeur: prof.nom } });
       }
 
-      // 10) ردّ بدون motDePasse
       const profObj = prof.toObject();
       delete profObj.motDePasse;
 
@@ -17406,30 +20256,20 @@ app.put(
   }
 );
 
-
-// ===== ROUTE DELETE MODIFIÉE - SUPPRIMER PROFESSEUR AVEC VÉRIFICATION DE PROPRIÉTÉ =====
+// ===== ROUTE DELETE - SUPPRIMER PROFESSEUR (SANS VÉRIFICATION DE PROPRIÉTÉ) =====
 app.delete('/api/professeurs/:id', 
   authAdminOrPedagogique, 
   async (req, res) => {
     try {
       const professeurId = req.params.id;
       
-      // Récupérer le professeur existant
       const professeur = await Professeur.findById(professeurId);
       if (!professeur) {
         return res.status(404).json({ message: "Professeur introuvable" });
       }
 
-      // ===== VÉRIFICATION DES DROITS DE SUPPRESSION =====
-      if (req.user.role === 'pedagogique') {
-        // Un pédagogique ne peut supprimer que les professeurs qu'il a créés
-        if (!professeur.creeParPedagogique || professeur.creeParPedagogique.toString() !== req.user.id) {
-          return res.status(403).json({ 
-            message: "Vous n'êtes pas autorisé à supprimer ce professeur" 
-          });
-        }
-      }
-      // Les admins peuvent supprimer tous les professeurs
+      // PLUS DE VÉRIFICATION DE PROPRIÉTÉ
+      // Tous les pédagogiques et admins peuvent supprimer tous les professeurs
 
       // Supprimer le professeur des cours associés
       if (professeur.coursEnseignes && professeur.coursEnseignes.length > 0) {
@@ -17449,6 +20289,33 @@ app.delete('/api/professeurs/:id',
     } catch (err) {
       console.error('Erreur suppression professeur:', err);
       res.status(500).json({ message: "Erreur lors de la suppression", error: err.message });
+    }
+  }
+);
+
+// ===== ROUTE PATCH - TOGGLE ACTIF =====
+app.patch('/api/professeurs/:id/actif',
+  authAdminOrPedagogique,
+  async (req, res) => {
+    try {
+      const professeur = await Professeur.findById(req.params.id);
+      
+      if (!professeur) {
+        return res.status(404).json({ message: 'Professeur introuvable' });
+      }
+
+      // PLUS DE VÉRIFICATION DE PROPRIÉTÉ
+      
+      professeur.actif = !professeur.actif;
+      await professeur.save();
+      
+      const profObj = professeur.toObject();
+      delete profObj.motDePasse;
+      
+      res.json(profObj);
+    } catch (err) {
+      console.error('Erreur toggle actif:', err);
+      res.status(500).json({ message: 'Erreur serveur', error: err.message });
     }
   }
 );
@@ -17538,7 +20405,7 @@ app.get('/api/professeurs/:id', authAdminOrPaiementManager, async (req, res) => 
   }
 });
 // GET - Récupérer tous les étudiants avec filtrage
-app.get('/api/etudiants-evaluation', authAdmin, async (req, res) => {
+app.get('/api/etudiants-evaluation', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { commercialId } = req.query;
     
@@ -17582,7 +20449,7 @@ app.get('/api/etudiants-evaluation', authAdmin, async (req, res) => {
 });
 
 // POST - Créer une nouvelle évaluation pour un étudiant
-app.post('/api/evaluations/:etudiantId', authAdmin, async (req, res) => {
+app.post('/api/evaluations/:etudiantId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { etudiantId } = req.params;
     const { documents, commentaireGeneral } = req.body;
@@ -17634,7 +20501,7 @@ app.post('/api/evaluations/:etudiantId', authAdmin, async (req, res) => {
 });
 
 // GET - Récupérer une évaluation spécifique
-app.get('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
+app.get('/api/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const evaluation = await FormulaireEvaluation.findById(req.params.evaluationId)
       .populate('etudiant', 'prenom nomDeFamille email typeFormation niveau specialite')
@@ -17652,7 +20519,7 @@ app.get('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
 });
 
 // PUT - Mettre à jour une évaluation
-app.put('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
+app.put('/api/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { evaluationId } = req.params;
     const { documents, commentaireGeneral } = req.body;
@@ -17694,7 +20561,7 @@ app.put('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
 });
 
 // PUT - Finaliser une évaluation (Complet/Incomplet)
-app.put('/api/evaluation/:evaluationId/finaliser', authAdmin, async (req, res) => {
+app.put('/api/evaluation/:evaluationId/finaliser', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { evaluationId } = req.params;
     const { statut, commentaireGeneral } = req.body;
@@ -17741,7 +20608,7 @@ app.put('/api/evaluation/:evaluationId/finaliser', authAdmin, async (req, res) =
 });
 
 // GET - Récupérer toutes les évaluations avec filtres
-app.get('/api/evaluations', authAdmin, async (req, res) => {
+app.get('/api/evaluations', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { 
       commercialId, 
@@ -17784,7 +20651,7 @@ app.get('/api/evaluations', authAdmin, async (req, res) => {
 });
 
 // DELETE - Supprimer une évaluation (seulement si en cours)
-app.delete('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
+app.delete('/api/evaluation/:evaluationId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const evaluation = await FormulaireEvaluation.findById(req.params.evaluationId);
     
@@ -17807,7 +20674,7 @@ app.delete('/api/evaluation/:evaluationId', authAdmin, async (req, res) => {
   }
 });
 // ===== ROUTE GET - STATISTIQUES PROFESSEURS =====
-app.get('/api/professeurs/stats/dashboard', authAdmin, async (req, res) => {
+app.get('/api/professeurs/stats/dashboard', authAdminOrPaiementManager, async (req, res) => {
   try {
     const stats = await Professeur.getStatistiques();
     
@@ -17919,7 +20786,7 @@ app.get('/api/pedagogique/professeurs', authPedagogique, async (req, res) => {
   }
 });
 // CREATE - Ajouter un nouveau professeur de finance
-app.post('/api/admin/financeprofs', authAdmin, async (req, res) => {
+app.post('/api/admin/financeprofs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { nom, telephone, email, motDePasse } = req.body;
 
@@ -17971,7 +20838,7 @@ app.post('/api/admin/financeprofs', authAdmin, async (req, res) => {
 });
 
 // READ - Obtenir tous les professeurs de finance
-app.get('/api/admin/financeprofs', authAdmin, async (req, res) => {
+app.get('/api/admin/financeprofs', authAdminOrPaiementManager, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -18018,7 +20885,7 @@ app.get('/api/admin/financeprofs', authAdmin, async (req, res) => {
 });
 
 // READ - Obtenir un professeur par ID
-app.get('/api/admin/financeprofs/:id', authAdmin, async (req, res) => {
+app.get('/api/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -18046,7 +20913,7 @@ app.get('/api/admin/financeprofs/:id', authAdmin, async (req, res) => {
 });
 
 // UPDATE - Mettre à jour un professeur
-app.put('/api/admin/financeprofs/:id', authAdmin, async (req, res) => {
+app.put('/api/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
     const { nom, telephone, email, actif } = req.body;
@@ -18098,7 +20965,7 @@ app.put('/api/admin/financeprofs/:id', authAdmin, async (req, res) => {
 });
 
 // DELETE - Supprimer un professeur
-app.delete('/api/admin/financeprofs/:id', authAdmin, async (req, res) => {
+app.delete('/api/admin/financeprofs/:id', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -18127,7 +20994,7 @@ app.delete('/api/admin/financeprofs/:id', authAdmin, async (req, res) => {
 });
 
 // PATCH - Activer/Désactiver un professeur
-app.patch('/api/admin/financeprofs/:id/toggle-status', authAdmin, async (req, res) => {
+app.patch('/api/admin/financeprofs/:id/toggle-status', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -18189,7 +21056,7 @@ typeDeCree: {
 // API pour invalider un paiement - À ajouter dans votre fichier routes
 
 // 8. API pour invalider un paiement validé
-app.post('/api/finance/paiements/invalider', authAdmin, async (req, res) => {
+app.post('/api/finance/paiements/invalider', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee, motifInvalidation } = req.body;
 
@@ -18246,7 +21113,7 @@ app.post('/api/finance/paiements/invalider', authAdmin, async (req, res) => {
 });
 
 // 9. API pour récupérer le statut des paiements pour le rapport mensuel
-app.get('/api/finance/paiements/statuts-mensuels', authAdmin, async (req, res) => {
+app.get('/api/finance/paiements/statuts-mensuels', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { mois, annee } = req.query;
 
@@ -18287,7 +21154,7 @@ app.get('/api/finance/paiements/statuts-mensuels', authAdmin, async (req, res) =
 });
 
 // 10. API pour créer automatiquement les paiements du mois suivant
-app.post('/api/finance/paiements/generer-mois-suivant', authAdmin, async (req, res) => {
+app.post('/api/finance/paiements/generer-mois-suivant', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { moisActuel, anneeActuelle } = req.body;
 
@@ -18441,7 +21308,7 @@ app.post('/api/finance/paiements/generer-mois-suivant', authAdmin, async (req, r
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
-app.post('/api/finance/paiements/creer-ou-recuperer', authAdmin, async (req, res) => {
+app.post('/api/finance/paiements/creer-ou-recuperer', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId, mois, annee } = req.body;
 
@@ -18469,7 +21336,7 @@ app.post('/api/finance/paiements/creer-ou-recuperer', authAdmin, async (req, res
   }
 });
 // Dans votre fichier de routes backend, ajoutez cette API :
-app.get('/api/finance/penalites/professeur/:professeurId', authAdmin, async (req, res) => {
+app.get('/api/finance/penalites/professeur/:professeurId', authAdminOrPaiementManager, async (req, res) => {
   try {
     const { professeurId } = req.params;
     const { mois, annee } = req.query;

@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, BookOpen, User, Eye, X, Users, GraduationCap, Trash2, Filter, Search } from 'lucide-react';
-import Sidebar from '../components/sidberadmin';
-import * as XLSX from 'xlsx';
+import { Plus, BookOpen, User, X, Users, Trash2, Download, Eye, Clock, GraduationCap, Briefcase } from 'lucide-react';
+import Sidebar from '../components/sidberadmin'; // ✅ استيراد صحيح
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  };
 
 const ListeCoursAdmin = () => {
   const [cours, setCours] = useState([]);
   const [etudiants, setEtudiants] = useState([]);
   const [professeurs, setProfesseurs] = useState([]);
-  const [coursActuel, setCoursActuel] = useState(null);
-  const [hoveredCard, setHoveredCard] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [professeurs_selectionnes, setProfesseursSelectionnes] = useState([]);
-
-  // États pour le filtre
-  const [filtreActif, setFiltreActif] = useState(false);
-  const [professeurFiltre, setProfesseurFiltre] = useState('');
-  const [coursFiltre, setCoursFiltre] = useState('');
+  const [coursActuel, setCoursActuel] = useState(null);
 
   // États pour le modal d'ajout de cours
   const [showAjoutModal, setShowAjoutModal] = useState(false);
@@ -36,8 +34,9 @@ const ListeCoursAdmin = () => {
         const token = localStorage.getItem('token');
         const config = { headers: { Authorization: `Bearer ${token}` } };
 
+        // Corriger les URLs - enlever le port et l'IP
         const resCours = await fetch('http://195.179.229.230:5000/api/cours', config);
-        const resEtudiants = await fetch('http://195.179.229.230:5000/api/etudiants', config);
+        const resEtudiants = await fetch('http://195.179.229.230:5000/api/etudiant', config);
         const resProfs = await fetch('http://195.179.229.230:5000/api/professeurs', config);
 
         if (resCours.ok && resEtudiants.ok && resProfs.ok) {
@@ -51,54 +50,59 @@ const ListeCoursAdmin = () => {
         }
       } catch (err) {
         console.error('Erreur de chargement:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchCoursEtEtudiants();
   }, []);
 
-  // Fonction de filtrage des cours
-  const coursFiltres = cours.filter(c => {
-    // Filtre par cours sélectionné
-    const correspondCours = coursFiltre === '' || c.nom === coursFiltre;
-
-    // Filtre par professeur
-    let correspondProfesseur = true;
-    if (professeurFiltre !== '') {
-      const professeursCours = Array.isArray(c.professeur) ? c.professeur : [c.professeur];
-      correspondProfesseur = professeursCours.some(prof => 
-        prof && prof.toLowerCase().includes(professeurFiltre.toLowerCase())
-      );
-    }
-
-    return correspondCours && correspondProfesseur;
-  });
-
-  // Fonction pour réinitialiser les filtres
-  const reinitialiserFiltres = () => {
-    setProfesseurFiltre('');
-    setCoursFiltre('');
-    setFiltreActif(false);
+  const getNombreEtudiants = (nomCours, regimeFormation = null) => {
+    return etudiants.filter(e => {
+      if (e.prixTotal === 0 || e.prixTotal === null || e.prixTotal === undefined) {
+        return false;
+      }
+      
+      if (e.anneeScolaire !== '2025/2026') {
+        return false;
+      }
+      
+      const coursEtudiant = e.cours;
+      let isInCours = false;
+      
+      if (Array.isArray(coursEtudiant)) {
+        isInCours = coursEtudiant.includes(nomCours);
+      } else if (typeof coursEtudiant === 'string') {
+        isInCours = coursEtudiant.split(',').map(s => s.trim()).includes(nomCours);
+      }
+      
+      if (!isInCours) return false;
+      
+      if (regimeFormation) {
+        const coursNameLower = nomCours.toLowerCase();
+        const isTA = coursNameLower.includes(' ta');
+        
+        if (regimeFormation === 'TA') {
+          return isTA;
+        } else if (regimeFormation === 'FI') {
+          return !isTA;
+        }
+      }
+      
+      return true;
+    }).length;
   };
 
-  // Compter le nombre de filtres actifs
-  const nombreFiltresActifs = () => {
-    let count = 0;
-    if (professeurFiltre !== '') count++;
-    if (coursFiltre !== '') count++;
-    return count;
+  const isLicenceProOrMasterPro = (nomCours) => {
+    const coursLower = nomCours.toLowerCase();
+    return coursLower.includes('licence pro') || coursLower.includes('master pro');
   };
 
   const afficherDetails = (coursSelectionne) => {
     setCoursActuel(coursSelectionne);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-  };
-
-  // Fonction pour ajouter un cours
   const handleAjoutCours = async (e) => {
     e.preventDefault();
 
@@ -109,6 +113,7 @@ const ListeCoursAdmin = () => {
 
     try {
       const token = localStorage.getItem('token');
+      // Corriger l'URL
       const response = await fetch('http://195.179.229.230:5000/api/cours', {
         method: 'POST',
         headers: {
@@ -137,25 +142,23 @@ const ListeCoursAdmin = () => {
         const errorData = await response.json();
         setMessage('❌ Erreur: ' + (errorData.message || 'Erreur inconnue'));
       }
-
     } catch (err) {
       setMessage('❌ Erreur: ' + (err.message || 'Erreur de connexion'));
     }
   };
 
-  // Fonction pour ouvrir le modal de confirmation de suppression
   const ouvrirModalSuppression = (cours) => {
     setCoursASupprimer(cours);
     setShowDeleteModal(true);
     setDeleteMessage('');
   };
 
-  // Fonction pour supprimer un cours
   const handleSupprimerCours = async () => {
     if (!coursASupprimer) return;
     
     try {
       const token = localStorage.getItem('token');
+      // Corriger l'URL
       const response = await fetch(`http://195.179.229.230:5000/api/cours/${coursASupprimer._id}`, {
         method: 'DELETE',
         headers: {
@@ -177,13 +180,11 @@ const ListeCoursAdmin = () => {
         const errorData = await response.json();
         setDeleteMessage('❌ Erreur: ' + (errorData.message || 'Erreur lors de la suppression'));
       }
-      
     } catch (err) {
       setDeleteMessage('❌ Erreur: ' + (err.message || 'Erreur de connexion'));
     }
   };
 
-  // Fonction pour fermer le modal d'ajout
   const fermerModalAjout = () => {
     setShowAjoutModal(false);
     setNom('');
@@ -193,13 +194,11 @@ const ListeCoursAdmin = () => {
     setShowProfesseurDropdown(false);
   };
 
-  // Filtrer les professeurs selon la recherche
   const professeursFiltres = professeurs.filter(p =>
     p.nom.toLowerCase().includes(professeurSearch.toLowerCase()) ||
     p.matiere.toLowerCase().includes(professeurSearch.toLowerCase())
   );
 
-  // Fonction pour ajouter un professeur à la sélection
   const ajouterProfesseur = (professeur) => {
     if (!professeurs_selectionnes.includes(professeur.nom)) {
       setProfesseursSelectionnes([...professeurs_selectionnes, professeur.nom]);
@@ -208,12 +207,10 @@ const ListeCoursAdmin = () => {
     setShowProfesseurDropdown(false);
   };
 
-  // Fonction pour retirer un professeur de la sélection
   const retirerProfesseur = (nomProfesseur) => {
     setProfesseursSelectionnes(professeurs_selectionnes.filter(nom => nom !== nomProfesseur));
   };
 
-  // Fonction pour fermer le modal de suppression
   const fermerModalSuppression = () => {
     setShowDeleteModal(false);
     setCoursASupprimer(null);
@@ -224,65 +221,108 @@ const ListeCoursAdmin = () => {
     ? etudiants.filter(e => e.cours && e.cours.includes(coursActuel.nom))
     : [];
 
-  // Fonction d'export XLSX
-  const exportToXLSX = () => {
-    const data = coursFiltres.map(c => ({
-      'Nom du cours': c.nom,
-      "Nombre d'étudiants": etudiants.filter(e => e.cours && e.cours.includes(c.nom)).length
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Cours');
-    XLSX.writeFile(workbook, 'liste_cours.xlsx');
+  const exportToExcel = (typeTable, regimeFormation = null) => {
+    let worksheetData = [];
+    let filteredCours = [];
+
+    if (typeTable === 'licence_master') {
+      worksheetData = [["Nom du Cours", "Professeur(s)", "Nombre d'Étudiants", "Executive"]];
+      filteredCours = cours.filter(c => {
+        const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
+        const nombreEtudiants = getNombreEtudiants(c.nom);
+        return isLicenceMaster && nombreEtudiants > 0;
+      });
+    } else {
+      worksheetData = [["Nom du Cours", "Professeur(s)", "Régime de Formation", "Nombre d'Étudiants"]];
+      filteredCours = cours.filter(c => {
+        const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
+        const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
+        return !isLicenceMaster && nombreEtudiants > 0;
+      });
+    }
+
+    filteredCours.forEach(c => {
+      const profs = Array.isArray(c.professeur) ? c.professeur.join(', ') : c.professeur || 'Non assigné';
+      
+      if (typeTable === 'licence_master') {
+        const nombreEtudiants = getNombreEtudiants(c.nom);
+        const coursNameLower = c.nom.toLowerCase();
+        const isExecutive = coursNameLower.includes('executive') || coursNameLower.includes('exécutif');
+        worksheetData.push([c.nom, profs, nombreEtudiants, isExecutive ? 'Oui' : 'Non']);
+      } else {
+        const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
+        worksheetData.push([c.nom, profs, regimeFormation, nombreEtudiants]);
+      }
+    });
+
+    try {
+      if (typeof window.XLSX === 'undefined') {
+        alert('La bibliothèque Excel n\'est pas chargée.');
+        return;
+      }
+
+      const wb = window.XLSX.utils.book_new();
+      const ws = window.XLSX.utils.aoa_to_sheet(worksheetData);
+
+      ws['!cols'] = typeTable === 'licence_master' 
+        ? [{ wch: 60 }, { wch: 30 }, { wch: 20 }, { wch: 15 }]
+        : [{ wch: 50 }, { wch: 30 }, { wch: 25 }, { wch: 20 }];
+
+      const sheetName = typeTable === 'licence_master' 
+        ? 'Licences & Masters Pro'
+        : `Cours ${regimeFormation}`;
+      
+      window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+      const date = new Date();
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const fileName = typeTable === 'licence_master'
+        ? `licences_masters_pro_${dateStr}.xlsx`
+        : `cours_${regimeFormation}_${dateStr}.xlsx`;
+
+      window.XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error('Erreur lors de l\'exportation Excel:', error);
+      alert('Erreur lors de l\'exportation du fichier Excel.');
+    }
   };
 
   const styles = {
     container: {
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 25%, #f3e8ff 100%)',
-      padding: '0',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+      padding: '2rem',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     },
-    innerContainer: {
+    mainContent: {
       maxWidth: '1400px',
-      margin: '0 auto',
-      padding: '2rem 1rem'
+      margin: '0 auto'
     },
-    header: {
-      backdropFilter: 'blur(10px)',
-      backgroundColor: 'white',
-      borderRadius: '1rem',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+    headerSection: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '2rem',
       padding: '1.5rem',
-      marginBottom: '2rem'
+      background: 'white',
+      borderRadius: '1rem',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
     },
-    headerContent: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      textAlign: 'center',
-      gap: '20px'
-    },
-    headerLeft: {
+    mainTitle: {
       display: 'flex',
       alignItems: 'center',
-      gap: '0.75rem'
-    },
-    
-    title: {
-      fontSize: '32px',
+      gap: '1rem',
+      fontSize: '1.75rem',
       fontWeight: 'bold',
-      background: 'linear-gradient(135deg, #1f2937, #4b5563)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      margin: '0'
+      color: '#1f2937'
     },
-    subtitle: {
-      color: '#6b7280',
-      fontSize: '0.875rem',
-      margin: '0.25rem 0 0 0'
+    mainIconBox: {
+      padding: '0.75rem',
+      borderRadius: '0.75rem',
+      background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     addButton: {
       background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
@@ -297,193 +337,176 @@ const ListeCoursAdmin = () => {
       alignItems: 'center',
       gap: '0.5rem',
       transition: 'all 0.2s ease',
-      fontSize: '1rem'
+      fontSize: '0.95rem'
     },
-    // Styles pour la section des filtres
-    filterSection: {
-      backdropFilter: 'blur(10px)',
-      backgroundColor: 'white',
-      borderRadius: '1rem',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-      padding: '1.5rem',
-      marginBottom: '2rem'
-    },
-    filterHeader: {
+    sectionHeader: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '1rem'
+      marginBottom: '1.5rem',
+      marginTop: '3rem',
+      padding: '1.5rem',
+      background: 'white',
+      borderRadius: '1rem',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
     },
-    filterTitle: {
+    sectionTitle: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '1rem',
+      fontSize: '1.5rem',
+      fontWeight: 'bold',
+      color: '#1f2937'
+    },
+    iconBox: {
+      padding: '0.75rem',
+      borderRadius: '0.75rem',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    taIcon: {
+      background: 'linear-gradient(135deg, #f59e0b, #d97706)'
+    },
+    fiIcon: {
+      background: 'linear-gradient(135deg, #3b82f6, #2563eb)'
+    },
+    licenceMasterIcon: {
+      background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+    },
+    exportButton: {
+      background: 'linear-gradient(135deg, #10b981, #059669)',
+      color: 'white',
+      border: 'none',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '0.75rem',
+      fontWeight: '600',
+      cursor: 'pointer',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
       display: 'flex',
       alignItems: 'center',
       gap: '0.5rem',
-      fontSize: '1.125rem',
-      fontWeight: '600',
-      color: '#1f2937'
+      transition: 'all 0.2s ease',
+      fontSize: '0.95rem'
     },
-    filterToggle: {
-      background: filtreActif ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #6b7280, #4b5563)',
-      color: 'white',
-      border: 'none',
-      padding: '0.5rem 1rem',
-      borderRadius: '0.5rem',
-      fontSize: '0.875rem',
-      fontWeight: '500',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease'
-    },
-    filterContent: {
-      display: filtreActif ? 'block' : 'none'
-    },
-    filterGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: '1rem',
+    tableContainer: {
+      background: 'white',
+      borderRadius: '1rem',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      overflow: 'hidden',
       marginBottom: '1rem'
     },
-    filterGroup: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.5rem'
+    table: {
+      width: '100%',
+      borderCollapse: 'collapse',
+      fontSize: '0.875rem'
     },
-    filterLabel: {
-      fontSize: '0.875rem',
+    tableHeader: {
+      backgroundColor: '#f8fafc',
+      borderBottom: '2px solid #e2e8f0'
+    },
+    th: {
+      padding: '1rem 1.5rem',
+      textAlign: 'left',
+      fontWeight: '600',
+      color: '#374151',
+      borderRight: '1px solid #e2e8f0'
+    },
+    thCenter: {
+      padding: '1rem 1.5rem',
+      textAlign: 'center',
+      fontWeight: '600',
+      color: '#374151',
+      borderRight: '1px solid #e2e8f0'
+    },
+    thLast: {
+      padding: '1rem 1.5rem',
+      textAlign: 'center',
       fontWeight: '600',
       color: '#374151'
     },
-    filterInput: {
-      padding: '0.75rem',
-      border: '1px solid #d1d5db',
-      borderRadius: '0.5rem',
-      fontSize: '0.875rem',
-      backgroundColor: '#f9fafb',
-      transition: 'all 0.2s ease',
-      outline: 'none'
+    tbody: {
+      backgroundColor: 'white'
     },
-    filterSelect: {
-      padding: '0.75rem',
-      border: '1px solid #d1d5db',
-      borderRadius: '0.5rem',
-      fontSize: '0.875rem',
-      backgroundColor: '#f9fafb',
-      transition: 'all 0.2s ease',
-      outline: 'none',
-      cursor: 'pointer'
+    tr: {
+      borderBottom: '1px solid #f1f5f9',
+      transition: 'background-color 0.2s ease'
     },
-    filterActions: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingTop: '1rem',
-      borderTop: '1px solid #f3f4f6'
+    td: {
+      padding: '1rem 1.5rem',
+      color: '#1f2937',
+      borderRight: '1px solid #f1f5f9'
     },
-    filterBadge: {
+    tdCenter: {
+      padding: '1rem 1.5rem',
+      textAlign: 'center',
+      color: '#1f2937',
+      borderRight: '1px solid #f1f5f9'
+    },
+    tdLast: {
+      padding: '1rem 1.5rem',
+      textAlign: 'center',
+      color: '#1f2937'
+    },
+    coursName: {
+      fontWeight: '500',
       display: 'flex',
       alignItems: 'center',
-      gap: '0.5rem',
+      gap: '0.5rem'
+    },
+    studentBadge: {
       backgroundColor: '#dbeafe',
       color: '#1e40af',
-      padding: '0.5rem 0.75rem',
-      borderRadius: '0.5rem',
-      fontSize: '0.875rem',
-      fontWeight: '500'
-    },
-    resetButton: {
-      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-      color: 'white',
-      border: 'none',
-      padding: '0.5rem 1rem',
-      borderRadius: '0.5rem',
-      fontSize: '0.875rem',
-      fontWeight: '500',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease'
-    },
-    coursGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-      gap: '1.5rem'
-    },
-    coursCard: {
-      backdropFilter: 'blur(10px)',
-      backgroundColor: 'white',
-      borderRadius: '1rem',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      overflow: 'hidden',
-      position: 'relative'
-    },
-    coursCardHovered: {
-      backgroundColor: 'white',
-      transform: 'translateY(-8px)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-    },
-    coursCardContent: {
-      padding: '1.5rem',
-      minHeight: '180px',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between'
-    },
-    coursCardTop: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: '1rem'
-    },
-    coursIcon: {
-      padding: '0.75rem',
-      background: 'linear-gradient(135deg, #dbeafe, #e0e7ff)',
-      borderRadius: '0.75rem',
-      transition: 'all 0.3s ease'
-    },
-    coursIconHovered: {
-      background: 'linear-gradient(135deg, #bfdbfe, #c7d2fe)'
-    },
-    studentCount: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.25rem',
-      fontSize: '0.875rem',
-      color: '#6b7280'
-    },
-    coursTitle: {
-      fontSize: '1.125rem',
-      fontWeight: 'bold',
-      color: '#1f2937',
-      marginBottom: '0.5rem',
-      transition: 'color 0.2s ease'
-    },
-    coursTitleHovered: {
-      color: '#2563eb'
-    },
-    professeurInfo: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      color: '#6b7280',
-      marginBottom: '1rem',
-      fontSize: '0.875rem'
-    },
-    coursFooter: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingTop: '1rem',
-      borderTop: '1px solid #f3f4f6'
-    },
-    badge: {
-      backgroundColor: '#eff6ff',
-      color: '#2563eb',
       padding: '0.25rem 0.75rem',
       borderRadius: '9999px',
       fontSize: '0.75rem',
       fontWeight: '500',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '0.25rem'
+    },
+    regimeBadge: {
+      padding: '0.25rem 0.75rem',
+      borderRadius: '0.5rem',
+      fontSize: '0.75rem',
+      fontWeight: '600',
       display: 'inline-block'
+    },
+    taBadge: {
+      backgroundColor: '#fef3c7',
+      color: '#92400e'
+    },
+    fiBadge: {
+      backgroundColor: '#dbeafe',
+      color: '#1e40af'
+    },
+    executiveBadge: {
+      backgroundColor: '#f3e8ff',
+      color: '#6b21a8',
+      padding: '0.25rem 0.75rem',
+      borderRadius: '0.5rem',
+      fontSize: '0.75rem',
+      fontWeight: '600',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '0.25rem'
+    },
+    actionButtons: {
+      display: 'flex',
+      gap: '0.5rem',
+      justifyContent: 'center'
+    },
+    viewButton: {
+      padding: '0.5rem',
+      backgroundColor: '#eff6ff',
+      color: '#3b82f6',
+      border: '1px solid #bfdbfe',
+      borderRadius: '0.5rem',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     deleteButton: {
       padding: '0.5rem',
@@ -493,14 +516,26 @@ const ListeCoursAdmin = () => {
       borderRadius: '0.5rem',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
-      display: 'flex',
+      display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center'
     },
-    deleteButtonHovered: {
-      backgroundColor: '#dc2626',
-      color: 'white',
-      borderColor: '#dc2626'
+    totalRow: {
+      backgroundColor: '#f1f5f9',
+      fontWeight: '600',
+      borderTop: '2px solid #e2e8f0'
+    },
+    totalLabel: {
+      padding: '1rem 1.5rem',
+      color: '#374151',
+      fontWeight: '600',
+      borderRight: '1px solid #e2e8f0'
+    },
+    totalValue: {
+      padding: '1rem 1.5rem',
+      textAlign: 'center',
+      color: '#374151',
+      fontWeight: '600'
     },
     modal: {
       position: 'fixed',
@@ -524,6 +559,10 @@ const ListeCoursAdmin = () => {
       maxWidth: '28rem',
       maxHeight: '90vh',
       overflow: 'hidden'
+    },
+    detailsModalContent: {
+      width: '100%',
+      maxWidth: '32rem'
     },
     modalHeader: {
       padding: '1.5rem',
@@ -572,6 +611,11 @@ const ListeCoursAdmin = () => {
     modalBody: {
       padding: '1.5rem'
     },
+    detailsBody: {
+      padding: '1.5rem',
+      maxHeight: '60vh',
+      overflowY: 'auto'
+    },
     formGroup: {
       marginBottom: '1rem'
     },
@@ -593,24 +637,6 @@ const ListeCoursAdmin = () => {
       outline: 'none',
       boxSizing: 'border-box'
     },
-    select: {
-      width: '100%',
-      padding: '0.75rem 1rem',
-      border: '1px solid #d1d5db',
-      borderRadius: '0.75rem',
-      fontSize: '0.875rem',
-      backgroundColor: '#f9fafb',
-      transition: 'all 0.2s ease',
-      outline: 'none',
-      boxSizing: 'border-box',
-      cursor: 'pointer',
-      appearance: 'none',
-      backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
-      backgroundPosition: 'right 0.75rem center',
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: '1.5em 1.5em',
-      paddingRight: '2.5rem'
-    },
     message: {
       padding: '1rem',
       borderRadius: '0.75rem',
@@ -628,7 +654,7 @@ const ListeCoursAdmin = () => {
       color: '#991b1b',
       border: '1px solid #fecaca'
     },
-    buttonGroup: {
+    modalButtonGroup: {
       display: 'flex',
       gap: '0.75rem',
       paddingTop: '1.5rem'
@@ -668,112 +694,9 @@ const ListeCoursAdmin = () => {
       boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
       transition: 'all 0.2s ease'
     },
-    detailsModalContent: {
-      width: '100%',
-      maxWidth: '32rem'
-    },
-    detailsBody: {
-      padding: '1.5rem',
-      maxHeight: '60vh',
-      overflowY: 'auto'
-    },
-    sectionHeader: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      marginBottom: '1rem'
-    },
-    sectionTitle: {
-      fontSize: '1.125rem',
-      fontWeight: '600',
-      color: '#1f2937',
-      margin: 0
-    },
-    emptyState: {
-      textAlign: 'center',
-      padding: '2rem'
-    },
-    emptyIcon: {
-      padding: '0.75rem',
-      backgroundColor: '#f3f4f6',
-      borderRadius: '50%',
-      width: '3rem',
-      height: '3rem',
-      margin: '0 auto 0.75rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    },
-    studentList: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.75rem'
-    },
-    studentItem: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0.75rem',
-      backgroundColor: '#f9fafb',
-      borderRadius: '0.75rem',
-      transition: 'background-color 0.2s ease'
-    },
-    studentInfo: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.75rem'
-    },
-    studentIcon: {
-      padding: '0.5rem',
-      backgroundColor: '#dbeafe',
-      borderRadius: '0.5rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    },
-    studentName: {
-      fontWeight: '500',
-      color: '#1f2937'
-    },
-    viewButton: {
-      padding: '0.5rem',
-      backgroundColor: '#3b82f6',
-      color: 'white',
-      border: 'none',
-      borderRadius: '0.5rem',
-      cursor: 'pointer',
-      transition: 'background-color 0.2s ease',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    },
-    deleteConfirmationText: {
-      fontSize: '0.875rem',
-      color: '#6b7280',
-      marginBottom: '1rem',
-      lineHeight: '1.5'
-    },
-    deleteWarning: {
-      fontSize: '0.875rem',
-      color: '#dc2626',
-      fontWeight: '600',
-      marginBottom: '1rem'
-    },
-    // Styles pour le select avec recherche
     searchableSelect: {
       position: 'relative',
       width: '100%'
-    },
-    searchInput: {
-      width: '100%',
-      padding: '0.75rem 1rem',
-      border: '1px solid #d1d5db',
-      borderRadius: '0.75rem',
-      fontSize: '0.875rem',
-      backgroundColor: '#f9fafb',
-      transition: 'all 0.2s ease',
-      outline: 'none',
-      boxSizing: 'border-box'
     },
     dropdown: {
       position: 'absolute',
@@ -794,9 +717,6 @@ const ListeCoursAdmin = () => {
       cursor: 'pointer',
       borderBottom: '1px solid #f3f4f6',
       transition: 'background-color 0.2s ease'
-    },
-    dropdownItemHover: {
-      backgroundColor: '#f3f4f6'
     },
     professeurItem: {
       display: 'flex',
@@ -857,338 +777,578 @@ const ListeCoursAdmin = () => {
       alignItems: 'center',
       justifyContent: 'center',
       transition: 'background-color 0.2s ease'
+    },
+    deleteConfirmationText: {
+      fontSize: '0.875rem',
+      color: '#6b7280',
+      marginBottom: '1rem',
+      lineHeight: '1.5'
+    },
+    deleteWarning: {
+      fontSize: '0.875rem',
+      color: '#dc2626',
+      fontWeight: '600',
+      marginBottom: '1rem'
+    },
+    sectionHeader2: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      marginBottom: '1rem'
+    },
+    sectionTitle2: {
+      fontSize: '1.125rem',
+      fontWeight: '600',
+      color: '#1f2937',
+      margin: 0
+    },
+    emptyState: {
+      textAlign: 'center',
+      padding: '2rem'
+    },
+    emptyIcon: {
+      padding: '0.75rem',
+      backgroundColor: '#f3f4f6',
+      borderRadius: '50%',
+      width: '3rem',
+      height: '3rem',
+      margin: '0 auto 0.75rem',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    studentList: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.75rem'
+    },
+    studentItem: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0.75rem',
+      backgroundColor: '#f9fafb',
+      borderRadius: '0.75rem',
+      transition: 'background-color 0.2s ease'
+    },
+    studentInfo: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.75rem'
+    },
+    studentIcon: {
+      padding: '0.5rem',
+      backgroundColor: '#dbeafe',
+      borderRadius: '0.5rem',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    studentName: {
+      fontWeight: '500',
+      color: '#1f2937'
+    },
+    studentViewButton: {
+      padding: '0.5rem',
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '0.5rem',
+      cursor: 'pointer',
+      transition: 'background-color 0.2s ease',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    loadingContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '200px',
+      color: '#6b7280'
     }
+  };
+
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loadingContainer}>
+          Chargement des données...
+        </div>
+      </div>
+    );
+  }
+
+  // Fonction pour rendre le tableau FI
+  const renderTableFI = () => {
+    const regimeFormation = 'FI';
+    const filteredCours = cours.filter(c => {
+      const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
+      return !isLicenceMaster && getNombreEtudiants(c.nom, regimeFormation) > 0;
+    });
+    
+    const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom, regimeFormation), 0);
+
+    return (
+      <div>
+        <div style={styles.sectionHeader}>        <Sidebar onLogout={handleLogout} />
+        
+          <div style={styles.sectionTitle}>
+            <div style={{...styles.iconBox, ...styles.fiIcon}}>
+              <GraduationCap size={24} color="white" />
+            </div>
+            <span>Formation Initiale (FI)</span>
+          </div>
+          <button
+            onClick={() => exportToExcel('fi', regimeFormation)}
+            style={styles.exportButton}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            <Download size={18} />
+            Exporter Excel
+          </button>
+        </div>
+
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead style={styles.tableHeader}>
+              <tr>
+                <th style={styles.th}>Nom du Cours</th>
+                <th style={styles.th}>Professeur(s)</th>
+                <th style={styles.thCenter}>Régime</th>
+                <th style={styles.thCenter}>Nombre d'Étudiants</th>
+                <th style={styles.thLast}>Actions</th>
+              </tr>
+            </thead>
+            <tbody style={styles.tbody}>
+              {filteredCours.map((c, index) => {
+                const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
+                
+                return (
+                  <tr 
+                    key={`${c._id || index}-${regimeFormation}`}
+                    style={styles.tr}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    <td style={styles.td}>
+                      <div style={styles.coursName}>
+                        <BookOpen size={16} color="#6b7280" />
+                        {c.nom}
+                      </div>
+                    </td>
+                    <td style={styles.td}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <User size={16} color="#6b7280" />
+                        <span>
+                          {Array.isArray(c.professeur)
+                            ? c.professeur.join(', ')
+                            : c.professeur || 'Non assigné'}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={styles.tdCenter}>
+                      <span style={{...styles.regimeBadge, ...styles.fiBadge}}>
+                        FI
+                      </span>
+                    </td>
+                    <td style={styles.tdCenter}>
+                      <div style={styles.studentBadge}>
+                        <Users size={12} />
+                        {nombreEtudiants}
+                      </div>
+                    </td>
+                    <td style={styles.tdLast}>
+                      <div style={styles.actionButtons}>
+                        <button
+                          onClick={() => afficherDetails(c)}
+                          style={styles.viewButton}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#3b82f6';
+                            e.target.style.color = 'white';
+                            e.target.style.borderColor = '#3b82f6';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = '#eff6ff';
+                            e.target.style.color = '#3b82f6';
+                            e.target.style.borderColor = '#bfdbfe';
+                          }}
+                          title="Voir les détails"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => ouvrirModalSuppression(c)}
+                          style={styles.deleteButton}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#dc2626';
+                            e.target.style.color = 'white';
+                            e.target.style.borderColor = '#dc2626';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = '#fef2f2';
+                            e.target.style.color = '#dc2626';
+                            e.target.style.borderColor = '#fecaca';
+                          }}
+                          title="Supprimer ce classe"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr style={styles.totalRow}>
+                <td style={styles.totalLabel} colSpan="3">
+                  Total ({filteredCours.length} cours)
+                </td>
+                <td style={styles.totalValue} colSpan="2">
+                  {total} étudiants
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // Fonction pour rendre le tableau TA
+  const renderTableTA = () => {
+    const regimeFormation = 'TA';
+    const filteredCours = cours.filter(c => {
+      const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
+      return !isLicenceMaster && getNombreEtudiants(c.nom, regimeFormation) > 0;
+    });
+    
+    const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom, regimeFormation), 0);
+
+    return (
+      <div>
+        <div style={styles.sectionHeader}>
+          <div style={styles.sectionTitle}>
+            <div style={{...styles.iconBox, ...styles.taIcon}}>
+              <Clock size={24} color="white" />
+            </div>
+            <span>Temps Aménagé (TA)</span>
+          </div>
+          <button
+            onClick={() => exportToExcel('ta', regimeFormation)}
+            style={styles.exportButton}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            <Download size={18} />
+            Exporter Excel
+          </button>
+        </div>
+
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead style={styles.tableHeader}>
+              <tr>
+                <th style={styles.th}>Nom du Cours</th>
+                <th style={styles.th}>Professeur(s)</th>
+                <th style={styles.thCenter}>Régime</th>
+                <th style={styles.thCenter}>Nombre d'Étudiants</th>
+                <th style={styles.thLast}>Actions</th>
+              </tr>
+            </thead>
+            <tbody style={styles.tbody}>
+              {filteredCours.map((c, index) => {
+                const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
+                
+                return (
+                  <tr 
+                    key={`${c._id || index}-${regimeFormation}`}
+                    style={styles.tr}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    <td style={styles.td}>
+                      <div style={styles.coursName}>
+                        <BookOpen size={16} color="#6b7280" />
+                        {c.nom}
+                      </div>
+                    </td>
+                    <td style={styles.td}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <User size={16} color="#6b7280" />
+                        <span>
+                          {Array.isArray(c.professeur)
+                            ? c.professeur.join(', ')
+                            : c.professeur || 'Non assigné'}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={styles.tdCenter}>
+                      <span style={{...styles.regimeBadge, ...styles.taBadge}}>
+                        TA
+                      </span>
+                    </td>
+                    <td style={styles.tdCenter}>
+                      <div style={styles.studentBadge}>
+                        <Users size={12} />
+                        {nombreEtudiants}
+                      </div>
+                    </td>
+                    <td style={styles.tdLast}>
+                      <div style={styles.actionButtons}>
+                        <button
+                          onClick={() => afficherDetails(c)}
+                          style={styles.viewButton}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#3b82f6';
+                            e.target.style.color = 'white';
+                            e.target.style.borderColor = '#3b82f6';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = '#eff6ff';
+                            e.target.style.color = '#3b82f6';
+                            e.target.style.borderColor = '#bfdbfe';
+                          }}
+                          title="Voir les détails"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => ouvrirModalSuppression(c)}
+                          style={styles.deleteButton}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#dc2626';
+                            e.target.style.color = 'white';
+                            e.target.style.borderColor = '#dc2626';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = '#fef2f2';
+                            e.target.style.color = '#dc2626';
+                            e.target.style.borderColor = '#fecaca';
+                          }}
+                          title="Supprimer ce classe"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr style={styles.totalRow}>
+                <td style={styles.totalLabel} colSpan="3">
+                  Total ({filteredCours.length} cours)
+                </td>
+                <td style={styles.totalValue} colSpan="2">
+                  {total} étudiants
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // Fonction pour rendre le tableau Licence/Master Pro
+  const renderTableLicenceMaster = () => {
+    const filteredCours = cours.filter(c => {
+      const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
+      return isLicenceMaster && getNombreEtudiants(c.nom) > 0;
+    });
+    
+    const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom), 0);
+
+    return (
+      <div>
+        <div style={styles.sectionHeader}>
+          <div style={styles.sectionTitle}>
+            <div style={{...styles.iconBox, ...styles.licenceMasterIcon}}>
+              <Briefcase size={24} color="white" />
+            </div>
+            <span>Licences Pro & Masters Pro</span>
+          </div>
+          <button
+            onClick={() => exportToExcel('licence_master')}
+            style={styles.exportButton}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            <Download size={18} />
+            Exporter Excel
+          </button>
+        </div>
+
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead style={styles.tableHeader}>
+              <tr>
+                <th style={styles.th}>Nom du Cours</th>
+                <th style={styles.th}>Professeur(s)</th>
+                <th style={styles.thCenter}>Nombre d'Étudiants</th>
+                <th style={styles.thCenter}>Executive</th>
+                <th style={styles.thLast}>Actions</th>
+              </tr>
+            </thead>
+            <tbody style={styles.tbody}>
+              {filteredCours.map((c, index) => {
+                const nombreEtudiants = getNombreEtudiants(c.nom);
+                const coursNameLower = c.nom.toLowerCase();
+                const isExecutive = coursNameLower.includes('executive') || coursNameLower.includes('exécutif');
+                
+                return (
+                  <tr 
+                    key={c._id || index}
+                    style={styles.tr}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    <td style={styles.td}>
+                      <div style={styles.coursName}>
+                        <BookOpen size={16} color="#6b7280" />
+                        {c.nom}
+                      </div>
+                    </td>
+                    <td style={styles.td}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <User size={16} color="#6b7280" />
+                        <span>
+                          {Array.isArray(c.professeur)
+                            ? c.professeur.join(', ')
+                            : c.professeur || 'Non assigné'}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={styles.tdCenter}>
+                      <div style={styles.studentBadge}>
+                        <Users size={12} />
+                        {nombreEtudiants}
+                      </div>
+                    </td>
+                    <td style={styles.tdCenter}>
+                      <span style={styles.executiveBadge}>
+                        <Briefcase size={12} />
+                        {isExecutive ? 'Oui' : 'Non'}
+                      </span>
+                    </td>
+                    <td style={styles.tdLast}>
+                      <div style={styles.actionButtons}>
+                        <button
+                          onClick={() => afficherDetails(c)}
+                          style={styles.viewButton}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#3b82f6';
+                            e.target.style.color = 'white';
+                            e.target.style.borderColor = '#3b82f6';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = '#eff6ff';
+                            e.target.style.color = '#3b82f6';
+                            e.target.style.borderColor = '#bfdbfe';
+                          }}
+                          title="Voir les détails"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => ouvrirModalSuppression(c)}
+                          style={styles.deleteButton}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#dc2626';
+                            e.target.style.color = 'white';
+                            e.target.style.borderColor = '#dc2626';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = '#fef2f2';
+                            e.target.style.color = '#dc2626';
+                            e.target.style.borderColor = '#fecaca';
+                          }}
+                          title="Supprimer ce classe"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr style={styles.totalRow}>
+                <td style={styles.totalLabel} colSpan="2">
+                  Total ({filteredCours.length} cours)
+                </td>
+                <td style={styles.totalValue} colSpan="3">
+                  {total} étudiants
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div style={styles.container}>
-      <Sidebar onLogout={handleLogout} />
-
-      <div style={styles.innerContainer}>
-        {/* Header moderne */}
-        <div style={styles.header}>
-          <div style={styles.headerContent}>
-            <div style={{ ...styles.headerLeft, justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-              <div style={styles.iconContainer}>
-              </div>
-              <div>
-                <h1 style={{ ...styles.title, textAlign: 'center', width: '100%' }}>Gestion des Classes</h1>
-              </div>
+      <div style={styles.mainContent}>
+        {/* Header principal avec bouton d'ajout */}
+        <div style={styles.headerSection}>
+          <div style={styles.mainTitle}>
+            <div style={styles.mainIconBox}>
+              <BookOpen size={24} color="white" />
             </div>
-            <button
-              onClick={() => setShowAjoutModal(true)}
-              style={styles.addButton}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
-              }}
-            >
-              <Plus size={20} />
-              Nouveau Classe
-            </button>
+            <span>Gestion des Classes</span>
           </div>
-        </div>
-
-        {/* Bouton Export Excel */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
           <button
-            onClick={exportToXLSX}
-            style={{
-              background: 'linear-gradient(135deg, #059669, #10b981)',
-              color: 'white',
-              border: 'none',
-              padding: '0.75rem 1.5rem',
-              borderRadius: '0.75rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontSize: '1rem',
-              marginRight: 0
-            }}
-            onMouseEnter={e => {
+            onClick={() => setShowAjoutModal(true)}
+            style={styles.addButton}
+            onMouseEnter={(e) => {
               e.target.style.transform = 'translateY(-2px)';
               e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1)';
             }}
-            onMouseLeave={e => {
+            onMouseLeave={(e) => {
               e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1)';
+              e.target.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.1)';
             }}
           >
-            Exporter en Excel
+            <Plus size={18} />
+            Nouveau Classe
           </button>
         </div>
 
-        {/* Section des filtres */}
-        <div style={styles.filterSection}>
-          <div style={styles.filterHeader}>
-            <div style={styles.filterTitle}>
-              <Filter size={20} color="#2563eb" />
-              Filtres
-            </div>
-            <button
-              onClick={() => setFiltreActif(!filtreActif)}
-              style={styles.filterToggle}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              {filtreActif ? 'Masquer les filtres' : 'Afficher les filtres'}
-            </button>
-          </div>
-
-          <div style={styles.filterContent}>
-            <div style={styles.filterGrid}>
-              {/* Sélection de cours */}
-              <div style={styles.filterGroup}>
-                <label style={styles.filterLabel}>
-                  <BookOpen size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                  Sélectionner un cours
-                </label>
-                <select
-                  value={coursFiltre}
-                  onChange={(e) => setCoursFiltre(e.target.value)}
-                  style={styles.filterSelect}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#3b82f6';
-                    e.target.style.backgroundColor = 'white';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.backgroundColor = '#f9fafb';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Tous les cours</option>
-                  {cours.map((c) => (
-                    <option key={c._id} value={c.nom}>{c.nom}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtre par professeur */}
-              <div style={styles.filterGroup}>
-                <label style={styles.filterLabel}>
-                  <GraduationCap size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                  Filtre par professeur
-                </label>
-                <select
-                  value={professeurFiltre}
-                  onChange={(e) => setProfesseurFiltre(e.target.value)}
-                  style={styles.filterSelect}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#3b82f6';
-                    e.target.style.backgroundColor = 'white';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.backgroundColor = '#f9fafb';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Tous les professeurs</option>
-                  {/* Obtenir tous les professeurs uniques des cours */}
-                  {[...new Set(
-                    cours.flatMap(c => 
-                      Array.isArray(c.professeur) ? c.professeur : [c.professeur]
-                    ).filter(prof => prof && prof.trim() !== '')
-                  )].sort().map((prof, index) => (
-                    <option key={index} value={prof}>{prof}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Actions des filtres */}
-            <div style={styles.filterActions}>
-              {nombreFiltresActifs() > 0 && (
-                <div style={styles.filterBadge}>
-                  <Filter size={16} />
-                  {nombreFiltresActifs()} filtre{nombreFiltresActifs() > 1 ? 's' : ''} actif{nombreFiltresActifs() > 1 ? 's' : ''}
-                </div>
-              )}
-              
-              {nombreFiltresActifs() > 0 && (
-                <button
-                  onClick={reinitialiserFiltres}
-                  style={styles.resetButton}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 10px 15px -5px rgba(0, 0, 0, 0.1)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  Réinitialiser les filtres
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Résultats de la sélection */}
-        {(coursFiltre !== '' || professeurFiltre !== '') && (
-          <div style={{
-            backgroundColor: '#f0f9ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '0.75rem',
-            padding: '1rem',
-            marginBottom: '2rem',
-            textAlign: 'center'
-          }}>
-            <p style={{ color: '#1e40af', fontWeight: '500', margin: 0 }}>
-              {coursFiltres.length} cours trouvé{coursFiltres.length > 1 ? 's' : ''} 
-              {coursFiltre && ` pour le cours "${coursFiltre}"`}
-              {professeurFiltre && ` avec le professeur "${professeurFiltre}"`}
-            </p>
-          </div>
-        )}
-
-        {/* Grille des cours filtrés */}
-        <div style={styles.coursGrid}>
-          {coursFiltres.map((c) => {
-            const nombreEtudiants = etudiants.filter(e => e.cours && e.cours.includes(c.nom)).length;
-            const isHovered = hoveredCard === c._id;
-            
-            return (
-              <div 
-                key={c._id}
-                style={{
-                  ...styles.coursCard,
-                  ...(isHovered ? styles.coursCardHovered : {})
-                }}
-                onMouseEnter={() => setHoveredCard(c._id)}
-                onMouseLeave={() => setHoveredCard(null)}
-              >
-                <div style={styles.coursCardContent}>
-                  <div 
-                    onClick={() => afficherDetails(c)}
-                    style={{cursor: 'pointer'}}
-                  >
-                    <div style={styles.coursCardTop}>
-                      <div 
-                        style={{
-                          ...styles.coursIcon,
-                          ...(isHovered ? styles.coursIconHovered : {})
-                        }}
-                      >
-                        <BookOpen size={24} color="#2563eb" />
-                      </div>
-                      <div style={styles.studentCount}>
-                        <Users size={16} />
-                        <span>{nombreEtudiants}</span>
-                      </div>
-                    </div>
-                    
-                    <h3 
-                      style={{
-                        ...styles.coursTitle,
-                        ...(isHovered ? styles.coursTitleHovered : {})
-                      }}
-                    >
-                      {c.nom}
-                    </h3>
-                    
-                    <div style={styles.professeurInfo}>
-                      <User size={16} />
-                      <span>
-                        {Array.isArray(c.professeur)
-                          ? c.professeur.join(', ')
-                          : c.professeur || 'Non assigné'}
-                      </span>
-                    </div>
-
-                  </div>
-                  
-                  <div style={styles.coursFooter}>
-                    <span style={styles.badge}>
-                      {nombreEtudiants} étudiant{nombreEtudiants !== 1 ? 's' : ''}
-                    </span>
-                    
-                    {/* Bouton de suppression */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        ouvrirModalSuppression(c);
-                      }}
-                      style={styles.deleteButton}
-                      onMouseEnter={(e) => {
-                        Object.assign(e.target.style, styles.deleteButtonHovered);
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = '#fef2f2';
-                        e.target.style.color = '#dc2626';
-                        e.target.style.borderColor = '#fecaca';
-                      }}
-                      title="Supprimer ce classe"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Message si aucun cours après filtrage */}
-        {coursFiltres.length === 0 && cours.length > 0 && (
-          <div style={styles.emptyState}>
-            <div style={styles.emptyIcon}>
-              <Filter size={24} color="#9ca3af" />
-            </div>
-            <h3 style={{fontSize: '1.25rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.5rem'}}>
-              Aucun cours ne correspond aux critères
-            </h3>
-            <p style={{color: '#9ca3af', marginBottom: '1rem'}}>
-              Essayez de modifier vos sélections pour voir plus de résultats
-            </p>
-            <button
-              onClick={reinitialiserFiltres}
-              style={{
-                ...styles.resetButton,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              <X size={16} />
-              Réinitialiser les filtres
-            </button>
-          </div>
-        )}
-
-        {/* Message si aucun cours du tout */}
-        {cours.length === 0 && (
-          <div style={styles.emptyState}>
-            <div style={styles.emptyIcon}>
-              <BookOpen size={24} color="#9ca3af" />
-            </div>
-            <h3 style={{fontSize: '1.25rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.5rem'}}>
-              Aucun cours disponible
-            </h3>
-            <p style={{color: '#9ca3af'}}>Commencez par ajouter votre premier classe</p>
-          </div>
-        )}
+        {/* Tableaux séparés */}
+        {renderTableFI()}
+        {renderTableTA()}
+        {renderTableLicenceMaster()}
       </div>
 
       {/* Modal d'ajout de cours */}
@@ -1224,7 +1384,7 @@ const ListeCoursAdmin = () => {
                   <label style={styles.label}>Nom du classe</label>
                   <input
                     type="text"
-                    placeholder="Ex: Mathématiques, Physique..."
+                    placeholder="Ex: IRM, MASI..."
                     value={nom}
                     onChange={(e) => setNom(e.target.value)}
                     style={styles.input}
@@ -1241,7 +1401,6 @@ const ListeCoursAdmin = () => {
                   />
                 </div>
 
-                {/* Professeurs avec select recherchable */}
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Professeurs</label>
                   
@@ -1254,12 +1413,7 @@ const ListeCoursAdmin = () => {
                         setProfesseurSearch(e.target.value);
                         setShowProfesseurDropdown(e.target.value.length > 0);
                       }}
-                      onFocus={() => {
-                        if (professeurSearch.length > 0) {
-                          setShowProfesseurDropdown(true);
-                        }
-                      }}
-                      style={styles.searchInput}
+                      style={styles.input}
                       onFocus={(e) => {
                         e.target.style.borderColor = '#3b82f6';
                         e.target.style.backgroundColor = 'white';
@@ -1269,7 +1423,6 @@ const ListeCoursAdmin = () => {
                         }
                       }}
                       onBlur={(e) => {
-                        // Délai pour permettre le clic sur un élément de la dropdown
                         setTimeout(() => {
                           e.target.style.borderColor = '#d1d5db';
                           e.target.style.backgroundColor = '#f9fafb';
@@ -1279,7 +1432,6 @@ const ListeCoursAdmin = () => {
                       }}
                     />
                     
-                    {/* Dropdown des résultats */}
                     {showProfesseurDropdown && professeursFiltres.length > 0 && (
                       <div style={styles.dropdown}>
                         {professeursFiltres.map((p) => (
@@ -1288,10 +1440,10 @@ const ListeCoursAdmin = () => {
                             style={styles.dropdownItem}
                             onClick={() => ajouterProfesseur(p)}
                             onMouseEnter={(e) => {
-                              e.target.style.backgroundColor = '#f3f4f6';
+                              e.currentTarget.style.backgroundColor = '#f3f4f6';
                             }}
                             onMouseLeave={(e) => {
-                              e.target.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.backgroundColor = 'transparent';
                             }}
                           >
                             <div style={styles.professeurItem}>
@@ -1314,7 +1466,6 @@ const ListeCoursAdmin = () => {
                       </div>
                     )}
                     
-                    {/* Message si aucun résultat */}
                     {showProfesseurDropdown && professeurSearch.length > 0 && professeursFiltres.length === 0 && (
                       <div style={styles.dropdown}>
                         <div style={{
@@ -1329,7 +1480,6 @@ const ListeCoursAdmin = () => {
                     )}
                   </div>
 
-                  {/* Affichage des professeurs sélectionnés */}
                   {professeurs_selectionnes.length > 0 && (
                     <div style={styles.selectedProfesseurs}>
                       <div style={styles.selectedTitle}>
@@ -1379,7 +1529,7 @@ const ListeCoursAdmin = () => {
                   </div>
                 )}
 
-                <div style={styles.buttonGroup}>
+                <div style={styles.modalButtonGroup}>
                   <button
                     type="button"
                     onClick={fermerModalAjout}
@@ -1458,7 +1608,7 @@ const ListeCoursAdmin = () => {
                 </div>
               )}
 
-              <div style={styles.buttonGroup}>
+              <div style={styles.modalButtonGroup}>
                 <button
                   type="button"
                   onClick={fermerModalSuppression}
@@ -1512,7 +1662,6 @@ const ListeCoursAdmin = () => {
                           : coursActuel.professeur || 'Non assigné'}
                       </span>
                     </div>
-
                   </div>
                 </div>
                 <button
@@ -1531,9 +1680,9 @@ const ListeCoursAdmin = () => {
             </div>
 
             <div style={styles.detailsBody}>
-              <div style={styles.sectionHeader}>
+              <div style={styles.sectionHeader2}>
                 <Users size={20} color="#2563eb" />
-                <h3 style={styles.sectionTitle}>
+                <h3 style={styles.sectionTitle2}>
                   Étudiants inscrits ({etudiantsDansCours.length})
                 </h3>
               </div>
@@ -1551,11 +1700,11 @@ const ListeCoursAdmin = () => {
                     <div 
                       key={e._id} 
                       style={styles.studentItem}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#f3f4f6';
+                      onMouseEnter={(ev) => {
+                        ev.currentTarget.style.backgroundColor = '#f3f4f6';
                       }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = '#f9fafb';
+                      onMouseLeave={(ev) => {
+                        ev.currentTarget.style.backgroundColor = '#f9fafb';
                       }}
                     >
                       <div style={styles.studentInfo}>
@@ -1566,12 +1715,12 @@ const ListeCoursAdmin = () => {
                       </div>
                       <button
                         onClick={() => window.location.href = `/etudiant/${e._id}`}
-                        style={styles.viewButton}
-                        onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = '#2563eb';
+                        style={styles.studentViewButton}
+                        onMouseEnter={(ev) => {
+                          ev.target.style.backgroundColor = '#2563eb';
                         }}
-                        onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = '#3b82f6';
+                        onMouseLeave={(ev) => {
+                          ev.target.style.backgroundColor = '#3b82f6';
                         }}
                       >
                         <Eye size={16} />

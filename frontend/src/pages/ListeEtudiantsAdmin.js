@@ -163,39 +163,42 @@ const autoAssignCours = (form, setForm, listeCours, isLockedByUser) => {
 };
 
 const STRUCTURE_FORMATION = {
-  MASI: {
-    nom: 'MASI',
-    niveauxManuels: true,
-    // لاستعمال بسيط سريع (مثلاً عرض عام)
-    specialites: [
-      'Entreprenariat, audit et finance',
-      'Développement commercial et marketing digital'
-    ],
-    // 👇 الهيكلة اللي كيعتمد عليها الفرونت لاشتقاق الاختيارات حسب المستوى
-    niveaux: {
-      1: { specialites: [] },
-      2: { specialites: [] },
-      3: { specialites: [
+MASI: {
+  nom: 'MASI',
+  niveauxManuels: true,
+  specialites: [
+    'Entreprenariat, audit et finance',
+    'Développement commercial et marketing digital'
+  ],
+  niveaux: {
+    1: { specialites: [] },
+    2: { specialites: [] },
+    3: { 
+      specialites: [
         'Entreprenariat, audit et finance',
         'Développement commercial et marketing digital'
-      ]},
-      4: { specialites: ["Management des affaires et systèmes d'information"] },
-      5: { 
-        specialites: ["Management des affaires et systèmes d'information"],
-        // 👇 OPTIONS ديال MASI كيكونو غير فالمستوى 5 حسب التخصص
-        options: {
-          "Management des affaires et systèmes d'information": [
-            'Finance & Audit',
-            'Management SI',
-            'Entrepreneuriat & Innovation',
-            'Marketing & Ventes',
-            'Contrôle de Gestion'
-          ]
-        }
-      }
+      ]
+    },
+    4: { 
+      specialites: [
+        'Finance et Stratégie Entrepreneuriale Master 1',
+        'Développement Commercial et Marketing Digital Master 1'
+      ]
+    },
+    5: { 
+      specialites: [
+        'Finance et Stratégie Entrepreneuriale Master 2',
+        'Développement Commercial et Marketing Digital Master 2'
+      ],
+      options: {}
     }
   },
-
+  // Mapping automatique Master 1 → Master 2
+  autoMapping: {
+    'Finance et Stratégie Entrepreneuriale Master 1': 'Finance et Stratégie Entrepreneuriale Master 2',
+    'Développement Commercial et Marketing Digital Master 1': 'Développement Commercial et Marketing Digital Master 2'
+  }
+},
   IRM: {
     nom: 'IRM',
     niveauxManuels: true,
@@ -296,7 +299,9 @@ const STRUCTURE_FORMATION = {
       'Management et Conduite de Travaux – Cnam',
       'Electrotechnique et systèmes – Cnam',
       'Informatique – Cnam',
-      'Achat & Logistique'
+      'Ingénierie QHSE',
+      'Achat & Logistique',
+      'Ingénierie industrielle'
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {
@@ -327,7 +332,8 @@ const STRUCTURE_FORMATION = {
       'Cybersécurité et Transformation Digitale',
       'Génie Informatique et Innovation Technologique',
       'Finance, Audit & Entrepreneuriat',
-      'Développement Commercial et Marketing Digital'
+      'Développement Commercial et Marketing Digital',
+      'Ingénierie et Management industriel'
     ],
     // نفس الOPTIONS كما فالتحقق ديال الباك
     options: {
@@ -370,8 +376,16 @@ const getSpecialitesDisponibles = (filiere, niveau) => {
   if (filiere === 'MASI') {
     if (niveauInt === 3) {
       return ['Entreprenariat, audit et finance', 'Développement commercial et marketing digital'];
-    } else if (niveauInt >= 4) {
-      return ['Management des affaires et systèmes d\'information'];
+    } else if (niveauInt === 4) {
+      return [
+        'Finance et Stratégie Entrepreneuriale Master 1',
+        'Développement Commercial et Marketing Digital Master 1'
+      ];
+    } else if (niveauInt === 5) {
+      return [
+        'Finance et Stratégie Entrepreneuriale Master 2',
+        'Développement Commercial et Marketing Digital Master 2'
+      ];
     }
   }
   
@@ -1455,30 +1469,31 @@ const ListeEtudiants = () => {
     filtrerEtudiants();
   }, [etudiants, recherche, filtreGenre, filtreCours, filtreActif, filtreCommercial, filtreAnneeScolaire, filtrePartner]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-assign pour AJOUT
-  useEffect(() => {
-    autoAssignCours(formAjout, setFormAjout, listeCours, lockCoursAjout);
-  }, [
-    formAjout.filiere, formAjout.niveau,
-    formAjout.specialite, formAjout.option,
-    formAjout.cycle, formAjout.specialiteIngenieur, formAjout.optionIngenieur,
-    formAjout.specialiteLicencePro, formAjout.optionLicencePro,
-    formAjout.specialiteMasterPro, formAjout.optionMasterPro,
-    listeCours, lockCoursAjout
-  ]);
-
-  // Auto-assign pour MODIFICATION
-  useEffect(() => {
-    autoAssignCours(formModifier, setFormModifier, listeCours, lockCoursModifier);
-  }, [
-    formModifier.filiere, formModifier.niveau,
-    formModifier.specialite, formModifier.option,
-    formModifier.cycle, formModifier.specialiteIngenieur, formModifier.optionIngenieur,
-    formModifier.specialiteLicencePro, formModifier.optionLicencePro,
-    formModifier.specialiteMasterPro, formModifier.optionMasterPro,
-    listeCours, lockCoursModifier
-  ]);
-
+ 
+   // Auto-assign pour AJOUT
+   useEffect(() => {
+     autoAssignCours(formAjout, setFormAjout, listeCours, lockCoursAjout);
+   }, [
+     formAjout.filiere, formAjout.niveau,
+     formAjout.specialite, formAjout.option,
+     formAjout.cycle, formAjout.specialiteIngenieur, formAjout.optionIngenieur,
+     formAjout.specialiteLicencePro, formAjout.optionLicencePro,
+     formAjout.specialiteMasterPro, formAjout.optionMasterPro,
+     listeCours, lockCoursAjout
+   ]);
+ 
+   // Auto-assign pour MODIFICATION
+   useEffect(() => {
+     autoAssignCours(formModifier, setFormModifier, listeCours, lockCoursModifier);
+   }, [
+     formModifier.filiere, formModifier.niveau,
+     formModifier.specialite, formModifier.option,
+     formModifier.cycle, formModifier.specialiteIngenieur, formModifier.optionIngenieur,
+     formModifier.specialiteLicencePro, formModifier.optionLicencePro,
+     formModifier.specialiteMasterPro, formModifier.optionMasterPro,
+     listeCours, lockCoursModifier
+   ]);
+ 
   // Génération automatique du code étudiant pour l'ajout
   useEffect(() => {
     if (formAjout.filiere && formAjout.prenom && formAjout.nomDeFamille) {
@@ -2077,116 +2092,135 @@ const coursFiltres = getCoursFiltre(listeCours, formAjout);
     }));
   };
 
-  const handleSubmitModifier = async (e) => {
-    e.preventDefault();
+ const handleSubmitModifier = async (e) => {
+  e.preventDefault();
+  
+  // Validation de l'année scolaire
+  const erreurAnneeScolaire = validerAnneeScolaire(formModifier.anneeScolaire);
+  if (erreurAnneeScolaire) {
+    setMessageModifier('❌ ' + erreurAnneeScolaire);
+    return;
+  }
+  
+  // Validation de la formation
+  const erreursFormation = validerFormationComplete(formModifier);
+  if (erreursFormation.length > 0) {
+    setMessageModifier('❌ Erreurs de formation: ' + erreursFormation.join(', '));
+    return;
+  }
+  
+  setLoadingModifier(true);
+  try {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
     
-    // Validation de l'année scolaire
-    const erreurAnneeScolaire = validerAnneeScolaire(formModifier.anneeScolaire);
-    if (erreurAnneeScolaire) {
-      setMessageModifier('❌ ' + erreurAnneeScolaire);
-      return;
-    }
+    // 🔥 SOLUTION: Nettoyer TOUTES les valeurs vides/undefined avant envoi
+    const formModifierClean = { ...formModifier };
     
-    // Validation de la formation
-    const erreursFormation = validerFormationComplete(formModifier);
-    if (erreursFormation.length > 0) {
-      setMessageModifier('❌ Erreurs de formation: ' + erreursFormation.join(', '));
-      return;
-    }
-    
-    setLoadingModifier(true);
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      
-      // NETTOYER les données avant l'envoi
-      const formModifierClean = { ...formModifier };
-      
-      // Supprimer les champs non pertinents selon la filière
-      if (formModifierClean.filiere === 'MASI' || formModifierClean.filiere === 'IRM') {
-        delete formModifierClean.cycle;
-        delete formModifierClean.specialiteIngenieur;
-        delete formModifierClean.optionIngenieur;
-        delete formModifierClean.specialiteLicencePro;
-        delete formModifierClean.optionLicencePro;
-        delete formModifierClean.specialiteMasterPro;
-        delete formModifierClean.optionMasterPro;
-      } else if (formModifierClean.filiere === 'CYCLE_INGENIEUR') {
-        delete formModifierClean.specialiteLicencePro;
-        delete formModifierClean.optionLicencePro;
-        delete formModifierClean.specialiteMasterPro;
-        delete formModifierClean.optionMasterPro;
-        delete formModifierClean.specialite;
-        delete formModifierClean.option;
-      } else if (formModifierClean.filiere === 'LICENCE_PRO') {
-        delete formModifierClean.cycle;
-        delete formModifierClean.specialiteIngenieur;
-        delete formModifierClean.optionIngenieur;
-        delete formModifierClean.specialiteMasterPro;
-        delete formModifierClean.optionMasterPro;
-        delete formModifierClean.specialite;
-        delete formModifierClean.option;
-      } else if (formModifierClean.filiere === 'MASTER_PRO') {
-        delete formModifierClean.cycle;
-        delete formModifierClean.specialiteIngenieur;
-        delete formModifierClean.optionIngenieur;
-        delete formModifierClean.specialiteLicencePro;
-        delete formModifierClean.optionLicencePro;
-        delete formModifierClean.specialite;
-        delete formModifierClean.option;
+    // Fonction helper pour nettoyer les valeurs
+    const cleanValue = (value) => {
+      if (value === '' || value === undefined || value === null) {
+        return undefined;
       }
-      
-      Object.keys(formModifierClean).forEach(key => {
-        if (key === 'cours') {
-          formModifierClean[key].forEach(c => formData.append('cours[]', c));
-        } else if (key === 'motDePasse' && formModifierClean[key].trim() === '') {
-          return; // Ne pas envoyer mot de passe vide
-        } else {
-          const valeur = formModifierClean[key];
+      return value;
+    };
+    
+    // Supprimer les champs non pertinents selon la filière
+    if (formModifierClean.filiere === 'MASI' || formModifierClean.filiere === 'IRM') {
+      delete formModifierClean.cycle;
+      delete formModifierClean.specialiteIngenieur;
+      delete formModifierClean.optionIngenieur;
+      delete formModifierClean.specialiteLicencePro;
+      delete formModifierClean.optionLicencePro;
+      delete formModifierClean.specialiteMasterPro;
+      delete formModifierClean.optionMasterPro;
+    } else if (formModifierClean.filiere === 'CYCLE_INGENIEUR') {
+      delete formModifierClean.specialiteLicencePro;
+      delete formModifierClean.optionLicencePro;
+      delete formModifierClean.specialiteMasterPro;
+      delete formModifierClean.optionMasterPro;
+      delete formModifierClean.specialite;
+      delete formModifierClean.option;
+    } else if (formModifierClean.filiere === 'LICENCE_PRO') {
+      delete formModifierClean.cycle;
+      delete formModifierClean.specialiteIngenieur;
+      delete formModifierClean.optionIngenieur;
+      delete formModifierClean.specialiteMasterPro;
+      delete formModifierClean.optionMasterPro;
+      delete formModifierClean.specialite;
+      delete formModifierClean.option;
+    } else if (formModifierClean.filiere === 'MASTER_PRO') {
+      delete formModifierClean.cycle;
+      delete formModifierClean.specialiteIngenieur;
+      delete formModifierClean.optionIngenieur;
+      delete formModifierClean.specialiteLicencePro;
+      delete formModifierClean.optionLicencePro;
+      delete formModifierClean.specialite;
+      delete formModifierClean.option;
+    }
+    
+    // 🔥 IMPORTANT: N'envoyer que les champs avec des valeurs valides
+    Object.keys(formModifierClean).forEach(key => {
+      if (key === 'cours') {
+        formModifierClean[key].forEach(c => formData.append('cours[]', c));
+      } else if (key === 'motDePasse' && formModifierClean[key].trim() === '') {
+        return; // Ne pas envoyer mot de passe vide
+      } else {
+        const valeurNettoyee = cleanValue(formModifierClean[key]);
+        
+        // ✅ Ne pas ajouter au FormData si la valeur est undefined
+        if (valeurNettoyee !== undefined) {
           formData.append(
             key,
-            typeof valeur === 'boolean'
-              ? valeur.toString()
-              : (valeur !== undefined ? valeur : '')
+            typeof valeurNettoyee === 'boolean'
+              ? valeurNettoyee.toString()
+              : valeurNettoyee.toString()
           );
         }
-      });
+      }
+    });
 
-      if (imageFileModifier) formData.append('image', imageFileModifier);
-      
-      // Nouveaux documents avec commentaires
-      Object.keys(documentsModifier).forEach(key => {
-        if (documentsModifier[key]) {
-          formData.append(key, documentsModifier[key]);
-        }
-      });
-      
-      // Commentaires des documents
-      Object.keys(commentairesModifier).forEach(key => {
-        formData.append(key, commentairesModifier[key]);
-      });
-      
-      const response = await axios.put(`http://195.179.229.230:5000/api/etudiants/${etudiantAModifier._id}`, formData, {
+    if (imageFileModifier) formData.append('image', imageFileModifier);
+    
+    // Nouveaux documents avec commentaires
+    Object.keys(documentsModifier).forEach(key => {
+      if (documentsModifier[key]) {
+        formData.append(key, documentsModifier[key]);
+      }
+    });
+    
+    // Commentaires des documents
+    Object.keys(commentairesModifier).forEach(key => {
+      const valeur = commentairesModifier[key];
+      if (valeur && valeur.trim() !== '') {
+        formData.append(key, valeur);
+      }
+    });
+    
+    const response = await axios.put(
+      `http://195.179.229.230:5000/api/etudiants/${etudiantAModifier._id}`, 
+      formData, 
+      {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
-      });
+      }
+    );
 
-      setMessageModifier('✅ Étudiant modifié avec succès');
-      setEtudiants(etudiants.map(e => e._id === etudiantAModifier._id ? response.data : e));
-          await fetchEtudiants();
-
-      setTimeout(() => {
-        closeEditModal();
-      }, 2000);
-      
-    } catch (err) {
-      setMessageModifier('❌ Erreur: ' + (err.response?.data?.message || 'Erreur inconnue'));
-    } finally {
-      setLoadingModifier(false);
-    }
-  };
+    setMessageModifier('✅ Étudiant modifié avec succès');
+    await fetchEtudiants();
+    setTimeout(() => {
+      closeEditModal();
+    }, 2000);
+    
+  } catch (err) {
+    console.error('Erreur complète:', err.response?.data); // 🔥 Ajout pour debug
+    setMessageModifier('❌ Erreur: ' + (err.response?.data?.message || err.response?.data?.error || 'Erreur inconnue'));
+  } finally {
+    setLoadingModifier(false);
+  }
+};
 
   const handleToggleActif = async (id) => {
     try {

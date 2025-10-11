@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './ListeEtudiants.css';
 import '../styles/partner-styles.css';
-import Sidebar from '../components/Sidebar';
+import Sidebar from '../components/sidberadmin';
 
 import { 
   User, 

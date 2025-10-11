@@ -33,6 +33,33 @@ const AjouterPresence = () => {
   const [seanceId, setSeanceId] = useState(''); // Ajouter ce state
   const navigate = useNavigate();
 
+  // ⚡ Auto-loading function for students
+  const loadStudentsAuto = async (coursNom, date, debut, fin) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://195.179.229.230:5000/api/professeur/etudiants', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const filtered = res.data.filter(et =>
+        et.cours.includes(coursNom)
+      );
+
+      const initialPresences = filtered.map(et => ({
+        etudiant: et._id,
+        nom: et.nomComplet,
+        statut: 'present',
+        retardMinutes: '',
+        remarque: '',
+      }));
+
+      setPresences(initialPresences);
+      console.log("✅ Étudiants auto-chargés:", initialPresences.length);
+    } catch (error) {
+      console.error("Erreur auto-load:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchCours = async () => {
       try {
@@ -45,7 +72,7 @@ const AjouterPresence = () => {
         }
 
         try {
-                    // ✅ Récupérer d'abord la liste des cours
+          // ✅ Récupérer d'abord la liste des cours
           const resCours = await axios.get('http://195.179.229.230:5000/api/professeur/mes-cours', {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -67,19 +94,11 @@ const AjouterPresence = () => {
           console.log('===============================');
           
           // Auto-remplir tous les champs
-          setSelectedCours(seanceActuelle.cours); // Maintenant c'est le nom, pas l'ID
+          setSelectedCours(seanceActuelle.cours);
           setDateSession(seanceActuelle.dateSeance.split('T')[0]);
           setHeureDebut(seanceActuelle.heureDebut);
           setHeureFin(seanceActuelle.heureFin);
           setSeanceId(seanceActuelle._id);
-          
-          setSeanceId(seanceActuelle._id);
-          
-          // ✅ DÉBOGAGE: Afficher la matière reçue
-          console.log('=== MATIÈRE REÇUE ===');
-          console.log('seanceActuelle.matiere:', seanceActuelle.matiere);
-          console.log('seanceActuelle.type:', seanceActuelle.type);
-          console.log('==================');
           
           // ✅ CORRECTION : Récupérer les étudiants avec toutes les infos nécessaires
           const resEtudiants = await axios.get(`http://195.179.229.230:5000/api/seances/${seanceActuelle._id}/etudiants`, {
@@ -87,7 +106,7 @@ const AjouterPresence = () => {
           });
           
           // ✅ CORRECTION: Utiliser directement la matière de la séance
-          const matiereSeance = seanceActuelle.matiere; // Pas de fallback vers "Séance manuelle"
+          const matiereSeance = seanceActuelle.matiere;
           
           console.log('=== INITIALISATION PRÉSENCES ===');
           console.log('Matière utilisée:', matiereSeance);
@@ -101,7 +120,7 @@ const AjouterPresence = () => {
             retardMinutes: '',
             remarque: '',
             seanceId: seanceActuelle._id,
-            matiere: matiereSeance, // ✅ Utiliser directement la matière reçue
+            matiere: matiereSeance,
             nomProfesseur: seanceActuelle.nomProfesseur
           }));
           
@@ -109,6 +128,15 @@ const AjouterPresence = () => {
           
           console.log('✅ Présences initialisées avec matière:', matiereSeance);
           console.log('Nombre d\'étudiants:', initialPresences.length);
+
+          // 4️⃣ 💥 الحل السحري هنا:
+          // نستدعي مباشرة تحميل الطلبة أول ما نملأ القيم
+          setTimeout(async () => {
+            if (seanceActuelle.cours && seanceActuelle.dateSeance) {
+              console.log("⚡ Auto-loading students for", seanceActuelle.cours);
+              await loadStudentsAuto(seanceActuelle.cours, seanceActuelle.dateSeance, seanceActuelle.heureDebut, seanceActuelle.heureFin);
+            }
+          }, 500);
 
         } catch (error) {
           if (error.response?.status === 404) {

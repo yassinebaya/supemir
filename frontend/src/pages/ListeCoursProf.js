@@ -386,7 +386,7 @@ const ListeCoursProf = () => {
         
         <div style={styles.headerContent} className="header-content">
           <div style={styles.headerLeft}>
-            <h1 style={styles.title}>Mes Cours</h1>
+            <h1 style={styles.title}>Mes Classes</h1>
           </div>
         </div>
       </div>

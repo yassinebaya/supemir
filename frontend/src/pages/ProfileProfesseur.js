@@ -255,12 +255,10 @@ const ProfileProfesseur = () => {
           {!professeur.estPermanent && (
             <div style={styles.infoCard}>
               <div style={styles.cardHeader}>
-                <DollarSign size={20} color="#059669" />
                 <h3 style={styles.cardTitle}>Informations Professionnelles</h3>
               </div>
               <div style={styles.cardContent}>
                 <div style={styles.infoItem}>
-                  <DollarSign size={18} color="#6b7280" />
                   <div style={styles.infoDetails}>
                     <span style={styles.infoLabel}>Tarif horaire</span>
                     <span style={styles.infoValue}>
@@ -297,7 +295,7 @@ const ProfileProfesseur = () => {
           <div style={styles.infoCard}>
             <div style={styles.cardHeader}>
               <BookOpen size={20} color="#059669" />
-              <h3 style={styles.cardTitle}>Mes Cours</h3>
+              <h3 style={styles.cardTitle}>Mes Classes</h3>
             </div>
             <div style={styles.cardContent}>
               {professeur.coursEnseignes && professeur.coursEnseignes.length > 0 ? (

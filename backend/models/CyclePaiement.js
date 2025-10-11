@@ -125,11 +125,31 @@ cyclePaiementSchema.index({ professeur: 1, statut: 1 });
 cyclePaiementSchema.index({ statut: 1, actif: 1 });
 
 // Méthodes du modèle
-cyclePaiementSchema.methods.validerParFinance = function(financeId, notes = '') {
+cyclePaiementSchema.methods.validerParFinance = async function(financeId, notes = '') {
+  const Seance = mongoose.model('Seance');
+  
   this.statut = 'valide_finance';
   this.valideParFinance = financeId;
   this.dateValidationFinance = new Date();
   this.notesFinance = notes;
+  
+  // CORRECTION: Marquer les séances comme validées
+  const seanceIds = this.seancesIncluses.map(s => s.seanceId);
+  
+  if (seanceIds.length > 0) {
+    await Seance.updateMany(
+      { _id: { $in: seanceIds } },
+      { 
+        $set: {
+          statutPaiement: 'valide_finance',
+          cycleValidationId: this._id,
+          dateValidation: new Date()
+        }
+      }
+    );
+    
+    console.log(`✅ ${seanceIds.length} séances marquées comme validées`);
+  }
 };
 
 cyclePaiementSchema.methods.payerParAdmin = function(adminId, methodePaiement, reference = '', notes = '') {
@@ -191,12 +211,17 @@ cyclePaiementSchema.statics.calculerCycle = async function(professeurId, cycleId
   const professeur = await Professeur.findById(professeurId);
   if (!professeur) throw new Error('Professeur non trouvé');
   
-  // Récupérer toutes les séances non payées de ce professeur
+  // CORRECTION: Récupérer SEULEMENT les séances non payées ET non validées
   const seancesNonPayees = await Seance.find({
     professeur: professeurId,
     actif: true,
-    payee: { $ne: true }, // Séances pas encore payées
-    typeSeance: { $ne: 'rattrapage' }
+    payee: { $ne: true },
+    typeSeance: { $ne: 'rattrapage' },
+    $or: [
+      { statutPaiement: { $exists: false } },
+      { statutPaiement: null },
+      { statutPaiement: 'en_attente' }
+    ]
   }).populate('coursId', 'nom').lean();
   
   let montantBrut = 0;
@@ -239,7 +264,7 @@ cyclePaiementSchema.statics.calculerCycle = async function(professeurId, cycleId
       { appliquePour: 'permanent' },
       { 
         appliquePour: 'mois_actuel',
-        mois: { $in: [new Date().getMonth() + 1] }, // Simplification
+        mois: { $in: [new Date().getMonth() + 1] },
         annee: new Date().getFullYear()
       }
     ]

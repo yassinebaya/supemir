@@ -368,7 +368,7 @@ useEffect(() => {
               subtitle="Sous ma responsabilité"
             />
             <StatCard
-              title="Cours Actifs"
+              title="Classes Actifs"
               value={totalCours}
               icon={BookOpen}
               colorClass="green"
@@ -458,7 +458,7 @@ useEffect(() => {
             </h3>
             <div className="summary-grid">
               <div className="summary-item blue">
-                <p className="summary-item-label">Étudiants par Cours</p>
+                <p className="summary-item-label">Étudiants par classe</p>
                 <p className="summary-item-value">
                   {totalCours ? Math.round(totalEtudiants / totalCours) : 0}
                 </p>

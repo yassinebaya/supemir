@@ -61,6 +61,8 @@ setTimeout(() => {
     window.location.href = '/admin/dashboard';
   } else if (data.role === 'administratif') { // 🆕 NOUVEAU - Administratif
     window.location.href = '/administratif';
+    } else if (data.role === 'partner') { // 🆕 NOUVEAU - Partner
+     window.location.href = '/partners/create-etudiant';
   } else if (data.role === 'prof') {
     window.location.href = '/professeur';
   } else if (data.role === 'finance_prof') { // 🆕 NOUVEAU - Professeur de Finance

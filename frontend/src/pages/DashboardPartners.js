@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  RotateCcw, Home, AlertCircle, Filter, Users, DollarSign, 
-  TrendingUp, Eye, Phone, Mail, GraduationCap, BookOpen,
-  UserCheck, Building, Calendar, Target, BarChart3, Award,
-  Shield, CheckCircle, XCircle, User, Search, Download, Handshake
+  RotateCcw, AlertCircle, Filter, BookOpen, Handshake
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
 
 const DashboardPartners = () => {
   const [etudiants, setEtudiants] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -17,25 +14,8 @@ const DashboardPartners = () => {
   const [anneeScolaireFilter, setAnneeScolaireFilter] = useState('');
   const [anneesDisponibles, setAnneesDisponibles] = useState([]);
 
-  // Statistiques Partners
-  const [statsPartners, setStatsPartners] = useState({
-    partners: { nombre: 0, chiffreAffaire: 0, pourcentageRevenue: 0 },
-    normal: { nombre: 0, chiffreAffaire: 0, pourcentageRevenue: 0 },
-    total: { nombre: 0, chiffreAffaire: 0 }
-  });
-
-  // Statistiques détaillées par type
-  const [tableauPartners, setTableauPartners] = useState({
-    nouveauxInscrits: { count: 0, ca: 0 },
-    reinscriptions: { count: 0, ca: 0 },
-    total: { count: 0, ca: 0 },
-    recouvrement: { percentage: 0, ca: 0 },
-    prixMoyen: 0
-  });
-
-  // Commerciaux Partners
-  const [commerciaux, setCommerciaux] = useState([]);
-  const [statistiquesCommerciaux, setStatistiquesCommerciaux] = useState([]);
+  // Statistiques Partners détaillées (par partner)
+  const [statistiquesPartners, setStatistiquesPartners] = useState([]);
 
   // Récupération des données
   const fetchData = async () => {
@@ -43,33 +23,48 @@ const DashboardPartners = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      // Récupérer les étudiants et commerciaux
-      const [etudiantsRes, commerciauxRes] = await Promise.all([
-        fetch('http://195.179.229.230:5000/api/etudiants', {
+      const [etudiantsRes, partnersRes] = await Promise.all([
+        fetch('http://195.179.229.230:5000/api/etudiant', {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch('http://195.179.229.230:5000/api/commerciaux', {
+        fetch('http://195.179.229.230:5000/api/partners', {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
-      if (!etudiantsRes.ok || !commerciauxRes.ok) {
-        throw new Error('Erreur lors du chargement des données');
+      if (!etudiantsRes.ok) {
+        throw new Error(`Erreur étudiants: ${etudiantsRes.status}`);
       }
 
       const etudiantsData = await etudiantsRes.json();
-      const commerciauxData = await commerciauxRes.json();
+      
+      let partnersData = [];
+      if (partnersRes.ok) {
+        try {
+          const partnersResponse = await partnersRes.json();
+          // CORRECTION: Extraire les données du format API
+          if (partnersResponse.success && Array.isArray(partnersResponse.data)) {
+            partnersData = partnersResponse.data;
+          } else if (Array.isArray(partnersResponse)) {
+            partnersData = partnersResponse;
+          } else {
+            console.warn('Format de données partners inattendu:', partnersResponse);
+            partnersData = [];
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse partners data:', parseError);
+          partnersData = [];
+        }
+      }
 
       setEtudiants(etudiantsData);
-      setCommerciaux(commerciauxData);
+      setPartners(partnersData);
 
-      // Obtenir les années disponibles
       const annees = [...new Set(etudiantsData.map((e) => e.anneeScolaire).filter(Boolean))]
         .sort()
         .reverse();
       setAnneesDisponibles(annees);
 
-      // Sélectionner l'année par défaut
       let anneeASelectionner = anneeScolaireFilter;
       if (!anneeASelectionner && annees.length > 0) {
         if (annees.includes('2025/2026')) {
@@ -80,117 +75,63 @@ const DashboardPartners = () => {
         setAnneeScolaireFilter(anneeASelectionner);
       }
 
-      // Calculer les statistiques
-      calculerStatistiquesPartners(etudiantsData, commerciauxData, anneeASelectionner || anneeScolaireFilter);
+      calculerStatsParPartner(etudiantsData, partnersData, anneeASelectionner || anneeScolaireFilter);
       
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
       setError('Impossible de charger les données');
       setEtudiants([]);
-      setCommerciaux([]);
+      setPartners([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Calcul des statistiques Partners
-  const calculerStatistiquesPartners = (etudiantsData, commerciauxData, anneeFilter) => {
-    // Filtrer par année si nécessaire
+  // Calcul des statistiques par partner individuel
+  const calculerStatsParPartner = (etudiantsData, partnersData, anneeFilter) => {
     const etudiantsFiltres = anneeFilter === 'toutes' 
-      ? etudiantsData 
-      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter);
+      ? etudiantsData.filter(e => e.isPartner === true)
+      : etudiantsData.filter(e => e.anneeScolaire === anneeFilter && e.isPartner === true);
 
-    // Séparer les étudiants Partners et Normaux
-    const etudiantsPartners = etudiantsFiltres.filter(e => e.isPartner === true);
-    const etudiantsNormaux = etudiantsFiltres.filter(e => e.isPartner !== true);
-
-    // Calculs globaux
-    const partnersRevenue = etudiantsPartners.reduce((sum, e) => sum + (parseFloat(e.prixTotalPartner) || 0), 0);
-    const normalRevenue = etudiantsNormaux.reduce((sum, e) => sum + (parseFloat(e.prixTotal) || 0), 0);
-    const totalRevenue = partnersRevenue + normalRevenue;
-
-    setStatsPartners({
-      partners: {
-        nombre: etudiantsPartners.length,
-        chiffreAffaire: partnersRevenue,
-        pourcentageRevenue: totalRevenue > 0 ? ((partnersRevenue / totalRevenue) * 100) : 0
-      },
-      normal: {
-        nombre: etudiantsNormaux.length,
-        chiffreAffaire: normalRevenue,
-        pourcentageRevenue: totalRevenue > 0 ? ((normalRevenue / totalRevenue) * 100) : 0
-      },
-      total: {
-        nombre: etudiantsFiltres.length,
-        chiffreAffaire: totalRevenue
-      }
-    });
-
-    // Statistiques détaillées pour Partners uniquement
-    const partnersNouveaux = etudiantsPartners.filter(e => e.nouvelleInscription === true);
-    const partnersReinscriptions = etudiantsPartners.filter(e => e.nouvelleInscription === false);
-    const partnersPayes = partnersNouveaux.filter(e => e.paye === true);
-
-    const caPartnersNouveaux = partnersNouveaux.reduce((sum, e) => sum + (parseFloat(e.prixTotalPartner) || 0), 0);
-    const caPartnersReinscr = partnersReinscriptions.reduce((sum, e) => sum + (parseFloat(e.prixTotalPartner) || 0), 0);
-    const caPartnersPayes = partnersPayes.reduce((sum, e) => sum + (parseFloat(e.prixTotalPartner) || 0), 0);
-    const prixMoyenPartners = etudiantsPartners.length > 0 ? partnersRevenue / etudiantsPartners.length : 0;
-
-    setTableauPartners({
-      nouveauxInscrits: { count: partnersNouveaux.length, ca: caPartnersNouveaux },
-      reinscriptions: { count: partnersReinscriptions.length, ca: caPartnersReinscr },
-      total: { count: etudiantsPartners.length, ca: partnersRevenue },
-      recouvrement: {
-        percentage: partnersRevenue > 0 ? (caPartnersPayes / partnersRevenue) * 100 : 0,
-        ca: caPartnersPayes
-      },
-      prixMoyen: prixMoyenPartners
-    });
-
-    // Statistiques des commerciaux pour Partners
-    calculerStatsCommerciauxPartners(etudiantsPartners, commerciauxData);
-  };
-
-  // Calcul des statistiques commerciaux spécifique aux Partners
-  const calculerStatsCommerciauxPartners = (etudiantsPartners, commerciauxData) => {
-    const statsParCommercial = {};
+    const statsParPartner = {};
     
-    etudiantsPartners.forEach(etudiant => {
-      const commercialId = etudiant.commercial || 'inconnu';
+    etudiantsFiltres.forEach(etudiant => {
+      const partnerId = etudiant.nomPartner || 'sans_partner';
       
-      if (!statsParCommercial[commercialId]) {
-        const commercial = commerciauxData.find(c => c._id === commercialId);
+      if (!statsParPartner[partnerId]) {
+        const partner = partnersData.find(p => p._id === partnerId);
         
-        statsParCommercial[commercialId] = {
-          nom: commercial ? commercial.nom : 'Commercial inconnu',
-          email: commercial ? commercial.email : '',
-          telephone: commercial ? commercial.telephone : '',
+        // Si le partner n'existe pas, on l'ignore complètement
+        if (!partner && partnerId !== 'sans_partner') {
+          console.warn(`Partner ${partnerId} non trouvé pour l'étudiant ${etudiant.prenom} ${etudiant.nomDeFamille}`);
+          return; // Ignorer cet étudiant
+        }
+        
+        // Ignorer aussi les étudiants sans partner
+        if (partnerId === 'sans_partner') {
+          console.warn(`Étudiant sans partner: ${etudiant.prenom} ${etudiant.nomDeFamille}`);
+          return; // Ignorer cet étudiant
+        }
+        
+        statsParPartner[partnerId] = {
+          nomPartner: partner.nomPartner,
+          email: partner.email || '',
+          active: partner.active !== false,
           chiffreAffaire: 0,
-          totalRecu: 0,
-          reste: 0,
-          countEtudiants: 0,
-          actif: commercial ? commercial.actif !== false : true,
-          estAdminInscription: commercial ? commercial.estAdminInscription || false : false
+          countEtudiants: 0
         };
       }
       
       const prixPartner = parseFloat(etudiant.prixTotalPartner) || 0;
-      statsParCommercial[commercialId].chiffreAffaire += prixPartner;
-      statsParCommercial[commercialId].countEtudiants += 1;
-      
-      if (etudiant.paye) {
-        statsParCommercial[commercialId].totalRecu += prixPartner;
-      } else {
-        statsParCommercial[commercialId].reste += prixPartner;
-      }
+      statsParPartner[partnerId].chiffreAffaire += prixPartner;
+      statsParPartner[partnerId].countEtudiants += 1;
     });
 
-    const statistiquesCalculees = Object.entries(statsParCommercial)
-      .filter(([commercialId, stats]) => commercialId !== 'inconnu')
-      .map(([commercialId, stats]) => stats)
+    const statistiquesCalculees = Object.entries(statsParPartner)
+      .map(([partnerId, stats]) => stats)
       .sort((a, b) => b.chiffreAffaire - a.chiffreAffaire);
 
-    setStatistiquesCommerciaux(statistiquesCalculees);
+    setStatistiquesPartners(statistiquesCalculees);
   };
 
   // Analyse par filière pour Partners uniquement
@@ -205,33 +146,16 @@ const DashboardPartners = () => {
       const filiere = e.filiere || 'Non définie';
       if (!filieresStats[filiere]) {
         filieresStats[filiere] = { 
-          etudiants: [], 
           total: 0, 
-          payes: 0, 
           ca: 0, 
-          caPaye: 0, 
-          specialites: new Set(),
-          nouveaux: 0,
-          reinscriptions: 0,
-          actifs: 0,
-          bourses: 0
+          specialites: new Set()
         };
       }
       
-      filieresStats[filiere].etudiants.push(e);
       filieresStats[filiere].total += 1;
-      if (e.paye) filieresStats[filiere].payes += 1;
-      if (e.actif) filieresStats[filiere].actifs += 1;
-      if (e.pourcentageBourse && e.pourcentageBourse > 0) filieresStats[filiere].bourses += 1;
-      
       const prixPartner = parseFloat(e.prixTotalPartner) || 0;
       filieresStats[filiere].ca += prixPartner;
-      if (e.paye) filieresStats[filiere].caPaye += prixPartner;
       
-      if (e.nouvelleInscription === true) filieresStats[filiere].nouveaux += 1;
-      else filieresStats[filiere].reinscriptions += 1;
-      
-      // Ajouter les spécialités selon le type de formation
       if (e.specialite) filieresStats[filiere].specialites.add(e.specialite);
       if (e.specialiteIngenieur) filieresStats[filiere].specialites.add(e.specialiteIngenieur);
       if (e.specialiteLicencePro) filieresStats[filiere].specialites.add(e.specialiteLicencePro);
@@ -243,10 +167,7 @@ const DashboardPartners = () => {
       ...stats,
       specialitesCount: stats.specialites.size,
       specialitesList: Array.from(stats.specialites),
-      tauxPaiement: stats.total > 0 ? ((stats.payes / stats.total) * 100).toFixed(1) : 0,
-      tauxActivite: stats.total > 0 ? ((stats.actifs / stats.total) * 100).toFixed(1) : 0,
-      prixMoyen: stats.total > 0 ? (stats.ca / stats.total).toFixed(0) : 0,
-      tauxNouveaux: stats.total > 0 ? ((stats.nouveaux / stats.total) * 100).toFixed(1) : 0
+      prixMoyen: stats.total > 0 ? (stats.ca / stats.total).toFixed(0) : 0
     })).sort((a, b) => b.total - a.total);
   };
 
@@ -261,7 +182,7 @@ const DashboardPartners = () => {
   const handleAnneeChange = (nouvelleAnnee) => {
     setAnneeScolaireFilter(nouvelleAnnee);
     if (etudiants.length > 0) {
-      calculerStatistiquesPartners(etudiants, commerciaux, nouvelleAnnee);
+      calculerStatsParPartner(etudiants, partners, nouvelleAnnee);
     }
   };
 
@@ -297,7 +218,6 @@ const DashboardPartners = () => {
       <Sidebar onLogout={handleLogout} />
       
       <div style={{ flex: 1, paddingLeft: '0' }}>
-        <Header />
         
         <div style={{ padding: '2rem' }}>
           {/* Header */}
@@ -327,9 +247,6 @@ const DashboardPartners = () => {
                   <Handshake size={28} />
                   Dashboard Étudiants Partners {anneeScolaireFilter}
                 </h1>
-                <p style={{ margin: 0, opacity: 0.9, fontSize: '1rem' }}>
-                  Statistiques et analyses dédiées aux étudiants du programme partenaire
-                </p>
               </div>
               <button
                 onClick={fetchData}
@@ -393,180 +310,34 @@ const DashboardPartners = () => {
             </div>
           </div>
 
-          {/* Statistiques Globales Partners vs Normal */}
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '8px',
-              padding: '2rem',
-              marginBottom: '2rem',
-              border: '1px solid #e5e7eb'
-            }}
-          >
-            <h2
+          {/* Performance Partners */}
+          {statistiquesPartners.length > 0 && (
+            <div
               style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#1f2937',
+                background: '#fff',
+                borderRadius: '8px',
+                padding: '2rem',
                 marginBottom: '2rem',
-                textAlign: 'center'
+                border: '1px solid #e5e7eb'
               }}
             >
-              Comparaison Partners vs Étudiants Normaux
-            </h2>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-              {/* Partners */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', 
-                padding: '1.5rem', 
-                borderRadius: '8px', 
-                textAlign: 'center',
-                border: '1px solid #90caf9'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <Handshake size={24} style={{ color: '#1976d2' }} />
-                  <h3 style={{ fontWeight: 'bold', color: '#1976d2', margin: 0 }}>Partners</h3>
-                </div>
-                <div style={{ marginBottom: '0.5rem', fontSize: '2rem', fontWeight: 'bold', color: '#1565c0' }}>
-                  {statsPartners.partners.nombre}
-                </div>
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem', color: '#1976d2' }}>
-                  {statsPartners.partners.pourcentageRevenue.toFixed(1)}% du chiffre d'affaires total
-                </div>
-                <div style={{ fontWeight: 'bold', color: '#0d47a1', fontSize: '1.1rem' }}>
-                  {formatMoney(statsPartners.partners.chiffreAffaire)} MAD
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Détails Partners */}
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '8px',
-              padding: '2rem',
-              marginBottom: '2rem',
-              border: '1px solid #e5e7eb'
-            }}
-          >
-            <h2
-              style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                marginBottom: '2rem',
-                textAlign: 'center'
-              }}
-            >
-              Analyse Détaillée - Étudiants Partners
-            </h2>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                    Type
-                  </th>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                    Nombre
-                  </th>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                    Chiffre d'affaire Partners
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>Nouveaux Inscrits Partners</strong>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{tableauPartners.nouveauxInscrits.count}</span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>{formatMoney(tableauPartners.nouveauxInscrits.ca)} MAD</strong>
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>Réinscriptions Partners</strong>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>{tableauPartners.reinscriptions.count}</span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>{formatMoney(tableauPartners.reinscriptions.ca)} MAD</strong>
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>Total Partners</strong>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ fontSize: '1.5rem', color: '#1f2937', fontWeight: 'bold' }}>{tableauPartners.total.count}</span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong style={{ fontSize: '1.1rem' }}>{formatMoney(tableauPartners.total.ca)} MAD</strong>
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>Recouvrement Partners</strong>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>
-                      {tableauPartners.recouvrement.percentage.toFixed(2)} %
-                    </span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>{formatMoney(tableauPartners.recouvrement.ca)} MAD</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>Prix Moyen Partner</strong>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <span style={{ fontSize: '1.25rem', color: '#1f2937' }}>-</span>
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <strong>{formatMoney(tableauPartners.prixMoyen)} MAD</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Performance Commerciaux Partners */}
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '8px',
-              padding: '2rem',
-              marginBottom: '2rem',
-              border: '1px solid #e5e7eb'
-            }}
-          >
-            <h2
-              style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#1f2937',
-                marginBottom: '2rem',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              <Users size={24} />
-              Performance Commerciaux - Étudiants Partners {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
-            </h2>
-            
-            {statistiquesCommerciaux.length > 0 ? (
+              <h2
+                style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  marginBottom: '2rem',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <Handshake size={24} />
+                Partners et leurs Étudiants {anneeScolaireFilter === 'toutes' ? '' : anneeScolaireFilter}
+              </h2>
+              
               <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
                   <thead style={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
@@ -578,7 +349,7 @@ const DashboardPartners = () => {
                         color: '#374151', 
                         fontSize: '0.875rem',
                         borderBottom: '2px solid #e5e7eb'
-                      }}>Commercial</th>
+                      }}>Partner</th>
                       <th style={{ 
                         padding: '1rem 1.25rem', 
                         textAlign: 'left', 
@@ -586,7 +357,7 @@ const DashboardPartners = () => {
                         color: '#374151', 
                         fontSize: '0.875rem',
                         borderBottom: '2px solid #e5e7eb'
-                      }}>Contact</th>
+                      }}>Nombre d'Étudiants</th>
                       <th style={{ 
                         padding: '1rem 1.25rem', 
                         textAlign: 'left', 
@@ -594,208 +365,87 @@ const DashboardPartners = () => {
                         color: '#374151', 
                         fontSize: '0.875rem',
                         borderBottom: '2px solid #e5e7eb'
-                      }}>Étudiants Partners</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>CA Partners</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Montant Reçu</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Reste à Payer</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Taux Recouvrement</th>
+                      }}>Chiffre d'Affaires</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {statistiquesCommerciaux.map((stat, index) => {
-                      const tauxRecouvrement = stat.chiffreAffaire > 0 
-                        ? ((stat.totalRecu / stat.chiffreAffaire) * 100).toFixed(1)
-                        : 0;
-                        
-                      return (
-                        <tr key={index} style={{ 
-                          borderBottom: '1px solid #f3f4f6',
-                          opacity: stat.actif ? 1 : 0.6
-                        }}>
-                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                              <div style={{
-                                width: '2.5rem',
-                                height: '2.5rem',
-                                background: '#e3f2fd',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#1976d2'
-                              }}>
-                                <Handshake size={20} />
-                              </div>
-                              <div>
-                                <div style={{ fontWeight: '600', color: '#1e293b' }}>{stat.nom}</div>
-                                {stat.estAdminInscription && (
-                                  <div style={{ 
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.25rem',
-                                    background: '#dbeafe',
-                                    color: '#1e40af',
-                                    padding: '0.125rem 0.5rem',
-                                    borderRadius: '0.375rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '600',
-                                    marginTop: '0.25rem'
-                                  }}>
-                                    <Shield size={12} />
-                                    Admin
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                              {stat.email && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
-                                  <Mail size={14} />
-                                  <span>{stat.email}</span>
-                                </div>
-                              )}
-                              {stat.telephone && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
-                                  <Phone size={14} />
-                                  <span>{stat.telephone}</span>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
-                            <span style={{
-                              display: 'inline-flex',
+                    {statistiquesPartners.map((stat, index) => (
+                      <tr key={index} style={{ 
+                        borderBottom: '1px solid #f3f4f6',
+                        opacity: stat.active ? 1 : 0.6
+                      }}>
+                        <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{
+                              width: '2.5rem',
+                              height: '2.5rem',
+                              background: '#e3f2fd',
+                              borderRadius: '50%',
+                              display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              padding: '0.375rem 0.875rem',
-                              borderRadius: '9999px',
-                              fontSize: '0.875rem',
-                              fontWeight: '600',
-                              color: 'white',
-                              background: '#1976d2',
-                              minWidth: '2rem'
+                              color: '#1976d2'
                             }}>
-                              {stat.countEtudiants || 0}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
-                            <span style={{
-                              fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
-                              fontSize: '0.9rem',
-                              fontWeight: '600',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.375rem',
-                              background: 'rgba(25, 118, 210, 0.1)',
-                              color: '#1565c0'
-                            }}>
-                              {(stat.chiffreAffaire || 0).toLocaleString('fr-FR')} MAD
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
-                            <span style={{
-                              fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
-                              fontSize: '0.9rem',
-                              fontWeight: '600',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.375rem',
-                              background: 'rgba(16, 185, 129, 0.1)',
-                              color: '#047857'
-                            }}>
-                              {(stat.totalRecu || 0).toLocaleString('fr-FR')} MAD
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
-                            <span style={{
-                              fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
-                              fontSize: '0.9rem',
-                              fontWeight: '600',
-                              padding: '0.25rem 0.5rem',
-                              borderRadius: '0.375rem',
-                              background: (stat.reste || 0) > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                              color: (stat.reste || 0) > 0 ? '#dc2626' : '#047857'
-                            }}>
-                              {(stat.reste || 0).toLocaleString('fr-FR')} MAD
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <div style={{
-                                flex: 1,
-                                height: '8px',
-                                background: '#e5e7eb',
-                                borderRadius: '4px',
-                                overflow: 'hidden'
-                              }}>
-                                <div 
-                                  style={{
-                                    height: '100%',
-                                    borderRadius: '4px',
-                                    transition: 'width 0.3s ease',
-                                    width: `${Math.min(tauxRecouvrement, 100)}%`,
-                                    background: tauxRecouvrement >= 70 ? 'linear-gradient(90deg, #10b981, #059669)' : 
-                                               tauxRecouvrement >= 40 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 
-                                               'linear-gradient(90deg, #ef4444, #dc2626)'
-                                  }}
-                                ></div>
-                              </div>
-                              <span style={{
-                                fontSize: '0.875rem',
-                                fontWeight: '600',
-                                color: '#64748b',
-                                minWidth: '3rem',
-                                textAlign: 'right'
-                              }}>
-                                {tauxRecouvrement}%
-                              </span>
+                              <Handshake size={20} />
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#1e293b' }}>{stat.nomPartner}</div>
+                              {stat.email && (
+                                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>{stat.email}</div>
+                              )}
+                              {!stat.active && (
+                                <div style={{ 
+                                  display: 'inline-flex',
+                                  background: '#fee2e2',
+                                  color: '#dc2626',
+                                  padding: '0.125rem 0.5rem',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  marginTop: '0.25rem'
+                                }}>
+                                  Inactif
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '9999px',
+                            fontSize: '1.25rem',
+                            fontWeight: 'bold',
+                            color: 'white',
+                            background: '#1976d2',
+                            minWidth: '3rem'
+                          }}>
+                            {stat.countEtudiants || 0}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                          <span style={{
+                            fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
+                            fontSize: '1.1rem',
+                            fontWeight: 'bold',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '0.375rem',
+                            background: 'rgba(25, 118, 210, 0.1)',
+                            color: '#1565c0'
+                          }}>
+                            {(stat.chiffreAffaire || 0).toLocaleString('fr-FR')} MAD
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#94a3b8', 
-                fontStyle: 'italic', 
-                padding: '2rem' 
-              }}>
-                Aucun commercial n'a d'étudiants Partners pour cette année
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Analyse par Filière Partners */}
           <div
@@ -844,7 +494,7 @@ const DashboardPartners = () => {
                         color: '#374151', 
                         fontSize: '0.875rem',
                         borderBottom: '2px solid #e5e7eb'
-                      }}>Partners</th>
+                      }}>Étudiants Partners</th>
                       <th style={{ 
                         padding: '1rem 1.25rem', 
                         textAlign: 'left', 
@@ -860,31 +510,7 @@ const DashboardPartners = () => {
                         color: '#374151', 
                         fontSize: '0.875rem',
                         borderBottom: '2px solid #e5e7eb'
-                      }}>Nouveaux/Réinscr.</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>Taux Paiement</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
                       }}>CA Partners</th>
-                      <th style={{ 
-                        padding: '1rem 1.25rem', 
-                        textAlign: 'left', 
-                        fontWeight: '700', 
-                        color: '#374151', 
-                        fontSize: '0.875rem',
-                        borderBottom: '2px solid #e5e7eb'
-                      }}>CA Payé</th>
                       <th style={{ 
                         padding: '1rem 1.25rem', 
                         textAlign: 'left', 
@@ -971,47 +597,6 @@ const DashboardPartners = () => {
                             {filiere.specialitesCount}
                           </span>
                         </td>
-                        <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#059669' }}>
-                              {filiere.nouveaux} nouveaux
-                            </span>
-                            <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#3b82f6' }}>
-                              {filiere.reinscriptions} réinscr.
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              ({filiere.tauxNouveaux}% nouveaux)
-                            </span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{
-                              width: '100%',
-                              height: '6px',
-                              background: '#e5e7eb',
-                              borderRadius: '3px',
-                              overflow: 'hidden'
-                            }}>
-                              <div 
-                                style={{
-                                  height: '100%',
-                                  borderRadius: '3px',
-                                  transition: 'width 0.3s ease',
-                                  width: `${Math.min(filiere.tauxPaiement, 100)}%`,
-                                  background: parseFloat(filiere.tauxPaiement) >= 70 ? '#10b981' : 
-                                             parseFloat(filiere.tauxPaiement) >= 40 ? '#f59e0b' : '#ef4444'
-                                }}
-                              ></div>
-                            </div>
-                            <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1e293b' }}>
-                              {filiere.tauxPaiement}%
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              ({filiere.payes} payés)
-                            </span>
-                          </div>
-                        </td>
                         <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
                           <span style={{
                             fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
@@ -1023,19 +608,6 @@ const DashboardPartners = () => {
                             color: '#1565c0'
                           }}>
                             {formatMoney(filiere.ca)} MAD
-                          </span>
-                        </td>
-                        <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>
-                          <span style={{
-                            fontFamily: 'SF Mono, Monaco, Cascadia Code, monospace',
-                            fontSize: '0.9rem',
-                            fontWeight: '600',
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '0.375rem',
-                            background: 'rgba(16, 185, 129, 0.1)',
-                            color: '#047857'
-                          }}>
-                            {formatMoney(filiere.caPaye)} MAD
                           </span>
                         </td>
                         <td style={{ padding: '1rem 1.25rem', verticalAlign: 'middle', textAlign: 'right' }}>

@@ -3,6 +3,9 @@ import React, { useEffect } from 'react';
 import { Download } from 'lucide-react';
 
 // Import des pages
+import AssignerLangues from './pages/AssignerLangues';
+
+import AdminTestsLangue from './pages/AdminTestsLangue';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
@@ -36,7 +39,7 @@ import LiveCoursEtudiant from './pages/LiveCoursEtudiant';
 import ProfLiveCours from './pages/ProfLiveCours';
 import ProfileProfesseur from './pages/ProfileProfesseur';
 import PedagogiqueEtudiants from './pages/PedagogiqueEtudiants';
-
+import GestionCoursPedagogique from './pages/GestionCoursPedagogique';
 import MessageProf from './pages/MessageProf';
 import MessageEtudiant from './pages/MessageEtudiant';
 import ProfileUpdatePage from './pages/ProfileUpdatePage';
@@ -83,9 +86,13 @@ import GestionFinanciere from './pages/GestionFinanciere';
 import PageValidationPaiement from './pages/PageValidationPaiement';
 import ValidationPaiement from './pages/ValidationPaiement';
 import HistoriquePaiements from './pages/HistoriquePaiements';
-import DashboardPartners
- from './pages/DashboardPartners';
-
+import DashboardPartners from './pages/DashboardPartners';
+import PartnersCreateEtudiant
+ from './pages/PartnersCreateEtudiant';
+import ListeCoursPedagogique from './pages/ListeCoursPedagogique';
+import PartnersPage from './pages/PartnersPage';
+import ProfilEtudiantPedagogique from './pages/ProfilEtudiantPedagogique';
+import ModifierCoursEtudiant from './pages/ModifierCoursEtudiant';
 
    function AppContent() {
      const location = useLocation();
@@ -177,7 +184,13 @@ import DashboardPartners
         <Route path="/calendrier" element={<Calendrier />} />
         <Route path="/etudiants/:id" element={<ProfilEtudiant />} />
                 <Route path="/etudiant/:id" element={<ProfilEtudiantadmin />} />
+        <Route path="/pedagogique/cours" element={<ListeCoursPedagogique />} />
+                <Route path="/pedagogique/etudiant/:id" element={<ProfilEtudiantPedagogique />} />
 
+
+<Route path="/pedagogique/etudiant/:id/modifier-cours" element={<ModifierCoursEtudiant />} />
+
+                <Route path="/partners/create-etudiant" element={<PartnersCreateEtudiant />} />
         <Route path="/ajouter-professeur" element={<AjouterProfesseur />} />
         <Route path="/liste-professeurs" element={<ListeProfesseurs />} />
         <Route path="/ajouter-presence" element={<AjouterPresence />} />
@@ -197,12 +210,13 @@ import DashboardPartners
 <Route path="/admin/revenus-mensuels" element={<RevenusMensuels />} />
 <Route path="/commercial" element={<Commercial />} />
 
+<Route path="/assigner-langues" element={<AssignerLangues />} />
 
 <Route path="/pedagogique/etudiants" element={<PedagogiqueEtudiants />} />
 <Route path="/professeur/AjouterBulletin" element={<ProfAjouterBulletin />} />
 <Route path="/finance/validation-paiement" element={<PageValidationPaiement />} />
 
-<Route path="/admin/validation-paiement" element={<ValidationPaiement />} />
+<Route path="/manager/validation-paiement" element={<ValidationPaiement />} />
 <Route path="/professeur/profil" element={<ProfesseurProfil />} />
 <Route path="/pedagogique" element={<PedagogiqueDashboard />} />
 <Route path="/finance/historique-paiements" element={<HistoriquePaiements />} />
@@ -219,6 +233,8 @@ import DashboardPartners
 <Route path="/admin/PaiementManager" element={< PaiementManagerPage />} />
 
 <Route path="/admin/pedagogiques" element={<PedagogiePage />} />
+
+
 
 <Route path="/commercial/etudiant" element={<Commercialetudiants />} />
 <Route path="/admin/administratifs" element={<AdministratifPage />} />
@@ -253,8 +269,12 @@ import DashboardPartners
         <Route path="/finance/listeprofesseurs" element={<ListeProfesseursfinance />} />
 
         <Route path="/pedagogique/professeurs" element={<PedagogiePageprof />} />
-        <Route path="/admin/dashboard-partners" element={<DashboardPartners />} />
 
+<Route path="/admin/tests-langue" element={<AdminTestsLangue />} />
+<Route 
+  path="/pedagogique/gestion-cours" 
+  element={<GestionCoursPedagogique />} 
+/>
         <Route path="/pedagogique/emploi-pedagogique" element={<EmploiPedagogique />} />
         <Route path="/admin/paiements-exp" element={<PaiementsExpadmin />} />
         <Route path="/etudiant" element={<DashboardEtudiant />} />

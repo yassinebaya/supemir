@@ -5,7 +5,6 @@ import {
   CreditCard, Clock, Target, Wallet, ArrowUp, ArrowDown, RefreshCw
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
 
 const RevenusMensuels = () => {
   const [etudiants, setEtudiants] = useState([]);
@@ -58,7 +57,14 @@ const RevenusMensuels = () => {
       }
 
       // Calculer les prévisions avec la nouvelle API
-      await fetchRevenusAPI(anneeASelectionner || anneeScolaireFilter, token);
+      // Filtrer les étudiants inscrits (prixTotal > 0) pour 2025/2026
+      let totalInscrits = 0;
+      if ((anneeASelectionner || anneeScolaireFilter) === '2025/2026') {
+        totalInscrits = etudiantsData.filter(e => e.anneeScolaire === '2025/2026' && parseFloat(e.prixTotal) > 0).length;
+      } else {
+        totalInscrits = etudiantsData.filter(e => (e.nouvelleInscription === true || e.nouvelleInscription === false) && parseFloat(e.prixTotal) > 0).length;
+      }
+      await fetchRevenusAPI(anneeASelectionner || anneeScolaireFilter, token, totalInscrits);
       
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
@@ -70,7 +76,7 @@ const RevenusMensuels = () => {
   };
 
   // FONCTION pour utiliser l'API revenus - CORRIGÉE
-  const fetchRevenusAPI = async (anneeScolaire, token) => {
+  const fetchRevenusAPI = async (anneeScolaire, token, totalInscrits) => {
     try {
       // Encoder l'année scolaire pour l'URL (remplacer / par %2F)
       const anneeScolaireEncoded = encodeURIComponent(anneeScolaire);
@@ -90,9 +96,9 @@ const RevenusMensuels = () => {
       const revenusData = await revenusRes.json();
       
       if (revenusData.success) {
-        // Mettre à jour les états avec les données de l'API
+        // Utiliser le nombre d'inscrits filtrés pour Total Étudiants
         setStatistiquesAnnee({
-          totalEtudiants: revenusData.statistiques.totalEtudiants,
+          totalEtudiants: totalInscrits,
           totalInscriptions: revenusData.statistiques.totalInscriptionReel,
           totalFormation: revenusData.statistiques.totalFormationReel,
           totalCA: revenusData.statistiques.totalCAPrevisionnel,
@@ -275,7 +281,6 @@ const RevenusMensuels = () => {
       <Sidebar onLogout={handleLogout} />
       
       <div style={{ flex: 1, paddingLeft: '0' }}>
-        <Header />
         
         <div style={{ padding: '2rem' }}>
           {/* Header */}

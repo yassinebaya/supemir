@@ -1,0 +1,1249 @@
+/* ===== SÉANCES (SUITE) ===== */
+.seances-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100px;
+}
+
+.seance-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  margin-bottom: 0.5rem;
+}
+
+.seance-item:last-child {
+  margin-bottom: 0;
+}
+
+.seance-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Types de séances avec couleurs différentes */
+.seance-item.rattrapage {
+  border-left-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.seance-item.exception {
+  border-left-color: #ef4444;
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+}
+
+.seance-item.normal {
+  border-left-color: #10b981;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.seance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.cours-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: #1f2937;
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.badges-container {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.seance-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.seance-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #4b5563;
+}
+
+.seance-detail.matiere {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.seance-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.seance-detail.salle span,
+.seance-detail.prof span {
+  font-weight: 500;
+}
+
+/* ===== BADGES AMÉLIORÉS ===== */
+.badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.badge.rattrapage {
+  background: #f59e0b;
+  color: white;
+}
+
+.badge.exception {
+  background: #ef4444;
+  color: white;
+}
+
+.badge.annule {
+  background: #6b7280;
+  color: white;
+}
+
+/* ===== CELLULES VIDES AMÉLIORÉES ===== */
+.empty-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  margin: 0.25rem;
+}
+
+.empty-text {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 500;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ===== CELLULES DES JOURS AMÉLIORÉES ===== */
+.day-cell {
+  padding: 1rem 0.75rem;
+  vertical-align: top;
+  border-right: 1px solid #e2e8f0;
+  min-height: 120px;
+  position: relative;
+  background: #fefefe;
+}
+
+.day-cell:last-child {
+  border-right: none;
+}
+
+/* ===== EN-TÊTES AMÉLIORÉES ===== */
+.day-header {
+  background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
+  color: white;
+  padding: 1.25rem 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  min-width: 180px;
+  position: relative;
+}
+
+.day-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.day-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.day-date {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.day-count {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  margin-top: 0.25rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ===== TABLEAU PRINCIPAL AMÉLIORÉ ===== */
+.schedule-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 900px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.schedule-row {
+  transition: background-color 0.2s ease;
+}
+
+.schedule-row:hover {
+  background-color: rgba(59, 130, 246, 0.02);
+}
+
+.schedule-row:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+/* ===== EFFET PAUSE (COLONNE GRISE) ===== */
+.pause-column {
+  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  color: #6b7280;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-left: 1px solid #d1d5db;
+  border-right: 1px solid #d1d5db;
+  width: 80px;
+}
+
+/* ===== RESPONSIVE AMÉLIORÉ ===== */
+@media (max-width: 1200px) {
+  .schedule-table {
+    min-width: 700px;
+  }
+  
+  .day-header, .day-cell {
+    min-width: 150px;
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .time-slot {
+    min-width: 110px;
+    padding: 1rem 0.5rem;
+  }
+  
+  .seance-item {
+    padding: 0.75rem;
+  }
+  
+  .cours-name {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .schedule-table {
+    min-width: 600px;
+  }
+  
+  .day-header, .day-cell {
+    min-width: 120px;
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .time-slot {
+    min-width: 90px;
+    padding: 0.75rem 0.25rem;
+  }
+  
+  .day-name {
+    font-size: 0.9rem;
+  }
+  
+  .day-date {
+    font-size: 0.75rem;
+  }
+  
+  .day-count {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+  
+  .seance-item {
+    padding: 0.5rem;
+  }
+  
+  .cours-name {
+    font-size: 0.8rem;
+  }
+  
+  .seance-detail {
+    font-size: 0.75rem;
+  }
+  
+  .badge {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-table {
+    min-width: 450px;
+  }
+  
+  .day-header, .day-cell {
+    min-width: 100px;
+  }
+  
+  .time-slot {
+    min-width: 70px;
+  }
+  
+  .time-display {
+    font-size: 0.8rem;
+  }
+  
+  .time-period {
+    font-size: 0.65rem;
+  }
+  
+  .day-name {
+    font-size: 0.8rem;
+  }
+  
+  .cours-name {
+    font-size: 0.75rem;
+    text-transform: none;
+  }
+  
+  .seance-detail {
+    font-size: 0.7rem;
+  }
+}
+
+/* ===== ANIMATIONS SUPPLÉMENTAIRES ===== */
+.seance-item {
+  animation: slideInUp 0.4s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.schedule-row {
+  animation: fadeInRow 0.6s ease-out;
+}
+
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ===== EFFETS DE FOCUS ===== */
+.seance-item:focus-within {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
+}
+
+/* ===== AMÉLIORATION DE LA LISIBILITÉ ===== */
+.schedule-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(147, 51, 234, 0.02) 100%);
+  pointer-events: none;
+  border-radius: 16px;
+}
+
+/* ===== INDICATEURS VISUELS ===== */
+.day-cell.has-classes {
+  border-left: 3px solid #10b981;
+}
+
+.day-cell.has-rattrapage {
+  border-left: 3px solid #f59e0b;
+}
+
+.day-cell.has-exception {
+  border-left: 3px solid #ef4444;
+}
+.seance-detail.prof {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.seance-detail.salle/* ===== STYLE PRINCIPAL ===== */
+.container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.content {
+  flex: 1;
+  margin-left: 250px;
+  padding: 2rem;
+  max-width: calc(100vw - 250px);
+  overflow-x: auto;
+}
+
+/* ===== HEADER ===== */
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.header-subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+/* ===== PROCHAINE SÉANCE ===== */
+.next-seance-card {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(79, 172, 254, 0.3);
+}
+
+.next-seance-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.9;
+}
+
+.next-seance-info {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.next-seance-prof {
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+  opacity: 0.9;
+}
+
+/* ===== STATISTIQUES ===== */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #64748b;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* ===== CONTRÔLES ===== */
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.week-button, .refresh-button, .download-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.week-button {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.week-button:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.refresh-button {
+  background: #06b6d4;
+  color: white;
+}
+
+.refresh-button:hover {
+  background: #0891b2;
+  transform: translateY(-1px);
+}
+
+.download-button {
+  background: #10b981;
+  color: white;
+}
+
+.download-button:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+/* ===== MESSAGES ===== */
+.message {
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.message.success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.message.error {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.message.info {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+/* ===== TABLEAU DE L'EMPLOI DU TEMPS ===== */
+.schedule-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.schedule-table-wrapper {
+  overflow-x: auto;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+/* ===== EN-TÊTES ===== */
+.time-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  width: 120px;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
+
+.day-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  font-weight: 600;
+  min-width: 180px;
+}
+
+.day-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.day-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.day-date {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.day-count {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  margin-top: 0.25rem;
+}
+
+/* ===== LIGNES DU TABLEAU ===== */
+.schedule-row {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.schedule-row:hover {
+  background-color: #f8fafc;
+}
+
+/* ===== CELLULE HORAIRE AMÉLIORÉE ===== */
+.time-slot {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-right: 3px solid #cbd5e1;
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  min-width: 130px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.time-range {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.time-display {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 1rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.time-period {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ===== SÉANCES AMÉLIORÉES ===== */
+.seance-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  margin-bottom: 0.5rem;
+}
+
+.seance-item:last-child {
+  margin-bottom: 0;
+}
+
+.seance-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Types de séances avec couleurs différentes */
+.seance-item.rattrapage {
+  border-left-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.seance-item.exception {
+  border-left-color: #ef4444;
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+}
+
+.seance-item.normal {
+  border-left-color: #10b981;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
+
+.seance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.cours-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: #1f2937;
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.badges-container {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.seance-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.seance-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #4b5563;
+}
+
+.seance-detail.matiere {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.seance-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.seance-detail.salle,
+.seance-detail.prof {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.seance-detail.salle span,
+.seance-detail.prof span {
+  font-weight: 500;
+}
+
+/* ===== CELLULES DES JOURS ===== */
+.day-cell {
+  padding: 1rem;
+  vertical-align: top;
+  border-right: 1px solid #f1f5f9;
+  min-height: 100px;
+  position: relative;
+}
+
+/* ===== SÉANCES ===== */
+.seances-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.seance-item {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem;
+  border-radius: 12px;
+  border-left: 4px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.seance-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+}
+
+.seance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cours-name {
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+}
+
+.seance-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  opacity: 0.95;
+  line-height: 1.4;
+}
+
+.seance-detail:last-child {
+  margin-bottom: 0;
+}
+
+.seance-detail.matiere {
+  font-weight: 600;
+}
+
+.seance-detail.salle {
+  font-weight: 500;
+}
+
+.seance-detail.prof {
+  font-weight: 500;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ===== BADGES ===== */
+.badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.badge.rattrapage {
+  background: #f59e0b;
+  color: white;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.badge.exception {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.badge.annule {
+  background: #6b7280;
+  color: white;
+  box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+}
+
+/* ===== CELLULES VIDES ===== */
+.empty-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  color: #9ca3af;
+  font-style: italic;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 8px;
+  border: 2px dashed #e5e7eb;
+}
+
+.empty-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ===== ÉTAT VIDE PRINCIPAL ===== */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state-description {
+  font-size: 1rem;
+  color: #6b7280;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* ===== CHARGEMENT ===== */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: #6b7280;
+  gap: 1rem;
+}
+
+.loading div:first-child {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.loading div:last-child {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+/* ===== INSTRUCTIONS ===== */
+.instructions {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid #3b82f6;
+  margin-top: 2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.instructions h4 {
+  margin: 0 0 1rem 0;
+  color: #1f2937;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.instructions-content {
+  line-height: 1.8;
+  color: #4b5563;
+  font-size: 0.95rem;
+}
+
+/* ===== PAS DE DONNÉES ===== */
+.no-data {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.no-data-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: #9ca3af;
+}
+
+.no-data-icon {
+  font-size: 3rem;
+}
+
+.no-data-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1200px) {
+  .content {
+    margin-left: 0;
+    max-width: 100vw;
+    padding: 1rem;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .week-navigation {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .stats-container {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+  
+  .schedule-table {
+    min-width: 600px;
+  }
+  
+  .day-header, .day-cell {
+    min-width: 150px;
+  }
+  
+  .time-header, .time-slot {
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 1.5rem;
+  }
+  
+  .header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stat-number {
+    font-size: 2rem;
+  }
+  
+  .next-seance-card, .instructions {
+    padding: 1rem;
+  }
+  
+  .week-button, .refresh-button, .download-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .schedule-table {
+    min-width: 500px;
+  }
+  
+  .time-header, .time-slot {
+    min-width: 80px;
+    padding: 1rem 0.5rem;
+  }
+  
+  .day-header, .day-cell {
+    min-width: 120px;
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .seance-item {
+    padding: 0.75rem;
+  }
+  
+  .cours-name {
+    font-size: 0.9rem;
+  }
+  
+  .seance-detail {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 0.5rem;
+  }
+  
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .week-navigation {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .schedule-table {
+    min-width: 400px;
+  }
+  
+  .time-header, .time-slot {
+    min-width: 60px;
+    padding: 0.75rem 0.25rem;
+  }
+  
+  .day-header, .day-cell {
+    min-width: 100px;
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .day-name {
+    font-size: 0.9rem;
+  }
+  
+  .day-date {
+    font-size: 0.75rem;
+  }
+  
+  .day-count {
+    font-size: 0.7rem;
+  }
+  
+  .seance-item {
+    padding: 0.5rem;
+  }
+  
+  .cours-name {
+    font-size: 0.85rem;
+  }
+  
+  .seance-detail {
+    font-size: 0.75rem;
+  }
+  
+  .badge {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+  }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.schedule-container,
+.next-seance-card,
+.stats-container,
+.controls {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.seance-item {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* ===== AMÉLIORATIONS POUR LA LISIBILITÉ ===== */
+.schedule-table thead tr {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.schedule-table tbody tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+.schedule-table tbody tr:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+/* ===== FOCUS ET ACCESSIBILITÉ ===== */
+.week-button:focus,
+.refresh-button:focus,
+.download-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.seance-item:focus-within {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}

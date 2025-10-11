@@ -21,7 +21,6 @@ import {
   Mail,
   Plus,
   FileText,
-  DollarSign,
   Building
 } from "lucide-react";
 
@@ -640,7 +639,7 @@ const ListeProfesseurs = () => {
           </div>
 
           <div className="filtre-groupe">
-            <label>Cours:</label>
+            <label>Classes:</label>
             <select
               value={filtreCours}
               onChange={(e) => setFiltreCours(e.target.value)}
@@ -709,7 +708,7 @@ const ListeProfesseurs = () => {
                 <th>Téléphone</th>
                 <th>Email</th>
                 <th>Type</th>
-                <th>Cours/Matières</th>
+                <th>Classes/Matières</th>
                 <th>Statut</th>
                 <th>Image</th>
                 <th>Actions</th>
@@ -740,7 +739,6 @@ const ListeProfesseurs = () => {
                           </>
                         ) : (
                           <>
-                            <DollarSign size={14} className="inline mr-1" />
                             Entrepreneur
                           </>
                         )}
@@ -863,19 +861,18 @@ const ListeProfesseurs = () => {
                         <span className={`type-badge ${p.estPermanent ? 'permanent' : 'entrepreneur'}`}>
                           {p.estPermanent ? (
                             <>
-                              <Building size={16} className="inline mr-1" />
                               Permanent
                             </>
                           ) : (
                             <>
-                              <DollarSign size={16} className="inline mr-1" />
-                              Entrepreneur ({p.tarifHoraire ? `${p.tarifHoraire}€/h` : 'Tarif non défini'})
+                              <span className="dh-icon">Dh</span>
+                              Entrepreneur ({p.tarifHoraire ? `${p.tarifHoraire} Dh/h` : 'Tarif non défini'})
                             </>
                           )}
                         </span>
                       </div>
                       <div className="carte-detail cours-detail">
-                        <span className="carte-label">Cours/Matières:</span>
+                        <span className="carte-label">Classes/Matières:</span>
                         <div className="carte-cours">
                           {formatCoursEnseignes(p)}
                         </div>
@@ -1104,11 +1101,11 @@ const ListeProfesseurs = () => {
 
                 {!formAjout.estPermanent && (
                   <div className="form-group">
-                    <label>Tarif Horaire (€) *</label>
+                    <label>Tarif Horaire (Dh) *</label>
                     <input
                       type="number"
                       name="tarifHoraire"
-                      placeholder="Tarif horaire en euros"
+                      placeholder="Tarif horaire en dirhams"
                       value={formAjout.tarifHoraire}
                       onChange={handleChangeAjout}
                       required={!formAjout.estPermanent}
@@ -1121,19 +1118,19 @@ const ListeProfesseurs = () => {
 
               {/* Cours enseignés */}
               <div className="form-section">
-                <h4>Cours enseignés</h4>
+                <h4>Classe enseignés</h4>
                 
                 {formAjout.coursEnseignes.map((cours, index) => (
                   <div key={index} className="cours-enseigne-item">
                     <div className="form-row">
                       <div className="form-group">
-                        <label>Nom du Cours</label>
+                        <label>Nom de la Classe</label>
                         <select
                           value={cours.nomCours}
                           onChange={(e) => modifierCoursEnseigneAjout(index, 'nomCours', e.target.value)}
                           required
                         >
-                          <option value="">Sélectionner un cours</option>
+                          <option value="">Sélectionner une classe</option>
                           {listeCours.map((c) => (
                             <option key={c._id} value={c.nom}>{c.nom}</option>
                           ))}
@@ -1169,7 +1166,7 @@ const ListeProfesseurs = () => {
                   onClick={ajouterCoursEnseigneAjout}
                   className="btn-ajouter-cours"
                 >
-                  <Plus size={16} /> Ajouter un cours
+                  <Plus size={16} /> Ajouter une classe
                 </button>
               </div>
 
@@ -1344,7 +1341,7 @@ const ListeProfesseurs = () => {
                         </>
                       ) : (
                         <>
-                          <DollarSign size={16} className="inline mr-1" /> Entrepreneur
+                          <span className="dh-icon">Dh</span> Entrepreneur
                         </>
                       )}
                     </span>
@@ -1392,7 +1389,7 @@ const ListeProfesseurs = () => {
                   <div className="info-card">
                     <div className="info-label">Tarif Horaire</div>
                     <div className="info-value">
-                      <DollarSign size={16} className="inline mr-1" /> {professeurSelectionne.tarifHoraire}€/h
+                      <span className="dh-icon">Dh</span> {professeurSelectionne.tarifHoraire} Dh/h
                     </div>
                   </div>
                 )}
@@ -1400,7 +1397,7 @@ const ListeProfesseurs = () => {
 
               <div className="cours-section">
                 <h4>
-                  <BookOpen size={20} className="inline mr-2" /> Cours Enseignés
+                  <BookOpen size={20} className="inline mr-2" /> Classes Enseignés
                 </h4>
                 <div className="cours-badges">
                   {professeurSelectionne.coursEnseignes && professeurSelectionne.coursEnseignes.length > 0 ? (
@@ -1616,11 +1613,11 @@ const ListeProfesseurs = () => {
 
                 {!formModifier.estPermanent && (
                   <div className="form-group">
-                    <label>Tarif Horaire (€) *</label>
+                    <label>Tarif Horaire (Dh) *</label>
                     <input
                       type="number"
                       name="tarifHoraire"
-                      placeholder="Tarif horaire en euros"
+                      placeholder="Tarif horaire en dirhams"
                       value={formModifier.tarifHoraire}
                       onChange={handleChangeModifier}
                       required={!formModifier.estPermanent}
@@ -1633,13 +1630,13 @@ const ListeProfesseurs = () => {
 
               {/* Cours enseignés */}
               <div className="form-section">
-                <h4>Cours enseignés</h4>
+                <h4>classe enseignés</h4>
                 
                 {formModifier.coursEnseignes.map((cours, index) => (
                   <div key={index} className="cours-enseigne-item">
                     <div className="form-row">
                       <div className="form-group">
-                        <label>Nom du Cours</label>
+                        <label>Nom de la Classe</label>
                         <select
                           value={cours.nomCours}
                           onChange={(e) => modifierCoursEnseigneModifier(index, 'nomCours', e.target.value)}
@@ -1681,7 +1678,7 @@ const ListeProfesseurs = () => {
                   onClick={ajouterCoursEnseigneModifier}
                   className="btn-ajouter-cours"
                 >
-                  <Plus size={16} /> Ajouter un cours
+                  <Plus size={16} /> Ajouter un classe
                 </button>
               </div>
 

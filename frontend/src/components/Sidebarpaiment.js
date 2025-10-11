@@ -90,7 +90,7 @@ const Sidebar = ({ onLogout }) => {
     },
     
         {
-          path: '/admin/validation-paiement',
+          path: '/manager/validation-paiement',
           label: 'Validation Paiement',
           icon: CheckCircle
         }

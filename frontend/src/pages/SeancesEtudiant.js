@@ -604,45 +604,7 @@ const SeancesEtudiant = () => {
           </div>
         )}
 
-        {/* Statistiques */}
-        <div style={styles.statsContainer}>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalSeances}</div>
-            <div style={styles.statLabel}>
-              <Clock size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Séances totales
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalCours}</div>
-            <div style={styles.statLabel}>
-              <Book size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Cours différents
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalProfs}</div>
-            <div style={styles.statLabel}>
-              <User size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Professeurs
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalMatieres}</div>
-            <div style={styles.statLabel}>
-              <BookOpen size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Matières
-            </div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.totalSalles}</div>
-            <div style={styles.statLabel}>
-              <MapPin size={16} style={{ verticalAlign: 'middle', marginRight: '5px' }} />
-              Salles
-            </div>
-          </div>
-        </div>
-
+       
         {/* Contrôles */}
         <div style={styles.controls}>
           {/* Navigation des semaines */}
@@ -856,7 +818,6 @@ const SeancesEtudiant = () => {
           </>
         ) : (
           <div style={styles.emptyState}>
-            <div style={{ fontSize: '48px', marginBottom: '10px' }}>📚</div>
             <div style={{ fontSize: '18px', marginBottom: '10px' }}>Aucune séance programmée</div>
             <div>Votre emploi du temps sera affiché ici une fois que vos cours seront programmés.</div>
           </div>

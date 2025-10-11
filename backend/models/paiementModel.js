@@ -26,20 +26,41 @@ const paiementSchema = new mongoose.Schema({
     type: String
   },
   
-  // NOUVEAU: Type de paiement pour différencier
+  // ✅ NOUVEAU: Numéro de série unique et obligatoire
+  numeroSerie: {
+    type: String,
+    required: [false, 'Le numéro de série est obligatoire'],
+    unique: true,
+    trim: true,
+    uppercase: true,
+    validate: {
+      validator: function(v) {
+        return v && v.length >= 3; // Minimum 3 caractères
+      },
+      message: 'Le numéro de série doit contenir au moins 3 caractères'
+    }
+  },
+  
+  // Type de paiement pour différencier inscription/formation
   typePaiement: {
     type: String,
     enum: ['inscription', 'formation', 'autre'],
     default: 'formation'
   },
   
-  // NOUVEAU: Numéro de tranche (optionnel)
+  // Pour compatibilité avec l'ancien code
+  estInscription: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Numéro de tranche (pour les paiements échelonnés)
   numeroTranche: {
     type: Number,
     default: null
   },
   
-  // NOUVEAU: Mode de paiement associé (pour référence)
+  // Mode de paiement associé (pour référence)
   modePaiement: {
     type: String,
     enum: ['annuel', 'semestriel', 'trimestriel', 'mensuel'],
@@ -54,7 +75,9 @@ const paiementSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// ============================================
 // MÉTHODES UTILITAIRES
+// ============================================
 
 // Méthode statique pour calculer le total payé par un étudiant
 paiementSchema.statics.getTotalPayeParEtudiant = async function(etudiantId) {
@@ -69,7 +92,10 @@ paiementSchema.statics.getTotalPayeParEtudiant = async function(etudiantId) {
 paiementSchema.statics.getPaiementsInscription = async function(etudiantId) {
   return await this.find({
     etudiant: etudiantId,
-    estInscription: true
+    $or: [
+      { typePaiement: 'inscription' },
+      { estInscription: true }
+    ]
   }).sort({ createdAt: 1 });
 };
 
@@ -77,8 +103,42 @@ paiementSchema.statics.getPaiementsInscription = async function(etudiantId) {
 paiementSchema.statics.getPaiementsFormation = async function(etudiantId) {
   return await this.find({
     etudiant: etudiantId,
-    estInscription: false
+    $or: [
+      { typePaiement: 'formation' },
+      { estInscription: false }
+    ]
   }).sort({ createdAt: 1 });
+};
+
+// ✅ NOUVEAU: Méthode pour vérifier si un numéro de série existe
+paiementSchema.statics.serieExiste = async function(numeroSerie, excludeId = null) {
+  const query = { 
+    numeroSerie: numeroSerie.trim().toUpperCase() 
+  };
+  
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+  
+  const paiement = await this.findOne(query);
+  return paiement !== null;
+};
+
+// ✅ NOUVEAU: Générer un numéro de série automatique (optionnel)
+paiementSchema.statics.genererNumeroSerie = async function() {
+  const annee = new Date().getFullYear();
+  const mois = String(new Date().getMonth() + 1).padStart(2, '0');
+  
+  // Compter les paiements du mois en cours
+  const debutMois = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const finMois = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+  
+  const count = await this.countDocuments({
+    createdAt: { $gte: debutMois, $lte: finMois }
+  });
+  
+  const numero = String(count + 1).padStart(4, '0');
+  return `PAY-${annee}${mois}-${numero}`;
 };
 
 // Méthode statique pour obtenir les revenus mensuels
@@ -107,9 +167,107 @@ paiementSchema.statics.getRevenusMensuels = async function(annee, mois) {
   return result;
 };
 
-// Index pour optimiser les requêtes
+// ✅ NOUVEAU: Statistiques par numéro de série
+paiementSchema.statics.getStatistiquesSeries = async function() {
+  return await this.aggregate([
+    {
+      $group: {
+        _id: {
+          $substr: ['$numeroSerie', 0, 11] // Grouper par préfixe (ex: PAY-202501)
+        },
+        totalMontant: { $sum: '$montant' },
+        nombrePaiements: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { _id: -1 }
+    }
+  ]);
+};
+
+// ✅ NOUVEAU: Méthode d'instance pour obtenir les infos complètes
+paiementSchema.methods.getInfosCompletes = async function() {
+  await this.populate('etudiant', 'nomComplet telephone email');
+  await this.populate('creePar', 'nom email');
+  return this;
+};
+
+// ============================================
+// HOOKS (Middleware)
+// ============================================
+
+// Hook avant la sauvegarde pour synchroniser estInscription avec typePaiement
+paiementSchema.pre('save', function(next) {
+  if (this.typePaiement === 'inscription') {
+    this.estInscription = true;
+  } else if (this.typePaiement === 'formation') {
+    this.estInscription = false;
+  }
+  next();
+});
+
+// ✅ NOUVEAU: Hook pour formater automatiquement le numéro de série
+paiementSchema.pre('save', function(next) {
+  if (this.numeroSerie) {
+    this.numeroSerie = this.numeroSerie.trim().toUpperCase();
+  }
+  next();
+});
+
+// Hook après suppression pour nettoyer les références
+paiementSchema.post('findOneAndDelete', async function(doc) {
+  if (doc) {
+    console.log(`Paiement supprimé: ${doc.numeroSerie}`);
+    // Vous pouvez ajouter ici une logique pour logger la suppression
+    // ou mettre à jour d'autres collections si nécessaire
+  }
+});
+
+// ============================================
+// INDEX POUR OPTIMISER LES REQUÊTES
+// ============================================
+
+// Index unique pour le numéro de série
+paiementSchema.index({ numeroSerie: 1 }, { unique: true });
+
+// Index composés pour les recherches fréquentes
 paiementSchema.index({ etudiant: 1, typePaiement: 1 });
-paiementSchema.index({ createdAt: 1 });
+paiementSchema.index({ etudiant: 1, createdAt: -1 });
 paiementSchema.index({ etudiant: 1, numeroTranche: 1 });
+paiementSchema.index({ createdAt: -1 });
+paiementSchema.index({ typePaiement: 1, createdAt: -1 });
+
+// ✅ NOUVEAU: Index pour recherche par série
+paiementSchema.index({ numeroSerie: 'text' });
+
+// Index pour les statistiques
+paiementSchema.index({ createdAt: 1, typePaiement: 1 });
+
+// ============================================
+// MÉTHODES VIRTUELLES
+// ============================================
+
+// Virtual pour obtenir la date de fin du paiement
+paiementSchema.virtual('dateFin').get(function() {
+  const dateFin = new Date(this.moisDebut);
+  dateFin.setMonth(dateFin.getMonth() + this.nombreMois);
+  return dateFin;
+});
+
+// Virtual pour vérifier si le paiement est expiré
+paiementSchema.virtual('estExpire').get(function() {
+  return new Date() > this.dateFin;
+});
+
+// Virtual pour calculer les jours restants
+paiementSchema.virtual('joursRestants').get(function() {
+  const maintenant = new Date();
+  const difference = this.dateFin - maintenant;
+  return Math.ceil(difference / (1000 * 60 * 60 * 24));
+});
+
+
+paiementSchema.set('toJSON', { virtuals: true });
+paiementSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Paiement', paiementSchema);
