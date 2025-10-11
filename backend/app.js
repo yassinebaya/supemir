@@ -3429,6 +3429,7 @@ app.post('/api/tests/:testId/terminer', authEtudiant, async (req, res) => {
       });
     }
     
+<<<<<<< HEAD
     // ===== APPEL DE LA NOUVELLE MÉTHODE calculerNiveau() =====
     const resultat = test.terminerTest();
     await test.save();
@@ -3442,6 +3443,12 @@ app.post('/api/tests/:testId/terminer', authEtudiant, async (req, res) => {
       premiereErreur: resultat.premiereErreur
     });
     
+=======
+    // Terminer le test et calculer le niveau
+    const resultat = test.terminerTest();
+    await test.save();
+    
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     // Vérifier si les deux tests sont terminés pour mettre à jour nouvelleInscription
     const statutTests = await Test.aTermineLesDeuxTests(req.etudiantId);
     
@@ -3459,7 +3466,11 @@ app.post('/api/tests/:testId/terminer', authEtudiant, async (req, res) => {
     });
     
   } catch (error) {
+<<<<<<< HEAD
     console.error('❌ Erreur terminaison test:', error);
+=======
+    console.error('Erreur terminaison test:', error);
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     res.status(500).json({ 
       success: false, 
       message: 'Erreur lors de la terminaison du test', 
@@ -11393,29 +11404,51 @@ app.get('/api/presences/etudiant/:id', authAdminOrPaiementManager, async (req, r
 // Route pour "Gestion des Étudiants"
 
 // Route pour "Gestion des Cours"
+<<<<<<< HEAD
 // ============================================
 // ROUTE: Mes Étudiants (Pédagogique) - SANS FILTRE PRIX
 // ============================================
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 app.get('/api/pedagogique/mes-etudiants', authPedagogique, async (req, res) => {
   try {
     const estGeneral = req.user.estGeneral;
     
+<<<<<<< HEAD
     // ✅ Query simplifiée : Seulement année scolaire
     let query = {
       anneeScolaire: '2025/2026'
     };
     
     // Si pas général, filtrer par filière
+=======
+    let query = {
+      anneeScolaire: '2025/2026',
+      prixTotal: { 
+        $exists: true,  // Le champ existe
+        $ne: null,      // N'est pas null
+        $gt: 0          // Strictement supérieur à 0
+      }
+    };
+    
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     if (!estGeneral) {
       query.filiere = req.user.filiere;
     }
     
+<<<<<<< HEAD
     // Récupérer TOUS les étudiants de 2025/2026 (avec ou sans prixTotal)
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     const etudiants = await Etudiant.find(query)
       .populate('commercial', 'nom nomComplet')
       .sort({ createdAt: -1 });
 
+<<<<<<< HEAD
     console.log(`📚 Gestion Cours - ${etudiants.length} étudiants (2025/2026, TOUS)`);
+=======
+    console.log(`📚 Gestion Cours - ${etudiants.length} étudiants (2025/2026, prix > 0)`);
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     
     res.json(etudiants);
   } catch (error) {
@@ -13071,6 +13104,7 @@ app.put('/api/paiements/:id', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // ============================================
 // ROUTE DELETE: Supprimer un paiement
 // ============================================
@@ -13186,6 +13220,8 @@ app.delete('/api/paiements/:id', authAdminOrPaiementManager, async (req, res) =>
     });
   }
 });
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 app.get('/api/revenus/previsions/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
   try {
     const anneeScolaire = decodeURIComponent(req.params.anneeScolaire);

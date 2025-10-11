@@ -110,8 +110,13 @@ const PedagogiqueDashboard = () => {
   const getFilteredEtudiants = () => {
     let filtered = [...etudiants];
 
+<<<<<<< HEAD
     // SUPPRIMÉ: Exclure les étudiants avec prixTotal = 0, null, undefined ou vide
     // filtered = filtered.filter(e => e.prixTotal && e.prixTotal > 0);
+=======
+    // Exclure les étudiants avec prixTotal = 0, null, undefined ou vide
+    filtered = filtered.filter(e => e.prixTotal && e.prixTotal > 0);
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 
     // Filtre par recherche textuelle
     if (searchTerm.trim() !== '') {

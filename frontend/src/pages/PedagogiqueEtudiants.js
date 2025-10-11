@@ -261,6 +261,9 @@ const EtudiantsPedagogiquePage = () => {
   const getFilteredEtudiants = () => {
     let filtered = [...etudiants];
 
+    // Exclure les étudiants avec prixTotal = 0
+    filtered = filtered.filter(e => e.prixTotal > 0);
+
     // Recherche textuelle
     if (searchTerm.trim() !== '') {
       const search = searchTerm.toLowerCase();

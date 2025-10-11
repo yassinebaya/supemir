@@ -483,6 +483,113 @@ const styles = `
     cursor: not-allowed;
   }
 
+<<<<<<< HEAD
+=======
+  .modal-warning-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .modal-warning-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    max-width: 28rem;
+    width: 100%;
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+
+  .modal-warning-icon {
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 3rem;
+    width: 3rem;
+    border-radius: 50%;
+    background-color: #fee2e2;
+    margin-bottom: 1rem;
+  }
+
+  .modal-warning-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #111827;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  .modal-warning-text {
+    color: #4b5563;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+  }
+
+  .modal-warning-list {
+    background-color: #fef3c7;
+    border: 1px solid #fde047;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .modal-warning-list-title {
+    font-weight: 600;
+    color: #854d0e;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .modal-warning-question {
+    color: #92400e;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .modal-warning-buttons {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .btn-modal-secondary {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+  }
+
+  .btn-modal-secondary:hover {
+    background-color: #f9fafb;
+  }
+
+  .btn-modal-primary {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+  }
+
+  .btn-modal-primary:hover {
+    background-color: #1d4ed8;
+  }
+
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
   .btn-next {
     padding: 0.5rem 1.5rem;
     background-color: #2563eb;
@@ -596,6 +703,7 @@ const styles = `
   .loading-text {
     color: #4b5563;
   }
+<<<<<<< HEAD
 
   .modal-warning-overlay {
     position: fixed;
@@ -700,6 +808,8 @@ const styles = `
   .btn-modal-primary:hover {
     background-color: #1d4ed8;
   }
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 `;
 
 // ===== COMPOSANT MODAL OBLIGATOIRE =====
@@ -843,6 +953,7 @@ const PageSelectionTest = ({ statutTests, onDemarrerTest }) => {
   );
 };
 
+<<<<<<< HEAD
 // ===== MODAL D'AVERTISSEMENT (OPTIONNEL - Version informative) =====
 const ModalQuestionsNonRepondues = ({ questionsNonRepondues, onContinuer, onTerminer }) => {
   return (
@@ -857,6 +968,22 @@ const ModalQuestionsNonRepondues = ({ questionsNonRepondues, onContinuer, onTerm
           <p className="modal-warning-text">
             Vous avez {questionsNonRepondues.length} question{questionsNonRepondues.length > 1 ? 's' : ''} non répondue{questionsNonRepondues.length > 1 ? 's' : ''}. 
             Cela peut affecter votre niveau final.
+=======
+// ===== MODAL D'AVERTISSEMENT =====
+const ModalQuestionsNonRepondues = ({ questionsNonRepondues, onFermer }) => {
+  return (
+    <>
+      <style>{styles}</style>
+      <div className="modal-warning-overlay" onClick={onFermer}>
+        <div className="modal-warning-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-warning-icon">
+            <AlertCircle style={{ height: '1.5rem', width: '1.5rem', color: '#dc2626' }} />
+          </div>
+          <h3 className="modal-warning-title">Impossible de terminer</h3>
+          <p className="modal-warning-text">
+            Vous devez répondre à toutes les questions avant de terminer le test.
+            Il vous reste {questionsNonRepondues.length} question{questionsNonRepondues.length > 1 ? 's' : ''} à compléter.
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
           </p>
           <div className="modal-warning-list">
             <p className="modal-warning-list-title">Questions non répondues :</p>
@@ -872,11 +999,16 @@ const ModalQuestionsNonRepondues = ({ questionsNonRepondues, onContinuer, onTerm
             )}
           </div>
           <div className="modal-warning-buttons">
+<<<<<<< HEAD
             <button onClick={onContinuer} className="btn-modal-secondary">
               Compléter les questions
             </button>
             <button onClick={onTerminer} className="btn-modal-primary">
               Terminer quand même
+=======
+            <button onClick={onFermer} className="btn-modal-primary" style={{ flex: 'none', width: '100%' }}>
+              Compléter les questions manquantes
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
             </button>
           </div>
         </div>
@@ -957,6 +1089,10 @@ const ComposantTest = ({ langue, questions, testId, onTerminer }) => {
       });
       const data = await response.json();
       
+<<<<<<< HEAD
+=======
+      // Debug: Afficher les données reçues du backend
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
       console.log('Données reçues du backend:', data);
       console.log('Score:', data.resultat?.score);
       console.log('Total questions:', data.resultat?.totalQuestions);
@@ -969,17 +1105,27 @@ const ComposantTest = ({ langue, questions, testId, onTerminer }) => {
     setChargement(false);
   };
 
+<<<<<<< HEAD
   // ===== NOUVELLE LOGIQUE: Modal informatif mais permet de terminer =====
   const verifierEtTerminer = () => {
+=======
+  const verifierEtTerminer = () => {
+    // Vérifier si toutes les questions ont été répondues
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     const questionsNonRepondues = questions
       .map((q, index) => ({ ...q, numero: index + 1 }))
       .filter(q => reponses[q.id] === undefined);
 
     if (questionsNonRepondues.length > 0) {
+<<<<<<< HEAD
       // Afficher modal d'avertissement avec option de continuer ou terminer
       setAfficherModalAvertissement(true);
     } else {
       // Toutes les questions sont répondues
+=======
+      setAfficherModalAvertissement(true);
+    } else {
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
       terminerTest();
     }
   };
@@ -988,11 +1134,14 @@ const ComposantTest = ({ langue, questions, testId, onTerminer }) => {
     setAfficherModalAvertissement(false);
   };
 
+<<<<<<< HEAD
   const handleTerminerQuandMeme = () => {
     setAfficherModalAvertissement(false);
     terminerTest();
   };
 
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
   const getQuestionsNonRepondues = () => {
     return questions
       .map((q, index) => ({ ...q, numero: index + 1 }))
@@ -1030,6 +1179,10 @@ const ComposantTest = ({ langue, questions, testId, onTerminer }) => {
 
           <div className="question-card">
             <div style={{ marginBottom: '1.5rem' }}>
+<<<<<<< HEAD
+=======
+              <span className="step-badge">{question.step}</span>
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
               <h3 className="question-text">{question.question}</h3>
             </div>
 
@@ -1084,8 +1237,12 @@ const ComposantTest = ({ langue, questions, testId, onTerminer }) => {
           {afficherModalAvertissement && (
             <ModalQuestionsNonRepondues
               questionsNonRepondues={getQuestionsNonRepondues()}
+<<<<<<< HEAD
               onContinuer={handleFermerModal}
               onTerminer={handleTerminerQuandMeme}
+=======
+              onFermer={handleFermerModal}
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
             />
           )}
         </div>
@@ -1123,7 +1280,11 @@ const PageResultat = ({ resultat, langue, onRetour }) => {
               {resultat.premiereErreur && resultat.premiereErreur.questionId && (
                 <div className="warning-box">
                   <p className="warning-text">
+<<<<<<< HEAD
                     Première erreur ou question non répondue détectée au niveau <strong>{resultat.premiereErreur.step}</strong> 
+=======
+                    Première erreur détectée au niveau <strong>{resultat.premiereErreur.step}</strong> 
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                     (Question #{resultat.premiereErreur.questionId})
                   </p>
                 </div>

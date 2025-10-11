@@ -753,7 +753,11 @@ const SeancesProfesseur = () => {
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>{stats.totalCours}</div>
                 <div style={styles.statLabel}>
+<<<<<<< HEAD
                   Classes différents
+=======
+                  Cours différents
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                 </div>
               </div>
               <div style={styles.statCard}>
@@ -1009,7 +1013,11 @@ const SeancesProfesseur = () => {
                   <div style={styles.statCard}>
                     <div style={styles.statNumber}>{statistiques.statistiques.coursUniques}</div>
                     <div style={styles.statLabel}>
+<<<<<<< HEAD
                       Classes Différents
+=======
+                      Cours Différents
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                     </div>
                   </div>
                   <div style={styles.statCard}>
@@ -1087,7 +1095,11 @@ const SeancesProfesseur = () => {
             <th style={styles.headerCell}>Date</th>
             <th style={styles.headerCell}>Jour</th>
             <th style={styles.headerCell}>Horaire</th>
+<<<<<<< HEAD
             <th style={styles.headerCell}>Classe</th>
+=======
+            <th style={styles.headerCell}>Cours</th>
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
             <th style={styles.headerCell}>Matière</th>
             <th style={styles.headerCell}>Salle</th>
             <th style={styles.headerCell}>Durée</th>

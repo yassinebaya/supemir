@@ -125,12 +125,17 @@ const STEPS_CONFIG = {
   }
 };
 
+<<<<<<< HEAD
 // ===== NOUVELLE MÉTHODE calculerNiveau =====
+=======
+// Méthode pour calculer le niveau basé sur la première erreur
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 testSchema.methods.calculerNiveau = function() {
   const reponsesCorrectes = REPONSES_CORRECTES[this.langue];
   const steps = STEPS_CONFIG[this.langue];
   
   let score = 0;
+<<<<<<< HEAD
   let niveauFinal = 'A1'; // Niveau par défaut
   let premiereErreur = { step: null, questionId: null };
   let stepsPrecedentsCorrects = true;
@@ -141,10 +146,20 @@ testSchema.methods.calculerNiveau = function() {
     let toutesQuestionsRepondues = true;
     
     // Vérifier toutes les questions de ce step
+=======
+  let niveauFinal = this.langue === 'anglais' ? 'B2' : 'B2';
+  let premiereErreur = { step: null, questionId: null };
+  
+  // Parcourir toutes les questions dans l'ordre
+  for (let [stepName, stepConfig] of Object.entries(steps)) {
+    let erreurTrouvee = false;
+    
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     for (let qId = stepConfig.debut; qId <= stepConfig.fin; qId++) {
       const reponseEtudiant = this.reponses.get(qId.toString());
       const reponseCorrecte = reponsesCorrectes[qId];
       
+<<<<<<< HEAD
       // Si la question n'est pas répondue
       if (reponseEtudiant === undefined) {
         toutesQuestionsRepondues = false;
@@ -168,11 +183,24 @@ testSchema.methods.calculerNiveau = function() {
           if (!premiereErreur.questionId) {
             premiereErreur.step = stepName;
             premiereErreur.questionId = qId;
+=======
+      if (reponseEtudiant !== undefined) {
+        if (reponseEtudiant === reponseCorrecte) {
+          score++;
+        } else {
+          // PREMIÈRE ERREUR TROUVÉE
+          if (!premiereErreur.questionId) {
+            premiereErreur.step = stepName;
+            premiereErreur.questionId = qId;
+            niveauFinal = stepConfig.niveau;
+            erreurTrouvee = true;
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
           }
         }
       }
     }
     
+<<<<<<< HEAD
     // Déterminer si ce step est COMPLET et CORRECT
     const stepCompletEtCorrect = toutesQuestionsRepondues && toutesReponsesCorrectes;
     
@@ -182,6 +210,11 @@ testSchema.methods.calculerNiveau = function() {
     } else {
       // Dès qu'un step n'est pas complet/correct, on arrête la progression
       stepsPrecedentsCorrects = false;
+=======
+    // Si erreur trouvée dans ce step, le niveau final est celui de ce step
+    if (erreurTrouvee) {
+      break;
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     }
   }
   

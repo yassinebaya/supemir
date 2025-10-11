@@ -1765,6 +1765,7 @@ const EmploiPedagogique = () => {
       {/* Modal pour configurer les créneaux */}
       <ModalCreneaux />
 
+<<<<<<< HEAD
  {/* Modal Statistiques Rattrapages */}
 {showStatsRattrapages && (
   <div className="modal-overlay" onClick={() => setShowStatsRattrapages(false)}>
@@ -1831,6 +1832,66 @@ const EmploiPedagogique = () => {
                   <span>Taux de rattrapage: <strong className="rattrapage">{stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%</strong></span>
                 </div>
               )}
+=======
+      {/* Modal Statistiques Rattrapages */}
+      {showStatsRattrapages && (
+        <div className="modal-overlay">
+          <div className="modal-content-large">
+            <h3>📊 Statistiques des Rattrapages</h3>
+            
+            {loadingStats ? (
+              <div className="loading-stats">
+                <div>Chargement des statistiques...</div>
+              </div>
+            ) : (
+              <div>
+                {statsRattrapages.map(stat => (
+                  <div key={stat._id} className={`stat-card ${stat.seancesRattrapage > 0 ? 'has-rattrapage' : ''}`}>
+                    <div className="stat-header">
+                      {stat.nomProfesseur}
+                    </div>
+                    
+                    <div className="stat-grid">
+                      <div className="stat-item">
+                        <div className="stat-label">Total séances:</div>
+                        <div className="stat-value">{stat.totalSeances}</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-label">Séances normales:</div>
+                        <div className="stat-value normal">{stat.seancesNormales}</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-label">Rattrapages requis:</div>
+                        <div className="stat-value rattrapage">{stat.seancesRattrapage}</div>
+                      </div>
+                    </div>
+                    
+                    {stat.totalSeances > 0 && (
+                      <div className="stat-taux">
+                        <span>Taux de présence: <strong>{Math.round((stat.seancesNormales / stat.totalSeances) * 100)}%</strong></span>
+                        <span>Taux de rattrapage: <strong className="rattrapage">{stat.pourcentageRattrapages || Math.round((stat.seancesRattrapage / stat.totalSeances) * 100)}%</strong></span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {statsRattrapages.length === 0 && (
+                  <div className="empty-stats">
+                    <div>📊</div>
+                    <div>Aucune donnée de rattrapage disponible</div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="modal-footer">
+              <button
+                onClick={() => setShowStatsRattrapages(false)}
+                className="modal-button cancel"
+              >
+                Fermer
+              </button>
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
             </div>
           ))}
           

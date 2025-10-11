@@ -3,8 +3,11 @@ import React, { useEffect } from 'react';
 import { Download } from 'lucide-react';
 
 // Import des pages
+<<<<<<< HEAD
 import AssignerLangues from './pages/AssignerLangues';
 
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 import AdminTestsLangue from './pages/AdminTestsLangue';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -234,6 +237,10 @@ import ModifierCoursEtudiant from './pages/ModifierCoursEtudiant';
 
 <Route path="/admin/pedagogiques" element={<PedagogiePage />} />
 
+<<<<<<< HEAD
+=======
+<Route path="/admin/partners" element={<PartnersPage />} />
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 
 
 <Route path="/commercial/etudiant" element={<Commercialetudiants />} />

@@ -88,7 +88,20 @@ const Sidebar = ({ onLogout }) => {
       label: 'Revenus Mensuels',
       icon: BarChart3
     },
+<<<<<<< HEAD
    
+=======
+    {
+      path: '/admin/partners',
+      label: 'Partenaires',
+      icon: Handshake
+    },
+    {
+      path: '/admin/dashboard-partners',
+      label: 'Partenaires',
+      icon: Home
+    },
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
  
     {
       path: '/liste-classes',

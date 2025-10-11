@@ -66,6 +66,7 @@ const AjouterPaiement = () => {
 
   // Chargement initial des données
   useEffect(() => {
+<<<<<<< HEAD
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -109,8 +110,55 @@ const AjouterPaiement = () => {
         showMessage('❌ Erreur lors du chargement des données', 'error');
       } finally {
         setLoading(false);
+=======
+  const fetchData = async () => {
+  const token = localStorage.getItem('token');
+  const config = { headers: { Authorization: `Bearer ${token}` } };
+
+  try {
+    const resEtudiants = await axios.get('http://195.179.229.230:5000/api/etudiant', config);
+    const resCours = await axios.get('http://195.179.229.230:5000/api/cours', config);
+
+    // FILTRER : étudiants actifs ET avec prixTotal > 0
+    const etudiantsActifs = resEtudiants.data.filter(e => 
+      e.actif && e.prixTotal > 0
+    );
+
+    setEtudiantsComplets(etudiantsActifs);
+
+    const etudiantsOptions = etudiantsActifs.map(e => ({
+      value: e._id,
+      label: e.nomComplet
+    }));
+
+    setEtudiants(etudiantsOptions);
+    setCours(resCours.data.map(c => ({ value: c.nom, label: c.nom })));
+
+    const savedData = JSON.parse(localStorage.getItem('paiementPreRempli'));
+    if (savedData) {
+      const etuId = savedData.etudiant;
+      const coursSaved = savedData.cours || [];
+
+      const etudiantComplet = etudiantsActifs.find(e => e._id === etuId);
+      
+      if (etudiantComplet) {
+        setForm(prev => ({
+          ...prev,
+          etudiant: etuId,
+          cours: coursSaved
+        }));
+
+        await handleEtudiantChangeInternal(etudiantComplet, etuId, coursSaved);
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
       }
-    };
+
+      localStorage.removeItem('paiementPreRempli');
+    }
+
+  } catch (err) {
+    console.error('Erreur chargement données:', err);
+  }
+};
 
     fetchData();
   }, [getAuthConfig, showMessage]);

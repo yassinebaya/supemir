@@ -40,6 +40,7 @@ const TableCours = () => {
 
   const getNombreEtudiants = (nomCours, regimeFormation = null) => {
     return etudiants.filter(e => {
+<<<<<<< HEAD
       if (e.anneeScolaire !== '2025/2026') {
         return false;
       }
@@ -80,6 +81,15 @@ const TableCours = () => {
       if (e.nouvelleInscription !== false) {
         return false;
       }
+=======
+      if (e.prixTotal === 0 || e.prixTotal === null || e.prixTotal === undefined) {
+        return false;
+      }
+      
+      if (e.anneeScolaire !== '2025/2026') {
+        return false;
+      }
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
       
       const coursEtudiant = e.cours;
       let isInCours = false;
@@ -117,14 +127,22 @@ const TableCours = () => {
     let filteredCours = [];
 
     if (typeTable === 'licence_master') {
+<<<<<<< HEAD
       worksheetData = [["Nom du Cours", "Nombre d'Étudiants", "Réinscriptions", "Executive"]];
+=======
+      worksheetData = [["Nom du Cours", "Nombre d'Étudiants", "Executive"]];
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
       filteredCours = cours.filter(c => {
         const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
         const nombreEtudiants = getNombreEtudiants(c.nom);
         return isLicenceMaster && nombreEtudiants > 0;
       });
     } else {
+<<<<<<< HEAD
       worksheetData = [["Nom du Cours", "Régime de Formation", "Nombre d'Étudiants", "Réinscriptions"]];
+=======
+      worksheetData = [["Nom du Cours", "Régime de Formation", "Nombre d'Étudiants"]];
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
       filteredCours = cours.filter(c => {
         const isLicenceMaster = isLicenceProOrMasterPro(c.nom);
         const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
@@ -135,6 +153,7 @@ const TableCours = () => {
     filteredCours.forEach(c => {
       if (typeTable === 'licence_master') {
         const nombreEtudiants = getNombreEtudiants(c.nom);
+<<<<<<< HEAD
         const nombreReinscriptions = getNombreReinscriptions(c.nom);
         const coursNameLower = c.nom.toLowerCase();
         const isExecutive = coursNameLower.includes('executive') || coursNameLower.includes('exécutif');
@@ -143,6 +162,14 @@ const TableCours = () => {
         const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
         const nombreReinscriptions = getNombreReinscriptions(c.nom, regimeFormation);
         worksheetData.push([c.nom, regimeFormation, nombreEtudiants, nombreReinscriptions]);
+=======
+        const coursNameLower = c.nom.toLowerCase();
+        const isExecutive = coursNameLower.includes('executive') || coursNameLower.includes('exécutif');
+        worksheetData.push([c.nom, nombreEtudiants, isExecutive ? 'Oui' : 'Non']);
+      } else {
+        const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
+        worksheetData.push([c.nom, regimeFormation, nombreEtudiants]);
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
       }
     });
 
@@ -156,8 +183,13 @@ const TableCours = () => {
       const ws = window.XLSX.utils.aoa_to_sheet(worksheetData);
 
       ws['!cols'] = typeTable === 'licence_master' 
+<<<<<<< HEAD
         ? [{ wch: 60 }, { wch: 20 }, { wch: 15 }, { wch: 15 }]
         : [{ wch: 50 }, { wch: 25 }, { wch: 20 }, { wch: 15 }];
+=======
+        ? [{ wch: 60 }, { wch: 20 }, { wch: 15 }]
+        : [{ wch: 50 }, { wch: 25 }, { wch: 20 }];
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 
       const sheetName = typeTable === 'licence_master' 
         ? 'Licences & Masters Pro'
@@ -386,7 +418,10 @@ const TableCours = () => {
     });
     
     const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom, regimeFormation), 0);
+<<<<<<< HEAD
     const totalReinscriptions = filteredCours.reduce((sum, c) => sum + getNombreReinscriptions(c.nom, regimeFormation), 0);
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 
     return (
       <div>
@@ -420,14 +455,21 @@ const TableCours = () => {
               <tr>
                 <th style={styles.th}>Nom du Cours</th>
                 <th style={styles.thCenter}>Régime</th>
+<<<<<<< HEAD
                 <th style={styles.thCenter}>Nombre d'Étudiants</th>
                 <th style={styles.thLast}>Réinscriptions</th>
+=======
+                <th style={styles.thLast}>Nombre d'Étudiants</th>
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
               </tr>
             </thead>
             <tbody style={styles.tbody}>
               {filteredCours.map((c, index) => {
                 const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
+<<<<<<< HEAD
                 const nombreReinscriptions = getNombreReinscriptions(c.nom, regimeFormation);
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                 
                 return (
                   <tr 
@@ -451,6 +493,7 @@ const TableCours = () => {
                         TA
                       </span>
                     </td>
+<<<<<<< HEAD
                     <td style={styles.tdCenter}>
                       <div style={styles.studentBadge}>
                         <Users size={12} />
@@ -461,6 +504,12 @@ const TableCours = () => {
                       <div style={styles.studentBadge}>
                         <Users size={12} />
                         {nombreReinscriptions}
+=======
+                    <td style={styles.tdLast}>
+                      <div style={styles.studentBadge}>
+                        <Users size={12} />
+                        {nombreEtudiants}
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                       </div>
                     </td>
                   </tr>
@@ -473,9 +522,12 @@ const TableCours = () => {
                 <td style={styles.totalValue}>
                   {total} étudiants
                 </td>
+<<<<<<< HEAD
                 <td style={styles.totalValue}>
                   {totalReinscriptions} réinscriptions
                 </td>
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
               </tr>
             </tbody>
           </table>
@@ -492,7 +544,10 @@ const TableCours = () => {
     });
     
     const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom, regimeFormation), 0);
+<<<<<<< HEAD
     const totalReinscriptions = filteredCours.reduce((sum, c) => sum + getNombreReinscriptions(c.nom, regimeFormation), 0);
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 
     return (
       <div>
@@ -526,14 +581,21 @@ const TableCours = () => {
               <tr>
                 <th style={styles.th}>Nom du Cours</th>
                 <th style={styles.thCenter}>Régime</th>
+<<<<<<< HEAD
                 <th style={styles.thCenter}>Nombre d'Étudiants</th>
                 <th style={styles.thLast}>Réinscriptions</th>
+=======
+                <th style={styles.thLast}>Nombre d'Étudiants</th>
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
               </tr>
             </thead>
             <tbody style={styles.tbody}>
               {filteredCours.map((c, index) => {
                 const nombreEtudiants = getNombreEtudiants(c.nom, regimeFormation);
+<<<<<<< HEAD
                 const nombreReinscriptions = getNombreReinscriptions(c.nom, regimeFormation);
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                 
                 return (
                   <tr 
@@ -557,6 +619,7 @@ const TableCours = () => {
                         FI
                       </span>
                     </td>
+<<<<<<< HEAD
                     <td style={styles.tdCenter}>
                       <div style={styles.studentBadge}>
                         <Users size={12} />
@@ -567,6 +630,12 @@ const TableCours = () => {
                       <div style={styles.studentBadge}>
                         <Users size={12} />
                         {nombreReinscriptions}
+=======
+                    <td style={styles.tdLast}>
+                      <div style={styles.studentBadge}>
+                        <Users size={12} />
+                        {nombreEtudiants}
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                       </div>
                     </td>
                   </tr>
@@ -579,9 +648,12 @@ const TableCours = () => {
                 <td style={styles.totalValue}>
                   {total} étudiants
                 </td>
+<<<<<<< HEAD
                 <td style={styles.totalValue}>
                   {totalReinscriptions} réinscriptions
                 </td>
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
               </tr>
             </tbody>
           </table>
@@ -597,7 +669,10 @@ const TableCours = () => {
     });
     
     const total = filteredCours.reduce((sum, c) => sum + getNombreEtudiants(c.nom), 0);
+<<<<<<< HEAD
     const totalReinscriptions = filteredCours.reduce((sum, c) => sum + getNombreReinscriptions(c.nom), 0);
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 
     return (
       <div>
@@ -631,14 +706,20 @@ const TableCours = () => {
               <tr>
                 <th style={styles.th}>Nom du Cours</th>
                 <th style={styles.thCenter}>Nombre d'Étudiants</th>
+<<<<<<< HEAD
                 <th style={styles.thCenter}>Réinscriptions</th>
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                 <th style={styles.thLast}>Executive</th>
               </tr>
             </thead>
             <tbody style={styles.tbody}>
               {filteredCours.map((c, index) => {
                 const nombreEtudiants = getNombreEtudiants(c.nom);
+<<<<<<< HEAD
                 const nombreReinscriptions = getNombreReinscriptions(c.nom);
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                 const coursNameLower = c.nom.toLowerCase();
                 const isExecutive = coursNameLower.includes('executive') || coursNameLower.includes('exécutif');
                 
@@ -665,12 +746,15 @@ const TableCours = () => {
                         {nombreEtudiants}
                       </div>
                     </td>
+<<<<<<< HEAD
                     <td style={styles.tdCenter}>
                       <div style={styles.studentBadge}>
                         <Users size={12} />
                         {nombreReinscriptions}
                       </div>
                     </td>
+=======
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
                     <td style={styles.tdLast}>
                       <span style={styles.executiveBadge}>
                         <Briefcase size={12} />
@@ -684,6 +768,7 @@ const TableCours = () => {
                 <td style={styles.totalLabel}>
                   Total ({filteredCours.length} cours)
                 </td>
+<<<<<<< HEAD
                 <td style={styles.totalValue}>
                   {total} étudiants
                 </td>
@@ -693,6 +778,11 @@ const TableCours = () => {
                 <td style={styles.totalValue}>
                   -
                 </td>
+=======
+                <td style={styles.totalValue} colSpan="2">
+                  {total} étudiants
+                </td>
+>>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
               </tr>
             </tbody>
           </table>
