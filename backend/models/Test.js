@@ -88,23 +88,56 @@ const testSchema = new mongoose.Schema({
 // Index pour recherche rapide
 testSchema.index({ etudiant: 1, langue: 1 });
 
-// RÉPONSES CORRECTES
+// ===== RÉPONSES CORRECTES MISES À JOUR =====
 const REPONSES_CORRECTES = {
+  // ANGLAIS - Tes réponses (a=0, b=1, c=2, d=3)
   anglais: {
-    1: 1, 2: 1, 3: 0, 4: 1, 5: 0, 6: 2, 7: 0, 8: 1, 9: 2, 10: 0,
-    11: 0, 12: 2, 13: 1, 14: 2, 15: 0, 16: 2, 17: 1, 18: 1, 19: 1, 20: 2,
-    21: 2, 22: 0, 23: 2, 24: 2, 25: 0, 26: 2, 27: 0, 28: 2, 29: 2, 30: 1,
+    1: 0, 2: 1, 3: 0, 4: 1, 5: 0, 6: 2, 7: 0, 8: 1, 9: 0, 10: 0,
+    11: 0, 12: 2, 13: 1, 14: 0, 15: 0, 16: 2, 17: 1, 18: 1, 19: 1, 20: 2,
+    21: 2, 22: 0, 23: 2, 24: 2, 25: 2, 26: 2, 27: 0, 28: 2, 29: 2, 30: 1,
     31: 2, 32: 2, 33: 0, 34: 2, 35: 1, 36: 1, 37: 2, 38: 0, 39: 2,
     40: 0, 41: 0, 42: 2, 43: 1,
     44: 1, 45: 1, 46: 1, 47: 2, 48: 0, 49: 2, 50: 0, 51: 2, 52: 3, 
     53: 3, 54: 2, 55: 0, 56: 0, 57: 1, 58: 2, 59: 3, 60: 0
   },
+  
+  // FRANÇAIS - Tes réponses (index commence à 0)
   francais: {
-    1: 1, 2: 1, 3: 3, 4: 2, 5: 2,
-    6: 0, 7: 0, 8: 2, 9: 3, 10: 2,
-    11: 2, 12: 1, 13: 2, 14: 1, 15: 2, 16: 1,
-    17: 2, 18: 3, 19: 2, 20: 1, 21: 1,
-    22: 1, 23: 1, 24: 1, 25: 1, 26: 3
+    // A1: Questions 1-5
+    1: 1,  // Suis
+    2: 1,  // Dois
+    3: 3,  // Grande
+    4: 2,  // Un croissant
+    5: 2,  // Long
+    
+    // A2: Questions 6-10
+    6: 0,  // Je le
+    7: 0,  // du tout
+    8: 2,  // Chez le
+    9: 2,  // vieil (TU AS CHANGÉ: était 3 "vieux", maintenant 2 "vieil")
+    10: 4, // aussi bon (TU AS CHANGÉ: était 2 "meilleur", maintenant 4 "aussi bon")
+    
+    // B1: Questions 11-16
+    11: 2, // Depuis
+    12: 1, // Aller
+    13: 2, // Il est non seulement intelligent mais aussi très courageux
+    14: 1, // Tous
+    15: 2, // une amende
+    16: 3, // Avaient (TU AS CHANGÉ: était 1 "Qui ont", maintenant 3 "Avaient")
+    
+    // B1+: Questions 17-21
+    17: 2, // Du
+    18: 3, // Bonjour, auriez-vous un moment ?
+    19: 2, // Notre collègue a fait un malaise
+    20: 0, // On va manger un truc ? (TU AS CHANGÉ: était 1 "Allons manger quelque chose !", maintenant 0)
+    21: 1, // Il sait jardiner
+    
+    // B2: Questions 22-26
+    22: 1, // Hugo interprète ce silence comme une menace constante
+    23: 1, // Cela fait longtemps que le comité examine son dossier
+    24: 1, // Être stupéfait
+    25: 1, // Adopter une position contraire à la morale
+    26: 3  // Grise (TU AS CHANGÉ: était 2 "Noire", maintenant 3 "Grise")
   }
 };
 
@@ -125,17 +158,12 @@ const STEPS_CONFIG = {
   }
 };
 
-<<<<<<< HEAD
-// ===== NOUVELLE MÉTHODE calculerNiveau =====
-=======
-// Méthode pour calculer le niveau basé sur la première erreur
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
+// ===== MÉTHODE calculerNiveau =====
 testSchema.methods.calculerNiveau = function() {
   const reponsesCorrectes = REPONSES_CORRECTES[this.langue];
   const steps = STEPS_CONFIG[this.langue];
   
   let score = 0;
-<<<<<<< HEAD
   let niveauFinal = 'A1'; // Niveau par défaut
   let premiereErreur = { step: null, questionId: null };
   let stepsPrecedentsCorrects = true;
@@ -146,20 +174,10 @@ testSchema.methods.calculerNiveau = function() {
     let toutesQuestionsRepondues = true;
     
     // Vérifier toutes les questions de ce step
-=======
-  let niveauFinal = this.langue === 'anglais' ? 'B2' : 'B2';
-  let premiereErreur = { step: null, questionId: null };
-  
-  // Parcourir toutes les questions dans l'ordre
-  for (let [stepName, stepConfig] of Object.entries(steps)) {
-    let erreurTrouvee = false;
-    
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     for (let qId = stepConfig.debut; qId <= stepConfig.fin; qId++) {
       const reponseEtudiant = this.reponses.get(qId.toString());
       const reponseCorrecte = reponsesCorrectes[qId];
       
-<<<<<<< HEAD
       // Si la question n'est pas répondue
       if (reponseEtudiant === undefined) {
         toutesQuestionsRepondues = false;
@@ -183,24 +201,11 @@ testSchema.methods.calculerNiveau = function() {
           if (!premiereErreur.questionId) {
             premiereErreur.step = stepName;
             premiereErreur.questionId = qId;
-=======
-      if (reponseEtudiant !== undefined) {
-        if (reponseEtudiant === reponseCorrecte) {
-          score++;
-        } else {
-          // PREMIÈRE ERREUR TROUVÉE
-          if (!premiereErreur.questionId) {
-            premiereErreur.step = stepName;
-            premiereErreur.questionId = qId;
-            niveauFinal = stepConfig.niveau;
-            erreurTrouvee = true;
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
           }
         }
       }
     }
     
-<<<<<<< HEAD
     // Déterminer si ce step est COMPLET et CORRECT
     const stepCompletEtCorrect = toutesQuestionsRepondues && toutesReponsesCorrectes;
     
@@ -210,11 +215,6 @@ testSchema.methods.calculerNiveau = function() {
     } else {
       // Dès qu'un step n'est pas complet/correct, on arrête la progression
       stepsPrecedentsCorrects = false;
-=======
-    // Si erreur trouvée dans ce step, le niveau final est celui de ce step
-    if (erreurTrouvee) {
-      break;
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     }
   }
   

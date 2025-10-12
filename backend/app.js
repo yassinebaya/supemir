@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 const Admin = require('./models/adminModel');
 const bcrypt = require('bcryptjs');
+const Annonce = require('./models/Annonce');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const Commercial = require('./models/commercialModel');
@@ -3429,7 +3430,6 @@ app.post('/api/tests/:testId/terminer', authEtudiant, async (req, res) => {
       });
     }
     
-<<<<<<< HEAD
     // ===== APPEL DE LA NOUVELLE MÉTHODE calculerNiveau() =====
     const resultat = test.terminerTest();
     await test.save();
@@ -3443,12 +3443,6 @@ app.post('/api/tests/:testId/terminer', authEtudiant, async (req, res) => {
       premiereErreur: resultat.premiereErreur
     });
     
-=======
-    // Terminer le test et calculer le niveau
-    const resultat = test.terminerTest();
-    await test.save();
-    
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     // Vérifier si les deux tests sont terminés pour mettre à jour nouvelleInscription
     const statutTests = await Test.aTermineLesDeuxTests(req.etudiantId);
     
@@ -3466,11 +3460,7 @@ app.post('/api/tests/:testId/terminer', authEtudiant, async (req, res) => {
     });
     
   } catch (error) {
-<<<<<<< HEAD
     console.error('❌ Erreur terminaison test:', error);
-=======
-    console.error('Erreur terminaison test:', error);
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     res.status(500).json({ 
       success: false, 
       message: 'Erreur lors de la terminaison du test', 
@@ -5568,6 +5558,235 @@ app.get('/api/etudiant', authAdminOrPaiementManager, async (req, res) => {
 });
 // 📌 توليد QR - فقط من طرف الأدمين
 // ✅ Nouveau endpoint pour générer le QR d'une seule journée
+// GET - Récupérer tous les étudiants pour le module paiement (avec filtre optionnel)
+app.get('/api/paiement/etudiants', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { sansPrix, anneeScolaire } = req.query;
+    
+    let query = {};
+    
+    // Filtrer les étudiants sans prix total ou prix = 0
+    if (sansPrix === 'true') {
+      query.$or = [
+        { prixTotal: { $exists: false } },
+        { prixTotal: null },
+        { prixTotal: 0 }
+      ];
+    }
+    
+    // Filtrer par année scolaire (par défaut 2025/2026)
+    if (anneeScolaire) {
+      query.anneeScolaire = anneeScolaire;
+    } else {
+      query.anneeScolaire = '2025/2026'; // Année par défaut
+    }
+    
+    // Filtrer uniquement les étudiants actifs
+    query.actif = true;
+    
+    const etudiants = await Etudiant.find(query)
+      .select('-motDePasse')
+      .populate('creeParAdmin', 'nom email')
+      .populate('commercial', 'nom email')
+      .populate('nomPartner', 'nomPartner')
+      .sort({ createdAt: -1 });
+      
+    res.json(etudiants);
+  } catch (err) {
+    console.error('Erreur récupération étudiants:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Récupérer uniquement les étudiants sans prix total
+app.get('/api/paiement/etudiants/sans-prix', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { anneeScolaire } = req.query;
+    
+    let query = {
+      $or: [
+        { prixTotal: { $exists: false } },
+        { prixTotal: null },
+        { prixTotal: 0 }
+      ],
+      actif: true
+    };
+    
+    // Filtrer par année scolaire si fournie
+    if (anneeScolaire) {
+      query.anneeScolaire = anneeScolaire;
+    }
+    
+    const etudiantsSansPrix = await Etudiant.find(query)
+      .select('-motDePasse')
+      .populate('creeParAdmin', 'nom email')
+      .populate('commercial', 'nom email')
+      .populate('nomPartner', 'nomPartner')
+      .sort({ createdAt: -1 });
+    
+    res.json(etudiantsSansPrix);
+  } catch (err) {
+    console.error('Erreur récupération étudiants sans prix:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Récupérer les étudiants avec prix total (pour le module paiement)
+app.get('/api/paiement/etudiants/avec-prix', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { anneeScolaire } = req.query;
+    
+    let query = {
+      prixTotal: { $gt: 0 },
+      actif: true
+    };
+    
+    // Filtrer par année scolaire (par défaut 2025/2026)
+    if (anneeScolaire) {
+      query.anneeScolaire = anneeScolaire;
+    } else {
+      query.anneeScolaire = '2025/2026';
+    }
+    
+    const etudiantsAvecPrix = await Etudiant.find(query)
+      .select('-motDePasse')
+      .populate('creeParAdmin', 'nom email')
+      .populate('commercial', 'nom email')
+      .populate('nomPartner', 'nomPartner')
+      .sort({ createdAt: -1 });
+    
+    res.json(etudiantsAvecPrix);
+  } catch (err) {
+    console.error('Erreur récupération étudiants avec prix:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - Mettre à jour le prix total d'un étudiant
+app.put('/api/paiement/etudiants/:id/prix', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { prixTotal, modePaiement } = req.body;
+    
+    // Validation du prix total
+    if (!prixTotal || prixTotal <= 0) {
+      return res.status(400).json({ error: 'Le prix total doit être supérieur à 0' });
+    }
+    
+    // Validation du mode de paiement
+    if (!modePaiement || !['annuel', 'semestriel', 'trimestriel', 'mensuel'].includes(modePaiement)) {
+      return res.status(400).json({ error: 'Mode de paiement invalide' });
+    }
+    
+    const etudiant = await Etudiant.findById(req.params.id);
+    
+    if (!etudiant) {
+      return res.status(404).json({ error: 'Étudiant non trouvé' });
+    }
+    
+    // Vérifier si l'étudiant a déjà des paiements
+    const paiementsExistants = await Paiement.find({ etudiant: etudiant._id });
+    
+    if (paiementsExistants.length > 0) {
+      return res.status(400).json({ 
+        error: 'Impossible de modifier le prix : des paiements existent déjà pour cet étudiant' 
+      });
+    }
+    
+    // Mettre à jour le prix total et le mode de paiement
+    etudiant.prixTotal = prixTotal;
+    etudiant.modePaiement = modePaiement;
+    
+    // Si mode annuel, mettre paye = false par défaut
+    if (modePaiement === 'annuel') {
+      etudiant.paye = false;
+    }
+    
+    await etudiant.save();
+    
+    res.json({
+      message: 'Prix total mis à jour avec succès',
+      etudiant: {
+        _id: etudiant._id,
+        nomComplet: etudiant.nomComplet,
+        prixTotal: etudiant.prixTotal,
+        modePaiement: etudiant.modePaiement,
+        email: etudiant.email,
+        typeFormation: etudiant.typeFormation,
+        specialite: etudiant.specialite
+      }
+    });
+  } catch (err) {
+    console.error('Erreur mise à jour prix:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Statistiques des étudiants pour le module paiement
+app.get('/api/paiement/etudiants/statistiques', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const { anneeScolaire } = req.query;
+    
+    let query = { actif: true };
+    if (anneeScolaire) {
+      query.anneeScolaire = anneeScolaire;
+    } else {
+      query.anneeScolaire = '2025/2026';
+    }
+    
+    const [
+      totalEtudiants,
+      etudiantsAvecPrix,
+      etudiantsSansPrix,
+      totalChiffreAffaire
+    ] = await Promise.all([
+      Etudiant.countDocuments(query),
+      Etudiant.countDocuments({ ...query, prixTotal: { $gt: 0 } }),
+      Etudiant.countDocuments({
+        ...query,
+        $or: [
+          { prixTotal: { $exists: false } },
+          { prixTotal: null },
+          { prixTotal: 0 }
+        ]
+      }),
+      Etudiant.aggregate([
+        { $match: { ...query, prixTotal: { $gt: 0 } } },
+        { $group: { _id: null, total: { $sum: '$prixTotal' } } }
+      ])
+    ]);
+    
+    res.json({
+      totalEtudiants,
+      etudiantsAvecPrix,
+      etudiantsSansPrix,
+      totalChiffreAffaire: totalChiffreAffaire[0]?.total || 0,
+      anneeScolaire: query.anneeScolaire
+    });
+  } catch (err) {
+    console.error('Erreur récupération statistiques:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - Obtenir un étudiant spécifique pour le module paiement
+app.get('/api/paiement/etudiants/:id', authAdminOrPaiementManager, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findById(req.params.id)
+      .select('-motDePasse')
+      .populate('creeParAdmin', 'nom email')
+      .populate('commercial', 'nom email')
+      .populate('nomPartner', 'nomPartner');
+    
+    if (!etudiant) {
+      return res.status(404).json({ error: 'Étudiant non trouvé' });
+    }
+    
+    res.json(etudiant);
+  } catch (err) {
+    console.error('Erreur récupération étudiant:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 
 
@@ -9744,6 +9963,239 @@ app.get('/api/admin/cycles/diagnostic/:professeurId', authAdminOrPaiementManager
 
 // ASSUREZ-VOUS aussi que le modèle PenaliteProfesseur est bien importé en haut du fichier :
 // const PenaliteProfesseur = require('./models/PenaliteProfesseur');
+// Créer une annonce
+app.post('/api/professeur/annonces', authProfesseur, async (req, res) => {
+  try {
+    const { titre, description, cours, dateDebut, dateFin, priorite } = req.body;
+    
+    // Validation
+    if (!titre || !description || !cours || cours.length === 0 || !dateDebut || !dateFin) {
+      return res.status(400).json({ 
+        message: 'Tous les champs obligatoires doivent être remplis' 
+      });
+    }
+    
+    // Vérifier que dateFin > dateDebut
+    if (new Date(dateFin) <= new Date(dateDebut)) {
+      return res.status(400).json({ 
+        message: 'La date de fin doit être après la date de début' 
+      });
+    }
+    
+    // Vérifier que le professeur enseigne ces cours
+    const professeur = await Professeur.findById(req.professeurId);
+    const coursProf = professeur.cours || [];
+    
+    const coursInvalides = cours.filter(c => !coursProf.includes(c));
+    if (coursInvalides.length > 0) {
+      return res.status(403).json({ 
+        message: `Vous n'enseignez pas les cours suivants: ${coursInvalides.join(', ')}` 
+      });
+    }
+    
+    const nouvelleAnnonce = new Annonce({
+      titre,
+      description,
+      cours,
+      professeur: req.professeurId,
+      dateDebut: new Date(dateDebut),
+      dateFin: new Date(dateFin),
+      priorite: priorite || 'normale'
+    });
+    
+    await nouvelleAnnonce.save();
+    await nouvelleAnnonce.populate('professeur', 'nom email');
+    
+    res.status(201).json({ 
+      message: 'Annonce créée avec succès', 
+      annonce: nouvelleAnnonce 
+    });
+    
+  } catch (err) {
+    console.error('Erreur création annonce:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Obtenir toutes les annonces du professeur
+app.get('/api/professeur/annonces', authProfesseur, async (req, res) => {
+  try {
+    const annonces = await Annonce.find({ 
+      professeur: req.professeurId 
+    })
+    .populate('professeur', 'nom email')
+    .sort({ createdAt: -1 });
+    
+    res.json(annonces);
+  } catch (err) {
+    console.error('Erreur récupération annonces:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Modifier une annonce
+app.put('/api/professeur/annonces/:id', authProfesseur, async (req, res) => {
+  try {
+    const { titre, description, cours, dateDebut, dateFin, priorite, actif } = req.body;
+    
+    const annonce = await Annonce.findOne({
+      _id: req.params.id,
+      professeur: req.professeurId
+    });
+    
+    if (!annonce) {
+      return res.status(404).json({ message: 'Annonce non trouvée' });
+    }
+    
+    // Mettre à jour les champs
+    if (titre) annonce.titre = titre;
+    if (description) annonce.description = description;
+    if (cours && cours.length > 0) annonce.cours = cours;
+    if (dateDebut) annonce.dateDebut = new Date(dateDebut);
+    if (dateFin) annonce.dateFin = new Date(dateFin);
+    if (priorite) annonce.priorite = priorite;
+    if (typeof actif !== 'undefined') annonce.actif = actif;
+    
+    await annonce.save();
+    await annonce.populate('professeur', 'nom email');
+    
+    res.json({ 
+      message: 'Annonce mise à jour avec succès', 
+      annonce 
+    });
+    
+  } catch (err) {
+    console.error('Erreur modification annonce:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Supprimer une annonce
+app.delete('/api/professeur/annonces/:id', authProfesseur, async (req, res) => {
+  try {
+    const annonce = await Annonce.findOneAndDelete({
+      _id: req.params.id,
+      professeur: req.professeurId
+    });
+    
+    if (!annonce) {
+      return res.status(404).json({ message: 'Annonce non trouvée' });
+    }
+    
+    res.json({ message: 'Annonce supprimée avec succès' });
+    
+  } catch (err) {
+    console.error('Erreur suppression annonce:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Obtenir les statistiques des annonces du professeur
+app.get('/api/professeur/annonces/stats', authProfesseur, async (req, res) => {
+  try {
+    const maintenant = new Date();
+    
+    const [total, actives, expirees] = await Promise.all([
+      Annonce.countDocuments({ professeur: req.professeurId }),
+      Annonce.countDocuments({ 
+        professeur: req.professeurId,
+        actif: true,
+        dateDebut: { $lte: maintenant },
+        dateFin: { $gte: maintenant }
+      }),
+      Annonce.countDocuments({ 
+        professeur: req.professeurId,
+        dateFin: { $lt: maintenant }
+      })
+    ]);
+    
+    res.json({ total, actives, expirees });
+    
+  } catch (err) {
+    console.error('Erreur stats annonces:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// ===== ROUTES ÉTUDIANT =====
+
+// Obtenir les annonces pour l'étudiant
+app.get('/api/etudiant/annonces', authEtudiant, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findById(req.etudiantId);
+    
+    if (!etudiant || !etudiant.cours || etudiant.cours.length === 0) {
+      return res.json([]);
+    }
+    
+    const annonces = await Annonce.getAnnoncesActives(etudiant.cours);
+    
+    res.json(annonces);
+    
+  } catch (err) {
+    console.error('Erreur récupération annonces étudiant:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Marquer une annonce comme vue
+app.post('/api/etudiant/annonces/:id/vue', authEtudiant, async (req, res) => {
+  try {
+    const annonce = await Annonce.findById(req.params.id);
+    
+    if (!annonce) {
+      return res.status(404).json({ message: 'Annonce non trouvée' });
+    }
+    
+    // Vérifier si déjà vue
+    const dejaVue = annonce.vuesPar.some(
+      v => v.etudiant.toString() === req.etudiantId.toString()
+    );
+    
+    if (!dejaVue) {
+      annonce.vuesPar.push({
+        etudiant: req.etudiantId,
+        dateVue: new Date()
+      });
+      await annonce.save();
+    }
+    
+    res.json({ message: 'Annonce marquée comme vue' });
+    
+  } catch (err) {
+    console.error('Erreur marquage vue annonce:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+// Obtenir le nombre d'annonces non vues
+app.get('/api/etudiant/annonces/non-vues/count', authEtudiant, async (req, res) => {
+  try {
+    const etudiant = await Etudiant.findById(req.etudiantId);
+    
+    if (!etudiant || !etudiant.cours || etudiant.cours.length === 0) {
+      return res.json({ count: 0 });
+    }
+    
+    const maintenant = new Date();
+    const annoncesNonVues = await Annonce.countDocuments({
+      cours: { $in: etudiant.cours },
+      actif: true,
+      dateDebut: { $lte: maintenant },
+      dateFin: { $gte: maintenant },
+      'vuesPar.etudiant': { $ne: req.etudiantId }
+    });
+    
+    res.json({ count: annoncesNonVues });
+    
+  } catch (err) {
+    console.error('Erreur count annonces non vues:', err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
+  }
+});
+
+
+
 
 // 4. API POUR RÉCUPÉRER L'HISTORIQUE DES PÉNALITÉS
 app.get('/api/finance/penalites/historique/:professeurId', authAdminOrPaiementManager, async (req, res) => {
@@ -11404,51 +11856,29 @@ app.get('/api/presences/etudiant/:id', authAdminOrPaiementManager, async (req, r
 // Route pour "Gestion des Étudiants"
 
 // Route pour "Gestion des Cours"
-<<<<<<< HEAD
 // ============================================
 // ROUTE: Mes Étudiants (Pédagogique) - SANS FILTRE PRIX
 // ============================================
-=======
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 app.get('/api/pedagogique/mes-etudiants', authPedagogique, async (req, res) => {
   try {
     const estGeneral = req.user.estGeneral;
     
-<<<<<<< HEAD
     // ✅ Query simplifiée : Seulement année scolaire
     let query = {
       anneeScolaire: '2025/2026'
     };
     
     // Si pas général, filtrer par filière
-=======
-    let query = {
-      anneeScolaire: '2025/2026',
-      prixTotal: { 
-        $exists: true,  // Le champ existe
-        $ne: null,      // N'est pas null
-        $gt: 0          // Strictement supérieur à 0
-      }
-    };
-    
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     if (!estGeneral) {
       query.filiere = req.user.filiere;
     }
     
-<<<<<<< HEAD
     // Récupérer TOUS les étudiants de 2025/2026 (avec ou sans prixTotal)
-=======
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     const etudiants = await Etudiant.find(query)
       .populate('commercial', 'nom nomComplet')
       .sort({ createdAt: -1 });
 
-<<<<<<< HEAD
     console.log(`📚 Gestion Cours - ${etudiants.length} étudiants (2025/2026, TOUS)`);
-=======
-    console.log(`📚 Gestion Cours - ${etudiants.length} étudiants (2025/2026, prix > 0)`);
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
     
     res.json(etudiants);
   } catch (error) {
@@ -13104,7 +13534,6 @@ app.put('/api/paiements/:id', authAdminOrPaiementManager, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
 // ============================================
 // ROUTE DELETE: Supprimer un paiement
 // ============================================
@@ -13220,8 +13649,6 @@ app.delete('/api/paiements/:id', authAdminOrPaiementManager, async (req, res) =>
     });
   }
 });
-=======
->>>>>>> e28856574b6e7bd1a874030db05ceee60a1bcfab
 app.get('/api/revenus/previsions/:anneeScolaire', authAdminOrPaiementManager, async (req, res) => {
   try {
     const anneeScolaire = decodeURIComponent(req.params.anneeScolaire);
